@@ -417,32 +417,32 @@ export const ParcelInventory: React.FC = () => {
               onClick={() => setActiveTab('all')}
               className={`px-4 py-1.5 rounded-lg transition-all cursor-pointer ${activeTab === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
             >
-              All Parcels ({baseShipmentList.length})
+              {t('tab_all_parcels')} ({baseShipmentList.length})
             </button>
             <button
               onClick={() => setActiveTab('outbound')}
               className={`px-4 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'outbound' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
             >
               <Send className="w-3.5 h-3.5" />
-              <span>Outbound (Sent)</span>
+              <span>{t('tab_outbound_sent')}</span>
             </button>
             <button
               onClick={() => setActiveTab('inbound')}
               className={`px-4 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'inbound' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
             >
               <Inbox className="w-3.5 h-3.5" />
-              <span>Inbound (Incoming)</span>
+              <span>{t('tab_inbound_incoming')}</span>
             </button>
             <button
               onClick={() => setActiveTab('warehouse')}
               className={`px-4 py-1.5 rounded-lg transition-all cursor-pointer ${activeTab === 'warehouse' ? 'bg-white text-amber-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
             >
-              In Warehouse
+              {t('tab_in_warehouse')}
             </button>
           </div>
 
           <div className="text-xs text-slate-500 font-medium">
-            Showing <strong>{processedParcels.length}</strong> of {baseShipmentList.length} consignments
+            {t('showing_label')} <strong>{processedParcels.length}</strong> {t('of_label')} {baseShipmentList.length}
           </div>
         </div>
 
@@ -456,7 +456,7 @@ export const ParcelInventory: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by CN, Sender, Receiver, Phone, City..."
+              placeholder={t('search_placeholder')}
               className="w-full h-10 ps-9 pe-4 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
@@ -468,12 +468,12 @@ export const ParcelInventory: React.FC = () => {
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="all">All Statuses (همه حالات)</option>
-              <option value="booked">Booked (ثبت شده)</option>
-              <option value="in_transit">In Transit (در حال انتقال)</option>
-              <option value="received_at_branch">Received at Hub (رسیده به مقصد)</option>
-              <option value="out_for_delivery">Out for Delivery (توزیع)</option>
-              <option value="delivered">Delivered (تحویل داده شده)</option>
+              <option value="all">{t('filter_all_status')}</option>
+              <option value="booked">{t('status_booked')}</option>
+              <option value="in_transit">{t('status_in_transit')}</option>
+              <option value="received_at_branch">{t('status_received_at_branch')}</option>
+              <option value="out_for_delivery">{t('status_out_for_delivery')}</option>
+              <option value="delivered">{t('status_delivered')}</option>
             </select>
           </div>
 
@@ -484,10 +484,10 @@ export const ParcelInventory: React.FC = () => {
               onChange={(e) => setSelectedPayment(e.target.value)}
               className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
             >
-              <option value="all">All Payments (پرداخت)</option>
-              <option value="paid">Paid (پرداخت شده)</option>
-              <option value="to_pay">COD / To-Pay (تحویل در مقصد)</option>
-              <option value="partial">Partial</option>
+              <option value="all">{t('filter_all_payment')}</option>
+              <option value="paid">{t('pay_paid')}</option>
+              <option value="to_pay">{t('pay_to_pay')}</option>
+              <option value="partial">{t('pay_partial')}</option>
             </select>
           </div>
 
@@ -503,27 +503,27 @@ export const ParcelInventory: React.FC = () => {
               <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 font-bold">
                 <th className="p-3.5 text-start cursor-pointer select-none" onClick={() => handleSort('cn')}>
                   <div className="flex items-center gap-1">
-                    <span>CN Number</span>
+                    <span>{t('th_cn_number')}</span>
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th className="p-3.5 text-start">Route & Terminals</th>
-                <th className="p-3.5 text-start">Sender (Origin)</th>
-                <th className="p-3.5 text-start">Receiver (Destination)</th>
+                <th className="p-3.5 text-start">{t('th_route_terminals')}</th>
+                <th className="p-3.5 text-start">{t('th_sender_origin')}</th>
+                <th className="p-3.5 text-start">{t('th_receiver_destination')}</th>
                 <th className="p-3.5 text-center cursor-pointer select-none" onClick={() => handleSort('weight')}>
                   <div className="flex items-center justify-center gap-1">
-                    <span>Weight / Specs</span>
+                    <span>{t('th_weight_specs')}</span>
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3.5 text-center cursor-pointer select-none" onClick={() => handleSort('amount')}>
                   <div className="flex items-center justify-center gap-1">
-                    <span>Amount</span>
+                    <span>{t('th_amount_payment')}</span>
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th className="p-3.5 text-center">Status & Update</th>
-                <th className="p-3.5 text-end">Actions</th>
+                <th className="p-3.5 text-center">{t('th_status_update')}</th>
+                <th className="p-3.5 text-end">{t('th_actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

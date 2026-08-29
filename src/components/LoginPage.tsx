@@ -190,7 +190,7 @@ export const LoginPage: React.FC = () => {
               }`}
             >
               <Building2 className="w-4 h-4" />
-              <span>Branch Terminals & Admin Login</span>
+              <span>{t('branch_terminal_signin_title')}</span>
             </button>
           </div>
         </div>
@@ -204,13 +204,13 @@ export const LoginPage: React.FC = () => {
               <div className="text-center max-w-xl mx-auto space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/30 border border-red-500/40 text-red-400 text-xs font-bold uppercase tracking-wider">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Live Consignment Tracking
+                  {t('live_consignment_tracking')}
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-black text-white">
-                  Track Cargo Across 6 Afghan Hubs
+                  {t('track_cargo_across_hubs')}
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-400">
-                  Instant milestone status for Kabul, Herat, Mazar, Kandahar, Jalalabad & Kunduz
+                  {t('instant_milestone_status_desc')}
                 </p>
               </div>
 
@@ -225,7 +225,7 @@ export const LoginPage: React.FC = () => {
                       type="text"
                       value={searchCn}
                       onChange={(e) => setSearchCn(e.target.value)}
-                      placeholder="Enter CN Number (e.g. RYN-894201)..."
+                      placeholder={t('enter_cn_number_prompt')}
                       className="w-full h-12 ps-11 pe-4 text-sm bg-white/10 border border-white/20 rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono"
                     />
                   </div>
@@ -233,14 +233,14 @@ export const LoginPage: React.FC = () => {
                     type="submit"
                     className="h-12 px-6 bg-red-600 hover:bg-red-500 text-white rounded-2xl font-bold text-sm shadow-md shadow-red-600/30 transition-all shrink-0 cursor-pointer"
                   >
-                    Track Parcel
+                    {t('track_parcel_btn')}
                   </button>
                 </div>
               </form>
 
               {/* Demo CN tags */}
               <div className="flex flex-wrap items-center justify-center gap-2 text-xs pt-2">
-                <span className="text-slate-400 font-medium">Quick Demo CNs:</span>
+                <span className="text-slate-400 font-medium">{t('quick_demo_cns')}</span>
                 {shipments.slice(0, 4).map(s => (
                   <button
                     key={s.id}
@@ -263,13 +263,13 @@ export const LoginPage: React.FC = () => {
                         {trackedItem.cnNumber}
                       </span>
                       <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase border ${getStatusBadge(trackedItem.status)}`}>
-                        {trackedItem.status.replace(/_/g, ' ')}
+                        {t(`status_${trackedItem.status}` as any) || trackedItem.status.replace(/_/g, ' ')}
                       </span>
                     </div>
                     <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
-                      <span>Booked: {new Date(trackedItem.bookedAt).toLocaleDateString()}</span>
+                      <span>{t('booked_at_label')}: {new Date(trackedItem.bookedAt).toLocaleDateString()}</span>
                       <span>•</span>
-                      <span>Service: <strong>{trackedItem.packageInfo.serviceType}</strong></span>
+                      <span>{t('service_lbl')}: <strong>{trackedItem.packageInfo.serviceType}</strong></span>
                     </div>
                   </div>
 
@@ -277,7 +277,7 @@ export const LoginPage: React.FC = () => {
                     onClick={() => setSelectedShipmentForReceipt(trackedItem)}
                     className="px-4 py-2.5 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
                   >
-                    <span>Print Receipt / Waybill</span>
+                    <span>{t('print_receipt_waybill_btn')}</span>
                   </button>
                 </div>
 
@@ -285,7 +285,7 @@ export const LoginPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                     <div className="text-[11px] font-bold text-red-600 uppercase tracking-wider mb-2">
-                      Sender (Origin)
+                      {t('sender_origin_lbl')}
                     </div>
                     <div className="text-sm font-bold text-slate-900">{trackedItem.sender.name}</div>
                     <div className="text-xs text-slate-500">{trackedItem.sender.city}, {trackedItem.sender.province}</div>
@@ -294,7 +294,7 @@ export const LoginPage: React.FC = () => {
 
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                     <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-2">
-                      Receiver (Destination)
+                      {t('receiver_destination_lbl')}
                     </div>
                     <div className="text-sm font-bold text-slate-900">{trackedItem.receiver.name}</div>
                     <div className="text-xs text-slate-500">{trackedItem.receiver.city}, {trackedItem.receiver.province}</div>
@@ -305,19 +305,19 @@ export const LoginPage: React.FC = () => {
                 {/* Cargo Details Snapshot */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="p-3 rounded-xl bg-slate-100 text-center">
-                    <div className="text-[10px] text-slate-500 uppercase">Category</div>
+                    <div className="text-[10px] text-slate-500 uppercase">{t('category_lbl')}</div>
                     <div className="text-xs font-bold text-slate-900 mt-0.5">{trackedItem.packageInfo.category}</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-100 text-center">
-                    <div className="text-[10px] text-slate-500 uppercase">Weight</div>
+                    <div className="text-[10px] text-slate-500 uppercase">{t('weight_lbl')}</div>
                     <div className="text-xs font-bold text-slate-900 mt-0.5">{trackedItem.packageInfo.weightKg} KG</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-100 text-center">
-                    <div className="text-[10px] text-slate-500 uppercase">Pieces</div>
-                    <div className="text-xs font-bold text-slate-900 mt-0.5">{trackedItem.packageInfo.pieces} Pcs</div>
+                    <div className="text-[10px] text-slate-500 uppercase">{t('pieces_lbl')}</div>
+                    <div className="text-xs font-bold text-slate-900 mt-0.5">{trackedItem.packageInfo.pieces} {t('pkgs_unit')}</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-100 text-center">
-                    <div className="text-[10px] text-slate-500 uppercase">Payment</div>
+                    <div className="text-[10px] text-slate-500 uppercase">{t('payment_lbl')}</div>
                     <div className="text-xs font-bold text-emerald-600 mt-0.5">{trackedItem.financials.paymentStatus} ({trackedItem.financials.totalAmount} AFN)</div>
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export const LoginPage: React.FC = () => {
                 {/* Milestone History Timeline */}
                 <div className="space-y-3 pt-2">
                   <h4 className="text-xs font-bold uppercase text-slate-500 tracking-wider">
-                    Milestone Progress
+                    {t('milestone_progress_lbl')}
                   </h4>
                   <div className="space-y-2.5">
                     {trackedItem.statusHistory.map((h, index) => (
@@ -335,7 +335,7 @@ export const LoginPage: React.FC = () => {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-slate-900">{h.status.replace(/_/g, ' ')}</span>
+                            <span className="font-bold text-slate-900">{t(`status_${h.status}` as any) || h.status.replace(/_/g, ' ')}</span>
                             <span className="text-[11px] text-slate-400 font-mono">{new Date(h.timestamp).toLocaleString()}</span>
                           </div>
                           <p className="text-xs text-slate-600 mt-0.5">{h.note}</p>
@@ -358,10 +358,10 @@ export const LoginPage: React.FC = () => {
               <div className="p-6 rounded-2xl bg-red-50 border border-red-200 text-center space-y-2">
                 <AlertCircle className="w-8 h-8 text-red-600 mx-auto" />
                 <h3 className="text-sm font-bold text-red-900">
-                  No parcel found with CN or contact "{searchCn}"
+                  {t('no_parcel_found_msg')} "{searchCn}"
                 </h3>
                 <p className="text-xs text-red-700">
-                  Please verify your Consignment Note (CN) number on your receipt.
+                  {t('verify_cn_prompt')}
                 </p>
               </div>
             )}
@@ -381,10 +381,10 @@ export const LoginPage: React.FC = () => {
                   <Lock className="w-6 h-6" />
                 </div>
                 <h2 className="text-xl font-black text-slate-900">
-                  Branch Terminal Sign In
+                  {t('branch_terminal_signin_title')}
                 </h2>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Sign in with your branch email & password. Each branch has 1 dedicated exclusive account with private password ownership.
+                  {t('branch_terminal_signin_desc')}
                 </p>
               </div>
 
@@ -398,7 +398,7 @@ export const LoginPage: React.FC = () => {
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Branch Email Address
+                    {t('login_email_lbl')}
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2" />
@@ -414,7 +414,7 @@ export const LoginPage: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Branch Private Password
+                    {t('login_password_lbl')}
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2" />
@@ -422,7 +422,7 @@ export const LoginPage: React.FC = () => {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter branch password..."
+                      placeholder={t('login_password_placeholder')}
                       className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-900 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -433,21 +433,22 @@ export const LoginPage: React.FC = () => {
                   className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Sign In to Terminal</span>
+                  <span>{t('sign_in_to_terminal_btn')}</span>
                 </button>
               </form>
 
               {/* 1-Click Instant Branch Sign-In Cards (6 Branches + Super Admin) */}
               <div className="pt-4 border-t border-slate-100 space-y-3">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                  <span>6 Exclusive Branch Accounts (1-Click Access)</span>
-                  <span className="text-[10px] text-slate-400">1 Role Per Branch</span>
+                  <span>{t('exclusive_accounts_1click')}</span>
+                  <span className="text-[10px] text-slate-400">{t('one_role_per_branch')}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {users.map(u => {
                     const branchObj = branches.find(b => b.id === u.branchId);
                     const isSuper = u.role === 'super_admin';
+                    const branchDisplayName = branchObj ? (language === 'fa' ? branchObj.nameFa || branchObj.name : language === 'ps' ? branchObj.namePs || branchObj.name : branchObj.name) : 'HQ';
 
                     return (
                       <button
@@ -468,7 +469,7 @@ export const LoginPage: React.FC = () => {
                           </div>
                           <div>
                             <div className="text-xs font-bold text-slate-900 leading-tight">
-                              {isSuper ? 'Central System Admin' : branchObj?.name}
+                              {isSuper ? t('central_system_admin') : branchDisplayName}
                             </div>
                             <div className="text-[10px] text-slate-500 font-mono">
                               {u.email}
@@ -479,7 +480,7 @@ export const LoginPage: React.FC = () => {
                           </div>
                         </div>
                         <span className="text-[10px] font-bold text-red-600">
-                          Enter ➔
+                          {t('enter_arrow_btn')}
                         </span>
                       </button>
                     );

@@ -182,10 +182,10 @@ export const TrackingPortal: React.FC = () => {
             <AlertCircle className="w-6 h-6" />
           </div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            No Consignment Found with Number "{inputCn}"
+            {t('no_parcel_found_msg')} "{inputCn}"
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Please check the Consignment Note (CN) number on your booking receipt and try again, or search by sender/receiver contact number.
+            {t('verify_cn_prompt')}
           </p>
         </div>
       )}
@@ -222,7 +222,7 @@ export const TrackingPortal: React.FC = () => {
                   title="Share tracking link"
                 >
                   {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-slate-500" />}
-                  <span>{copied ? 'Link Copied' : 'Share'}</span>
+                  <span>{copied ? t('copied_btn') : t('copy_btn')}</span>
                 </button>
 
                 <button

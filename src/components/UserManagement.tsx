@@ -452,31 +452,31 @@ export const UserManagement: React.FC = () => {
                     <span>{t('branch_added_successfully')}</span>
                   </div>
                   <p className="text-xs">
-                    The new regional cargo hub is now active. All sub-branch contents, bilateral trade exchanges, booking manifests, and status controls are fully ready.
+                    {t('branch_provision_subtitle')}
                   </p>
                 </div>
 
                 <div className="p-4 rounded-xl bg-slate-900 text-white font-mono text-xs space-y-2.5">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                    <span className="text-amber-400 font-bold">🏢 Account Credentials</span>
+                    <span className="text-amber-400 font-bold">🏢 {t('credentials_modal_title')}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                       {createdResult.branch.code}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400">Branch Name: </span>
+                    <span className="text-slate-400">{t('branch_lbl')}: </span>
                     <span className="font-bold text-white">{createdResult.branch.name}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400">Province: </span>
+                    <span className="text-slate-400">{t('branch_province_lbl')}: </span>
                     <span>{createdResult.branch.province} ({createdResult.branch.city})</span>
                   </div>
                   <div>
-                    <span className="text-slate-400">Login Email: </span>
+                    <span className="text-slate-400">{t('login_email_lbl')}: </span>
                     <span className="text-red-400 font-bold">{createdResult.user.email}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400">Temporary Password: </span>
+                    <span className="text-slate-400">{t('branch_initial_pass_lbl')}: </span>
                     <span className="text-emerald-400 font-bold">{createdResult.user.password}</span>
                   </div>
                 </div>
@@ -636,7 +636,7 @@ export const UserManagement: React.FC = () => {
                 <div className="p-3.5 rounded-xl bg-red-50/70 border border-red-200 space-y-3">
                   <div className="text-[11px] font-bold text-red-900 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-red-600" />
-                    <span>Exclusive Account Provisioning (No Sub-Roles)</span>
+                    <span>{t('single_role_architecture')}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">

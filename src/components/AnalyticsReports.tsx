@@ -182,7 +182,7 @@ export const AnalyticsReports: React.FC = () => {
                   dateRange === period ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {period}
+                {period === 'today' ? t('period_today') : period === 'week' ? t('period_week') : period === 'month' ? t('period_month') : t('period_year')}
               </button>
             ))}
           </div>
@@ -193,7 +193,7 @@ export const AnalyticsReports: React.FC = () => {
             title="Export CSV spreadsheet"
           >
             <Download className="w-4 h-4 text-emerald-600" />
-            <span>CSV Export</span>
+            <span>{t('btn_export_csv_report')}</span>
           </button>
 
           {/* Download PDF button */}
@@ -216,7 +216,7 @@ export const AnalyticsReports: React.FC = () => {
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>Download PDF Report</span>
+                <span>{t('btn_download_pdf_report')}</span>
               </>
             )}
           </button>
@@ -228,7 +228,7 @@ export const AnalyticsReports: React.FC = () => {
             title="Print report"
           >
             <Printer className="w-4 h-4" />
-            <span>Print Report</span>
+            <span>{t('btn_print_report')}</span>
           </button>
         </div>
       </div>
@@ -237,17 +237,17 @@ export const AnalyticsReports: React.FC = () => {
         {/* Printable Report Title Header */}
         <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold text-red-600 uppercase tracking-wider">Executive Performance Summary</div>
+            <div className="text-xs font-bold text-red-600 uppercase tracking-wider">{t('exec_perf_summary')}</div>
             <h2 className="text-lg font-black text-slate-900">
-              Rayan Cargo Nationwide Analytics — {dateRange.toUpperCase()} REPORT
+              {t('nationwide_analytics_report')} — {dateRange.toUpperCase()}
             </h2>
             <p className="text-xs text-slate-500">
-              Audit Date: {new Date().toLocaleDateString()} | Central Logistics Terminal
+              {t('audit_date')}: {new Date().toLocaleDateString()} | {t('central_logistics_terminal')}
             </p>
           </div>
           <div className="text-end font-mono text-xs">
-            <div className="font-bold text-slate-900">Branch: {activeBranchId === 'all' ? 'All Hubs' : activeBranchId}</div>
-            <div className="text-slate-500">Parcels Audited: {filteredShipments.length}</div>
+            <div className="font-bold text-slate-900">{t('branch_lbl')}: {activeBranchId === 'all' ? t('all_hubs') : activeBranchId}</div>
+            <div className="text-slate-500">{t('parcels_audited')}: {filteredShipments.length}</div>
           </div>
         </div>
 
@@ -266,13 +266,13 @@ export const AnalyticsReports: React.FC = () => {
             </div>
             <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-bold mt-1">
               <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>+18.4% vs last period</span>
+              <span>+18.4% {t('vs_last_period')}</span>
             </div>
           </div>
 
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase">Paid / Settled</span>
+              <span className="text-xs font-bold text-slate-500 uppercase">{t('paid_settled')}</span>
               <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
@@ -281,13 +281,13 @@ export const AnalyticsReports: React.FC = () => {
               {totalPaid.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
-              {totalRev > 0 ? Math.round((totalPaid / totalRev) * 100) : 0}% Collection rate
+              {totalRev > 0 ? Math.round((totalPaid / totalRev) * 100) : 0}% {t('collection_rate')}
             </div>
           </div>
 
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase">Pending COD Collection</span>
+              <span className="text-xs font-bold text-slate-500 uppercase">{t('pending_cod_collection')}</span>
               <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm">
                 <Clock className="w-4 h-4" />
               </div>
@@ -296,13 +296,13 @@ export const AnalyticsReports: React.FC = () => {
               {totalDue.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
-              Cash to collect upon delivery
+              {t('cash_to_collect_upon_delivery')}
             </div>
           </div>
 
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase">Total Weight Moved</span>
+              <span className="text-xs font-bold text-slate-500 uppercase">{t('total_weight_moved')}</span>
               <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
                 <Truck className="w-4 h-4" />
               </div>
@@ -311,7 +311,7 @@ export const AnalyticsReports: React.FC = () => {
               {totalWeight.toLocaleString()} <span className="text-xs font-normal text-slate-500">KG</span>
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
-              Across {filteredShipments.length} consignments
+              {t('across_consignments')} {filteredShipments.length} {t('consignments_label')}
             </div>
           </div>
 
@@ -325,16 +325,16 @@ export const AnalyticsReports: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">
-                  Revenue & Volume Growth Trend
+                  {t('revenue_volume_growth_trend')}
                 </h3>
-                <p className="text-xs text-slate-500">Daily financial throughput & consignment volumes</p>
+                <p className="text-xs text-slate-500">{t('daily_financial_throughput')}</p>
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-red-600" /> Revenue (AFN)
+                  <span className="w-3 h-3 rounded-full bg-red-600" /> {t('revenue_afn_legend')}
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded-full bg-blue-600" /> Deliveries
+                  <span className="w-3 h-3 rounded-full bg-blue-600" /> {t('deliveries_legend')}
                 </span>
               </div>
             </div>
@@ -360,9 +360,9 @@ export const AnalyticsReports: React.FC = () => {
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="font-bold text-sm text-slate-900">
-                  Cargo Categories
+                  {t('cargo_categories_title')}
                 </h3>
-                <p className="text-xs text-slate-500">Distribution by parcel type</p>
+                <p className="text-xs text-slate-500">{t('distribution_by_parcel_type')}</p>
               </div>
               <PieIcon className="w-4 h-4 text-slate-400" />
             </div>
@@ -395,7 +395,7 @@ export const AnalyticsReports: React.FC = () => {
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                     <span className="capitalize">{item.name.toLowerCase()}</span>
                   </div>
-                  <span className="font-bold text-slate-900">{item.value} items</span>
+                  <span className="font-bold text-slate-900">{item.value} {t('items_unit')}</span>
                 </div>
               ))}
             </div>
@@ -408,10 +408,10 @@ export const AnalyticsReports: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-bold text-sm text-slate-900">
-                Hub & Terminal Performance Audit
+                {t('hub_terminal_performance_audit')}
               </h3>
               <p className="text-xs text-slate-500">
-                Detailed freight breakdown by provincial branch terminal
+                {t('detailed_freight_breakdown')}
               </p>
             </div>
           </div>
@@ -420,12 +420,12 @@ export const AnalyticsReports: React.FC = () => {
             <table className="w-full text-start text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-200">
-                  <th className="p-3 text-start">Branch Terminal</th>
-                  <th className="p-3 text-start">City / Province</th>
-                  <th className="p-3 text-center">Dispatched</th>
-                  <th className="p-3 text-center">Received</th>
-                  <th className="p-3 text-center">Total Volume</th>
-                  <th className="p-3 text-end">Total Revenue (AFN)</th>
+                  <th className="p-3 text-start">{t('tbl_branch_terminal')}</th>
+                  <th className="p-3 text-start">{t('tbl_city_province')}</th>
+                  <th className="p-3 text-center">{t('tbl_dispatched')}</th>
+                  <th className="p-3 text-center">{t('tbl_received')}</th>
+                  <th className="p-3 text-center">{t('tbl_total_volume')}</th>
+                  <th className="p-3 text-end">{t('tbl_total_revenue_afn')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -436,9 +436,9 @@ export const AnalyticsReports: React.FC = () => {
                       <span>{b.fullName}</span>
                     </td>
                     <td className="p-3 text-slate-600">{b.city}</td>
-                    <td className="p-3 text-center font-mono">{b.dispatched} pkgs</td>
-                    <td className="p-3 text-center font-mono">{b.received} pkgs</td>
-                    <td className="p-3 text-center font-mono font-bold text-slate-900">{b.totalVolume} pkgs</td>
+                    <td className="p-3 text-center font-mono">{b.dispatched} {t('pkgs_unit')}</td>
+                    <td className="p-3 text-center font-mono">{b.received} {t('pkgs_unit')}</td>
+                    <td className="p-3 text-center font-mono font-bold text-slate-900">{b.totalVolume} {t('pkgs_unit')}</td>
                     <td className="p-3 text-end font-mono font-black text-red-600">
                       {b.revenue.toLocaleString()} AFN
                     </td>
