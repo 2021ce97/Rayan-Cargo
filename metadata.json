@@ -1,0 +1,6 @@
+{
+  "name": "Rayan Cargo DB",
+  "description": "Enterprise multi-branch cargo and parcel tracking database system for Rayan Cargo DB with consignment note (CN) tracking, branch dispatching, discount calculation, printable waybills, analytics, and trilingual support in English, Dari, and Pashto.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
