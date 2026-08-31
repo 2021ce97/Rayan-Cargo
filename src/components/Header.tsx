@@ -11,7 +11,9 @@ import {
   Sparkles,
   LogOut,
   Lock,
-  KeyRound
+  KeyRound,
+  Database,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Language, UserRole, Branch } from '../types';
@@ -31,7 +33,10 @@ export const Header: React.FC = () => {
     trackByCnNumber,
     setActiveView,
     toastMessage,
-    logout
+    logout,
+    dbStatus,
+    isSyncing,
+    syncWithDatabase
   } = useApp();
 
   const [searchCn, setSearchCn] = useState('');
@@ -128,6 +133,23 @@ export const Header: React.FC = () => {
 
             {/* Action Tools & Switchers */}
             <div className="flex items-center gap-2 shrink-0">
+
+              {/* Supabase PostgreSQL Status & Live Sync */}
+              <button
+                onClick={() => syncWithDatabase()}
+                className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  dbStatus.connected 
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100' 
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                }`}
+                title={`Supabase PostgreSQL Pooler (${dbStatus.connected ? 'Connected' : 'Connecting...'}) - Click to Sync`}
+              >
+                <Database className={`w-3.5 h-3.5 ${dbStatus.connected ? 'text-emerald-600' : 'text-amber-600'}`} />
+                <span className="text-[11px] font-medium hidden xl:inline">
+                  {dbStatus.connected ? 'Supabase DB' : 'Connecting DB'}
+                </span>
+                <RefreshCw className={`w-3 h-3 text-slate-400 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
+              </button>
 
               {/* Branch Switcher (for super_admin only) / Lock Badge (for branch) */}
               <div className="relative">

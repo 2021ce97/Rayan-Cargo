@@ -9,6 +9,8 @@ import { TrackingPortal } from './components/TrackingPortal';
 import { BranchManagement } from './components/BranchManagement';
 import { UserManagement } from './components/UserManagement';
 import { AnalyticsReports } from './components/AnalyticsReports';
+import { ExpenseManager } from './components/ExpenseManager';
+import { CustomerPortal } from './components/CustomerPortal';
 import { PrintReceiptModal } from './components/PrintReceiptModal';
 import { LoginPage } from './components/LoginPage';
 
@@ -25,9 +27,18 @@ const MainLayout: React.FC = () => {
   }
 
   const renderActiveView = () => {
+    // If logged in as customer, default to customer portal if they try to access internal branch tools
+    if (currentUser.role === 'customer' && activeView !== 'tracking' && activeView !== 'customer_portal') {
+      return <CustomerPortal />;
+    }
+
     switch (activeView) {
       case 'dashboard':
         return <Dashboard />;
+      case 'customer_portal':
+        return <CustomerPortal />;
+      case 'expenses':
+        return <ExpenseManager />;
       case 'parcels':
         return <ParcelInventory />;
       case 'booking':
@@ -43,7 +54,7 @@ const MainLayout: React.FC = () => {
       case 'reports':
         return <AnalyticsReports />;
       default:
-        return <Dashboard />;
+        return currentUser.role === 'customer' ? <CustomerPortal /> : <Dashboard />;
     }
   };
 
@@ -79,3 +90,4 @@ export default function App() {
     </AppProvider>
   );
 }
+

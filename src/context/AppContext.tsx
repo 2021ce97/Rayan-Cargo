@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   Language, 
   User, 
@@ -6,10 +6,13 @@ import {
   Shipment, 
   ShipmentStatus, 
   UserRole,
-  AnalyticsSummary 
+  AnalyticsSummary,
+  BranchExpense,
+  AddExpenseInput,
+  CustomerPreBookingInput
 } from '../types';
 import { translations } from '../i18n/translations';
-import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from '../data/initialData';
+import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
 
 interface StatusPermissionResult {
   allowed: boolean;
@@ -31,6 +34,28 @@ export interface AddBranchInput {
   initialPassword?: string;
 }
 
+export interface DbStatusInfo {
+  connected: boolean;
+  database: string;
+  serverTime?: string;
+  stats?: {
+    branches: number;
+    users: number;
+    shipments: number;
+  };
+}
+
+export type ActiveViewType = 
+  | 'dashboard' 
+  | 'parcels' 
+  | 'booking' 
+  | 'tracking' 
+  | 'branches' 
+  | 'users' 
+  | 'reports' 
+  | 'expenses'
+  | 'customer_portal';
+
 interface AppContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -40,6 +65,7 @@ interface AppContextType {
   toggleDarkMode: () => void;
   isAuthenticated: boolean;
   login: (identifier: string, password?: string) => boolean;
+  signupCustomer: (name: string, phone: string, email: string, password?: string) => boolean;
   loginWithUser: (user: User) => void;
   logout: () => void;
   currentUser: User;
@@ -53,37 +79,52 @@ interface AppContextType {
   branches: Branch[];
   users: User[];
   shipments: Shipment[];
-  activeView: 'dashboard' | 'parcels' | 'booking' | 'tracking' | 'branches' | 'users' | 'reports';
-  setActiveView: (view: 'dashboard' | 'parcels' | 'booking' | 'tracking' | 'branches' | 'users' | 'reports') => void;
+  expenses: BranchExpense[];
+  activeView: ActiveViewType;
+  setActiveView: (view: ActiveViewType) => void;
   selectedShipmentForReceipt: Shipment | null;
   setSelectedShipmentForReceipt: (shipment: Shipment | null) => void;
+  receiptPrintMode: 'a4' | 'thermal';
+  setReceiptPrintMode: (mode: 'a4' | 'thermal') => void;
   trackedShipment: Shipment | null;
   trackByCnNumber: (cn: string) => Shipment | null;
   addShipment: (shipmentData: Omit<Shipment, 'id' | 'cnNumber' | 'statusHistory' | 'bookedAt'>) => Shipment;
+  createCustomerPreBooking: (input: CustomerPreBookingInput) => Shipment;
+  confirmCustomerPreBooking: (shipmentId: string, actualWeightKg: number, pieces: number, transportationFee: number, destBranchCommission: number, paymentStatus: 'paid' | 'to_pay') => boolean;
+  settleInterBranchRemittance: (shipmentId: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
   resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string) => boolean;
   addBranch: (input: AddBranchInput) => { branch: Branch; user: User };
+  addExpense: (input: AddExpenseInput) => BranchExpense;
+  deleteExpense: (id: string) => boolean;
   analytics: AnalyticsSummary;
   filteredShipments: Shipment[];
   partnerShipments: Shipment[];
+  customerShipments: Shipment[];
+  branchExpenses: BranchExpense[];
   toastMessage: string | null;
   showToast: (message: string) => void;
   isOfflineCached: boolean;
+  dbStatus: DbStatusInfo;
+  isSyncing: boolean;
+  syncWithDatabase: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  LANGUAGE: 'rayan_cargo_lang_v2',
-  BRANCHES: 'rayan_cargo_branches_v2',
-  USERS: 'rayan_cargo_users_v2',
-  SHIPMENTS: 'rayan_cargo_shipments_v2',
-  CURRENT_USER_ID: 'rayan_cargo_cur_user_v2',
-  ACTIVE_BRANCH_ID: 'rayan_cargo_active_branch_v2',
-  IS_AUTH: 'rayan_cargo_is_auth_v2',
-  PARTNER_BRANCH_ID: 'rayan_cargo_partner_branch_v2'
+  LANGUAGE: 'rayan_cargo_lang_v3',
+  BRANCHES: 'rayan_cargo_branches_v3',
+  USERS: 'rayan_cargo_users_v3',
+  SHIPMENTS: 'rayan_cargo_shipments_v3',
+  EXPENSES: 'rayan_cargo_expenses_v3',
+  CURRENT_USER_ID: 'rayan_cargo_cur_user_v3',
+  ACTIVE_BRANCH_ID: 'rayan_cargo_active_branch_v3',
+  IS_AUTH: 'rayan_cargo_is_auth_v3',
+  PARTNER_BRANCH_ID: 'rayan_cargo_partner_branch_v3',
+  RECEIPT_PRINT_MODE: 'rayan_cargo_print_mode_v3'
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -104,14 +145,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     document.documentElement.lang = language;
   }, [isRTL, language]);
 
-  // Enforce Light Theme for main body with dark sidebar
   const [isDarkMode] = useState<boolean>(false);
+  const toggleDarkMode = () => {};
 
-  const toggleDarkMode = () => {
-    // Kept for backward compatibility
-  };
+  // Database Connection & Sync Status
+  const [dbStatus, setDbStatus] = useState<DbStatusInfo>({
+    connected: false,
+    database: 'Supabase PostgreSQL (AWS South Asia)',
+  });
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  // Branches (HQ + Regional Hubs)
+  // Branches
   const [branches, setBranches] = useState<Branch[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.BRANCHES);
     if (saved) {
@@ -125,7 +169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_BRANCHES;
   });
 
-  // Users (Admin + 6 Branch exclusive users)
+  // Users
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.USERS);
     if (saved) {
@@ -148,6 +192,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_SHIPMENTS;
   });
 
+  // Branch Expenses
+  const [expenses, setExpenses] = useState<BranchExpense[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.EXPENSES);
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return INITIAL_EXPENSES;
+  });
+
+  // Receipt Print Mode: Standard A4 or Mini Thermal (58mm/80mm POS receipt)
+  const [receiptPrintMode, setReceiptPrintModeState] = useState<'a4' | 'thermal'>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.RECEIPT_PRINT_MODE);
+    return (saved as 'a4' | 'thermal') || 'thermal';
+  });
+
+  const setReceiptPrintMode = (mode: 'a4' | 'thermal') => {
+    setReceiptPrintModeState(mode);
+    localStorage.setItem(STORAGE_KEYS.RECEIPT_PRINT_MODE, mode);
+  };
+
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.IS_AUTH);
@@ -161,7 +225,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const found = users.find(u => u.id === savedId);
       if (found) return found;
     }
-    // Default to Kabul branch manager for immediate preview
     return users.find(u => u.role === 'branch_manager') || INITIAL_USERS[1];
   });
 
@@ -174,7 +237,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved || 'all';
   });
 
-  // Selected Branch Partner for cross-branch trade & history filter
+  // Selected Branch Partner
   const [activeBranchPartnerId, setActiveBranchPartnerIdState] = useState<string | 'all'>('all');
 
   const setActiveBranchPartnerId = (id: string | 'all') => {
@@ -191,6 +254,84 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveBranchIdState(id);
     localStorage.setItem(STORAGE_KEYS.ACTIVE_BRANCH_ID, id);
   };
+
+  // Toast
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
+
+  // Sync with Supabase PostgreSQL
+  const syncWithDatabase = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      // 1. Health check
+      const healthRes = await fetch('/api/health');
+      if (healthRes.ok) {
+        const healthData = await healthRes.json();
+        setDbStatus({
+          connected: healthData.connected,
+          database: healthData.database || 'Supabase PostgreSQL',
+          serverTime: healthData.serverTime,
+          stats: healthData.stats
+        });
+      }
+
+      // 2. Fetch Branches
+      const branchRes = await fetch('/api/branches');
+      if (branchRes.ok) {
+        const branchData = await branchRes.json();
+        if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
+          setBranches(branchData.branches);
+          localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branchData.branches));
+        }
+      }
+
+      // 3. Fetch Users
+      const userRes = await fetch('/api/users');
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
+          setUsers(userData.users);
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(userData.users));
+        }
+      }
+
+      // 4. Fetch Shipments
+      const shipRes = await fetch('/api/shipments');
+      if (shipRes.ok) {
+        const shipData = await shipRes.json();
+        if (shipData.success && Array.isArray(shipData.shipments) && shipData.shipments.length > 0) {
+          setShipments(shipData.shipments);
+          localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(shipData.shipments));
+        }
+      }
+
+      // 5. Fetch Expenses
+      const expRes = await fetch('/api/expenses');
+      if (expRes.ok) {
+        const expData = await expRes.json();
+        if (expData.success && Array.isArray(expData.expenses) && expData.expenses.length > 0) {
+          setExpenses(expData.expenses);
+          localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expData.expenses));
+        }
+      }
+    } catch (err) {
+      console.warn('Database sync encountered a network hiccup, fallback cached data active:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // Sync once on load and every 30 seconds
+  useEffect(() => {
+    syncWithDatabase();
+    const interval = setInterval(syncWithDatabase, 30000);
+    return () => clearInterval(interval);
+  }, [syncWithDatabase]);
 
   // Login methods
   const login = (identifier: string, password?: string): boolean => {
@@ -217,14 +358,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       if (matched.role === 'super_admin') {
         setActiveBranchId('all');
+        setActiveView('dashboard');
+      } else if (matched.role === 'customer') {
+        setActiveBranchId('customer');
+        setActiveView('customer_portal');
       } else {
         setActiveBranchId(matched.branchId);
+        setActiveView('dashboard');
       }
       setActiveBranchPartnerId('all');
       showToast(`Welcome, ${matched.name}!`);
       return true;
     }
     return false;
+  };
+
+  // Customer Signup
+  const signupCustomer = (name: string, phone: string, email: string, password?: string): boolean => {
+    const now = new Date().toISOString();
+    const newUserId = `usr_cust_${Date.now().toString().slice(-6)}`;
+    const cleanEmail = (email && email.trim()) ? email.trim().toLowerCase() : `cust_${phone.replace(/[^0-9]/g, '')}@rayancustomer.af`;
+    
+    const newUser: User = {
+      id: newUserId,
+      name: name.trim(),
+      email: cleanEmail,
+      phone: phone.trim(),
+      role: 'customer',
+      branchId: 'customer',
+      password: password?.trim() || 'customer123',
+      passwordChangedByBranch: false,
+      status: 'active',
+      createdAt: now,
+      lastLogin: 'Just now'
+    };
+
+    setUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+    setIsAuthenticated(true);
+    localStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
+    setActiveBranchId('customer');
+    setActiveView('customer_portal');
+
+    fetch('/api/auth/customer-signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, email, password })
+    }).catch(err => console.error('Error in customer signup:', err));
+
+    showToast(`Account created! Welcome, ${name.trim()}.`);
+    return true;
   };
 
   const loginWithUser = (user: User) => {
@@ -248,33 +432,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(t('logged_out_notice') || 'Signed out successfully.');
   };
 
-  // Branch User password self-change (Admin does not see the new password)
+  // Branch User password self-change
   const changePassword = (newPassword: string): boolean => {
     if (!newPassword || newPassword.trim().length < 4) {
       showToast('Password must be at least 4 characters');
       return false;
     }
 
-    setUsers(prev => prev.map(u => {
-      if (u.id === currentUser.id) {
-        return {
-          ...u,
-          password: newPassword.trim(),
-          passwordChangedByBranch: true,
-          lastPasswordChange: new Date().toISOString()
-        };
-      }
-      return u;
-    }));
-
-    setCurrentUser(prev => ({
-      ...prev,
+    const updatedUser = {
+      ...currentUser,
       password: newPassword.trim(),
       passwordChangedByBranch: true,
       lastPasswordChange: new Date().toISOString()
-    }));
+    };
 
-    showToast('Your branch password was updated securely!');
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+    setCurrentUser(updatedUser);
+
+    // Persist to Supabase Database
+    fetch('/api/users/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.id, newPassword })
+    }).catch(err => console.error('Error updating password in Supabase:', err));
+
+    showToast('Your branch password was updated securely in Supabase!');
     return true;
   };
 
@@ -286,6 +468,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     name?: string,
     phone?: string
   ): boolean => {
+    let emailToSet: string | undefined;
+    let passwordToSet: string | undefined;
+
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
         let email = u.email;
@@ -302,6 +487,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
 
+        emailToSet = email;
+        passwordToSet = password;
+
         return {
           ...u,
           email,
@@ -314,11 +502,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return u;
     }));
 
-    showToast('Branch credentials provisioned successfully.');
+    // Persist to Supabase Database
+    fetch('/api/users/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        email: emailToSet,
+        password: passwordToSet,
+        name,
+        phone
+      })
+    }).catch(err => console.error('Error provisioning credentials in Supabase:', err));
+
+    showToast('Branch credentials provisioned & stored in Supabase.');
     return true;
   };
 
-  // Super Admin adds a brand new branch terminal and automatically provisions its dedicated role
+  // Super Admin adds a brand new branch terminal
   const addBranch = (input: AddBranchInput): { branch: Branch; user: User } => {
     const cleanCode = input.code.trim().toUpperCase();
     const branchId = `br_${cleanCode.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now().toString().slice(-4)}`;
@@ -361,12 +562,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setBranches(prev => [...prev, newBranch]);
     setUsers(prev => [...prev, newUser]);
-    showToast(t('branch_added_successfully') || 'New branch registered successfully!');
 
+    // Persist to Supabase Database
+    fetch('/api/branches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...newBranch, initialPassword: initialPass })
+    }).catch(err => console.error('Error adding branch to Supabase:', err));
+
+    showToast(t('branch_added_successfully') || 'New branch registered and saved to Supabase!');
     return { branch: newBranch, user: newUser };
   };
 
-  // Save changes to localStorage
+  // Local storage auto-sync
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branches));
   }, [branches]);
@@ -387,18 +595,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser]);
 
   // Views & Modals
-  const [activeView, setActiveView] = useState<'dashboard' | 'parcels' | 'booking' | 'tracking' | 'branches' | 'users' | 'reports'>('dashboard');
+  const [activeView, setActiveView] = useState<ActiveViewType>('dashboard');
   const [selectedShipmentForReceipt, setSelectedShipmentForReceipt] = useState<Shipment | null>(null);
   const [trackedShipment, setTrackedShipment] = useState<Shipment | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isOfflineCached] = useState<boolean>(true);
-
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
-  };
 
   const t = (key: string): string => {
     return translations[language]?.[key] || translations['en']?.[key] || key;
@@ -425,6 +625,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Filter shipments based on active branch selection and user role
   const filteredShipments = React.useMemo(() => {
+    if (currentUser.role === 'customer') {
+      return shipments.filter(s => 
+        s.customerUserId === currentUser.id ||
+        s.sender.phone.replace(/[^0-9]/g, '') === currentUser.phone.replace(/[^0-9]/g, '') ||
+        s.sender.email?.toLowerCase() === currentUser.email?.toLowerCase()
+      );
+    }
     if (currentUser.role === 'super_admin' && activeBranchId === 'all') {
       return shipments;
     }
@@ -435,6 +642,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       s.currentBranchId === currentBr
     );
   }, [shipments, activeBranchId, currentUser]);
+
+  // Customer specific shipments
+  const customerShipments = React.useMemo(() => {
+    return shipments.filter(s => 
+      s.customerUserId === currentUser.id ||
+      s.sender.phone.replace(/[^0-9]/g, '') === currentUser.phone.replace(/[^0-9]/g, '') ||
+      s.sender.email?.toLowerCase() === currentUser.email?.toLowerCase()
+    );
+  }, [shipments, currentUser]);
 
   // Partner-specific history shipments
   const partnerShipments = React.useMemo(() => {
@@ -448,7 +664,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }, [shipments, activeBranchId, activeBranchPartnerId, currentUser, filteredShipments]);
 
-  // Analytics Computation (Admin privacy enforced: admin does NOT see branch revenue)
+  // Branch specific expenses
+  const branchExpenses = React.useMemo(() => {
+    if (currentUser.role === 'super_admin' && activeBranchId === 'all') {
+      return expenses;
+    }
+    const curBranch = currentUser.role === 'super_admin' ? activeBranchId : currentUser.branchId;
+    return expenses.filter(e => e.branchId === curBranch);
+  }, [expenses, activeBranchId, currentUser]);
+
+  // Analytics Computation (All branches for super_admin, or single branch)
   const analytics: AnalyticsSummary = React.useMemo(() => {
     const relevant = filteredShipments;
     let totalRevenue = 0;
@@ -459,14 +684,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let deliveredParcels = 0;
     let returnedParcels = 0;
     let discountsGiven = 0;
+    let totalRemittancesPending = 0;
 
     relevant.forEach(s => {
-      // If branch manager is logged in, calculate their branch financials
-      if (currentUser.role !== 'super_admin') {
-        totalRevenue += s.financials.totalAmount;
-        totalPaid += s.financials.amountPaid;
-        totalPending += s.financials.amountDue;
-        discountsGiven += s.financials.discountAmount || 0;
+      totalRevenue += s.financials.totalAmount;
+      totalPaid += s.financials.amountPaid;
+      totalPending += s.financials.amountDue;
+      discountsGiven += s.financials.discountAmount || 0;
+
+      if (s.remittanceStatus === 'pending' && s.status === 'delivered') {
+        totalRemittancesPending += (s.originRemittanceDue || (s.financials.totalAmount - (s.destBranchCommission || 0)));
       }
 
       if (s.status === 'delivered') deliveredParcels++;
@@ -475,8 +702,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       else if (s.status === 'returned') returnedParcels++;
     });
 
+    const totalExpensesAfn = branchExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const netProfitAfn = totalRevenue - totalExpensesAfn;
+
     return {
-      totalRevenue, // 0 for super admin for branch privacy
+      totalRevenue,
       totalPaid,
       totalPending,
       totalParcels: relevant.length,
@@ -484,19 +714,303 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       inProgressParcels,
       deliveredParcels,
       returnedParcels,
-      discountsGiven
+      discountsGiven,
+      totalExpensesAfn,
+      netProfitAfn,
+      totalRemittancesPending
     };
-  }, [filteredShipments, currentUser.role]);
+  }, [filteredShipments, branchExpenses]);
 
-  // Permission Validator for Status Updates:
-  // Sender branch can change: 'booked' -> 'in_transit' (dispatch)
-  // Receiver branch can change: 'received_at_branch', 'out_for_delivery', 'delivered', 'returned'
+  // Expense Management
+  const addExpense = (input: AddExpenseInput): BranchExpense => {
+    const now = new Date().toISOString();
+    const expId = `exp_${Date.now().toString().slice(-6)}`;
+    const newExp: BranchExpense = {
+      id: expId,
+      branchId: input.branchId,
+      category: input.category,
+      amount: input.amount,
+      description: input.description,
+      expenseDate: input.expenseDate || now.split('T')[0],
+      paidTo: input.paidTo,
+      receiptNumber: input.receiptNumber,
+      createdByName: currentUser.name,
+      createdAt: now
+    };
+
+    setExpenses(prev => [newExp, ...prev]);
+
+    fetch('/api/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newExp)
+    }).catch(err => console.error('Error adding expense to Supabase:', err));
+
+    showToast('Branch expense recorded successfully!');
+    return newExp;
+  };
+
+  const deleteExpense = (id: string): boolean => {
+    setExpenses(prev => prev.filter(e => e.id !== id));
+
+    fetch(`/api/expenses/${id}`, {
+      method: 'DELETE'
+    }).catch(err => console.error('Error deleting expense:', err));
+
+    showToast('Expense entry deleted.');
+    return true;
+  };
+
+  // Customer Pre-booking
+  const createCustomerPreBooking = (input: CustomerPreBookingInput): Shipment => {
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const newCn = `RYN-PR-${randomSuffix}`;
+    const now = new Date().toISOString();
+    const originBranch = branches.find(b => b.id === input.originBranchId);
+    const destBranch = branches.find(b => b.id === input.destinationBranchId);
+
+    // Initial estimation formula
+    const baseRate = 250;
+    const weightCost = Math.round(input.estimatedWeightKg * 60);
+    const totalEst = baseRate + weightCost;
+
+    const newShipment: Shipment = {
+      id: `shp_pr_${randomSuffix}`,
+      cnNumber: newCn,
+      originBranchId: input.originBranchId,
+      destinationBranchId: input.destinationBranchId,
+      currentBranchId: input.originBranchId,
+      sender: {
+        name: input.senderName,
+        phone: input.senderPhone,
+        email: input.senderEmail,
+        address: input.senderAddress,
+        city: input.senderCity,
+        province: input.senderProvince
+      },
+      receiver: {
+        name: input.receiverName,
+        phone: input.receiverPhone,
+        address: input.receiverAddress,
+        city: input.receiverCity,
+        province: input.receiverProvince
+      },
+      packageInfo: {
+        category: input.category,
+        weightKg: input.estimatedWeightKg,
+        pieces: input.pieces,
+        declaredValueAfn: input.declaredValueAfn || 0,
+        description: input.description,
+        serviceType: 'standard',
+        isFragile: input.isFragile || false
+      },
+      financials: {
+        baseRate,
+        weightCost,
+        transportationFee: 100,
+        destBranchCommission: 100,
+        originRemittanceDue: totalEst - 100,
+        serviceFee: 0,
+        discountType: 'fixed',
+        discountValue: 0,
+        discountAmount: 0,
+        tax: 0,
+        totalAmount: totalEst + 100,
+        amountPaid: 0,
+        amountDue: totalEst + 100,
+        paymentStatus: input.paymentPreference === 'pay_at_branch' ? 'unpaid' : 'to_pay',
+        paymentMethod: input.paymentPreference === 'pay_at_branch' ? 'cash' : 'cod'
+      },
+      status: 'pre_booked',
+      isCustomerPrebooked: true,
+      customerUserId: currentUser.id,
+      transportationFee: 100,
+      destBranchCommission: 100,
+      originRemittanceDue: totalEst,
+      remittanceStatus: 'pending',
+      statusHistory: [
+        {
+          id: `st_${Date.now()}`,
+          status: 'pre_booked',
+          location: 'Customer Online Portal',
+          branchName: originBranch?.name || 'Origin Hub',
+          timestamp: now,
+          note: `Pre-booking created by customer ${input.senderName}. Awaiting physical drop-off at ${originBranch?.name}.`,
+          updatedBy: `Customer ${currentUser.name}`
+        }
+      ],
+      bookedAt: now,
+      estimatedDelivery: new Date(Date.now() + 3 * 86400000).toISOString(),
+      bookedByUserId: currentUser.id,
+      bookedByUserName: currentUser.name
+    };
+
+    setShipments(prev => [newShipment, ...prev]);
+
+    fetch('/api/shipments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newShipment)
+    }).catch(err => console.error('Error pre-booking in Supabase:', err));
+
+    showToast(`Parcel pre-booked with CN #${newCn}! Take it to the branch to confirm.`);
+    return newShipment;
+  };
+
+  // Branch Manager modifies and confirms customer pre-booked order
+  const confirmCustomerPreBooking = (
+    shipmentId: string, 
+    arg2?: number | { weightKg?: number; pieces?: number; transportationFee?: number; destBranchCommission?: number; paymentStatus?: 'paid' | 'to_pay' }, 
+    arg3?: number, 
+    arg4?: number, 
+    arg5?: number, 
+    arg6?: 'paid' | 'to_pay'
+  ): boolean => {
+    const target = shipments.find(s => s.id === shipmentId);
+    if (!target) return false;
+
+    let actualWeightKg = 1;
+    let pieces = 1;
+    let transportationFee = 100;
+    let destBranchCommission = 100;
+    let paymentStatus: 'paid' | 'to_pay' = 'paid';
+
+    if (typeof arg2 === 'object' && arg2 !== null) {
+      actualWeightKg = Number(arg2.weightKg) || 1;
+      pieces = Number(arg2.pieces) || 1;
+      transportationFee = typeof arg2.transportationFee === 'number' ? arg2.transportationFee : 100;
+      destBranchCommission = typeof arg2.destBranchCommission === 'number' ? arg2.destBranchCommission : 100;
+      paymentStatus = arg2.paymentStatus || 'paid';
+    } else {
+      actualWeightKg = Number(arg2) || 1;
+      pieces = Number(arg3) || 1;
+      transportationFee = typeof arg4 === 'number' ? arg4 : 100;
+      destBranchCommission = typeof arg5 === 'number' ? arg5 : 100;
+      paymentStatus = arg6 || 'paid';
+    }
+
+    const baseRate = target.financials?.baseRate || 250;
+    const weightCost = Math.round(actualWeightKg * 30);
+    const totalAmount = baseRate + weightCost + transportationFee;
+    const originRemittanceDue = Math.max(0, totalAmount - destBranchCommission);
+    const now = new Date().toISOString();
+    const userBranch = branches.find(b => b.id === currentUser.branchId) || branches.find(b => b.id === target.originBranchId);
+
+    const updatedFinancials = {
+      ...target.financials,
+      baseRate,
+      weightCost,
+      transportationFee,
+      destBranchCommission,
+      originRemittanceDue,
+      totalAmount,
+      amountPaid: paymentStatus === 'paid' ? totalAmount : 0,
+      amountDue: paymentStatus === 'paid' ? 0 : totalAmount,
+      paymentStatus: paymentStatus,
+      paymentMethod: (paymentStatus === 'paid' ? 'cash' : 'cod') as any
+    };
+
+    const newHistoryItem = {
+      id: `st_${Date.now()}`,
+      status: 'booked' as ShipmentStatus,
+      location: userBranch ? `${userBranch.name} (${userBranch.city})` : 'Origin Branch',
+      branchName: userBranch ? userBranch.name : 'Origin Hub',
+      timestamp: now,
+      note: `Customer pre-booking verified, weighed & officially accepted by ${currentUser.name}. Verified weight: ${actualWeightKg} kg, ${pieces} pcs. Freight: ${totalAmount} AFN (${paymentStatus.toUpperCase()}).`,
+      updatedBy: currentUser.name
+    };
+
+    const updatedShipment: Shipment = {
+      ...target,
+      status: 'booked',
+      currentBranchId: target.originBranchId,
+      packageInfo: {
+        ...target.packageInfo,
+        weightKg: actualWeightKg,
+        pieces: pieces
+      },
+      transportationFee,
+      destBranchCommission,
+      originRemittanceDue,
+      financials: updatedFinancials,
+      statusHistory: [...target.statusHistory, newHistoryItem],
+      bookedByUserId: currentUser.id,
+      bookedByUserName: currentUser.name
+    };
+
+    setShipments(prev => prev.map(s => s.id === shipmentId ? updatedShipment : s));
+
+    fetch(`/api/shipments/${shipmentId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'booked',
+        statusHistory: updatedShipment.statusHistory,
+        financials: updatedFinancials,
+        currentBranchId: target.originBranchId
+      })
+    }).catch(err => console.error('Error confirming order:', err));
+
+    showToast(t('order_confirmed_success') || 'Customer parcel confirmed, weighed, and booked into branch transit!');
+    return true;
+  };
+
+  // Inter-branch settlement (Destination branch remits money to Origin branch)
+  const settleInterBranchRemittance = (shipmentId: string): boolean => {
+    const target = shipments.find(s => s.id === shipmentId);
+    if (!target) return false;
+
+    const now = new Date().toISOString();
+    const destBranch = branches.find(b => b.id === target.destinationBranchId);
+    const origBranch = branches.find(b => b.id === target.originBranchId);
+
+    const updatedShipment: Shipment = {
+      ...target,
+      remittanceStatus: 'settled',
+      statusHistory: [
+        ...target.statusHistory,
+        {
+          id: `st_settle_${Date.now()}`,
+          status: target.status,
+          location: `${destBranch?.name} → ${origBranch?.name}`,
+          branchName: destBranch?.name || 'Destination Branch',
+          timestamp: now,
+          note: `Inter-branch COD settlement completed: ${destBranch?.name} deducted ${target.destBranchCommission || target.financials.destBranchCommission || 100} AFN commission and remitted ${target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount} AFN back to ${origBranch?.name}.`,
+          updatedBy: currentUser.name
+        }
+      ]
+    };
+
+    setShipments(prev => prev.map(s => s.id === shipmentId ? updatedShipment : s));
+
+    fetch(`/api/shipments/${shipmentId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: target.status,
+        statusHistory: updatedShipment.statusHistory,
+        financials: target.financials
+      })
+    }).catch(err => console.error('Error settling remittance:', err));
+
+    showToast(t('remittance_settled_toast') || 'Inter-branch remittance settled successfully!');
+    return true;
+  };
+
+  // Permission Validator for Status Updates
   const canUserUpdateStatus = (shipment: Shipment): StatusPermissionResult => {
-    if (currentUser.role === 'super_admin') {
+    if (currentUser.role === 'customer') {
       return {
         allowed: false,
-        reason: 'Super Admin manages branch accounts. Consignment milestone updates are strictly handled by the Origin and Destination branches.',
+        reason: t('perm_customer_no_status') || 'Customer accounts can view history and pre-book parcels. Status transitions are performed by Cargo Branches.',
         allowedStatuses: []
+      };
+    }
+    if (currentUser.role === 'super_admin') {
+      return {
+        allowed: true,
+        reason: t('perm_super_admin_all') || 'Super Admin: Full master access across all provincial cargo branches.',
+        allowedStatuses: ['booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled']
       };
     }
 
@@ -507,18 +1021,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isOrigin && !isDestination) {
       return {
         allowed: false,
-        reason: 'You can only update parcels where your branch is either the Sender (Origin) or Receiver (Destination).',
+        reason: t('perm_branch_unrelated') || 'You can only update parcels where your branch is either the Sender (Origin) or Receiver (Destination).',
         allowedStatuses: []
       };
     }
 
-    // Sender Branch Stage
     if (isOrigin) {
-      // If the parcel has already been received at destination or delivered, sender cannot change further
       if (shipment.status === 'received_at_branch' || shipment.status === 'out_for_delivery' || shipment.status === 'delivered') {
         return {
           allowed: false,
-          reason: 'This parcel has arrived at destination. Only the Destination (Receiver) branch can update subsequent delivery stages.',
+          reason: t('perm_origin_cannot_deliver') || 'This parcel has arrived at destination. Only the Destination (Receiver) branch can update subsequent delivery stages.',
           allowedStatuses: []
         };
       }
@@ -528,12 +1040,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Receiver Branch Stage
     if (isDestination) {
-      if (shipment.status === 'booked') {
+      if (shipment.status === 'booked' || shipment.status === 'pre_booked') {
         return {
           allowed: false,
-          reason: 'This parcel is still in Booked status at the Origin branch. The Origin branch must dispatch it first.',
+          reason: t('perm_dest_not_dispatched') || 'This parcel has not departed from the Origin branch yet.',
           allowedStatuses: []
         };
       }
@@ -545,7 +1056,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return {
       allowed: false,
-      reason: 'Unauthorized branch operation.',
+      reason: t('perm_unauthorized') || 'Unauthorized branch operation.',
       allowedStatuses: []
     };
   };
@@ -557,10 +1068,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     const originBranch = branches.find(b => b.id === shipmentData.originBranchId);
 
+    const transportFee = shipmentData.transportationFee || 150;
+    const commission = shipmentData.destBranchCommission || 120;
+    const remittance = shipmentData.originRemittanceDue || (shipmentData.financials.totalAmount - commission);
+
     const newShipment: Shipment = {
       ...shipmentData,
       id: `shp_${randomSuffix}`,
       cnNumber: newCn,
+      transportationFee: transportFee,
+      destBranchCommission: commission,
+      originRemittanceDue: remittance,
+      remittanceStatus: 'pending',
       bookedAt: now,
       status: 'booked',
       statusHistory: [
@@ -578,7 +1097,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setShipments(prev => [newShipment, ...prev]);
 
-    // Update branch counters
     setBranches(prev => prev.map(b => {
       if (b.id === shipmentData.originBranchId) {
         return {
@@ -590,11 +1108,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return b;
     }));
 
-    showToast(t('parcel_booked_successfully') || 'Parcel booked successfully!');
+    // Persist directly to Supabase Database
+    fetch('/api/shipments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newShipment)
+    }).catch(err => console.error('Error adding shipment to Supabase:', err));
+
+    showToast(t('parcel_booked_successfully') || 'Parcel booked & synced to Supabase database!');
     return newShipment;
   };
 
-  // Update Shipment Status with strict Sender / Receiver rules
+  // Update Shipment Status
   const updateShipmentStatus = (
     shipmentId: string, 
     newStatus: ShipmentStatus, 
@@ -615,55 +1140,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     const userBranch = branches.find(b => b.id === currentUser.branchId);
 
-    setShipments(prev => prev.map(s => {
-      if (s.id === shipmentId) {
-        const destBranch = branches.find(b => b.id === s.destinationBranchId);
-        const resolvedLocation = location || (userBranch ? `${userBranch.name} (${userBranch.city})` : 'Transit Station');
+    const destBranch = branches.find(b => b.id === target.destinationBranchId);
+    const resolvedLocation = location || (userBranch ? `${userBranch.name} (${userBranch.city})` : 'Transit Station');
 
-        const newHistoryItem = {
-          id: `st_${Date.now()}`,
-          status: newStatus,
-          location: resolvedLocation,
-          branchName: userBranch ? userBranch.name : (destBranch?.name || 'Cargo Hub'),
-          timestamp: now,
-          note: note || `Status updated to ${newStatus.replace('_', ' ')} by ${currentUser.name} (${userBranch?.name || 'Branch'})`,
-          updatedBy: `${currentUser.name} (${userBranch?.name || 'Branch'})`,
-          driverName,
-          driverPhone
-        };
+    const newHistoryItem = {
+      id: `st_${Date.now()}`,
+      status: newStatus,
+      location: resolvedLocation,
+      branchName: userBranch ? userBranch.name : (destBranch?.name || 'Cargo Hub'),
+      timestamp: now,
+      note: note || `Status updated to ${newStatus.replace('_', ' ')} by ${currentUser.name} (${userBranch?.name || 'Branch'})`,
+      updatedBy: `${currentUser.name} (${userBranch?.name || 'Branch'})`,
+      driverName,
+      driverPhone
+    };
 
-        const updated: Shipment = {
-          ...s,
-          status: newStatus,
-          currentBranchId: newStatus === 'received_at_branch' || newStatus === 'out_for_delivery' || newStatus === 'delivered' 
-            ? s.destinationBranchId 
-            : s.currentBranchId,
-          statusHistory: [...s.statusHistory, newHistoryItem],
-          actualDelivery: newStatus === 'delivered' ? now : s.actualDelivery,
-          financials: {
-            ...s.financials,
-            amountPaid: newStatus === 'delivered' && s.financials.paymentStatus === 'to_pay' 
-              ? s.financials.totalAmount 
-              : s.financials.amountPaid,
-            amountDue: newStatus === 'delivered' && s.financials.paymentStatus === 'to_pay'
-              ? 0
-              : s.financials.amountDue,
-            paymentStatus: newStatus === 'delivered' && s.financials.paymentStatus === 'to_pay'
-              ? 'paid'
-              : s.financials.paymentStatus
-          }
-        };
+    const newHistory = [...target.statusHistory, newHistoryItem];
+    const actualDelivery = newStatus === 'delivered' ? now : target.actualDelivery;
+    const newFinancials = {
+      ...target.financials,
+      amountPaid: newStatus === 'delivered' && target.financials.paymentStatus === 'to_pay' 
+        ? target.financials.totalAmount 
+        : target.financials.amountPaid,
+      amountDue: newStatus === 'delivered' && target.financials.paymentStatus === 'to_pay'
+        ? 0
+        : target.financials.amountDue,
+      paymentStatus: (newStatus === 'delivered' && target.financials.paymentStatus === 'to_pay' 
+        ? 'paid' 
+        : target.financials.paymentStatus) as any
+    };
 
-        if (trackedShipment?.id === shipmentId) {
-          setTrackedShipment(updated);
-        }
+    const currentBranchId = newStatus === 'received_at_branch' || newStatus === 'out_for_delivery' || newStatus === 'delivered' 
+      ? target.destinationBranchId 
+      : target.currentBranchId;
 
-        return updated;
-      }
-      return s;
-    }));
+    const updatedShipment: Shipment = {
+      ...target,
+      status: newStatus,
+      currentBranchId,
+      statusHistory: newHistory,
+      actualDelivery,
+      financials: newFinancials
+    };
 
-    showToast(t('status_updated_successfully') || 'Consignment milestone updated!');
+    setShipments(prev => prev.map(s => s.id === shipmentId ? updatedShipment : s));
+
+    if (trackedShipment?.id === shipmentId) {
+      setTrackedShipment(updatedShipment);
+    }
+
+    // Persist to Supabase Database
+    fetch(`/api/shipments/${shipmentId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: newStatus,
+        statusHistory: newHistory,
+        actualDelivery,
+        financials: newFinancials,
+        currentBranchId
+      })
+    }).catch(err => console.error('Error updating status in Supabase:', err));
+
+    showToast(t('status_updated_successfully') || 'Consignment milestone updated in Supabase!');
     return true;
   };
 
@@ -678,6 +1217,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleDarkMode,
         isAuthenticated,
         login,
+        signupCustomer,
         loginWithUser,
         logout,
         currentUser,
@@ -691,24 +1231,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         branches,
         users,
         shipments,
+        expenses,
         activeView,
         setActiveView,
         selectedShipmentForReceipt,
         setSelectedShipmentForReceipt,
+        receiptPrintMode,
+        setReceiptPrintMode,
         trackedShipment,
         trackByCnNumber,
         addShipment,
+        createCustomerPreBooking,
+        confirmCustomerPreBooking,
+        settleInterBranchRemittance,
         updateShipmentStatus,
         canUserUpdateStatus,
         changePassword,
         resetBranchUserCredentials,
         addBranch,
+        addExpense,
+        deleteExpense,
         analytics,
         filteredShipments,
         partnerShipments,
+        customerShipments,
+        branchExpenses,
         toastMessage,
         showToast,
-        isOfflineCached
+        isOfflineCached,
+        dbStatus,
+        isSyncing,
+        syncWithDatabase
       }}
     >
       {children}

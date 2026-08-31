@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'branch_manager';
+export type UserRole = 'super_admin' | 'branch_manager' | 'customer';
 
 export type Language = 'en' | 'fa' | 'ps';
 
@@ -22,6 +22,7 @@ export type PaymentStatus = 'paid' | 'unpaid' | 'partial' | 'to_pay';
 export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'cod' | 'hawala';
 
 export type ShipmentStatus = 
+  | 'pre_booked'
   | 'booked' 
   | 'in_transit' 
   | 'received_at_branch' 
@@ -29,6 +30,38 @@ export type ShipmentStatus =
   | 'delivered' 
   | 'returned' 
   | 'cancelled';
+
+export type ExpenseCategory = 
+  | 'rent' 
+  | 'salary' 
+  | 'food' 
+  | 'fuel_transport' 
+  | 'utilities' 
+  | 'maintenance' 
+  | 'other';
+
+export interface BranchExpense {
+  id: string;
+  branchId: string;
+  category: ExpenseCategory;
+  amount: number;
+  description: string;
+  expenseDate: string;
+  paidTo?: string;
+  receiptNumber?: string;
+  createdByName: string;
+  createdAt: string;
+}
+
+export interface AddExpenseInput {
+  branchId: string;
+  category: ExpenseCategory;
+  amount: number;
+  description: string;
+  expenseDate?: string;
+  paidTo?: string;
+  receiptNumber?: string;
+}
 
 export interface Branch {
   id: string;
@@ -56,7 +89,7 @@ export interface User {
   email: string;
   phone: string;
   role: UserRole;
-  branchId: string; // 'all' for super_admin, or specific branch id
+  branchId: string; // 'all' for super_admin, 'customer' for customers, or specific branch id
   password?: string;
   passwordChangedByBranch?: boolean;
   lastPasswordChange?: string;
@@ -111,6 +144,9 @@ export interface PackageDetails {
 export interface BillingFinancials {
   baseRate: number;
   weightCost: number;
+  transportationFee?: number; // Transportation/cargo freight fee added by branch
+  destBranchCommission?: number; // Commission kept by receiving destination branch
+  originRemittanceDue?: number; // Amount remitted back to origin branch after commission
   serviceFee: number;
   discountType: 'percentage' | 'fixed';
   discountValue: number;
@@ -126,7 +162,7 @@ export interface BillingFinancials {
 
 export interface Shipment {
   id: string;
-  cnNumber: string; // Consignment Note number (e.g. DHS-894021)
+  cnNumber: string; // Consignment Note number (e.g. RYN-894201 or RYN-PR-894201)
   originBranchId: string;
   destinationBranchId: string;
   currentBranchId: string;
@@ -136,6 +172,12 @@ export interface Shipment {
   financials: BillingFinancials;
   status: ShipmentStatus;
   statusHistory: StatusHistoryItem[];
+  isCustomerPrebooked?: boolean;
+  customerUserId?: string;
+  transportationFee?: number;
+  destBranchCommission?: number;
+  originRemittanceDue?: number;
+  remittanceStatus?: 'pending' | 'settled' | 'not_applicable';
   bookedAt: string;
   estimatedDelivery: string;
   actualDelivery?: string;
@@ -144,6 +186,29 @@ export interface Shipment {
   deliveryNotes?: string;
   bookedByUserId: string;
   bookedByUserName: string;
+}
+
+export interface CustomerPreBookingInput {
+  senderName: string;
+  senderPhone: string;
+  senderEmail?: string;
+  senderAddress: string;
+  senderCity: string;
+  senderProvince: string;
+  receiverName: string;
+  receiverPhone: string;
+  receiverAddress: string;
+  receiverCity: string;
+  receiverProvince: string;
+  originBranchId: string;
+  destinationBranchId: string;
+  category: ParcelCategory;
+  estimatedWeightKg: number;
+  pieces: number;
+  description: string;
+  declaredValueAfn?: number;
+  isFragile?: boolean;
+  paymentPreference: 'pay_at_branch' | 'to_pay';
 }
 
 export interface AnalyticsSummary {
@@ -156,4 +221,7 @@ export interface AnalyticsSummary {
   deliveredParcels: number;
   returnedParcels: number;
   discountsGiven: number;
+  totalExpensesAfn?: number;
+  netProfitAfn?: number;
+  totalRemittancesPending?: number;
 }

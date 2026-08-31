@@ -10,7 +10,10 @@ import {
   Search, 
   ArrowRight,
   ShieldCheck,
-  Boxes
+  Boxes,
+  Database,
+  RefreshCw,
+  Server
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -33,10 +36,15 @@ export const Dashboard: React.FC = () => {
     analytics, 
     filteredShipments, 
     branches, 
+    users,
+    shipments,
     activeBranchId, 
     currentUser,
     setActiveView, 
-    setSelectedShipmentForReceipt
+    setSelectedShipmentForReceipt,
+    dbStatus,
+    isSyncing,
+    syncWithDatabase
   } = useApp();
 
   const isSuperAdmin = currentUser.role === 'super_admin';
@@ -118,6 +126,41 @@ export const Dashboard: React.FC = () => {
           >
             <Search className="w-4 h-4 text-slate-500" />
             <span>{t('quick_track')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Supabase Database Connection & Pooler Status Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white border border-slate-800 shadow-md flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold tracking-wide text-emerald-400 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Supabase PostgreSQL Live
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono border border-slate-700">
+                AWS South Asia (ap-south-1) Pooler
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Connected tables: <strong className="text-slate-200">branches</strong> ({branches.length}), <strong className="text-slate-200">users</strong> ({users.length}), <strong className="text-slate-200">shipments</strong> ({filteredShipments.length}). Real-time multi-branch sync active.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => syncWithDatabase()}
+            disabled={isSyncing}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Sync all tables with Supabase PostgreSQL"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Syncing...' : 'Sync Tables'}</span>
           </button>
         </div>
       </div>

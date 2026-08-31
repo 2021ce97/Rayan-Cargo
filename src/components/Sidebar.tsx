@@ -11,7 +11,10 @@ import {
   Zap, 
   KeyRound, 
   ArrowRightLeft, 
-  LogOut 
+  LogOut,
+  DollarSign,
+  UserCheck,
+  Package
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ChangePasswordModal } from './ChangePasswordModal';
@@ -28,12 +31,15 @@ export const Sidebar: React.FC = () => {
     branches, 
     logout, 
     activeBranchPartnerId, 
-    setActiveBranchPartnerId 
+    setActiveBranchPartnerId,
+    customerShipments,
+    branchExpenses
   } = useApp();
 
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const isSuperAdmin = currentUser.role === 'super_admin';
+  const isCustomer = currentUser.role === 'customer';
   const currentBranch = branches.find(b => b.id === currentUser.branchId);
 
   const getLocalizedBranchName = (b: Branch | undefined) => {
@@ -46,7 +52,22 @@ export const Sidebar: React.FC = () => {
   // Other branches to trade/exchange with
   const partnerBranches = branches.filter(b => b.id !== currentUser.branchId);
 
-  const navItems = [
+  const navItems = isCustomer ? [
+    {
+      id: 'customer_portal' as const,
+      label: t('nav_customer_portal'),
+      icon: Package,
+      badge: customerShipments.length,
+      visible: true
+    },
+    {
+      id: 'tracking' as const,
+      label: t('nav_tracking'),
+      icon: Crosshair,
+      badge: 'Live',
+      visible: true
+    }
+  ] : [
     {
       id: 'dashboard' as const,
       label: t('nav_dashboard'),
@@ -66,6 +87,13 @@ export const Sidebar: React.FC = () => {
       label: t('nav_new_booking'),
       icon: PackagePlus,
       highlight: true,
+      visible: true
+    },
+    {
+      id: 'expenses' as const,
+      label: t('nav_expenses'),
+      icon: DollarSign,
+      badge: branchExpenses.length > 0 ? branchExpenses.length : null,
       visible: true
     },
     {
@@ -105,18 +133,28 @@ export const Sidebar: React.FC = () => {
         
         <div className="space-y-5">
           {/* Quick Booking Action Callout */}
-          <button
-            onClick={() => setActiveView('booking')}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 transition-all transform active:scale-98 cursor-pointer"
-          >
-            <PackagePlus className="w-4 h-4" />
-            <span>{t('nav_new_booking')}</span>
-          </button>
+          {isCustomer ? (
+            <button
+              onClick={() => setActiveView('customer_portal')}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 transition-all transform active:scale-98 cursor-pointer"
+            >
+              <PackagePlus className="w-4 h-4" />
+              <span>{t('prebook_new_parcel')}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setActiveView('booking')}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-red-600/30 flex items-center justify-center gap-2 transition-all transform active:scale-98 cursor-pointer"
+            >
+              <PackagePlus className="w-4 h-4" />
+              <span>{t('nav_new_booking')}</span>
+            </button>
+          )}
 
           {/* Main Navigation Items */}
           <nav className="space-y-1">
             <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-              {t('app_title')}
+              {isCustomer ? 'Customer Services' : t('app_title')}
             </p>
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -150,7 +188,7 @@ export const Sidebar: React.FC = () => {
           </nav>
 
           {/* Cross-Branch Bilateral Exchange Filter (For Branch Managers) */}
-          {!isSuperAdmin && (
+          {!isSuperAdmin && !isCustomer && (
             <div className="pt-2">
               <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
@@ -223,19 +261,21 @@ export const Sidebar: React.FC = () => {
           <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                {isSuperAdmin ? t('role_super_admin') : t('role_branch_manager')}
+                {isSuperAdmin ? t('role_super_admin') : isCustomer ? 'Customer Account' : t('role_branch_manager')}
               </span>
               <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
                 isSuperAdmin 
                   ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  : isCustomer
+                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                   : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               }`}>
-                {isSuperAdmin ? 'Central HQ' : currentBranch?.code || 'Terminal'}
+                {isSuperAdmin ? 'Central HQ' : isCustomer ? 'Customer' : currentBranch?.code || 'Terminal'}
               </span>
             </div>
             
             <p className="text-xs font-bold text-white truncate">
-              {isSuperAdmin ? currentUser.name : (getLocalizedBranchName(currentBranch) || currentUser.name)}
+              {isSuperAdmin ? currentUser.name : isCustomer ? currentUser.name : (getLocalizedBranchName(currentBranch) || currentUser.name)}
             </p>
             <p className="text-[10px] text-slate-400 truncate font-mono">
               {currentUser.email}
@@ -244,7 +284,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-2 gap-2">
-            {!isSuperAdmin && (
+            {!isSuperAdmin && !isCustomer && (
               <button
                 onClick={() => setIsPasswordModalOpen(true)}
                 className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
@@ -258,7 +298,7 @@ export const Sidebar: React.FC = () => {
             <button
               onClick={logout}
               className={`py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-rose-950/50 hover:text-rose-400 text-slate-300 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer ${
-                isSuperAdmin ? 'col-span-2' : ''
+                isSuperAdmin || isCustomer ? 'col-span-2' : ''
               }`}
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -286,3 +326,4 @@ export const Sidebar: React.FC = () => {
     </>
   );
 };
+

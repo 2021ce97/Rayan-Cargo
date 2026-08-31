@@ -209,6 +209,19 @@ export const INITIAL_USERS: User[] = [
     status: 'active',
     createdAt: '2025-03-01T12:00:00Z',
     lastLogin: '2 hours ago'
+  },
+  {
+    id: 'usr_cust_01',
+    name: 'Haji Mohammad Ali (Trader)',
+    email: 'customer@gmail.com',
+    phone: '+93 79 555 1234',
+    role: 'customer',
+    branchId: 'customer',
+    password: 'customer123',
+    passwordChangedByBranch: false,
+    status: 'active',
+    createdAt: '2025-03-10T10:00:00Z',
+    lastLogin: 'Just now'
   }
 ];
 
@@ -750,5 +763,164 @@ export const INITIAL_SHIPMENTS: Shipment[] = [
     estimatedDelivery: '2026-08-30T16:00:00Z',
     bookedByUserId: 'usr_knd_06',
     bookedByUserName: 'Sardar Wali Qadiri'
+  },
+  {
+    id: 'shp_pr_992101',
+    cnNumber: 'RYN-PR-992101',
+    originBranchId: 'br_kbl_01',
+    destinationBranchId: 'br_mzr_03',
+    currentBranchId: 'br_kbl_01',
+    sender: {
+      name: 'Haji Mohammad Ali (Trader)',
+      phone: '+93 79 555 1234',
+      email: 'customer@gmail.com',
+      address: 'Shah-Do Shamshera, Market #3',
+      city: 'Kabul',
+      province: 'Kabul'
+    },
+    receiver: {
+      name: 'Mohammad Ebrahim Qureshi',
+      phone: '+93 78 443 1122',
+      address: 'Near Rawza Sharif, Shop 18',
+      city: 'Mazar-i-Sharif',
+      province: 'Balkh'
+    },
+    packageInfo: {
+      category: 'electronics',
+      weightKg: 12.0,
+      pieces: 2,
+      dimensions: '40x30x25 cm',
+      declaredValueAfn: 45000,
+      description: '2 Boxes of mobile accessories and adapters (Pre-booked by customer)',
+      serviceType: 'standard',
+      isFragile: true
+    },
+    financials: {
+      baseRate: 300,
+      weightCost: 720,
+      transportationFee: 150,
+      destBranchCommission: 120,
+      originRemittanceDue: 1050,
+      serviceFee: 0,
+      discountType: 'fixed',
+      discountValue: 0,
+      discountAmount: 0,
+      tax: 0,
+      totalAmount: 1170,
+      amountPaid: 0,
+      amountDue: 1170,
+      paymentStatus: 'to_pay',
+      paymentMethod: 'cod'
+    },
+    status: 'pre_booked',
+    isCustomerPrebooked: true,
+    customerUserId: 'usr_cust_01',
+    transportationFee: 150,
+    destBranchCommission: 120,
+    originRemittanceDue: 1050,
+    remittanceStatus: 'pending',
+    statusHistory: [
+      {
+        id: 'st_pr_01',
+        status: 'pre_booked',
+        location: 'Online Customer Pre-booking',
+        branchName: 'Kabul Central Hub',
+        timestamp: '2026-08-31T04:00:00Z',
+        note: 'Customer submitted pre-booking online. Awaiting physical parcel drop-off at Kabul Central Hub.',
+        updatedBy: 'Customer Haji Mohammad Ali'
+      }
+    ],
+    bookedAt: '2026-08-31T04:00:00Z',
+    estimatedDelivery: '2026-09-02T16:00:00Z',
+    bookedByUserId: 'usr_cust_01',
+    bookedByUserName: 'Haji Mohammad Ali'
   }
 ];
+
+export const INITIAL_EXPENSES: import('../types').BranchExpense[] = [
+  {
+    id: 'exp_01',
+    branchId: 'br_kbl_01',
+    category: 'rent',
+    amount: 35000,
+    description: 'Monthly Terminal Warehouse Rent (Ansari Square Hub)',
+    expenseDate: '2026-08-20',
+    paidTo: 'Kabul Plaza Management',
+    receiptNumber: 'RC-RENT-401',
+    createdByName: 'Ahmad Rashid Safi',
+    createdAt: '2026-08-20T09:00:00Z'
+  },
+  {
+    id: 'exp_02',
+    branchId: 'br_kbl_01',
+    category: 'salary',
+    amount: 45000,
+    description: 'Branch Loading & Dispatch Staff Salary (3 persons)',
+    expenseDate: '2026-08-25',
+    paidTo: 'Branch Staff Team',
+    receiptNumber: 'SAL-KBL-01',
+    createdByName: 'Ahmad Rashid Safi',
+    createdAt: '2026-08-25T11:30:00Z'
+  },
+  {
+    id: 'exp_03',
+    branchId: 'br_kbl_01',
+    category: 'food',
+    amount: 8500,
+    description: 'Daily Staff Lunch, Tea & Guest Refreshments',
+    expenseDate: '2026-08-28',
+    paidTo: 'Madina Restaurant',
+    receiptNumber: 'FOOD-102',
+    createdByName: 'Ahmad Rashid Safi',
+    createdAt: '2026-08-28T14:00:00Z'
+  },
+  {
+    id: 'exp_04',
+    branchId: 'br_kbl_01',
+    category: 'fuel_transport',
+    amount: 16000,
+    description: 'Cargo Van Diesel & Highway Transit Tolls',
+    expenseDate: '2026-08-30',
+    paidTo: 'Kabul-Kandahar Express Fuel',
+    receiptNumber: 'FUEL-883',
+    createdByName: 'Ahmad Rashid Safi',
+    createdAt: '2026-08-30T16:20:00Z'
+  },
+  {
+    id: 'exp_05',
+    branchId: 'br_hrt_02',
+    category: 'rent',
+    amount: 22000,
+    description: 'Herat Minarets Terminal Monthly Rent',
+    expenseDate: '2026-08-18',
+    paidTo: 'Herat Real Estate Co.',
+    receiptNumber: 'HRT-RENT-02',
+    createdByName: 'Mohammad Farhad Nazari',
+    createdAt: '2026-08-18T10:00:00Z'
+  },
+  {
+    id: 'exp_06',
+    branchId: 'br_hrt_02',
+    category: 'salary',
+    amount: 32000,
+    description: 'Herat Branch Warehouse Workers Monthly Salary',
+    expenseDate: '2026-08-26',
+    paidTo: 'Herat Operations Staff',
+    receiptNumber: 'SAL-HRT-02',
+    createdByName: 'Mohammad Farhad Nazari',
+    createdAt: '2026-08-26T12:00:00Z'
+  },
+  {
+    id: 'exp_07',
+    branchId: 'br_mzr_03',
+    category: 'rent',
+    amount: 20000,
+    description: 'Mazar Rawza Commercial Hub Monthly Rent',
+    expenseDate: '2026-08-22',
+    paidTo: 'Kefayat Market Management',
+    receiptNumber: 'MZR-RENT-03',
+    createdByName: 'Zabihullah Balkhi',
+    createdAt: '2026-08-22T08:30:00Z'
+  }
+];
+
