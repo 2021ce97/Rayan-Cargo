@@ -128,7 +128,46 @@ CREATE TABLE IF NOT EXISTS public.expenses (
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 7. PERFORMANCE INDEXES
+-- 7. INTER-BRANCH FINANCIAL SETTLEMENTS & SARAFI HAWALA TABLE
+CREATE TABLE IF NOT EXISTS public.branch_settlements (
+    id VARCHAR(64) PRIMARY KEY,
+    shipment_id VARCHAR(64) REFERENCES public.shipments(id) ON DELETE CASCADE,
+    cn_number VARCHAR(64) NOT NULL,
+    origin_branch_id VARCHAR(64) NOT NULL REFERENCES public.branches(id) ON DELETE RESTRICT,
+    destination_branch_id VARCHAR(64) NOT NULL REFERENCES public.branches(id) ON DELETE RESTRICT,
+    gross_collected_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+    dest_branch_commission NUMERIC(12, 2) NOT NULL DEFAULT 100.0,
+    net_remitted_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+    settlement_channel VARCHAR(64) NOT NULL DEFAULT 'sarafi_hawala' CHECK (settlement_channel IN ('sarafi_hawala', 'bank_transfer', 'cash_courier', 'internal_offset')),
+    sarafi_reference_no VARCHAR(128),
+    settlement_status VARCHAR(32) NOT NULL DEFAULT 'settled' CHECK (settlement_status IN ('pending', 'settled', 'disputed')),
+    settled_by_user_name VARCHAR(128) NOT NULL DEFAULT 'Branch Cashier',
+    settled_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 8. BRANCH REVENUE & PROFITABILITY SNAPSHOTS TABLE
+CREATE TABLE IF NOT EXISTS public.branch_revenue_snapshots (
+    id VARCHAR(64) PRIMARY KEY,
+    branch_id VARCHAR(64) NOT NULL REFERENCES public.branches(id) ON DELETE CASCADE,
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    gross_freight_revenue NUMERIC(14, 2) NOT NULL DEFAULT 0.0,
+    origin_bookings_revenue NUMERIC(14, 2) NOT NULL DEFAULT 0.0,
+    dest_cod_collected NUMERIC(14, 2) NOT NULL DEFAULT 0.0,
+    dest_commissions_retained NUMERIC(14, 2) NOT NULL DEFAULT 0.0,
+    total_operating_expenses NUMERIC(14, 2) NOT NULL DEFAULT 0.0,
+    net_profit NUMERIC(14, 2) NOT NULL DEFAULT 0.0,
+    profit_margin_percent NUMERIC(6, 2) NOT NULL DEFAULT 0.0,
+    total_dispatched_volume INTEGER NOT NULL DEFAULT 0,
+    total_received_volume INTEGER NOT NULL DEFAULT 0,
+    settled_remittances_amount NUMERIC(14, 2) NOT NULL DEFAULT 0.0,
+    pending_remittances_amount NUMERIC(14, 2) NOT NULL DEFAULT 0.0,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 9. PERFORMANCE INDEXES
 CREATE INDEX IF NOT EXISTS idx_shipments_cn ON public.shipments(cn_number);
 CREATE INDEX IF NOT EXISTS idx_shipments_status ON public.shipments(status);
 CREATE INDEX IF NOT EXISTS idx_shipments_origin ON public.shipments(origin_branch_id);
@@ -139,3 +178,7 @@ CREATE INDEX IF NOT EXISTS idx_shipments_receiver_phone ON public.shipments(rece
 CREATE INDEX IF NOT EXISTS idx_shipments_customer ON public.shipments(customer_user_id);
 CREATE INDEX IF NOT EXISTS idx_tracking_shipment_id ON public.shipment_tracking_events(shipment_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_branch_date ON public.expenses(branch_id, date);
+CREATE INDEX IF NOT EXISTS idx_settlements_shipment_id ON public.branch_settlements(shipment_id);
+CREATE INDEX IF NOT EXISTS idx_settlements_cn ON public.branch_settlements(cn_number);
+CREATE INDEX IF NOT EXISTS idx_revenue_snapshots_branch ON public.branch_revenue_snapshots(branch_id);
+

@@ -405,7 +405,167 @@ async function startServer() {
     }
   });
 
-  // 5. Customer Signup API
+  // 5. Inter-Branch Settlements API
+  app.get('/api/settlements', async (req, res) => {
+    try {
+      const db = getDbPool();
+      const { rows } = await db.query('SELECT * FROM branch_settlements ORDER BY settled_at DESC LIMIT 100');
+      const formatted = rows.map(r => ({
+        id: r.id,
+        shipmentId: r.shipment_id,
+        cnNumber: r.cn_number,
+        originBranchId: r.origin_branch_id,
+        destinationBranchId: r.destination_branch_id,
+        grossCollectedAmount: parseFloat(r.gross_collected_amount || '0'),
+        destBranchCommission: parseFloat(r.dest_branch_commission || '0'),
+        netRemittedAmount: parseFloat(r.net_remitted_amount || '0'),
+        settlementChannel: r.settlement_channel,
+        sarafiReferenceNo: r.sarafi_reference_no,
+        settlementStatus: r.settlement_status,
+        settledByUserName: r.settled_by_user_name,
+        settledAt: r.settled_at,
+        notes: r.notes,
+        createdAt: r.created_at
+      }));
+      res.json({ success: true, settlements: formatted });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/settlements', async (req, res) => {
+    try {
+      const db = getDbPool();
+      const s = req.body;
+      const id = s.id || `stl_${Date.now().toString().slice(-6)}`;
+      const now = new Date().toISOString();
+
+      await db.query(
+        `INSERT INTO branch_settlements (
+          id, shipment_id, cn_number, origin_branch_id, destination_branch_id,
+          gross_collected_amount, dest_branch_commission, net_remitted_amount,
+          settlement_channel, sarafi_reference_no, settlement_status,
+          settled_by_user_name, settled_at, notes, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        ON CONFLICT (id) DO NOTHING`,
+        [
+          id, s.shipmentId || null, s.cnNumber, s.originBranchId, s.destinationBranchId,
+          s.grossCollectedAmount || 0, s.destBranchCommission || 100, s.netRemittedAmount || 0,
+          s.settlementChannel || 'sarafi_hawala', s.sarafiReferenceNo || null,
+          s.settlementStatus || 'settled', s.settledByUserName || 'Branch Cashier',
+          s.settledAt || now, s.notes || null, now
+        ]
+      );
+
+      // Also update shipment remittance_status in shipments table
+      if (s.shipmentId) {
+        await db.query(
+          `UPDATE shipments SET remittance_status = 'settled', origin_remittance_due = 0 WHERE id = $1`,
+          [s.shipmentId]
+        );
+      }
+
+      res.json({ success: true, settlement: { ...s, id, createdAt: now } });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 6. Analytics Revenue Overview Aggregation API
+  app.get('/api/analytics/revenue-overview', async (req, res) => {
+    try {
+      const db = getDbPool();
+      
+      // Aggregate real-time numbers from branches, shipments, and branch_expenses
+      const { rows: branchSummary } = await db.query(`
+        SELECT 
+          b.id,
+          b.name,
+          b.name_fa,
+          b.name_ps,
+          b.code,
+          b.city,
+          b.province,
+          COALESCE(SUM(CASE WHEN s.origin_branch_id = b.id THEN (s.financials->>'totalAmount')::numeric ELSE 0 END), 0) AS gross_origin_freight,
+          COALESCE(SUM(CASE WHEN s.destination_branch_id = b.id AND (s.financials->>'paymentStatus') = 'to_pay' THEN (s.financials->>'totalAmount')::numeric ELSE 0 END), 0) AS dest_cod_collected,
+          COALESCE(SUM(CASE WHEN s.destination_branch_id = b.id THEN COALESCE(s.dest_branch_commission, 100) ELSE 0 END), 0) AS dest_commissions_earned,
+          COUNT(CASE WHEN s.origin_branch_id = b.id THEN 1 END) AS dispatched_volume,
+          COUNT(CASE WHEN s.destination_branch_id = b.id THEN 1 END) AS received_volume
+        FROM branches b
+        LEFT JOIN shipments s ON (s.origin_branch_id = b.id OR s.destination_branch_id = b.id)
+        GROUP BY b.id, b.name, b.name_fa, b.name_ps, b.code, b.city, b.province
+        ORDER BY gross_origin_freight DESC
+      `);
+
+      const { rows: expensesSummary } = await db.query(`
+        SELECT branch_id, COALESCE(SUM(amount), 0) AS total_expenses, COUNT(*) AS count_expenses
+        FROM branch_expenses
+        GROUP BY branch_id
+      `);
+
+      const expenseMap = new Map();
+      expensesSummary.forEach(e => {
+        expenseMap.set(e.branch_id, parseFloat(e.total_expenses || '0'));
+      });
+
+      let consolidatedGrossFreight = 0;
+      let consolidatedDestCommissions = 0;
+      let consolidatedExpenses = 0;
+
+      const branchPnL = branchSummary.map(b => {
+        const grossFreight = parseFloat(b.gross_origin_freight || '0');
+        const destCod = parseFloat(b.dest_cod_collected || '0');
+        const destComm = parseFloat(b.dest_commissions_earned || '0');
+        const branchExpenses = expenseMap.get(b.id) || 0;
+        const netProfit = grossFreight - branchExpenses;
+        const profitMargin = grossFreight > 0 ? ((netProfit / grossFreight) * 100) : 0;
+
+        consolidatedGrossFreight += grossFreight;
+        consolidatedDestCommissions += destComm;
+        consolidatedExpenses += branchExpenses;
+
+        return {
+          branchId: b.id,
+          name: b.name,
+          nameFa: b.name_fa,
+          namePs: b.name_ps,
+          code: b.code,
+          city: b.city,
+          province: b.province,
+          grossFreight,
+          destCodCollected: destCod,
+          destCommission: destComm,
+          expenses: branchExpenses,
+          netProfit,
+          profitMarginPercent: Math.round(profitMargin * 10) / 10,
+          dispatchedVolume: parseInt(b.dispatched_volume || '0', 10),
+          receivedVolume: parseInt(b.received_volume || '0', 10)
+        };
+      });
+
+      const consolidatedNetProfit = consolidatedGrossFreight - consolidatedExpenses;
+      const consolidatedMargin = consolidatedGrossFreight > 0 
+        ? ((consolidatedNetProfit / consolidatedGrossFreight) * 100) 
+        : 0;
+
+      res.json({
+        success: true,
+        summary: {
+          consolidatedGrossFreight,
+          consolidatedDestCommissions,
+          consolidatedExpenses,
+          consolidatedNetProfit,
+          consolidatedMarginPercent: Math.round(consolidatedMargin * 10) / 10,
+          totalBranches: branchPnL.length
+        },
+        branches: branchPnL
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 7. Customer Signup API
   app.post('/api/auth/customer-signup', async (req, res) => {
     try {
       const db = getDbPool();

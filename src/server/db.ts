@@ -139,6 +139,47 @@ export async function initDatabase(initialBranches: any[], initialUsers: any[], 
       );
     `);
 
+    // 5. Create Branch Settlements Table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS branch_settlements (
+        id VARCHAR(64) PRIMARY KEY,
+        shipment_id VARCHAR(64),
+        cn_number VARCHAR(64) NOT NULL,
+        origin_branch_id VARCHAR(64) NOT NULL,
+        destination_branch_id VARCHAR(64) NOT NULL,
+        gross_collected_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+        dest_branch_commission NUMERIC(12,2) NOT NULL DEFAULT 100,
+        net_remitted_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+        settlement_channel VARCHAR(64) DEFAULT 'sarafi_hawala',
+        sarafi_reference_no VARCHAR(128),
+        settlement_status VARCHAR(32) DEFAULT 'settled',
+        settled_by_user_name VARCHAR(128) DEFAULT 'Branch Cashier',
+        settled_at TIMESTAMPTZ DEFAULT NOW(),
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    // 6. Create Branch Revenue Snapshots Table
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS branch_revenue_snapshots (
+        id VARCHAR(64) PRIMARY KEY,
+        branch_id VARCHAR(64) NOT NULL,
+        period_start DATE NOT NULL,
+        period_end DATE NOT NULL,
+        gross_freight_revenue NUMERIC(14,2) DEFAULT 0,
+        origin_bookings_revenue NUMERIC(14,2) DEFAULT 0,
+        dest_cod_collected NUMERIC(14,2) DEFAULT 0,
+        dest_commissions_retained NUMERIC(14,2) DEFAULT 0,
+        total_operating_expenses NUMERIC(14,2) DEFAULT 0,
+        net_profit NUMERIC(14,2) DEFAULT 0,
+        profit_margin_percent NUMERIC(6,2) DEFAULT 0,
+        total_dispatched_volume INT DEFAULT 0,
+        total_received_volume INT DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
     // Create Indexes
     await db.query(`
       CREATE INDEX IF NOT EXISTS idx_shipments_cn ON shipments (cn_number);
@@ -148,6 +189,9 @@ export async function initDatabase(initialBranches: any[], initialUsers: any[], 
       CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
       CREATE INDEX IF NOT EXISTS idx_branches_code ON branches (code);
       CREATE INDEX IF NOT EXISTS idx_expenses_branch ON branch_expenses (branch_id);
+      CREATE INDEX IF NOT EXISTS idx_settlements_cn ON branch_settlements (cn_number);
+      CREATE INDEX IF NOT EXISTS idx_settlements_origin ON branch_settlements (origin_branch_id);
+      CREATE INDEX IF NOT EXISTS idx_settlements_dest ON branch_settlements (destination_branch_id);
     `);
 
     // Seed Branches if empty

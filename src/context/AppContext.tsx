@@ -107,6 +107,8 @@ interface AppContextType {
   toastMessage: string | null;
   showToast: (message: string) => void;
   isOfflineCached: boolean;
+  isMobileSidebarOpen: boolean;
+  setIsMobileSidebarOpen: (open: boolean) => void;
   dbStatus: DbStatusInfo;
   isSyncing: boolean;
   syncWithDatabase: () => Promise<void>;
@@ -596,6 +598,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Views & Modals
   const [activeView, setActiveView] = useState<ActiveViewType>('dashboard');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [selectedShipmentForReceipt, setSelectedShipmentForReceipt] = useState<Shipment | null>(null);
   const [trackedShipment, setTrackedShipment] = useState<Shipment | null>(null);
   const [isOfflineCached] = useState<boolean>(true);
@@ -1259,6 +1262,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toastMessage,
         showToast,
         isOfflineCached,
+        isMobileSidebarOpen,
+        setIsMobileSidebarOpen,
         dbStatus,
         isSyncing,
         syncWithDatabase
