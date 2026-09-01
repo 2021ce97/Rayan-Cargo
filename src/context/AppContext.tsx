@@ -10,7 +10,8 @@ import {
   BranchExpense,
   AddExpenseInput,
   CustomerPreBookingInput,
-  StatusPermissionResult
+  StatusPermissionResult,
+  BillingFinancials
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
@@ -92,6 +93,7 @@ interface AppContextType {
   changePassword: (newPassword: string) => boolean;
   resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string) => boolean;
   addBranch: (input: AddBranchInput) => { branch: Branch; user: User };
+  deleteBranch: (branchId: string) => boolean;
   addExpense: (input: AddExpenseInput) => BranchExpense;
   deleteExpense: (id: string) => boolean;
   analytics: AnalyticsSummary;
@@ -571,6 +573,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { branch: newBranch, user: newUser };
   };
 
+  // Super Admin removes a provincial branch terminal with verification
+  const deleteBranch = (branchId: string): boolean => {
+    const branchToRemove = branches.find(b => b.id === branchId);
+    if (!branchToRemove) return false;
+
+    if (branchToRemove.isHeadOffice) {
+      showToast(t('cannot_delete_head_office') || 'The Head Office central terminal cannot be removed.');
+      return false;
+    }
+
+    setBranches(prev => prev.filter(b => b.id !== branchId));
+    setUsers(prev => prev.filter(u => u.branchId !== branchId));
+
+    if (activeBranchId === branchId) {
+      setActiveBranchId('all');
+    }
+    if (activeBranchPartnerId === branchId) {
+      setActiveBranchPartnerId('all');
+    }
+
+    // Persist to Supabase Database
+    fetch(`/api/branches/${branchId}`, {
+      method: 'DELETE'
+    }).catch(err => console.error('Error deleting branch from Supabase:', err));
+
+    showToast(t('branch_deleted_successfully') || 'Branch terminal removed successfully from the network!');
+    return true;
+  };
+
   // Local storage auto-sync
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branches));
@@ -858,7 +889,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Branch Manager modifies and confirms customer pre-booked order
   const confirmCustomerPreBooking = (
     shipmentId: string, 
-    arg2?: number | { weightKg?: number; pieces?: number; transportationFee?: number; destBranchCommission?: number; paymentStatus?: 'paid' | 'to_pay' }, 
+    arg2?: number | { 
+      weightKg?: number; 
+      pieces?: number; 
+      baseRate?: number;
+      ratePerKg?: number;
+      serviceFee?: number;
+      discountAmount?: number;
+      transportationFee?: number; 
+      destBranchCommission?: number; 
+      paymentStatus?: 'paid' | 'to_pay' 
+    }, 
     arg3?: number, 
     arg4?: number, 
     arg5?: number, 
@@ -869,38 +910,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let actualWeightKg = 1;
     let pieces = 1;
-    let transportationFee = 100;
+    let baseRate = 300;
+    let ratePerKg = 40;
+    let serviceFee = 100;
+    let discountAmount = 0;
     let destBranchCommission = 100;
     let paymentStatus: 'paid' | 'to_pay' = 'paid';
 
     if (typeof arg2 === 'object' && arg2 !== null) {
       actualWeightKg = Number(arg2.weightKg) || 1;
       pieces = Number(arg2.pieces) || 1;
-      transportationFee = typeof arg2.transportationFee === 'number' ? arg2.transportationFee : 100;
+      baseRate = typeof arg2.baseRate === 'number' ? arg2.baseRate : (target.financials?.baseRate || 300);
+      ratePerKg = typeof arg2.ratePerKg === 'number' ? arg2.ratePerKg : 40;
+      serviceFee = typeof arg2.serviceFee === 'number' ? arg2.serviceFee : (typeof arg2.transportationFee === 'number' ? arg2.transportationFee : 100);
+      discountAmount = typeof arg2.discountAmount === 'number' ? arg2.discountAmount : 0;
       destBranchCommission = typeof arg2.destBranchCommission === 'number' ? arg2.destBranchCommission : 100;
       paymentStatus = arg2.paymentStatus || 'paid';
     } else {
       actualWeightKg = Number(arg2) || 1;
       pieces = Number(arg3) || 1;
-      transportationFee = typeof arg4 === 'number' ? arg4 : 100;
+      serviceFee = typeof arg4 === 'number' ? arg4 : 100;
       destBranchCommission = typeof arg5 === 'number' ? arg5 : 100;
       paymentStatus = arg6 || 'paid';
     }
 
-    const baseRate = target.financials?.baseRate || 250;
-    const weightCost = Math.round(actualWeightKg * 30);
-    const totalAmount = baseRate + weightCost + transportationFee;
+    const weightCost = Math.round(actualWeightKg * ratePerKg);
+    const fragileFee = target.packageInfo?.isFragile ? 150 : 0;
+    const subtotal = baseRate + weightCost + serviceFee + fragileFee;
+    const totalAmount = Math.max(0, subtotal - discountAmount);
     const originRemittanceDue = Math.max(0, totalAmount - destBranchCommission);
     const now = new Date().toISOString();
     const userBranch = branches.find(b => b.id === currentUser.branchId) || branches.find(b => b.id === target.originBranchId);
 
-    const updatedFinancials = {
+    const updatedFinancials: BillingFinancials = {
       ...target.financials,
       baseRate,
       weightCost,
-      transportationFee,
+      transportationFee: serviceFee,
       destBranchCommission,
       originRemittanceDue,
+      serviceFee: serviceFee + fragileFee,
+      discountAmount,
+      discountValue: discountAmount,
       totalAmount,
       amountPaid: paymentStatus === 'paid' ? totalAmount : 0,
       amountDue: paymentStatus === 'paid' ? 0 : totalAmount,
@@ -914,7 +965,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       location: userBranch ? `${userBranch.name} (${userBranch.city})` : 'Origin Branch',
       branchName: userBranch ? userBranch.name : 'Origin Hub',
       timestamp: now,
-      note: `Customer pre-booking verified, weighed & officially accepted by ${currentUser.name}. Verified weight: ${actualWeightKg} kg, ${pieces} pcs. Freight: ${totalAmount} AFN (${paymentStatus.toUpperCase()}).`,
+      note: `Customer pre-booking verified, weighed & priced by ${currentUser.name}. Verified weight: ${actualWeightKg} kg, ${pieces} pcs (Base: ${baseRate} AFN, Rate: ${ratePerKg} AFN/kg, Service: ${serviceFee} AFN). Total: ${totalAmount} AFN (${paymentStatus.toUpperCase()}).`,
       updatedBy: currentUser.name
     };
 
@@ -927,7 +978,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         weightKg: actualWeightKg,
         pieces: pieces
       },
-      transportationFee,
+      transportationFee: serviceFee,
       destBranchCommission,
       originRemittanceDue,
       financials: updatedFinancials,
@@ -949,7 +1000,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     }).catch(err => console.error('Error confirming order:', err));
 
-    showToast(t('order_confirmed_success') || 'Customer parcel confirmed, weighed, and booked into branch transit!');
+    showToast(`Pre-booking ${target.cnNumber} verified, weighed (${actualWeightKg}kg), priced (${totalAmount} AFN) and booked successfully!`);
     return true;
   };
 
@@ -1263,6 +1314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         changePassword,
         resetBranchUserCredentials,
         addBranch,
+        deleteBranch,
         addExpense,
         deleteExpense,
         analytics,

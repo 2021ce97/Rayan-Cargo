@@ -147,6 +147,20 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/branches/:id', async (req, res) => {
+    try {
+      const db = getDbPool();
+      const branchId = req.params.id;
+      // Delete associated branch users
+      await db.query('DELETE FROM users WHERE branch_id = $1', [branchId]);
+      // Delete branch
+      await db.query('DELETE FROM branches WHERE id = $1', [branchId]);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // 2. Users API
   app.get('/api/users', async (req, res) => {
     try {

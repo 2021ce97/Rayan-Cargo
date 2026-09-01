@@ -24,6 +24,7 @@ import {
   Send, 
   Inbox,
   CheckCircle2,
+  Check,
   Scale,
   ArrowRightLeft,
   Banknote,
@@ -84,7 +85,10 @@ export const ParcelInventory: React.FC = () => {
   const [confirmModalShipment, setConfirmModalShipment] = useState<Shipment | null>(null);
   const [weighedWeight, setWeighedWeight] = useState<number>(1);
   const [weighedPieces, setWeighedPieces] = useState<number>(1);
-  const [customTransportFee, setCustomTransportFee] = useState<number>(0);
+  const [modalBaseRate, setModalBaseRate] = useState<number>(300);
+  const [modalRatePerKg, setModalRatePerKg] = useState<number>(40);
+  const [modalServiceFee, setModalServiceFee] = useState<number>(100);
+  const [modalDiscountAmount, setModalDiscountAmount] = useState<number>(0);
   const [customDestCommission, setCustomDestCommission] = useState<number>(100);
   const [confirmedPaymentStatus, setConfirmedPaymentStatus] = useState<PaymentStatus>('paid');
 
@@ -210,7 +214,10 @@ export const ParcelInventory: React.FC = () => {
     setConfirmModalShipment(shipment);
     setWeighedWeight(shipment.packageInfo.weightKg || 1);
     setWeighedPieces(shipment.packageInfo.pieces || 1);
-    setCustomTransportFee(shipment.transportationFee || 100);
+    setModalBaseRate(shipment.financials?.baseRate || 300);
+    setModalRatePerKg(40);
+    setModalServiceFee(shipment.financials?.serviceFee || 100);
+    setModalDiscountAmount(shipment.financials?.discountAmount || 0);
     setCustomDestCommission(shipment.destBranchCommission || 100);
     setConfirmedPaymentStatus(shipment.financials.paymentStatus || 'paid');
   };
@@ -221,7 +228,10 @@ export const ParcelInventory: React.FC = () => {
     confirmCustomerPreBooking(confirmModalShipment.id, {
       weightKg: weighedWeight,
       pieces: weighedPieces,
-      transportationFee: customTransportFee,
+      baseRate: modalBaseRate,
+      ratePerKg: modalRatePerKg,
+      serviceFee: modalServiceFee,
+      discountAmount: modalDiscountAmount,
       destBranchCommission: customDestCommission,
       paymentStatus: confirmedPaymentStatus
     });
@@ -835,128 +845,274 @@ export const ParcelInventory: React.FC = () => {
                 </div>
               </div>
 
-              {/* Weight and Pieces Inputs */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {t('inspected_weight_lbl') || 'Inspected Weight (KG) *'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={weighedWeight}
-                    onChange={(e) => setWeighedWeight(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
-                    className="w-full h-10 px-3 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                  />
+              {/* Physical Cargo Verification */}
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+                <div className="flex items-center justify-between text-amber-900 dark:text-amber-300 font-bold text-xs">
+                  <span>1. {t('verify_pricing_title')}</span>
+                  <span className="text-[10px] font-normal">Physical Scale Intake</span>
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {t('pieces_boxes_lbl') || 'Pieces / Boxes *'}
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={weighedPieces}
-                    onChange={(e) => setWeighedPieces(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full h-10 px-3 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('verified_scale_weight')} *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0.1"
+                        step="0.1"
+                        value={weighedWeight}
+                        onChange={(e) => setWeighedWeight(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
+                        className="w-full h-10 pl-3 pr-10 font-mono font-black text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                      />
+                      <span className="absolute right-3 top-2.5 font-bold text-xs text-slate-400">KG</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('pieces_boxes_lbl')} *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={weighedPieces}
+                      onChange={(e) => setWeighedPieces(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full h-10 px-3 font-mono font-black text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Transport fee & Destination Commission */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {t('transport_fee_lbl') || 'Transport Fee (AFN)'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={customTransportFee}
-                    onChange={(e) => setCustomTransportFee(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full h-10 px-3 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                  />
+              {/* Branch Manager Pricing Controls */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
+                  <span className="font-black text-slate-900 dark:text-white text-xs">
+                    2. {t('pricing_breakdown_title')}
+                  </span>
+                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                    Branch Manager Rate Editor
+                  </span>
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {t('dest_commission_lbl') || 'Dest Branch Commission (AFN)'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={customDestCommission}
-                    onChange={(e) => setCustomDestCommission(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full h-10 px-3 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
-                  />
+
+                {/* Quick Presets */}
+                <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalBaseRate(300);
+                      setModalRatePerKg(40);
+                      setModalServiceFee(100);
+                    }}
+                    className={`py-1.5 px-2 rounded-lg font-bold border transition-all text-center cursor-pointer ${
+                      modalBaseRate === 300 && modalRatePerKg === 40
+                        ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-400'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div>Standard</div>
+                    <div className="text-[9px] font-normal text-slate-400">300 + 40/kg</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalBaseRate(400);
+                      setModalRatePerKg(30);
+                      setModalServiceFee(120);
+                    }}
+                    className={`py-1.5 px-2 rounded-lg font-bold border transition-all text-center cursor-pointer ${
+                      modalBaseRate === 400 && modalRatePerKg === 30
+                        ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-400'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div>Heavy Cargo</div>
+                    <div className="text-[9px] font-normal text-slate-400">400 + 30/kg</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalBaseRate(500);
+                      setModalRatePerKg(70);
+                      setModalServiceFee(150);
+                    }}
+                    className={`py-1.5 px-2 rounded-lg font-bold border transition-all text-center cursor-pointer ${
+                      modalBaseRate === 500 && modalRatePerKg === 70
+                        ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-400'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div>Express VIP</div>
+                    <div className="text-[9px] font-normal text-slate-400">500 + 70/kg</div>
+                  </button>
+                </div>
+
+                {/* Pricing Inputs */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('base_booking_rate_lbl')}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="10"
+                      value={modalBaseRate}
+                      onChange={(e) => setModalBaseRate(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('rate_per_kg_lbl')}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="5"
+                      value={modalRatePerKg}
+                      onChange={(e) => setModalRatePerKg(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('service_handling_fee_lbl')}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="10"
+                      value={modalServiceFee}
+                      onChange={(e) => setModalServiceFee(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('dest_commission_lbl')}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="10"
+                      value={customDestCommission}
+                      onChange={(e) => setCustomDestCommission(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {t('applied_discount_lbl')} (AFN)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="10"
+                      value={modalDiscountAmount}
+                      onChange={(e) => setModalDiscountAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Payment Option */}
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('payment_collection_lbl') || 'Payment Collection Status'}
+                  3. {t('payment_status')}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setConfirmedPaymentStatus('paid')}
-                    className={`py-2 px-3 rounded-xl font-bold border transition-all cursor-pointer ${
+                    className={`py-2.5 px-3 rounded-xl font-bold border transition-all cursor-pointer text-xs ${
                       confirmedPaymentStatus === 'paid'
-                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
                     }`}
                   >
-                    {t('paid_at_origin') || 'Paid at Origin Branch'}
+                    ✓ {t('pay_paid')} (Paid at Origin)
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmedPaymentStatus('to_pay')}
-                    className={`py-2 px-3 rounded-xl font-bold border transition-all cursor-pointer ${
+                    className={`py-2.5 px-3 rounded-xl font-bold border transition-all cursor-pointer text-xs ${
                       confirmedPaymentStatus === 'to_pay'
-                        ? 'bg-amber-600 text-white border-amber-600'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
                     }`}
                   >
-                    {t('cod_dest') || 'COD (To Pay at Dest)'}
+                    ⏳ {t('pay_to_pay')} (COD at Dest)
                   </button>
                 </div>
               </div>
 
-              {/* Live Calculation Preview */}
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 space-y-1">
-                <div className="flex justify-between text-[11px] text-slate-600 dark:text-slate-400">
-                  <span>Base Rate:</span>
-                  <span>{confirmModalShipment.financials.baseRate} AFN</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-slate-600 dark:text-slate-400">
-                  <span>Weight ({weighedWeight}kg x 30):</span>
-                  <span>{Math.round(weighedWeight * 30)} AFN</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-slate-600 dark:text-slate-400">
-                  <span>{t('transport_fee_lbl') || 'Transport Fee'}:</span>
-                  <span>{customTransportFee} AFN</span>
-                </div>
-                <div className="flex justify-between font-black text-sm text-red-600 dark:text-red-400 pt-1 border-t border-red-200 dark:border-red-800">
-                  <span>{t('total_calc_amount') || 'Total Calculated Amount'}:</span>
-                  <span>{confirmModalShipment.financials.baseRate + Math.round(weighedWeight * 30) + customTransportFee} AFN</span>
-                </div>
-              </div>
+              {/* Live Calculation Preview Box */}
+              {(() => {
+                const weightCharge = Math.round(weighedWeight * modalRatePerKg);
+                const fragileCharge = confirmModalShipment.packageInfo?.isFragile ? 150 : 0;
+                const calcSubtotal = modalBaseRate + weightCharge + modalServiceFee + fragileCharge;
+                const calcTotal = Math.max(0, calcSubtotal - modalDiscountAmount);
+                return (
+                  <div className="p-3.5 rounded-2xl bg-slate-900 text-white space-y-1.5 shadow-inner">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] font-mono text-slate-400">
+                      <span>CALCULATED INVOICE BREAKDOWN</span>
+                      <span className="text-emerald-400 font-bold">Auto Math</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300 text-xs">
+                      <span>Base Booking Rate:</span>
+                      <span className="font-mono font-bold text-white">{modalBaseRate} AFN</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300 text-xs">
+                      <span>Weight Charge ({weighedWeight} kg × {modalRatePerKg} AFN):</span>
+                      <span className="font-mono font-bold text-white">{weightCharge} AFN</span>
+                    </div>
+                    <div className="flex justify-between text-slate-300 text-xs">
+                      <span>Service & Handling:</span>
+                      <span className="font-mono font-bold text-white">{modalServiceFee} AFN</span>
+                    </div>
+                    {fragileCharge > 0 && (
+                      <div className="flex justify-between text-amber-300 text-xs">
+                        <span>Fragile Cargo Handling:</span>
+                        <span className="font-mono font-bold">+{fragileCharge} AFN</span>
+                      </div>
+                    )}
+                    {modalDiscountAmount > 0 && (
+                      <div className="flex justify-between text-emerald-400 text-xs">
+                        <span>Applied Discount / Concession:</span>
+                        <span className="font-mono font-bold">-{modalDiscountAmount} AFN</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-black text-sm text-red-400 pt-2 border-t border-slate-800">
+                      <span className="text-white">{t('grand_total_lbl')}:</span>
+                      <span className="font-mono text-lg">{calcTotal} AFN</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="button"
                   onClick={handleConfirmPreBookingSubmit}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors cursor-pointer"
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-lg shadow-red-600/25 transition-colors cursor-pointer text-xs flex items-center justify-center gap-2"
                 >
-                  {t('btn_confirm_waybill') || 'Confirm & Issue Official Waybill'}
+                  <Check className="w-4 h-4" />
+                  <span>{t('btn_confirm_waybill')}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmModalShipment(null)}
-                  className="px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer text-xs"
                 >
-                  {t('btn_cancel') || 'Cancel'}
+                  {t('btn_cancel')}
                 </button>
               </div>
 

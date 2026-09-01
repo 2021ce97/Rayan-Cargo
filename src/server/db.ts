@@ -96,12 +96,32 @@ const mockDb = {
       return { rows: [], rowCount: 1 };
     }
 
+    if (upper.startsWith('DELETE FROM BRANCHES')) {
+      const [branchId] = params;
+      if (branchId) {
+        memoryStore.branches.delete(branchId);
+      }
+      return { rows: [], rowCount: 1 };
+    }
+
     // 4. Users queries
     if (upper.startsWith('SELECT * FROM USERS')) {
       const usersList = Array.from(memoryStore.users.values()).sort((a, b) => {
         return (a.created_at || '').localeCompare(b.created_at || '');
       });
       return { rows: usersList, rowCount: usersList.length };
+    }
+
+    if (upper.startsWith('DELETE FROM USERS WHERE BRANCH_ID')) {
+      const [branchId] = params;
+      if (branchId) {
+        for (const [uid, u] of memoryStore.users.entries()) {
+          if (u.branch_id === branchId) {
+            memoryStore.users.delete(uid);
+          }
+        }
+      }
+      return { rows: [], rowCount: 1 };
     }
 
     if (upper.startsWith('INSERT INTO USERS')) {

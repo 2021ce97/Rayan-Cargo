@@ -8,7 +8,13 @@ import {
   Check,
   Lock,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Calculator,
+  SlidersHorizontal,
+  Info,
+  Banknote,
+  Receipt,
+  HelpCircle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -626,69 +632,238 @@ export const NewBookingModal: React.FC = () => {
         <div className="space-y-6">
           
           <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-5 sticky top-20">
-            <h3 className="font-bold text-sm text-slate-900 pb-2 border-b border-slate-100">
-              Pricing & Invoice Breakdown
-            </h3>
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">
+                    {t('pricing_breakdown_title')}
+                  </h3>
+                  <p className="text-[10px] text-slate-500">
+                    {t('pricing_breakdown_subtitle')}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between text-slate-600">
+            {/* Quick Pricing Presets */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                <span>{t('pricing_rates_presets')}</span>
+                <span className="text-[10px] text-slate-400 font-normal">Click to apply</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBaseRate(300);
+                    setRatePerKg(40);
+                    setServiceFee(100);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all text-center cursor-pointer ${
+                    baseRate === 300 && ratePerKg === 40
+                      ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-400'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block truncate">Standard</span>
+                  <span className="text-[9px] font-mono text-slate-500 font-normal">300 + 40/kg</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBaseRate(400);
+                    setRatePerKg(30);
+                    setServiceFee(120);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all text-center cursor-pointer ${
+                    baseRate === 400 && ratePerKg === 30
+                      ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-400'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block truncate">Heavy Bulk</span>
+                  <span className="text-[9px] font-mono text-slate-500 font-normal">400 + 30/kg</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBaseRate(500);
+                    setRatePerKg(70);
+                    setServiceFee(150);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all text-center cursor-pointer ${
+                    baseRate === 500 && ratePerKg === 70
+                      ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-400'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="block truncate">Express VIP</span>
+                  <span className="text-[9px] font-mono text-slate-500 font-normal">500 + 70/kg</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Editable Rate Inputs Section (Branch Manager Controls) */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center justify-between pb-1 border-b border-slate-200">
+                <span className="flex items-center gap-1.5">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-red-600" />
+                  <span>Set Terminal Rates (AFN)</span>
+                </span>
+                <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  Editable by Manager
+                </span>
+              </div>
+
+              {/* Base Booking Rate */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
+                  <span>{t('base_booking_rate_lbl')}:</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Fixed Intake Fee</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={baseRate}
+                    onChange={(e) => setBaseRate(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full h-9 pl-3 pr-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
+                  />
+                  <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
+                    AFN
+                  </span>
+                </div>
+              </div>
+
+              {/* Rate Per KG */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
+                  <span>{t('rate_per_kg_lbl')}:</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Highway Freight / KG</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="5"
+                    value={ratePerKg}
+                    onChange={(e) => setRatePerKg(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full h-9 pl-3 pr-16 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
+                  />
+                  <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
+                    AFN / kg
+                  </span>
+                </div>
+              </div>
+
+              {/* Service & Handling Fee */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
+                  <span>{t('service_handling_fee_lbl')}:</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Loading & Storage</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={serviceFee}
+                    onChange={(e) => setServiceFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full h-9 pl-3 pr-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
+                  />
+                  <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
+                    AFN
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Calculations Summary Box */}
+            <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-2 text-xs shadow-inner">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-800 flex items-center justify-between">
+                <span>Calculated Invoice Math</span>
+                <span className="font-mono text-emerald-400">Live Auto-Update</span>
+              </div>
+
+              <div className="flex items-center justify-between text-slate-300">
                 <span>Base Booking Rate:</span>
-                <span className="font-mono font-bold text-slate-900">{baseRate} AFN</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Weight Charge ({weightKg}kg @ {ratePerKg}/kg):</span>
-                <span className="font-mono font-bold text-slate-900">{weightCost} AFN</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-600">
-                <span>Service & Handling:</span>
-                <span className="font-mono font-bold text-slate-900">{serviceFee + fragileFee} AFN</span>
+                <span className="font-mono font-bold text-white">{baseRate} AFN</span>
               </div>
 
-              {calculatedDiscount > 0 && (
-                <div className="flex items-center justify-between text-emerald-600 font-semibold">
-                  <span>Applied Discount:</span>
-                  <span className="font-mono font-bold">-{calculatedDiscount} AFN</span>
+              <div className="flex items-center justify-between text-slate-300">
+                <span>Weight Charge ({weightKg} kg × {ratePerKg} AFN):</span>
+                <span className="font-mono font-bold text-white">{weightCost} AFN</span>
+              </div>
+
+              <div className="flex items-center justify-between text-slate-300">
+                <span>Service & Handling:</span>
+                <span className="font-mono font-bold text-white">{serviceFee} AFN</span>
+              </div>
+
+              {isFragile && (
+                <div className="flex items-center justify-between text-amber-300">
+                  <span>Fragile Cargo Care Surcharge:</span>
+                  <span className="font-mono font-bold">+{fragileFee} AFN</span>
                 </div>
               )}
 
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-base font-black text-slate-900">
-                <span>Grand Total:</span>
-                <span className="font-mono text-red-600">{grandTotal} AFN</span>
+              {calculatedDiscount > 0 && (
+                <div className="flex items-center justify-between text-emerald-400 font-bold">
+                  <span>Applied Promo / Discount:</span>
+                  <span className="font-mono">-{calculatedDiscount} AFN</span>
+                </div>
+              )}
+
+              <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between text-base font-black">
+                <span className="text-white">{t('grand_total_lbl')}:</span>
+                <span className="font-mono text-red-400 text-lg">{grandTotal} AFN</span>
               </div>
             </div>
 
             {/* Discount Inputs */}
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-              <div className="font-bold text-slate-700">Add Discount / Promo</div>
+              <div className="font-bold text-slate-700 flex items-center justify-between">
+                <span>{t('applied_discount_lbl')}</span>
+                <span className="text-[10px] text-slate-400">Optional</span>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <select
                   value={discountType}
                   onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
-                  className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800"
+                  className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-medium"
                 >
                   <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed (AFN)</option>
+                  <option value="fixed">Fixed Amount (AFN)</option>
                 </select>
                 <input
                   type="number"
+                  min="0"
                   value={discountValue}
                   onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-                  placeholder="Value"
-                  className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono"
+                  placeholder="0"
+                  className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono font-bold"
                 />
               </div>
             </div>
 
             {/* Payment Mode */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">Payment Status</label>
+              <label className="block text-xs font-bold text-slate-700">{t('payment_status')}</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {(['paid', 'to_pay', 'partial', 'unpaid'] as PaymentStatus[]).map((p) => (
                   <button
                     key={p}
                     type="button"
                     onClick={() => setPaymentStatus(p)}
-                    className={`py-1.5 px-2 rounded-lg text-xs font-bold border transition-colors ${
+                    className={`py-2 px-2 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
                       paymentStatus === p
                         ? 'bg-red-600 text-white border-red-600 shadow-xs'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -700,14 +875,26 @@ export const NewBookingModal: React.FC = () => {
               </div>
             </div>
 
+            {/* Explainer Note */}
+            <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-[11px] text-blue-900 space-y-1">
+              <div className="font-bold flex items-center gap-1 text-blue-950">
+                <HelpCircle className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span>{t('pricing_how_it_works')}</span>
+              </div>
+              <p className="text-blue-800 leading-relaxed">
+                {t('pricing_formula_explainer')}
+              </p>
+            </div>
+
             {/* Submit Action Buttons */}
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2 pt-1">
               <button
                 type="button"
                 onClick={() => handleSubmit(true)}
-                className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-lg shadow-red-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <span>Book & Print Waybill Receipt</span>
+                <Receipt className="w-4 h-4" />
+                <span>{t('btn_book_and_print')}</span>
               </button>
 
               <button
@@ -715,7 +902,7 @@ export const NewBookingModal: React.FC = () => {
                 onClick={() => handleSubmit(false)}
                 className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <span>Book Consignment Only</span>
+                <span>{t('btn_book_only')}</span>
               </button>
             </div>
 
