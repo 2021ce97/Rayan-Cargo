@@ -716,22 +716,34 @@ export const ParcelInventory: React.FC = () => {
 
                       {/* Amount & Commission / Remittance Info */}
                       <td className="p-3.5 text-center">
-                        <div className="font-black text-slate-900 dark:text-slate-100 font-mono">
-                          {s.financials.totalAmount.toLocaleString()} AFN
-                        </div>
-                        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          s.financials.paymentStatus === 'paid' 
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' 
-                            : s.financials.paymentStatus === 'to_pay'
-                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
-                            : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
-                        }`}>
-                          {s.financials.paymentStatus === 'to_pay' ? 'COD (To-Pay)' : s.financials.paymentStatus.toUpperCase()}
-                        </span>
-                        {s.destBranchCommission !== undefined && (
-                          <div className="text-[9px] text-slate-400 mt-0.5">
-                            Dest Comm: {s.destBranchCommission} AFN
+                        {isPrebooked && s.financials.totalAmount === 0 ? (
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-800">
+                              <Clock className="w-3 h-3 text-amber-600" />
+                              <span>Awaiting Origin Price</span>
+                            </span>
+                            <div className="text-[9px] text-slate-400">Set on scale intake</div>
                           </div>
+                        ) : (
+                          <>
+                            <div className="font-black text-slate-900 dark:text-slate-100 font-mono">
+                              {s.financials.totalAmount.toLocaleString()} AFN
+                            </div>
+                            <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              s.financials.paymentStatus === 'paid' 
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' 
+                                : s.financials.paymentStatus === 'to_pay'
+                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
+                                : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
+                            }`}>
+                              {s.financials.paymentStatus === 'to_pay' ? 'COD (To-Pay)' : s.financials.paymentStatus.toUpperCase()}
+                            </span>
+                            {s.destBranchCommission !== undefined && (
+                              <div className="text-[9px] text-slate-400 mt-0.5">
+                                Dest Comm: {s.destBranchCommission} AFN
+                              </div>
+                            )}
+                          </>
                         )}
                       </td>
 
@@ -740,10 +752,10 @@ export const ParcelInventory: React.FC = () => {
                         {isPrebooked ? (
                           <button
                             onClick={() => handleOpenConfirmPreBooking(s)}
-                            className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer"
+                            className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer"
                           >
-                            <Scale className="w-3 h-3" />
-                            <span>Verify & Confirm</span>
+                            <Scale className="w-3.5 h-3.5" />
+                            <span>Weigh & Set Price</span>
                           </button>
                         ) : (
                           <button

@@ -853,11 +853,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const originBranch = branches.find(b => b.id === input.originBranchId);
     const destBranch = branches.find(b => b.id === input.destinationBranchId);
 
-    // Initial estimation formula
-    const baseRate = 250;
-    const weightCost = Math.round(input.estimatedWeightKg * 60);
-    const totalEst = baseRate + weightCost;
-
+    // No pricing added by customer; pricing is determined exclusively by origin branch on drop-off & weighing
     const newShipment: Shipment = {
       id: `shp_pr_${randomSuffix}`,
       cnNumber: newCn,
@@ -889,28 +885,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isFragile: input.isFragile || false
       },
       financials: {
-        baseRate,
-        weightCost,
-        transportationFee: 100,
-        destBranchCommission: 100,
-        originRemittanceDue: totalEst - 100,
+        baseRate: 0,
+        weightCost: 0,
+        transportationFee: 0,
+        destBranchCommission: 0,
+        originRemittanceDue: 0,
         serviceFee: 0,
         discountType: 'fixed',
         discountValue: 0,
         discountAmount: 0,
         tax: 0,
-        totalAmount: totalEst + 100,
+        totalAmount: 0, // Zero until priced and verified by origin branch manager
         amountPaid: 0,
-        amountDue: totalEst + 100,
+        amountDue: 0,
         paymentStatus: input.paymentPreference === 'pay_at_branch' ? 'unpaid' : 'to_pay',
         paymentMethod: input.paymentPreference === 'pay_at_branch' ? 'cash' : 'cod'
       },
       status: 'pre_booked',
       isCustomerPrebooked: true,
       customerUserId: currentUser.id,
-      transportationFee: 100,
-      destBranchCommission: 100,
-      originRemittanceDue: totalEst,
+      transportationFee: 0,
+      destBranchCommission: 0,
+      originRemittanceDue: 0,
       remittanceStatus: 'pending',
       statusHistory: [
         {
@@ -919,7 +915,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           location: 'Customer Online Portal',
           branchName: originBranch?.name || 'Origin Hub',
           timestamp: now,
-          note: `Pre-booking created by customer ${input.senderName}. Awaiting physical drop-off at ${originBranch?.name}.`,
+          note: `Consignment pre-booked online by customer ${input.senderName}. Awaiting physical drop-off at ${originBranch?.name || 'Origin Branch'} for weighing and price determination.`,
           updatedBy: `Customer ${currentUser.name}`
         }
       ],
@@ -937,7 +933,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       body: JSON.stringify(newShipment)
     }).catch(err => console.error('Error pre-booking in Supabase:', err));
 
-    showToast(`Parcel pre-booked with CN #${newCn}! Take it to the branch to confirm.`);
+    showToast(`Parcel pre-booked with CN #${newCn}! Hand over to ${originBranch?.name || 'Origin Branch'} for weighing and price determination.`);
     return newShipment;
   };
 

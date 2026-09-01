@@ -387,26 +387,40 @@ export const TrackingPortal: React.FC = () => {
                   {t('billing_details')}
                 </h4>
                 <div className="space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">{t('net_total')}:</span>
-                    <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                      {trackedShipment.financials.totalAmount.toLocaleString()} {t('currency_symbol')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">{t('payment_status')}:</span>
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      trackedShipment.financials.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {t(`pay_${trackedShipment.financials.paymentStatus}`)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">{t('payment_method')}:</span>
-                    <span className="font-semibold uppercase text-slate-700 dark:text-slate-300">
-                      {trackedShipment.financials.paymentMethod}
-                    </span>
-                  </div>
+                  {trackedShipment.status === 'pre_booked' || trackedShipment.financials.totalAmount === 0 ? (
+                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 space-y-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-xs">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Price Pending Origin Branch Weighing</span>
+                      </div>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                        Official freight will be calculated by the origin branch upon physical parcel drop-off and digital scale weighing.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">{t('net_total')}:</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                          {trackedShipment.financials.totalAmount.toLocaleString()} {t('currency_symbol')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">{t('payment_status')}:</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          trackedShipment.financials.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {t(`pay_${trackedShipment.financials.paymentStatus}`)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">{t('payment_method')}:</span>
+                        <span className="font-semibold uppercase text-slate-700 dark:text-slate-300">
+                          {trackedShipment.financials.paymentMethod}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 

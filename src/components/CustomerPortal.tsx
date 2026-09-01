@@ -16,7 +16,9 @@ import {
   Search,
   Sparkles,
   Info,
-  ShieldCheck
+  ShieldCheck,
+  Scale,
+  DollarSign
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { CustomerPreBookingInput, ParcelCategory, Shipment, ShipmentStatus } from '../types';
@@ -151,9 +153,6 @@ export const CustomerPortal: React.FC = () => {
     { value: 'fragile', label: 'Fragile & Glass Items' }
   ];
 
-  // Estimation
-  const estimatedCost = 250 + Math.round((Number(estimatedWeightKg) || 1) * 60) + 100;
-
   return (
     <div className="space-y-6">
       
@@ -205,28 +204,28 @@ export const CustomerPortal: React.FC = () => {
             <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-xs shrink-0">1</div>
             <div>
               <div className="font-bold text-white">Pre-Book Online</div>
-              <div className="text-[10px] text-red-100">Add weight & contacts</div>
+              <div className="text-[10px] text-red-100">Add cargo & contact details</div>
             </div>
           </div>
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-xs p-2.5 rounded-xl">
             <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-xs shrink-0">2</div>
             <div>
-              <div className="font-bold text-white">Hand Over to Branch</div>
-              <div className="text-[10px] text-red-100">Drop at nearest terminal</div>
+              <div className="font-bold text-white">Drop at Origin Branch</div>
+              <div className="text-[10px] text-red-100">Hand over package at branch</div>
             </div>
           </div>
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-xs p-2.5 rounded-xl">
             <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-xs shrink-0">3</div>
             <div>
-              <div className="font-bold text-white">Manager Verification</div>
-              <div className="text-[10px] text-red-100">Weight & waybill accepted</div>
+              <div className="font-bold text-white">Origin Branch Pricing</div>
+              <div className="text-[10px] text-red-100">Scale weighed & price assigned</div>
             </div>
           </div>
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-xs p-2.5 rounded-xl">
             <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-xs shrink-0">4</div>
             <div>
-              <div className="font-bold text-white">Live Tracking & COD</div>
-              <div className="text-[10px] text-red-100">Destination delivery</div>
+              <div className="font-bold text-white">Live Tracking & Invoicing</div>
+              <div className="text-[10px] text-red-100">View price in portal & track</div>
             </div>
           </div>
         </div>
@@ -239,7 +238,7 @@ export const CustomerPortal: React.FC = () => {
             <div>
               <div className="text-xs font-bold">Consignment Pre-Booked Successfully!</div>
               <div className="text-[11px] text-emerald-700">
-                Your CN Number is <span className="font-mono font-bold text-slate-900">{submittedCn}</span>. Please drop off the package at your selected Origin Branch for weighing and receipt generation.
+                Your CN Reference Number is <span className="font-mono font-bold text-slate-900">{submittedCn}</span>. Please drop off the parcel at your selected Origin Branch. The Branch Manager will weigh it on the scale, set the official freight price, and it will immediately update in your account history.
               </div>
             </div>
           </div>
@@ -255,7 +254,7 @@ export const CustomerPortal: React.FC = () => {
       {/* TAB 1: PRE-BOOKING FORM */}
       {activeTab === 'prebook' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div>
               <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
                 <Package className="w-5 h-5 text-red-600" />
@@ -265,9 +264,19 @@ export const CustomerPortal: React.FC = () => {
                 {t('prebooking_notice')}
               </p>
             </div>
-            <div className="text-end">
-              <div className="text-[10px] text-slate-400 font-bold uppercase">Estimated Freight</div>
-              <div className="text-lg font-black text-emerald-600 font-mono">~{estimatedCost} AFN</div>
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs">
+              <Scale className="w-4 h-4 text-amber-600 shrink-0" />
+              <div className="text-start">
+                <div className="font-bold text-[11px]">Pricing Policy: Branch Determined</div>
+                <div className="text-[10px] text-amber-700">Calculated upon physical scale weighing at origin branch</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <span className="font-bold">{t('customer_pricing_policy_info')}</span> You only need to provide package details and receiver contacts. When you drop off the parcel at the origin branch, the branch manager will inspect and weigh it, enter the official freight price, and you will see the confirmed price in your account.
             </div>
           </div>
 
@@ -575,6 +584,7 @@ export const CustomerPortal: React.FC = () => {
               {filteredHistory.map(shipment => {
                 const originBr = branches.find(b => b.id === shipment.originBranchId);
                 const destBr = branches.find(b => b.id === shipment.destinationBranchId);
+                const isPrebookedAwaitingPrice = shipment.status === 'pre_booked' || shipment.financials.totalAmount === 0;
 
                 return (
                   <div 
@@ -589,17 +599,39 @@ export const CustomerPortal: React.FC = () => {
                         <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase border ${getStatusBadge(shipment.status)}`}>
                           {t(`status_${shipment.status}` as any) || shipment.status.replace(/_/g, ' ')}
                         </span>
-                        {shipment.isCustomerPrebooked && shipment.status === 'pre_booked' && (
-                          <span className="px-2 py-0.5 rounded-md bg-purple-200/80 text-purple-900 text-[10px] font-bold animate-pulse">
-                            Awaiting Branch Hand-Over
+                        {isPrebookedAwaitingPrice && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold flex items-center gap-1 border border-amber-300">
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            <span>{t('price_pending_branch_weighing')}</span>
+                          </span>
+                        )}
+                        {!isPrebookedAwaitingPrice && shipment.isCustomerPrebooked && (
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1 border border-emerald-300">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>{t('price_verified_by_branch')}</span>
                           </span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-bold text-slate-700">
-                          {shipment.financials.totalAmount} AFN ({shipment.financials.paymentStatus.toUpperCase()})
-                        </span>
+                        {isPrebookedAwaitingPrice ? (
+                          <div className="text-end">
+                            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 inline-flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{t('price_awaiting_branch_eval')}</span>
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-end">
+                            <div className="text-[10px] text-emerald-700 font-bold uppercase flex items-center gap-1 justify-end">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>{t('price_set_notice')}</span>
+                            </div>
+                            <span className="text-xs font-mono font-black text-slate-900">
+                              {shipment.financials.totalAmount.toLocaleString()} AFN ({shipment.financials.paymentStatus === 'to_pay' ? 'COD' : shipment.financials.paymentStatus.toUpperCase()})
+                            </span>
+                          </div>
+                        )}
                         <button
                           onClick={() => setSelectedShipmentForReceipt(shipment)}
                           className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-red-500 hover:text-red-600 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
@@ -631,15 +663,35 @@ export const CustomerPortal: React.FC = () => {
                       </div>
 
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Latest Milestone</span>
-                        <div className="font-bold text-slate-900 mt-0.5">
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Latest Status / Branch Note</span>
+                        <div className="font-bold text-slate-900 mt-0.5 text-[11px] leading-tight">
                           {shipment.statusHistory[shipment.statusHistory.length - 1]?.note || 'In system'}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
+                        <div className="text-[10px] text-slate-400 font-mono mt-1">
                           {new Date(shipment.bookedAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
+
+                    {isPrebookedAwaitingPrice && (
+                      <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-800 text-[11px] flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Info className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>Please drop off parcel at <strong>{originBr?.name || 'Origin Branch'} ({originBr?.city})</strong> to complete scale inspection and have the official price added.</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Origin: {originBr?.code || 'ORIG'}</span>
+                      </div>
+                    )}
+
+                    {!isPrebookedAwaitingPrice && shipment.isCustomerPrebooked && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-800 text-[11px] flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Official freight verified by <strong>{originBr?.name || 'Origin Branch'}</strong>: Base {shipment.financials.baseRate} AFN + Weight {shipment.financials.weightCost} AFN + Service {shipment.financials.serviceFee} AFN = <strong>{shipment.financials.totalAmount} AFN</strong></span>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">{shipment.financials.paymentStatus.toUpperCase()}</span>
+                      </div>
+                    )}
 
                   </div>
                 );
