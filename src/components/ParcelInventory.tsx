@@ -29,7 +29,8 @@ import {
   Banknote,
   Receipt,
   UserCheck,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
@@ -46,7 +47,10 @@ export const ParcelInventory: React.FC = () => {
     filteredShipments, 
     partnerShipments,
     branches, 
+    users,
     currentUser,
+    setCurrentUser,
+    loginWithUser,
     activeBranchId,
     setActiveBranchId,
     selectedPartnerBranchId,
@@ -1042,49 +1046,111 @@ export const ParcelInventory: React.FC = () => {
         const updatePerm = canUserUpdateStatus(statusModalShipment);
         const origBranch = branches.find(b => b.id === statusModalShipment.originBranchId);
         const destBranch = branches.find(b => b.id === statusModalShipment.destinationBranchId);
+        const origUser = users.find(u => u.branchId === statusModalShipment.originBranchId);
+        const destUser = users.find(u => u.branchId === statusModalShipment.destinationBranchId);
+        const adminUser = users.find(u => u.role === 'super_admin');
+
+        const stages: { status: ShipmentStatus; label: string; actor: string; desc: string }[] = [
+          { status: 'booked', label: '1. Booked', actor: origBranch?.code || 'Origin', desc: 'Received & weighed at sender branch' },
+          { status: 'in_transit', label: '2. In Transit', actor: origBranch?.code || 'Origin', desc: 'Dispatched on highway transport' },
+          { status: 'received_at_branch', label: '3. At Dest Hub', actor: destBranch?.code || 'Dest', desc: 'Received & scanned at arrival branch' },
+          { status: 'out_for_delivery', label: '4. Out for Delivery', actor: destBranch?.code || 'Dest', desc: 'Courier dispatched to consignee' },
+          { status: 'delivered', label: '5. Delivered', actor: destBranch?.code || 'Dest', desc: 'Handed over & payment/POD cleared' },
+        ];
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-in fade-in zoom-in-95 space-y-4">
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 animate-in fade-in zoom-in-95 space-y-4 my-auto max-h-[92vh] overflow-y-auto">
               
+              {/* Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div>
-                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                    {t('modal_status_title') || 'Update Consignment Status'}
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <ArrowRightLeft className="w-5 h-5 text-red-600" />
+                    <span>{t('modal_status_title') || 'Change Consignment Status'}</span>
                   </h3>
-                  <div className="text-xs font-mono font-bold text-red-600">
-                    {statusModalShipment.cnNumber} ({origBranch?.code} ➔ {destBranch?.code})
+                  <div className="text-xs font-mono font-bold text-red-600 flex items-center gap-2 mt-0.5">
+                    <span>{statusModalShipment.cnNumber}</span>
+                    <span className="text-slate-400 font-normal">({origBranch?.city} ➔ {destBranch?.city})</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setStatusModalShipment(null)}
-                  className="text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold cursor-pointer"
                 >
-                  ✕
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Status Progression Role Explainer */}
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
-                <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                  <span>{t('status_current_state') || 'Current State'}:</span>
-                  <span className="font-mono text-red-600 uppercase font-black">{statusModalShipment.status.replace(/_/g, ' ')}</span>
+              {/* Visual Lifecycle Stepper */}
+              <div className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
+                  <span>Consignment Lifecycle Path</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono">
+                    Current: {statusModalShipment.status.replace(/_/g, ' ').toUpperCase()}
+                  </span>
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                  {updatePerm.roleType === 'sender_branch' && (
-                    <span>🏢 <strong>{origBranch?.name}</strong>: {t('sender_origin_lbl') || 'Sender Branch'}</span>
-                  )}
-                  {updatePerm.roleType === 'receiver_branch' && (
-                    <span>📍 <strong>{destBranch?.name}</strong>: {t('receiver_destination_lbl') || 'Receiver Branch'}</span>
-                  )}
-                  {updatePerm.roleType === 'admin' && (
-                    <span>⭐ {t('perm_super_admin_all') || 'Super Admin'}</span>
-                  )}
-                </p>
+                
+                <div className="grid grid-cols-5 gap-1 text-center">
+                  {stages.map((st, idx) => {
+                    const isPassed = ['booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered'].indexOf(statusModalShipment.status) >= idx;
+                    const isCurrent = statusModalShipment.status === st.status;
+
+                    return (
+                      <div 
+                        key={st.status} 
+                        className={`p-1.5 rounded-lg border text-[10px] flex flex-col justify-between transition-all ${
+                          isCurrent
+                            ? 'bg-red-600 text-white border-red-600 font-bold shadow-md shadow-red-600/30 ring-2 ring-red-400/50'
+                            : isPassed
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                            : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
+                        }`}
+                      >
+                        <div className="font-bold truncate text-[9px] sm:text-[10px]">{st.label.split('. ')[1]}</div>
+                        <div className="text-[8px] opacity-80 mt-0.5 truncate font-mono">
+                          {st.actor}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
+              {/* Who can change this explainer box */}
+              <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/80 text-xs space-y-1.5">
+                <div className="font-bold text-blue-900 dark:text-blue-200 flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span>Who Has Authority to Change Status?</span>
+                  </span>
+                </div>
+                <div className="text-[11px] text-blue-950 dark:text-blue-300 space-y-1 leading-relaxed">
+                  <p>• <strong>Origin Branch ({origBranch?.name || 'Sender'}):</strong> Controls <em>Booked</em> ➔ <em>In Transit</em> (Dispatches to highway).</p>
+                  <p>• <strong>Destination Branch ({destBranch?.name || 'Receiver'}):</strong> Controls <em>Received at Branch</em> ➔ <em>Out for Delivery</em> ➔ <em>Delivered</em>.</p>
+                  <p>• <strong>Super Admin (HQ):</strong> Master override across all provincial branches and statuses.</p>
+                </div>
+              </div>
+
+              {/* Current User Permission Status */}
+              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Logged-in Account:</span>
+                  <span className="font-bold text-slate-800 dark:text-white">{currentUser.name}</span>
+                  <span className="text-slate-500 text-[11px]"> ({currentUser.role === 'super_admin' ? 'Super Admin HQ' : branches.find(b => b.id === currentUser.branchId)?.name || 'Branch'})</span>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  updatePerm.canUpdate 
+                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' 
+                    : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                }`}>
+                  {updatePerm.canUpdate ? '✓ Authorized' : '🔒 Locked for your role'}
+                </span>
+              </div>
+
+              {/* Action Form or Switch Account Helper */}
               {updatePerm.canUpdate ? (
-                <div className="space-y-3 text-xs">
+                <div className="space-y-3 text-xs pt-1">
                   <div>
                     <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
                       {t('status_next_milestone') || 'Select Next Permitted Milestone'}
@@ -1096,13 +1162,13 @@ export const ParcelInventory: React.FC = () => {
                     >
                       {updatePerm.allowedStatuses.map(st => (
                         <option key={st} value={st}>
-                          {st === 'in_transit' && `➔ ${t('status_in_transit') || 'In Transit (Dispatch to Highway Carrier)'}`}
-                          {st === 'received_at_branch' && `✓ ${t('status_received_at_branch') || 'Received at Destination Branch Terminal'}`}
-                          {st === 'out_for_delivery' && `🚚 ${t('status_out_for_delivery') || 'Out for Final Delivery to Receiver'}`}
-                          {st === 'delivered' && `★ ${t('status_delivered') || 'Delivered & Handed Over to Client'}`}
-                          {st === 'booked' && (t('status_booked') || 'Booked')}
-                          {st === 'returned' && (t('status_returned') || 'Returned')}
-                          {st === 'cancelled' && (t('status_cancelled') || 'Cancelled')}
+                          {st === 'in_transit' && `➔ In Transit (Dispatch to Highway Carrier)`}
+                          {st === 'received_at_branch' && `✓ Received at Destination Hub Terminal`}
+                          {st === 'out_for_delivery' && `🚚 Out for Final Delivery to Consignee`}
+                          {st === 'delivered' && `★ Delivered & Handed Over to Client`}
+                          {st === 'booked' && `Booked at Origin`}
+                          {st === 'returned' && `Returned to Origin`}
+                          {st === 'cancelled' && `Cancelled`}
                         </option>
                       ))}
                     </select>
@@ -1116,7 +1182,7 @@ export const ParcelInventory: React.FC = () => {
                       rows={2}
                       value={statusNote}
                       onChange={(e) => setStatusNote(e.target.value)}
-                      placeholder="e.g. Dispatched via Truck Plate #24901 / Arrived at Western Hub..."
+                      placeholder="e.g. Dispatched on highway fleet / Received at warehouse unloading dock..."
                       className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
                     />
                   </div>
@@ -1137,19 +1203,67 @@ export const ParcelInventory: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
-                    <Lock className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>{t('status_locked_title') || 'Status Update Locked'}</span>
+                <div className="space-y-3 pt-1">
+                  <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs space-y-1.5">
+                    <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
+                      <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>{t('status_locked_title') || 'Status Update Locked'}</span>
+                    </div>
+                    <p className="leading-relaxed text-[11px]">
+                      {updatePerm.reason}
+                    </p>
                   </div>
-                  <p className="leading-relaxed">
-                    {updatePerm.reason}
-                  </p>
+
+                  {/* 1-Click Role Switch Helpers for Testing/Management */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
+                      Quick Switch Account to Test/Update:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {origUser && (
+                        <button
+                          onClick={() => {
+                            setCurrentUser(origUser);
+                            setActiveBranchId(origUser.branchId);
+                          }}
+                          className="p-2 text-start rounded-lg border border-slate-200 dark:border-slate-700 hover:border-red-500 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+                        >
+                          <div className="text-[10px] text-red-600 font-bold">Origin Branch:</div>
+                          <div className="truncate">{origBranch?.name} ({origUser.name})</div>
+                        </button>
+                      )}
+                      {destUser && (
+                        <button
+                          onClick={() => {
+                            setCurrentUser(destUser);
+                            setActiveBranchId(destUser.branchId);
+                          }}
+                          className="p-2 text-start rounded-lg border border-slate-200 dark:border-slate-700 hover:border-red-500 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+                        >
+                          <div className="text-[10px] text-blue-600 font-bold">Destination Branch:</div>
+                          <div className="truncate">{destBranch?.name} ({destUser.name})</div>
+                        </button>
+                      )}
+                      {adminUser && (
+                        <button
+                          onClick={() => {
+                            setCurrentUser(adminUser);
+                            setActiveBranchId('all');
+                          }}
+                          className="sm:col-span-2 p-2 text-start rounded-lg border border-amber-300 dark:border-amber-800 hover:border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 text-xs font-semibold text-amber-900 dark:text-amber-200 transition-colors cursor-pointer"
+                        >
+                          <div className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⭐ Super Admin Override:</div>
+                          <div className="truncate">Central HQ ({adminUser.name}) - Can update any parcel</div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => setStatusModalShipment(null)}
-                    className="w-full py-2 bg-amber-200 dark:bg-amber-900 hover:bg-amber-300 text-amber-900 dark:text-amber-100 font-bold rounded-lg text-xs transition-colors cursor-pointer"
+                    className="w-full py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                   >
-                    {t('status_understood') || 'Understood'}
+                    {t('btn_close') || 'Close'}
                   </button>
                 </div>
               )}

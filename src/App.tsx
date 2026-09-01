@@ -71,7 +71,7 @@ const MainLayout: React.FC = () => {
         <Sidebar />
 
         {/* Dynamic Content View Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 overflow-y-auto bg-slate-50 dark:bg-slate-950 transition-colors">
+        <main className="flex-1 min-w-0 p-3 sm:p-6 md:p-8 pb-24 lg:pb-8 overflow-y-auto bg-slate-50 dark:bg-slate-950 transition-colors" id="main-content-area">
           {renderActiveView()}
         </main>
       </div>

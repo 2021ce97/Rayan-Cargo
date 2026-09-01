@@ -225,3 +225,23 @@ export interface AnalyticsSummary {
   netProfitAfn?: number;
   totalRemittancesPending?: number;
 }
+
+export type ActiveView = 
+  | 'dashboard' 
+  | 'parcels' 
+  | 'booking' 
+  | 'expenses' 
+  | 'tracking' 
+  | 'branches' 
+  | 'users' 
+  | 'reports' 
+  | 'customer_portal';
+
+export interface StatusPermissionResult {
+  allowed: boolean;
+  canUpdate?: boolean;
+  roleType?: 'sender_branch' | 'receiver_branch' | 'admin' | 'unauthorized';
+  reason?: string;
+  allowedStatuses: ShipmentStatus[];
+}
+

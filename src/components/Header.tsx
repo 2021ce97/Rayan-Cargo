@@ -13,7 +13,9 @@ import {
   Lock,
   KeyRound,
   Database,
-  RefreshCw
+  RefreshCw,
+  Menu,
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Language, UserRole, Branch } from '../types';
@@ -36,7 +38,9 @@ export const Header: React.FC = () => {
     logout,
     dbStatus,
     isSyncing,
-    syncWithDatabase
+    syncWithDatabase,
+    isMobileSidebarOpen,
+    setIsMobileSidebarOpen
   } = useApp();
 
   const [searchCn, setSearchCn] = useState('');
@@ -44,12 +48,14 @@ export const Header: React.FC = () => {
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchCn.trim()) return;
     trackByCnNumber(searchCn);
     setActiveView('tracking');
+    setIsMobileSearchOpen(false);
   };
 
   const getRoleLabel = (role: UserRole) => {
@@ -74,7 +80,7 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/98 backdrop-blur-md border-b border-slate-200 shadow-xs" id="app-header">
+      <header className="sticky top-0 z-40 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs" id="app-header">
         {/* Toast notification banner */}
         {toastMessage && (
           <div className="bg-emerald-600 text-white text-center py-2 px-4 text-xs font-semibold animate-fadeIn flex items-center justify-center gap-2">
@@ -83,33 +89,49 @@ export const Header: React.FC = () => {
           </div>
         )}
 
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-3">
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 gap-2 sm:gap-3">
             
-            {/* Logo & Brand */}
-            <div 
-              onClick={() => setActiveView('dashboard')}
-              className="flex items-center gap-3 cursor-pointer group shrink-0"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-red-500/20 group-hover:scale-105 transition-transform">
-                <Package className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 bg-clip-text text-transparent">
-                    Rayan
-                  </span>
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 uppercase tracking-wider">
-                    Cargo DB
-                  </span>
+            {/* Left: Mobile Menu Toggle + Logo & Brand */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              {/* Mobile Sidebar Hamburger Toggle */}
+              <button
+                onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                className="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                title={isMobileSidebarOpen ? 'Close Menu' : 'Open Navigation Menu'}
+                aria-label="Toggle navigation menu"
+              >
+                {isMobileSidebarOpen ? (
+                  <X className="w-5 h-5 text-red-600 dark:text-red-400" />
+                ) : (
+                  <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
+                )}
+              </button>
+
+              <div 
+                onClick={() => setActiveView('dashboard')}
+                className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
+              >
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-red-500/20 group-hover:scale-105 transition-transform">
+                  <Package className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
-                  {t('app_subtitle')}
-                </p>
+                <div>
+                  <div className="flex items-center gap-1 sm:gap-1.5">
+                    <span className="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 bg-clip-text text-transparent">
+                      Rayan
+                    </span>
+                    <span className="text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 uppercase tracking-wider">
+                      Cargo DB
+                    </span>
+                  </div>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden md:block">
+                    {t('app_subtitle')}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Quick Tracking Search Bar */}
+            {/* Quick Tracking Search Bar (Desktop) */}
             <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md mx-2 hidden md:block">
               <div className="relative flex items-center">
                 <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-slate-400">
@@ -120,7 +142,7 @@ export const Header: React.FC = () => {
                   value={searchCn}
                   onChange={(e) => setSearchCn(e.target.value)}
                   placeholder={t('enter_cn_placeholder')}
-                  className="w-full h-10 ps-9 pe-20 text-xs bg-slate-100 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all font-mono"
+                  className="w-full h-10 ps-9 pe-20 text-xs bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all font-mono"
                 />
                 <button
                   type="submit"
@@ -132,20 +154,29 @@ export const Header: React.FC = () => {
             </form>
 
             {/* Action Tools & Switchers */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+
+              {/* Mobile Search Icon Toggle */}
+              <button
+                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                className="md:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                title="Search CN"
+              >
+                <Search className="w-4 h-4" />
+              </button>
 
               {/* Supabase PostgreSQL Status & Live Sync */}
               <button
                 onClick={() => syncWithDatabase()}
-                className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                   dbStatus.connected 
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100' 
-                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100' 
+                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
                 }`}
                 title={`Supabase PostgreSQL Pooler (${dbStatus.connected ? 'Connected' : 'Connecting...'}) - Click to Sync`}
               >
                 <Database className={`w-3.5 h-3.5 ${dbStatus.connected ? 'text-emerald-600' : 'text-amber-600'}`} />
-                <span className="text-[11px] font-medium hidden xl:inline">
+                <span className="text-[11px] font-medium hidden 2xl:inline">
                   {dbStatus.connected ? 'Supabase DB' : 'Connecting DB'}
                 </span>
                 <RefreshCw className={`w-3 h-3 text-slate-400 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
@@ -159,26 +190,26 @@ export const Header: React.FC = () => {
                       setShowBranchDropdown(!showBranchDropdown);
                       setShowLangDropdown(false);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                    className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                     title={t('current_branch')}
                   >
-                    <Building2 className="w-3.5 h-3.5 text-red-600" />
-                    <span className="max-w-[120px] sm:max-w-[180px] truncate">{currentBranchName}</span>
-                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                    <Building2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0" />
+                    <span className="max-w-[75px] sm:max-w-[140px] md:max-w-[180px] truncate">{currentBranchName}</span>
+                    <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                   </button>
                 ) : (
                   <div 
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200"
+                    className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
                     title={t('restricted_access_title')}
                   >
-                    <Lock className="w-3.5 h-3.5 text-red-600" />
-                    <span className="max-w-[130px] sm:max-w-[200px] truncate font-bold">{currentBranchName}</span>
+                    <Lock className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0" />
+                    <span className="max-w-[80px] sm:max-w-[140px] md:max-w-[180px] truncate font-bold">{currentBranchName}</span>
                   </div>
                 )}
 
                 {showBranchDropdown && currentUser.role === 'super_admin' && (
-                  <div className="absolute end-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95">
-                    <div className="px-3 py-1.5 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="absolute end-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                    <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       {t('filter_all_branches')} ({branches.length} {t('nav_branches')})
                     </div>
                     <button
@@ -186,7 +217,7 @@ export const Header: React.FC = () => {
                         setActiveBranchId('all');
                         setShowBranchDropdown(false);
                       }}
-                      className={`w-full text-start px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-slate-50 cursor-pointer ${activeBranchId === 'all' ? 'text-red-600 font-bold bg-red-50/50' : 'text-slate-700'}`}
+                      className={`w-full text-start px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${activeBranchId === 'all' ? 'text-red-600 font-bold bg-red-50/50 dark:bg-red-950/30' : 'text-slate-700 dark:text-slate-300'}`}
                     >
                       <span>🌐 {t('all_branches')}</span>
                       {activeBranchId === 'all' && <span className="w-2 h-2 rounded-full bg-red-600" />}
@@ -198,7 +229,7 @@ export const Header: React.FC = () => {
                           setActiveBranchId(b.id);
                           setShowBranchDropdown(false);
                         }}
-                        className={`w-full text-start px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-slate-50 cursor-pointer ${activeBranchId === b.id ? 'text-red-600 font-bold bg-red-50/50' : 'text-slate-700'}`}
+                        className={`w-full text-start px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${activeBranchId === b.id ? 'text-red-600 font-bold bg-red-50/50 dark:bg-red-950/30' : 'text-slate-700 dark:text-slate-300'}`}
                       >
                         <div>
                           <div className="font-semibold">{getLocalizedBranchName(b)}</div>
@@ -218,33 +249,33 @@ export const Header: React.FC = () => {
                     setShowLangDropdown(!showLangDropdown);
                     setShowBranchDropdown(false);
                   }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                  className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                   title={t('theme_toggle')}
                 >
-                  <Languages className="w-3.5 h-3.5 text-blue-600" />
-                  <span className="uppercase font-bold">{language}</span>
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                  <Languages className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span className="uppercase font-bold text-[11px] sm:text-xs">{language}</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                 </button>
 
                 {showLangDropdown && (
-                  <div className="absolute end-0 mt-2 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50">
+                  <div className="absolute end-0 mt-2 w-44 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-50">
                     <button
                       onClick={() => { setLanguage('en'); setShowLangDropdown(false); }}
-                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 cursor-pointer ${language === 'en' ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-slate-700'}`}
+                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${language === 'en' ? 'text-blue-600 font-bold bg-blue-50/50 dark:bg-blue-950/30' : 'text-slate-700 dark:text-slate-300'}`}
                     >
                       <span>English (US)</span>
                       <span className="text-[10px] text-slate-400 font-mono">LTR</span>
                     </button>
                     <button
                       onClick={() => { setLanguage('fa'); setShowLangDropdown(false); }}
-                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 cursor-pointer ${language === 'fa' ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-slate-700'}`}
+                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${language === 'fa' ? 'text-blue-600 font-bold bg-blue-50/50 dark:bg-blue-950/30' : 'text-slate-700 dark:text-slate-300'}`}
                     >
                       <span>دری (Afghanistan)</span>
                       <span className="text-[10px] text-slate-400 font-mono">RTL</span>
                     </button>
                     <button
                       onClick={() => { setLanguage('ps'); setShowLangDropdown(false); }}
-                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 cursor-pointer ${language === 'ps' ? 'text-blue-600 font-bold bg-blue-50/50' : 'text-slate-700'}`}
+                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${language === 'ps' ? 'text-blue-600 font-bold bg-blue-50/50 dark:bg-blue-950/30' : 'text-slate-700 dark:text-slate-300'}`}
                     >
                       <span>پښتو (Pashto)</span>
                       <span className="text-[10px] text-slate-400 font-mono">RTL</span>
@@ -257,28 +288,28 @@ export const Header: React.FC = () => {
               {currentUser.role !== 'super_admin' && (
                 <button
                   onClick={() => setIsPasswordModalOpen(true)}
-                  className="hidden sm:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 text-xs font-semibold transition-colors cursor-pointer"
+                  className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold transition-colors cursor-pointer"
                   title={t('change_branch_password_title')}
                 >
-                  <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                  <span>{t('login_password_lbl')}</span>
+                  <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span className="hidden lg:inline">{t('login_password_lbl')}</span>
                 </button>
               )}
 
               {/* User Account / Role Switcher Modal Trigger */}
               <button
                 onClick={() => setShowRoleModal(true)}
-                className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors text-start cursor-pointer"
+                className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors text-start cursor-pointer"
                 title={t('switch_account_modal_title')}
               >
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-slate-800 to-slate-950 text-white flex items-center justify-center font-bold text-xs">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-slate-800 to-slate-950 text-white flex items-center justify-center font-bold text-xs shrink-0">
                   {currentUser.name.charAt(0)}
                 </div>
                 <div className="hidden xl:block">
-                  <div className="text-xs font-bold text-slate-900 leading-tight">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight">
                     {currentUser.name.split(' ')[0]}
                   </div>
-                  <div className="text-[10px] text-red-600 font-semibold">
+                  <div className="text-[10px] text-red-600 dark:text-red-400 font-semibold">
                     {getRoleLabel(currentUser.role)}
                   </div>
                 </div>
@@ -287,7 +318,7 @@ export const Header: React.FC = () => {
               {/* Dedicated Logout Button */}
               <button
                 onClick={logout}
-                className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 transition-colors cursor-pointer"
                 title={t('logout_btn')}
               >
                 <LogOut className="w-4 h-4" />
@@ -296,29 +327,54 @@ export const Header: React.FC = () => {
             </div>
 
           </div>
+
+          {/* Mobile Search Dropdown Toolbar */}
+          {isMobileSearchOpen && (
+            <div className="md:hidden pb-3 pt-1 animate-in slide-in-from-top-2 duration-200">
+              <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchCn}
+                    onChange={(e) => setSearchCn(e.target.value)}
+                    placeholder={t('enter_cn_placeholder')}
+                    className="w-full h-10 ps-9 pe-3 text-xs bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono"
+                    autoFocus
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="h-10 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shrink-0"
+                >
+                  {t('track_btn')}
+                </button>
+              </form>
+            </div>
+          )}
         </div>
 
         {/* Switch Branch Account Modal */}
         {showRoleModal && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-red-600" />
-                  <h3 className="font-bold text-base text-slate-900">
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
                     {t('switch_account_modal_title')}
                   </h3>
                 </div>
                 <button 
                   onClick={() => setShowRoleModal(false)}
-                  className="text-slate-400 hover:text-slate-600 text-sm font-bold cursor-pointer"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                <p className="font-semibold text-slate-800 mb-1">
+              <div className="mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
+                <p className="font-semibold text-slate-800 dark:text-slate-200 mb-1">
                   🏢 {t('single_role_architecture')}:
                 </p>
                 <p>
@@ -347,29 +403,29 @@ export const Header: React.FC = () => {
                       }}
                       className={`w-full text-start p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${
                         isSelected 
-                          ? 'border-red-500 bg-red-50/60 ring-1 ring-red-500' 
-                          : 'border-slate-200 hover:bg-slate-50'
+                          ? 'border-red-500 bg-red-50/60 dark:bg-red-950/40 ring-1 ring-red-500' 
+                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${
                           isSuper 
-                            ? 'bg-amber-100 text-amber-800' 
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300' 
+                            : 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300'
                         }`}>
                           {branchObj?.code || 'HQ'}
                         </div>
                         <div>
-                          <div className="font-bold text-xs text-slate-900 flex items-center gap-2">
+                          <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
                             <span>{u.name}</span>
                             {u.passwordChangedByBranch && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-700 font-bold">
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
                                 {t('private_password_badge')}
                               </span>
                             )}
                           </div>
-                          <div className="text-[11px] text-slate-500 font-mono">{u.email}</div>
-                          <div className="text-[10px] font-semibold text-red-600">
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{u.email}</div>
+                          <div className="text-[10px] font-semibold text-red-600 dark:text-red-400">
                             {isSuper ? t('role_super_admin') : `${locBranchName} (${branchObj?.province})`}
                           </div>
                         </div>
@@ -379,7 +435,7 @@ export const Header: React.FC = () => {
                           {t('active_account_badge')}
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400 hover:text-slate-600">
+                        <span className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                           {t('sign_in_arrow')}
                         </span>
                       )}
@@ -388,7 +444,7 @@ export const Header: React.FC = () => {
                 })}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                 <span className="flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                   {t('data_isolation_badge')}

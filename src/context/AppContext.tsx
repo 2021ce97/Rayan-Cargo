@@ -9,16 +9,11 @@ import {
   AnalyticsSummary,
   BranchExpense,
   AddExpenseInput,
-  CustomerPreBookingInput
+  CustomerPreBookingInput,
+  StatusPermissionResult
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
-
-interface StatusPermissionResult {
-  allowed: boolean;
-  reason?: string;
-  allowedStatuses: ShipmentStatus[];
-}
 
 export interface AddBranchInput {
   name: string;
@@ -1005,6 +1000,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser.role === 'customer') {
       return {
         allowed: false,
+        canUpdate: false,
+        roleType: 'unauthorized',
         reason: t('perm_customer_no_status') || 'Customer accounts can view history and pre-book parcels. Status transitions are performed by Cargo Branches.',
         allowedStatuses: []
       };
@@ -1012,6 +1009,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUser.role === 'super_admin') {
       return {
         allowed: true,
+        canUpdate: true,
+        roleType: 'admin',
         reason: t('perm_super_admin_all') || 'Super Admin: Full master access across all provincial cargo branches.',
         allowedStatuses: ['booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled']
       };
@@ -1024,6 +1023,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!isOrigin && !isDestination) {
       return {
         allowed: false,
+        canUpdate: false,
+        roleType: 'unauthorized',
         reason: t('perm_branch_unrelated') || 'You can only update parcels where your branch is either the Sender (Origin) or Receiver (Destination).',
         allowedStatuses: []
       };
@@ -1033,12 +1034,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (shipment.status === 'received_at_branch' || shipment.status === 'out_for_delivery' || shipment.status === 'delivered') {
         return {
           allowed: false,
+          canUpdate: false,
+          roleType: 'sender_branch',
           reason: t('perm_origin_cannot_deliver') || 'This parcel has arrived at destination. Only the Destination (Receiver) branch can update subsequent delivery stages.',
           allowedStatuses: []
         };
       }
       return {
         allowed: true,
+        canUpdate: true,
+        roleType: 'sender_branch',
         allowedStatuses: ['booked', 'in_transit']
       };
     }
@@ -1047,18 +1052,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (shipment.status === 'booked' || shipment.status === 'pre_booked') {
         return {
           allowed: false,
+          canUpdate: false,
+          roleType: 'receiver_branch',
           reason: t('perm_dest_not_dispatched') || 'This parcel has not departed from the Origin branch yet.',
           allowedStatuses: []
         };
       }
       return {
         allowed: true,
+        canUpdate: true,
+        roleType: 'receiver_branch',
         allowedStatuses: ['received_at_branch', 'out_for_delivery', 'delivered', 'returned']
       };
     }
 
     return {
       allowed: false,
+      canUpdate: false,
+      roleType: 'unauthorized',
       reason: t('perm_unauthorized') || 'Unauthorized branch operation.',
       allowedStatuses: []
     };
