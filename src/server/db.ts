@@ -409,118 +409,94 @@ export function getDbPool(): any {
   return realPool || mockDb;
 }
 
+export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ success: boolean; error?: any }> {
+  try {
+    memoryStore.branches.clear();
+    memoryStore.users.clear();
+    memoryStore.shipments.clear();
+    memoryStore.branch_expenses.clear();
+    memoryStore.branch_settlements.clear();
+
+    const adminUser = initialUsers[0] || {
+      id: 'usr_admin',
+      name: 'Central System Admin',
+      email: 'admin@rayancargo.af',
+      phone: '+93 79 900 1122',
+      role: 'super_admin',
+      branchId: 'all',
+      password: 'admin',
+      passwordChangedByBranch: false,
+      status: 'active',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      createdAt: new Date().toISOString(),
+      lastLogin: 'Just now'
+    };
+
+    memoryStore.users.set(adminUser.id, {
+      id: adminUser.id,
+      name: adminUser.name,
+      email: adminUser.email,
+      phone: adminUser.phone,
+      role: adminUser.role,
+      branch_id: adminUser.branchId,
+      password: adminUser.password || 'admin',
+      password_changed_by_branch: false,
+      last_password_change: null,
+      status: 'active',
+      avatar: adminUser.avatar,
+      created_at: adminUser.createdAt || new Date().toISOString(),
+      last_login: adminUser.lastLogin || 'Just now'
+    });
+
+    if (!useMock && realPool) {
+      try {
+        const db = getDbPool();
+        await db.query(`
+          DELETE FROM shipments;
+          DELETE FROM branch_expenses;
+          DELETE FROM branch_settlements;
+          DELETE FROM branches;
+          DELETE FROM users WHERE role != 'super_admin';
+        `);
+
+        await db.query(`
+          INSERT INTO users (
+            id, name, email, phone, role, branch_id, password, password_changed_by_branch, status, created_at, last_login
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, 'active', NOW(), 'Just now')
+          ON CONFLICT (id) DO UPDATE SET
+            email = EXCLUDED.email,
+            password = EXCLUDED.password,
+            role = 'super_admin',
+            branch_id = 'all';
+        `, [
+          adminUser.id,
+          adminUser.name,
+          adminUser.email,
+          adminUser.phone,
+          adminUser.role,
+          adminUser.branchId,
+          adminUser.password || 'admin'
+        ]);
+      } catch (e) {
+        console.warn('Real PG wipe error:', e);
+      }
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+}
+
 export async function initDatabase(
   initialBranches: any[], 
   initialUsers: any[], 
   initialShipments: any[]
 ): Promise<{ success: boolean; error?: any }> {
   try {
-    console.log('🔄 Initializing Database Store...');
-
-    // Populate in-memory database store
-    if (initialBranches && initialBranches.length > 0) {
-      initialBranches.forEach(b => {
-        memoryStore.branches.set(b.id, {
-          id: b.id,
-          name: b.name,
-          name_fa: b.nameFa || b.name,
-          name_ps: b.namePs || b.name,
-          code: b.code,
-          province: b.province,
-          city: b.city,
-          address: b.address,
-          phone: b.phone,
-          email: b.email,
-          manager_name: b.managerName,
-          is_head_office: b.isHeadOffice || false,
-          active_shipments_count: b.activeShipmentsCount || 0,
-          total_parcels_dispatched: b.totalParcelsDispatched || 0,
-          total_parcels_received: b.totalParcelsReceived || 0,
-          total_revenue_afn: b.totalRevenueAfn || 0,
-          created_at: b.createdAt || new Date().toISOString()
-        });
-      });
-    }
-
-    if (initialUsers && initialUsers.length > 0) {
-      initialUsers.forEach(u => {
-        memoryStore.users.set(u.id, {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          phone: u.phone,
-          role: u.role,
-          branch_id: u.branchId,
-          password: u.password || 'kabul123',
-          password_changed_by_branch: u.passwordChangedByBranch || false,
-          last_password_change: u.lastPasswordChange || null,
-          status: u.status || 'active',
-          avatar: u.avatar || null,
-          created_at: u.createdAt || new Date().toISOString(),
-          last_login: u.lastLogin || 'Never'
-        });
-      });
-    }
-
-    if (initialShipments && initialShipments.length > 0) {
-      initialShipments.forEach(s => {
-        memoryStore.shipments.set(s.id, {
-          id: s.id,
-          cn_number: s.cnNumber,
-          origin_branch_id: s.originBranchId,
-          destination_branch_id: s.destinationBranchId,
-          current_branch_id: s.currentBranchId,
-          sender: s.sender,
-          receiver: s.receiver,
-          package_info: s.packageInfo,
-          financials: s.financials,
-          status: s.status,
-          status_history: s.statusHistory || [],
-          booked_at: s.bookedAt,
-          estimated_delivery: s.estimatedDelivery,
-          actual_delivery: s.actualDelivery || null,
-          pod_signature: s.podSignature || null,
-          receiver_id_proof: s.receiverIdProof || null,
-          delivery_notes: s.deliveryNotes || null,
-          booked_by_user_id: s.bookedByUserId,
-          booked_by_user_name: s.bookedByUserName,
-          created_at: new Date().toISOString()
-        });
-      });
-    }
-
-    // If real DATABASE_URL is present, run DDL on real PostgreSQL pool
-    if (!useMock && realPool) {
-      try {
-        const db = getDbPool();
-        await db.query(`
-          CREATE TABLE IF NOT EXISTS branches (
-            id VARCHAR(64) PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            name_fa VARCHAR(255),
-            name_ps VARCHAR(255),
-            code VARCHAR(32) NOT NULL UNIQUE,
-            province VARCHAR(128) NOT NULL,
-            city VARCHAR(128) NOT NULL,
-            address TEXT NOT NULL,
-            phone VARCHAR(64) NOT NULL,
-            email VARCHAR(128) NOT NULL,
-            manager_name VARCHAR(128) NOT NULL,
-            is_head_office BOOLEAN DEFAULT FALSE,
-            active_shipments_count INT DEFAULT 0,
-            total_parcels_dispatched INT DEFAULT 0,
-            total_parcels_received INT DEFAULT 0,
-            total_revenue_afn NUMERIC(14,2) DEFAULT 0,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-          );
-        `);
-      } catch (err: any) {
-        console.warn('Real PostgreSQL DDL failed, continuing with in-memory store:', err?.message);
-        useMock = true;
-      }
-    }
-
-    console.log('✅ Rayan Cargo Database Initialized and Ready!');
+    console.log('🔄 Initializing Clean Slate Database Store...');
+    await wipeDatabaseClean(initialUsers);
+    console.log('✅ Rayan Cargo Clean Slate Database Initialized (0 Parcels, 0 Branches, 0 Expenses, 1 Super Admin)!');
     return { success: true };
   } catch (error) {
     console.warn('Database initialization warning (in-memory active):', error);

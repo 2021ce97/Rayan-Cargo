@@ -97,7 +97,7 @@ export const Dashboard: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs" id="dashboard-banner">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-red-600 uppercase tracking-wider mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className={`w-2 h-2 rounded-full ${branches.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
             <span>{branches.length} {t('online_terminals_badge')}</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
@@ -108,18 +108,28 @@ export const Dashboard: React.FC = () => {
           <p className="text-xs text-slate-500 mt-0.5">
             {isSuperAdmin
               ? t('hq_welcome_desc')
-              : `${t('branch_welcome_desc')} (${currentBranchObj?.city}, ${currentBranchObj?.province})`}
+              : `${t('branch_welcome_desc')} (${currentBranchObj?.city || 'Terminal'}, ${currentBranchObj?.province || 'Regional'})`}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveView('booking')}
-            className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('new_consignment_btn')}</span>
-          </button>
+          {branches.length >= 2 ? (
+            <button
+              onClick={() => setActiveView('booking')}
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('new_consignment_btn')}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setActiveView('branches')}
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Building2 className="w-4 h-4" />
+              <span>{t('btn_add_branch') || 'Add First Branch'}</span>
+            </button>
+          )}
           <button
             onClick={() => setActiveView('tracking')}
             className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-2 transition-colors cursor-pointer"
@@ -129,6 +139,34 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Clean Slate Notice when branches are empty */}
+      {branches.length === 0 && (
+        <div className="p-6 rounded-2xl bg-gradient-to-r from-red-50 to-amber-50 border border-red-200 text-slate-800 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shrink-0 shadow-md shadow-red-600/20">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900">
+                Fresh System Ready for Handover & Setup
+              </h3>
+              <p className="text-xs text-slate-600 mt-0.5">
+                All sample branches, dummy parcels, expenses, and revenues have been cleared. As the Central System Administrator, click below to add branches and issue manager credentials.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              onClick={() => setActiveView('branches')}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Configure Operational Branches</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Supabase Database Connection & Pooler Status Banner */}
       <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white border border-slate-800 shadow-md flex flex-wrap items-center justify-between gap-3">
@@ -389,43 +427,53 @@ export const Dashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredShipments.slice(0, 5).map((s) => {
-                const orig = branches.find(b => b.id === s.originBranchId);
-                const dest = branches.find(b => b.id === s.destinationBranchId);
+              {filteredShipments.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
+                    <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="text-xs text-slate-500">No shipments or parcels registered yet.</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">System is clean and ready for live cargo bookings.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredShipments.slice(0, 5).map((s) => {
+                  const orig = branches.find(b => b.id === s.originBranchId);
+                  const dest = branches.find(b => b.id === s.destinationBranchId);
 
-                return (
-                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3 font-mono font-bold text-red-600">
-                      {s.cnNumber}
-                    </td>
-                    <td className="p-3 font-medium text-slate-900">
-                      {getLocalizedBranchName(orig) || s.sender.city} ➔ {getLocalizedBranchName(dest) || s.receiver.city}
-                    </td>
-                    <td className="p-3 text-slate-800 font-medium">
-                      {s.sender.name}
-                    </td>
-                    <td className="p-3 text-slate-800 font-medium">
-                      {s.receiver.name}
-                    </td>
-                    <td className="p-3 text-center font-mono font-bold text-slate-800">
-                      {s.packageInfo.weightKg} KG
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                        {getLocalizedStatusName(s.status)}
-                      </span>
-                    </td>
-                    <td className="p-3 text-end">
-                      <button
-                        onClick={() => setSelectedShipmentForReceipt(s)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-                      >
-                        {t('btn_print_receipt')}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3 font-mono font-bold text-red-600">
+                        {s.cnNumber}
+                      </td>
+                      <td className="p-3 font-medium text-slate-900">
+                        {getLocalizedBranchName(orig) || s.sender.city} ➔ {getLocalizedBranchName(dest) || s.receiver.city}
+                      </td>
+                      <td className="p-3 text-slate-800 font-medium">
+                        {s.sender.name}
+                      </td>
+                      <td className="p-3 text-slate-800 font-medium">
+                        {s.receiver.name}
+                      </td>
+                      <td className="p-3 text-center font-mono font-bold text-slate-800">
+                        {s.packageInfo.weightKg} KG
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                          {getLocalizedStatusName(s.status)}
+                        </span>
+                      </td>
+                      <td className="p-3 text-end">
+                        <button
+                          onClick={() => setSelectedShipmentForReceipt(s)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                        >
+                          {t('btn_print_receipt')}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

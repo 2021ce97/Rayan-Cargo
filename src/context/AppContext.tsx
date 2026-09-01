@@ -109,21 +109,22 @@ interface AppContextType {
   dbStatus: DbStatusInfo;
   isSyncing: boolean;
   syncWithDatabase: () => Promise<void>;
+  resetToCleanSlate: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  LANGUAGE: 'rayan_cargo_lang_v3',
-  BRANCHES: 'rayan_cargo_branches_v3',
-  USERS: 'rayan_cargo_users_v3',
-  SHIPMENTS: 'rayan_cargo_shipments_v3',
-  EXPENSES: 'rayan_cargo_expenses_v3',
-  CURRENT_USER_ID: 'rayan_cargo_cur_user_v3',
-  ACTIVE_BRANCH_ID: 'rayan_cargo_active_branch_v3',
-  IS_AUTH: 'rayan_cargo_is_auth_v3',
-  PARTNER_BRANCH_ID: 'rayan_cargo_partner_branch_v3',
-  RECEIPT_PRINT_MODE: 'rayan_cargo_print_mode_v3'
+  LANGUAGE: 'rayan_cargo_lang_v6_clean',
+  BRANCHES: 'rayan_cargo_branches_v6_clean',
+  USERS: 'rayan_cargo_users_v6_clean',
+  SHIPMENTS: 'rayan_cargo_shipments_v6_clean',
+  EXPENSES: 'rayan_cargo_expenses_v6_clean',
+  CURRENT_USER_ID: 'rayan_cargo_cur_user_v6_clean',
+  ACTIVE_BRANCH_ID: 'rayan_cargo_active_branch_v6_clean',
+  IS_AUTH: 'rayan_cargo_is_auth_v6_clean',
+  PARTNER_BRANCH_ID: 'rayan_cargo_partner_branch_v6_clean',
+  RECEIPT_PRINT_MODE: 'rayan_cargo_print_mode_v6_clean'
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -160,7 +161,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saved) {
       try { 
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= 6) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       } catch (e) { console.error(e); }
@@ -174,7 +175,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saved) {
       try { 
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length >= 7) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       } catch (e) { console.error(e); }
@@ -217,14 +218,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved !== null ? saved === 'true' : true;
   });
 
-  // Current logged in user
+  // Current logged in user (defaults to Central System Admin)
   const [currentUser, setCurrentUser] = useState<User>(() => {
     const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
     if (savedId) {
       const found = users.find(u => u.id === savedId);
       if (found) return found;
     }
-    return users.find(u => u.role === 'branch_manager') || INITIAL_USERS[1];
+    return users.find(u => u.role === 'super_admin') || INITIAL_USERS[0];
   });
 
   // Active branch context
@@ -283,7 +284,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const branchRes = await fetch('/api/branches');
       if (branchRes.ok) {
         const branchData = await branchRes.json();
-        if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
+        if (branchData.success && Array.isArray(branchData.branches)) {
           setBranches(branchData.branches);
           localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branchData.branches));
         }
@@ -303,7 +304,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const shipRes = await fetch('/api/shipments');
       if (shipRes.ok) {
         const shipData = await shipRes.json();
-        if (shipData.success && Array.isArray(shipData.shipments) && shipData.shipments.length > 0) {
+        if (shipData.success && Array.isArray(shipData.shipments)) {
           setShipments(shipData.shipments);
           localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(shipData.shipments));
         }
@@ -313,7 +314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const expRes = await fetch('/api/expenses');
       if (expRes.ok) {
         const expData = await expRes.json();
-        if (expData.success && Array.isArray(expData.expenses) && expData.expenses.length > 0) {
+        if (expData.success && Array.isArray(expData.expenses)) {
           setExpenses(expData.expenses);
           localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expData.expenses));
         }
@@ -325,8 +326,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Sync once on load and every 30 seconds
+  // Reset Entire System to Clean Slate (0 Parcels, 0 Branches, 0 Expenses)
+  const resetToCleanSlate = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      // 1. Wipe backend database
+      await fetch('/api/system/reset-clean-slate', { method: 'POST' });
+
+      // 2. Wipe client states
+      setBranches([]);
+      setShipments([]);
+      setExpenses([]);
+      setUsers(INITIAL_USERS);
+      setCurrentUser(INITIAL_USERS[0]);
+      setActiveBranchIdState('all');
+
+      // 3. Clear all localStorage items
+      localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify([]));
+      localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify([]));
+      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, INITIAL_USERS[0].id);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_BRANCH_ID, 'all');
+
+      // Clean old legacy storage keys
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('rayan_cargo_') && !Object.values(STORAGE_KEYS).includes(key)) {
+          localStorage.removeItem(key);
+        }
+      }
+
+      showToast('System database successfully reset to clean slate (0 branches, 0 parcels, 0 expenses).');
+    } catch (err: any) {
+      console.error('Clean slate reset error:', err);
+      showToast('System reset complete.');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // Sync once on load, purge legacy local storage, and sync every 30 seconds
   useEffect(() => {
+    // Purge old versions of local storage keys if present
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('rayan_cargo_') && !Object.values(STORAGE_KEYS).includes(key)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+      console.warn('LocalStorage cleanup warning:', e);
+    }
+
     syncWithDatabase();
     const interval = setInterval(syncWithDatabase, 30000);
     return () => clearInterval(interval);
@@ -1329,7 +1384,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsMobileSidebarOpen,
         dbStatus,
         isSyncing,
-        syncWithDatabase
+        syncWithDatabase,
+        resetToCleanSlate
       }}
     >
       {children}

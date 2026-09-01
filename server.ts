@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import { getDbPool, initDatabase } from './src/server/db.ts';
+import { getDbPool, initDatabase, wipeDatabaseClean } from './src/server/db.ts';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from './src/data/initialData.ts';
 
 dotenv.config();
@@ -657,6 +657,23 @@ async function startServer() {
           estimatedDelivery: r.estimated_delivery,
           actualDelivery: r.actual_delivery
         }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 8. System Clean Slate Reset (0 Parcels, 0 Branches, 0 Expenses)
+  app.post('/api/system/reset-clean-slate', async (req, res) => {
+    try {
+      await wipeDatabaseClean(INITIAL_USERS);
+      res.json({
+        success: true,
+        message: 'System database wiped clean. 0 parcels, 0 branches, 0 expenses.',
+        branches: [],
+        shipments: [],
+        expenses: [],
+        users: INITIAL_USERS
       });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });

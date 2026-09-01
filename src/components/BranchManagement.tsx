@@ -266,8 +266,30 @@ export const BranchManagement: React.FC = () => {
       </div>
 
       {/* Branch Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredBranches.map((branch) => {
+      {filteredBranches.length === 0 ? (
+        <div className="p-12 rounded-2xl border-2 border-dashed border-slate-200 bg-white text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
+            <Building2 className="w-7 h-7" />
+          </div>
+          <div className="space-y-1 max-w-md mx-auto">
+            <h3 className="text-base font-extrabold text-slate-900">No Branches Registered</h3>
+            <p className="text-xs text-slate-500">
+              The system database is currently clean with zero branches. As the Central System Administrator, click below to add your first operational branch and manager credentials.
+            </p>
+          </div>
+          {isSuperAdmin && (
+            <button
+              onClick={() => setIsAddBranchOpen(true)}
+              className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-600/20 inline-flex items-center gap-2 cursor-pointer transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('btn_add_branch') || 'Add First Branch'}</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredBranches.map((branch) => {
           const branchUser = users.find(u => u.branchId === branch.id);
           const localizedName = getLocalizedBranchName(branch);
 
@@ -382,6 +404,7 @@ export const BranchManagement: React.FC = () => {
           );
         })}
       </div>
+      )}
 
       {/* Admin Provision / Reset Credentials Modal */}
       {provisionBranch && (() => {

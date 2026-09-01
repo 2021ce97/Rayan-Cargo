@@ -40,7 +40,7 @@ export const ExpenseManager: React.FC = () => {
 
   // Form State
   const defaultBranch = currentUser.role === 'super_admin' ? (activeBranchId !== 'all' ? activeBranchId : branches[0]?.id) : currentUser.branchId;
-  const [formBranchId, setFormBranchId] = useState(defaultBranch || 'br_kabul');
+  const [formBranchId, setFormBranchId] = useState(defaultBranch || branches[0]?.id || '');
   const [category, setCategory] = useState<ExpenseCategory>('food_tea');
   const [amount, setAmount] = useState<number>(500);
   const [description, setDescription] = useState('');
@@ -50,6 +50,11 @@ export const ExpenseManager: React.FC = () => {
 
   const handleAddExpenseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const targetBranch = currentUser.role === 'super_admin' ? (formBranchId || branches[0]?.id) : currentUser.branchId;
+    if (!targetBranch) {
+      alert('Please create a branch first before adding operational expenses.');
+      return;
+    }
     if (!amount || amount <= 0) {
       alert('Please enter a valid expense amount.');
       return;
@@ -60,7 +65,7 @@ export const ExpenseManager: React.FC = () => {
     }
 
     const input: AddExpenseInput = {
-      branchId: currentUser.role === 'super_admin' ? formBranchId : currentUser.branchId,
+      branchId: targetBranch,
       category,
       amount: Number(amount),
       description: description.trim(),

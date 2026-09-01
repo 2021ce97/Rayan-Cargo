@@ -290,14 +290,16 @@ export const NewBookingModal: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleAutoFillSample}
-            type="button"
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 text-amber-600" />
-            <span>Auto-fill Sample Data</span>
-          </button>
+          {branches.length >= 2 && (
+            <button
+              onClick={handleAutoFillSample}
+              type="button"
+              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>Auto-fill Sample Data</span>
+            </button>
+          )}
           <button
             onClick={handleReset}
             type="button"
@@ -308,6 +310,34 @@ export const NewBookingModal: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Notice if less than 2 branches */}
+      {branches.length < 2 && (
+        <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-slate-800 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center font-bold shrink-0 shadow-md">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900">
+                Branch Setup Required Before Booking Consignments
+              </h3>
+              <p className="text-xs text-slate-600 mt-0.5">
+                The database currently has {branches.length} branch(es). Inter-branch cargo routing requires at least two operational branches (origin hub & destination hub).
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              onClick={() => setActiveView('branches')}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Building2 className="w-4 h-4 text-amber-400" />
+              <span>Go to Branch Management to Add Branches</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
