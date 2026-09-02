@@ -424,7 +424,7 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
       phone: '+93 79 900 1122',
       role: 'super_admin',
       branchId: 'all',
-      password: 'admin',
+      password: 'admin123',
       passwordChangedByBranch: false,
       status: 'active',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -439,7 +439,7 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
       phone: adminUser.phone,
       role: adminUser.role,
       branch_id: adminUser.branchId,
-      password: adminUser.password || 'admin',
+      password: adminUser.password || 'admin123',
       password_changed_by_branch: false,
       last_password_change: null,
       status: 'active',
@@ -475,7 +475,7 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
           adminUser.phone,
           adminUser.role,
           adminUser.branchId,
-          adminUser.password || 'admin'
+          adminUser.password || 'admin123'
         ]);
       } catch (e) {
         console.warn('Real PG wipe error:', e);

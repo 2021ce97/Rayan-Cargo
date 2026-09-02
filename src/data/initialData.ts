@@ -16,7 +16,7 @@ export const INITIAL_USERS: User[] = [
     phone: '+93 79 900 1122',
     role: 'super_admin',
     branchId: 'all',
-    password: 'admin',
+    password: 'admin123',
     passwordChangedByBranch: false,
     status: 'active',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',

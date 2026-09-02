@@ -650,7 +650,7 @@ export const LoginPage: React.FC = () => {
                 </button>
               </form>
 
-              <div className="pt-2 text-center">
+              <div className="pt-1 text-center">
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">
                   {t('staff_login_help') || 'Head Office Admin can create new branches and branch manager accounts in the Branches menu.'}
                 </p>
