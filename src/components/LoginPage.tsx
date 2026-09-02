@@ -90,7 +90,7 @@ export const LoginPage: React.FC = () => {
     if (!res.success) {
       if (res.errorReason === 'wrong_portal_customer') {
         setWrongPortalCustomerDetected(true);
-        setBranchLoginError(res.message || 'This is a Customer account. Please switch to the Customer Portal tab.');
+        setBranchLoginError(t('err_wrong_portal_customer') || res.message || 'This is a Customer account. Please switch to the Customer Portal tab.');
       } else {
         setBranchLoginError(res.message || t('err_invalid_credentials') || 'Incorrect email/phone or password. Please verify your credentials.');
       }
@@ -130,7 +130,7 @@ export const LoginPage: React.FC = () => {
       if (!res.success) {
         if (res.errorReason === 'wrong_portal_staff') {
           setWrongPortalStaffDetected(true);
-          setCustomerAuthError(res.message || 'This is an Administrator / Branch Staff account. Please switch to the Branch & Staff Terminal tab.');
+          setCustomerAuthError(t('err_wrong_portal_staff') || res.message || 'This is an Administrator / Branch Staff account. Please switch to the Branch & Staff Terminal tab.');
         } else {
           setCustomerAuthError(res.message || t('err_invalid_customer_creds') || 'Account not found or password incorrect. If you are new, please Sign Up.');
         }
@@ -467,7 +467,9 @@ export const LoginPage: React.FC = () => {
                 }`}>
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-                    <span className="leading-relaxed">{customerAuthError}</span>
+                    <span className="leading-relaxed">
+                      {wrongPortalStaffDetected ? (t('err_wrong_portal_staff') || customerAuthError) : customerAuthError}
+                    </span>
                   </div>
                   {wrongPortalStaffDetected && (
                     <button
@@ -641,7 +643,9 @@ export const LoginPage: React.FC = () => {
                 }`}>
                   <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-                    <span className="leading-relaxed">{branchLoginError}</span>
+                    <span className="leading-relaxed">
+                      {wrongPortalCustomerDetected ? (t('err_wrong_portal_customer') || branchLoginError) : branchLoginError}
+                    </span>
                   </div>
                   {wrongPortalCustomerDetected && (
                     <button

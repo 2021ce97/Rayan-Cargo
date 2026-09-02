@@ -303,6 +303,10 @@ export const translations: Record<Language, Record<string, string>> = {
     err_enter_email_phone: 'Please enter your registered email or phone number.',
     err_enter_password: 'Please enter your password.',
     err_invalid_credentials: 'Incorrect email/phone or password. Please verify your credentials.',
+    err_wrong_portal_staff: 'This is an Administrator / Branch Staff account. Please switch to the "Branch & Staff Terminal" tab to sign in.',
+    err_wrong_portal_customer: 'This is a Customer account. Please switch to the "Customer Portal" tab to sign in and view your pre-bookings.',
+    switch_to_staff_terminal: 'Go to Branch & Staff Terminal',
+    switch_to_customer_portal: 'Go to Customer Portal',
     
     // Customer Pre-booking View
     customer_portal_title: 'Customer Parcel Portal',
@@ -766,6 +770,10 @@ export const translations: Record<Language, Record<string, string>> = {
     err_enter_email_phone: 'لطفاً ایمیل یا شماره تماس خود را وارد نمایید.',
     err_enter_password: 'لطفاً رمز عبور را وارد کنید.',
     err_invalid_credentials: 'ایمیل/شماره تماس یا رمز عبور اشتباه است.',
+    err_wrong_portal_staff: 'این یک حساب مدیر کل / کارمند نمایندگی است. لطفاً برای ورود به بخش «ترمینال نمایندگی و کارمندان» مراجعه نمایید.',
+    err_wrong_portal_customer: 'این یک حساب مشتری است. لطفاً برای ورود و مشاهده پیش‌ثبت‌های خود به بخش «پورتال مشتریان» مراجعه نمایید.',
+    switch_to_staff_terminal: 'ورود از طریق ترمینال نمایندگی و کارمندان',
+    switch_to_customer_portal: 'ورود از طریق پورتال مشتریان',
     
     // Customer Pre-booking View
     customer_portal_title: 'پورتال اختصاصی مشتریان',
@@ -1229,6 +1237,10 @@ export const translations: Record<Language, Record<string, string>> = {
     err_enter_email_phone: 'مهرباني وکړئ خپل ایمیل یا ټلیفون شمېره ولیکئ.',
     err_enter_password: 'مهرباني وکړئ پټ نوم ولیکئ.',
     err_invalid_credentials: 'ایمیل، ټلیفون یا پټ نوم ناسم دی.',
+    err_wrong_portal_staff: 'دا د عمومي مدیر یا د څانګې د کارکوونکي حساب دی. مهرباني وکړئ د ننوتلو لپاره د "څانګې او کارکوونکو ترمینال" برخې ته لاړ شئ.',
+    err_wrong_portal_customer: 'دا د پیرودونکي حساب دی. مهرباني وکړئ د خپلو مخکینیو ثبتونو لیدلو لپاره د "پیرودونکي پورټل" برخې ته لاړ شئ.',
+    switch_to_staff_terminal: 'د څانګې او کارکوونکو ترمینال ته تلل',
+    switch_to_customer_portal: 'د پیرودونکي پورټل ته تلل',
     
     // Customer Pre-booking View
     customer_portal_title: 'د پیرودونکي ځانګړی پورټل',

@@ -477,7 +477,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return {
         success: false,
         errorReason: 'wrong_portal_staff',
-        message: 'This is an Administrator / Branch Staff account. Please switch to the "Branch & Staff Terminal" tab to sign in.',
+        message: t('err_wrong_portal_staff') || 'This is an Administrator / Branch Staff account. Please switch to the "Branch & Staff Terminal" tab to sign in.',
         user: matched
       };
     }
@@ -486,7 +486,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return {
         success: false,
         errorReason: 'wrong_portal_customer',
-        message: 'This is a Customer account. Please switch to the "Customer Portal" tab to sign in and view your pre-bookings.',
+        message: t('err_wrong_portal_customer') || 'This is a Customer account. Please switch to the "Customer Portal" tab to sign in and view your pre-bookings.',
         user: matched
       };
     }
