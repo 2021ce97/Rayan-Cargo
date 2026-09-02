@@ -75,6 +75,7 @@ export interface Branch {
   phone: string;
   email: string;
   managerName: string;
+  tazkiraNumber: string; // Required CNIC or Tazkira national identity number
   isHeadOffice: boolean;
   activeShipmentsCount?: number;
   totalParcelsDispatched?: number;

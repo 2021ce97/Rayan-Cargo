@@ -75,6 +75,7 @@ async function startServer() {
         phone: r.phone,
         email: r.email,
         managerName: r.manager_name,
+        tazkiraNumber: r.tazkira_number || r.tazkiraNumber || '',
         isHeadOffice: r.is_head_office,
         activeShipmentsCount: parseInt(r.active_shipments_count || '0', 10),
         totalParcelsDispatched: parseInt(r.total_parcels_dispatched || '0', 10),
@@ -99,20 +100,25 @@ async function startServer() {
       await db.query(
         `INSERT INTO branches (
           id, name, name_fa, name_ps, code, province, city, address, phone, email,
-          manager_name, is_head_office, active_shipments_count, total_parcels_dispatched,
+          manager_name, tazkira_number, is_head_office, active_shipments_count, total_parcels_dispatched,
           total_parcels_received, total_revenue_afn, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           name_fa = EXCLUDED.name_fa,
           name_ps = EXCLUDED.name_ps,
+          code = EXCLUDED.code,
+          province = EXCLUDED.province,
+          city = EXCLUDED.city,
           phone = EXCLUDED.phone,
           email = EXCLUDED.email,
           manager_name = EXCLUDED.manager_name,
+          tazkira_number = EXCLUDED.tazkira_number,
           address = EXCLUDED.address`,
         [
           branchId, b.name, b.nameFa || b.name, b.namePs || b.name, cleanCode,
           b.province, b.city, b.address, b.phone, b.email, b.managerName,
+          b.tazkiraNumber || b.tazkira_number || '',
           b.isHeadOffice || false, b.activeShipmentsCount || 0,
           b.totalParcelsDispatched || 0, b.totalParcelsReceived || 0,
           b.totalRevenueAfn || 0, now

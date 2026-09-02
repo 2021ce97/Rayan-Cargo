@@ -28,6 +28,7 @@ export interface AddBranchInput {
   phone: string;
   email: string;
   managerName: string;
+  tazkiraNumber: string; // Required CNIC or Tazkira national ID
   initialPassword?: string;
 }
 
@@ -94,6 +95,7 @@ interface AppContextType {
   changePassword: (newPassword: string) => boolean;
   resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string) => boolean;
   addBranch: (input: AddBranchInput) => { branch: Branch; user: User };
+  updateBranch: (branchId: string, updates: Partial<Branch>) => boolean;
   deleteBranch: (branchId: string) => boolean;
   addExpense: (input: AddExpenseInput) => BranchExpense;
   deleteExpense: (id: string) => boolean;
@@ -676,6 +678,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: input.phone.trim(),
       email: input.email.trim().toLowerCase(),
       managerName: input.managerName.trim(),
+      tazkiraNumber: input.tazkiraNumber?.trim() || '',
       isHeadOffice: false,
       activeShipmentsCount: 0,
       totalParcelsDispatched: 0,
@@ -739,6 +742,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }).catch(err => console.error('Error deleting branch from Supabase:', err));
 
     showToast(t('branch_deleted_successfully') || 'Branch terminal removed successfully from the network!');
+    return true;
+  };
+
+  // Super Admin updates provincial branch info including CNIC / Tazkira number
+  const updateBranch = (branchId: string, updates: Partial<Branch>): boolean => {
+    const existing = branches.find(b => b.id === branchId);
+    if (!existing) return false;
+
+    const updatedBranch: Branch = {
+      ...existing,
+      ...updates
+    };
+
+    setBranches(prev => prev.map(b => b.id === branchId ? updatedBranch : b));
+
+    // If manager name, email, or phone is updated, sync with branch manager user
+    if (updates.managerName || updates.email || updates.phone) {
+      setUsers(prev => prev.map(u => {
+        if (u.branchId === branchId) {
+          return {
+            ...u,
+            name: updates.managerName?.trim() || u.name,
+            email: updates.email?.trim().toLowerCase() || u.email,
+            phone: updates.phone?.trim() || u.phone
+          };
+        }
+        return u;
+      }));
+    }
+
+    // Persist to database
+    fetch('/api/branches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedBranch)
+    }).catch(err => console.error('Error updating branch in database:', err));
+
+    showToast(t('branch_updated_successfully') || 'Branch and CNIC/Tazkira credentials updated successfully!');
     return true;
   };
 
@@ -1461,6 +1502,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         changePassword,
         resetBranchUserCredentials,
         addBranch,
+        updateBranch,
         deleteBranch,
         addExpense,
         deleteExpense,

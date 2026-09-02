@@ -61,6 +61,7 @@ export const UserManagement: React.FC = () => {
     phone: '+93 7',
     email: '',
     managerName: '',
+    tazkiraNumber: '',
     initialPassword: ''
   });
   const [createdResult, setCreatedResult] = useState<{ branch: Branch; user: User } | null>(null);
@@ -116,6 +117,7 @@ export const UserManagement: React.FC = () => {
       phone: '+93 79 ',
       email: 'ghazni@rayancargo.af',
       managerName: '',
+      tazkiraNumber: '',
       initialPassword: 'ghazni123'
     });
     setCreatedResult(null);
@@ -139,7 +141,14 @@ export const UserManagement: React.FC = () => {
 
   const handleCreateBranchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newBranchData.name.trim() || !newBranchData.code.trim() || !newBranchData.email.trim()) return;
+    if (
+      !newBranchData.name.trim() || 
+      !newBranchData.code.trim() || 
+      !newBranchData.email.trim() ||
+      !newBranchData.tazkiraNumber.trim()
+    ) {
+      return;
+    }
 
     const res = addBranch({
       name: newBranchData.name,
@@ -152,6 +161,7 @@ export const UserManagement: React.FC = () => {
       phone: newBranchData.phone || '+93 79 000 0000',
       email: newBranchData.email,
       managerName: newBranchData.managerName || `${newBranchData.province} Branch Officer`,
+      tazkiraNumber: newBranchData.tazkiraNumber.trim(),
       initialPassword: newBranchData.initialPassword || `${newBranchData.code.toLowerCase().replace(/[^a-z0-9]/g, '')}123`
     });
 
@@ -492,6 +502,12 @@ export const UserManagement: React.FC = () => {
                     <span className="text-slate-400">{t('login_email_lbl')}: </span>
                     <span className="text-red-400 font-bold">{createdResult.user.email}</span>
                   </div>
+                  {createdResult.branch.tazkiraNumber && (
+                    <div>
+                      <span className="text-slate-400">{t('tazkira_cnic_label') || 'CNIC / Tazkira'}: </span>
+                      <span className="text-amber-400 font-bold">{createdResult.branch.tazkiraNumber}</span>
+                    </div>
+                  )}
                   <div>
                     <span className="text-slate-400">{t('branch_initial_pass_lbl')}: </span>
                     <span className="text-emerald-400 font-bold">{createdResult.user.password}</span>
@@ -656,7 +672,7 @@ export const UserManagement: React.FC = () => {
                     <span>{t('single_role_architecture')}</span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block text-slate-700 font-bold mb-1 text-[11px]">
                         {t('branch_manager_lbl')}
@@ -670,6 +686,23 @@ export const UserManagement: React.FC = () => {
                       />
                     </div>
 
+                    <div>
+                      <label className="block text-slate-700 font-bold mb-1 text-[11px] flex items-center justify-between">
+                        <span>{t('branch_tazkira_lbl') || 'Manager CNIC / Tazkira Number *'}</span>
+                        <span className="text-[10px] text-red-600 font-semibold">({t('required') || 'Required'})</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newBranchData.tazkiraNumber}
+                        onChange={(e) => setNewBranchData(prev => ({ ...prev, tazkiraNumber: e.target.value }))}
+                        placeholder={t('branch_tazkira_placeholder') || 'e.g. 1401-1234-56789 or 42101-1234567-1'}
+                        className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="block text-slate-700 font-bold mb-1 text-[11px]">
                         {t('branch_email_lbl')} *

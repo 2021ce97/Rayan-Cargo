@@ -56,8 +56,8 @@ const mockDb = {
     }
 
     if (upper.startsWith('INSERT INTO BRANCHES')) {
-      // Params: id, name, name_fa, name_ps, code, province, city, address, phone, email, manager_name, is_head_office, active_shipments_count, total_parcels_dispatched, total_parcels_received, total_revenue_afn, created_at
-      const [id, name, name_fa, name_ps, code, province, city, address, phone, email, manager_name, is_head_office, active_shipments_count, total_parcels_dispatched, total_parcels_received, total_revenue_afn, created_at] = params;
+      // Params: id, name, name_fa, name_ps, code, province, city, address, phone, email, manager_name, tazkira_number, is_head_office, active_shipments_count, total_parcels_dispatched, total_parcels_received, total_revenue_afn, created_at
+      const [id, name, name_fa, name_ps, code, province, city, address, phone, email, manager_name, tazkira_number, is_head_office, active_shipments_count, total_parcels_dispatched, total_parcels_received, total_revenue_afn, created_at] = params;
       const existing = memoryStore.branches.get(id) || {};
       const updated = {
         ...existing,
@@ -72,6 +72,7 @@ const mockDb = {
         phone,
         email,
         manager_name,
+        tazkira_number: tazkira_number || existing.tazkira_number || '',
         is_head_office: !!is_head_office,
         active_shipments_count: active_shipments_count || 0,
         total_parcels_dispatched: total_parcels_dispatched || 0,
