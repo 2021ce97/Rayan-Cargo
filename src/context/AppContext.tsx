@@ -11,7 +11,8 @@ import {
   AddExpenseInput,
   CustomerPreBookingInput,
   StatusPermissionResult,
-  BillingFinancials
+  BillingFinancials,
+  LoginResult
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
@@ -60,7 +61,7 @@ interface AppContextType {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   isAuthenticated: boolean;
-  login: (identifier: string, password?: string) => boolean;
+  login: (identifier: string, password?: string, portalScope?: 'customer' | 'staff' | 'any') => LoginResult;
   signupCustomer: (name: string, phone: string, email: string, password?: string) => boolean;
   loginWithUser: (user: User) => void;
   logout: () => void;
@@ -397,7 +398,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [syncWithDatabase]);
 
   // Login methods
-  const login = (identifier: string, password?: string): boolean => {
+  const login = (identifier: string, password?: string, portalScope: 'customer' | 'staff' | 'any' = 'any'): LoginResult => {
     const clean = identifier.trim().toLowerCase();
     const cleanPhone = identifier.replace(/[^0-9]/g, '');
     const cleanPass = password ? password.trim() : '';
@@ -420,7 +421,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch(e => console.warn('Background auth check notice:', e));
 
-    const matched = users.find(u => {
+    let matched = users.find(u => {
       const uEmail = (u.email || '').toLowerCase().trim();
       const uId = (u.id || '').toLowerCase().trim();
       const uName = (u.name || '').toLowerCase().trim();
@@ -435,64 +436,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return emailMatch || idMatch || nameMatch || phoneMatch || adminAliasMatch;
     });
 
-    if (matched) {
-      const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
-      
-      let passValid = false;
-      if (!cleanPass && !matched.password) {
-        passValid = true;
-      } else if (cleanPass) {
-        if (matched.password && matched.password === cleanPass) {
-          passValid = true;
-        } else if (isSuperAdmin && (cleanPass === 'admin123' || cleanPass === 'admin' || cleanPass === 'admin@123' || cleanPass === '123456')) {
-          passValid = true;
-        }
+    // Special fallback for Super Admin if user array was purged or desynchronized
+    if (!matched && (clean === 'admin' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
+      if (cleanPass === 'admin123' || cleanPass === 'admin' || cleanPass === 'admin@123' || cleanPass === '123456') {
+        matched = INITIAL_USERS[0];
       }
-
-      if (!passValid) {
-        return false;
-      }
-
-      setCurrentUser(matched);
-      setIsAuthenticated(true);
-      localStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, matched.id);
-      
-      if (matched.role === 'super_admin') {
-        setActiveBranchId('all');
-        setActiveView('dashboard');
-      } else if (matched.role === 'customer') {
-        setActiveBranchId('customer');
-        setActiveView('customer_portal');
-      } else {
-        setActiveBranchId(matched.branchId);
-        setActiveView('dashboard');
-      }
-      setActiveBranchPartnerId('all');
-      showToast(`Welcome, ${matched.name}!`);
-      return true;
     }
 
-    // Special fallback for Super Admin if user array was purged or desynchronized
-    if ((clean === 'admin' || clean === 'admin@rayancargo.af' || clean === 'superadmin') && 
-        (cleanPass === 'admin123' || cleanPass === 'admin' || cleanPass === 'admin@123' || cleanPass === '123456')) {
-      const adminUser = INITIAL_USERS[0];
-      setUsers(prev => {
-        const withoutAdmin = prev.filter(u => u.id !== 'usr_admin' && u.email !== 'admin@rayancargo.af');
-        return [adminUser, ...withoutAdmin];
-      });
-      setCurrentUser(adminUser);
-      setIsAuthenticated(true);
-      localStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, adminUser.id);
+    if (!matched) {
+      return {
+        success: false,
+        errorReason: 'not_found',
+        message: t('err_invalid_credentials') || 'Account not found. Please verify your credentials or sign up for a customer account.'
+      };
+    }
+
+    const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
+    
+    let passValid = false;
+    if (!cleanPass && !matched.password) {
+      passValid = true;
+    } else if (cleanPass) {
+      if (matched.password && matched.password === cleanPass) {
+        passValid = true;
+      } else if (isSuperAdmin && (cleanPass === 'admin123' || cleanPass === 'admin' || cleanPass === 'admin@123' || cleanPass === '123456')) {
+        passValid = true;
+      }
+    }
+
+    if (!passValid) {
+      return {
+        success: false,
+        errorReason: 'invalid_credentials',
+        message: t('err_invalid_credentials') || 'Incorrect password. Please verify your credentials.'
+      };
+    }
+
+    // Role Portal Separation & Guarding
+    if (portalScope === 'customer' && matched.role !== 'customer') {
+      return {
+        success: false,
+        errorReason: 'wrong_portal_staff',
+        message: 'This is an Administrator / Branch Staff account. Please switch to the "Branch & Staff Terminal" tab to sign in.',
+        user: matched
+      };
+    }
+
+    if (portalScope === 'staff' && matched.role === 'customer') {
+      return {
+        success: false,
+        errorReason: 'wrong_portal_customer',
+        message: 'This is a Customer account. Please switch to the "Customer Portal" tab to sign in and view your pre-bookings.',
+        user: matched
+      };
+    }
+
+    // Successful login: update session and role view
+    setCurrentUser(matched);
+    setIsAuthenticated(true);
+    localStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, matched.id);
+    
+    if (matched.role === 'super_admin') {
       setActiveBranchId('all');
       setActiveView('dashboard');
-      setActiveBranchPartnerId('all');
-      showToast(`Welcome, ${adminUser.name}!`);
-      return true;
+    } else if (matched.role === 'customer') {
+      setActiveBranchId('customer');
+      setActiveView('customer_portal');
+    } else {
+      setActiveBranchId(matched.branchId);
+      setActiveView('dashboard');
     }
-
-    return false;
+    setActiveBranchPartnerId('all');
+    showToast(`Welcome, ${matched.name}!`);
+    return { success: true, user: matched };
   };
 
   // Customer Signup
@@ -746,7 +763,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser]);
 
   // Views & Modals
-  const [activeView, setActiveView] = useState<ActiveViewType>('dashboard');
+  const [activeViewState, setActiveViewState] = useState<ActiveViewType>(() => {
+    return currentUser.role === 'customer' ? 'customer_portal' : 'dashboard';
+  });
+
+  const setActiveView = (view: ActiveViewType) => {
+    if (currentUser.role === 'customer' && view !== 'tracking' && view !== 'customer_portal') {
+      setActiveViewState('customer_portal');
+      return;
+    }
+    setActiveViewState(view);
+  };
+  const activeView = (currentUser.role === 'customer' && activeViewState !== 'tracking') ? 'customer_portal' : activeViewState;
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [selectedShipmentForReceipt, setSelectedShipmentForReceipt] = useState<Shipment | null>(null);
   const [trackedShipment, setTrackedShipment] = useState<Shipment | null>(null);

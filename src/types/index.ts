@@ -83,6 +83,13 @@ export interface Branch {
   createdAt: string;
 }
 
+export interface LoginResult {
+  success: boolean;
+  message?: string;
+  errorReason?: 'wrong_portal_staff' | 'wrong_portal_customer' | 'invalid_credentials' | 'not_found';
+  user?: User;
+}
+
 export interface User {
   id: string;
   name: string;

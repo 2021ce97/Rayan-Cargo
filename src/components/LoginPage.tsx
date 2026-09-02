@@ -42,6 +42,7 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [branchLoginError, setBranchLoginError] = useState('');
   const [isSubmittingBranch, setIsSubmittingBranch] = useState(false);
+  const [wrongPortalCustomerDetected, setWrongPortalCustomerDetected] = useState(false);
 
   // Customer Auth State
   const [customerAuthMode, setCustomerAuthMode] = useState<'signin' | 'signup'>('signin');
@@ -53,6 +54,7 @@ export const LoginPage: React.FC = () => {
   const [customerCity, setCustomerCity] = useState('Kabul');
   const [customerAuthError, setCustomerAuthError] = useState('');
   const [customerAuthSuccess, setCustomerAuthSuccess] = useState('');
+  const [wrongPortalStaffDetected, setWrongPortalStaffDetected] = useState(false);
 
   const handleTrackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +73,7 @@ export const LoginPage: React.FC = () => {
   const handleBranchLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setBranchLoginError('');
+    setWrongPortalCustomerDetected(false);
     if (!identifier.trim()) {
       setBranchLoginError(t('err_enter_email_phone') || 'Please enter your account email or phone number.');
       return;
@@ -81,11 +84,16 @@ export const LoginPage: React.FC = () => {
     }
 
     setIsSubmittingBranch(true);
-    const success = login(identifier.trim(), password);
+    const res = login(identifier.trim(), password, 'staff');
     setIsSubmittingBranch(false);
 
-    if (!success) {
-      setBranchLoginError(t('err_invalid_credentials') || 'Incorrect email/phone or password. Please verify your credentials.');
+    if (!res.success) {
+      if (res.errorReason === 'wrong_portal_customer') {
+        setWrongPortalCustomerDetected(true);
+        setBranchLoginError(res.message || 'This is a Customer account. Please switch to the Customer Portal tab.');
+      } else {
+        setBranchLoginError(res.message || t('err_invalid_credentials') || 'Incorrect email/phone or password. Please verify your credentials.');
+      }
     }
   };
 
@@ -93,6 +101,7 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setCustomerAuthError('');
     setCustomerAuthSuccess('');
+    setWrongPortalStaffDetected(false);
 
     if (customerAuthMode === 'signup') {
       if (!customerName.trim() || (!customerPhone.trim() && !customerEmail.trim()) || !customerPassword.trim()) {
@@ -103,8 +112,7 @@ export const LoginPage: React.FC = () => {
         customerName.trim(),
         customerPhone.trim() || '0700000000',
         customerEmail.trim() || `${customerPhone.trim()}@customer.rayancargo.af`,
-        customerPassword,
-        customerCity
+        customerPassword
       );
       if (!success) {
         setCustomerAuthError(t('err_reg_failed') || 'Customer registration failed. Please check your information and try again.');
@@ -118,9 +126,14 @@ export const LoginPage: React.FC = () => {
         setCustomerAuthError(t('err_enter_password') || 'Please enter your password.');
         return;
       }
-      const success = login(customerIdentifier.trim(), customerPassword);
-      if (!success) {
-        setCustomerAuthError(t('err_invalid_customer_creds') || 'Account not found or password incorrect. If you are new, please Sign Up.');
+      const res = login(customerIdentifier.trim(), customerPassword, 'customer');
+      if (!res.success) {
+        if (res.errorReason === 'wrong_portal_staff') {
+          setWrongPortalStaffDetected(true);
+          setCustomerAuthError(res.message || 'This is an Administrator / Branch Staff account. Please switch to the Branch & Staff Terminal tab.');
+        } else {
+          setCustomerAuthError(res.message || t('err_invalid_customer_creds') || 'Account not found or password incorrect. If you are new, please Sign Up.');
+        }
       }
     }
   };
@@ -447,9 +460,31 @@ export const LoginPage: React.FC = () => {
               </div>
 
               {customerAuthError && (
-                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{customerAuthError}</span>
+                <div className={`p-3.5 rounded-xl border text-xs flex flex-col gap-2 ${
+                  wrongPortalStaffDetected 
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200' 
+                    : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                    <span className="leading-relaxed">{customerAuthError}</span>
+                  </div>
+                  {wrongPortalStaffDetected && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIdentifier(customerIdentifier);
+                        setPassword(customerPassword);
+                        setActiveTab('branch');
+                        setWrongPortalStaffDetected(false);
+                        setCustomerAuthError('');
+                      }}
+                      className="self-start mt-1 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>{t('switch_to_staff_terminal') || 'Go to Branch & Staff Terminal'} →</span>
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -599,9 +634,32 @@ export const LoginPage: React.FC = () => {
               </div>
 
               {branchLoginError && (
-                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{branchLoginError}</span>
+                <div className={`p-3.5 rounded-xl border text-xs flex flex-col gap-2 ${
+                  wrongPortalCustomerDetected
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                    : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                    <span className="leading-relaxed">{branchLoginError}</span>
+                  </div>
+                  {wrongPortalCustomerDetected && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerIdentifier(identifier);
+                        setCustomerPassword(password);
+                        setCustomerAuthMode('signin');
+                        setActiveTab('customer');
+                        setWrongPortalCustomerDetected(false);
+                        setBranchLoginError('');
+                      }}
+                      className="self-start mt-1 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      <span>{t('switch_to_customer_portal') || 'Go to Customer Portal'} →</span>
+                    </button>
+                  )}
                 </div>
               )}
 
