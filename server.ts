@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import { getDbPool, initDatabase, wipeDatabaseClean, isUsingRealDatabase, getDatabaseInfo, SUPABASE_SCHEMA_SQL } from './src/server/db.ts';
+import { getDbPool, initDatabase, wipeDatabaseClean, isUsingRealDatabase, getDatabaseInfo, SUPABASE_SCHEMA_SQL, connectToSupabase } from './src/server/db.ts';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from './src/data/initialData.ts';
 
 dotenv.config();
@@ -693,24 +693,24 @@ async function startServer() {
         const idMatch = uId === clean;
         const nameMatch = clean.length >= 3 && uName === clean;
         const phoneMatch = cleanPhone.length >= 5 && uPhone.length >= 5 && (uPhone.includes(cleanPhone) || cleanPhone.includes(uPhone));
-        const adminAliasMatch = (clean === 'admin' || clean === 'admin@rayancargo.af' || clean === 'superadmin') && (r.role === 'super_admin' || r.id === 'usr_admin');
+        const adminAliasMatch = (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin') && (r.role === 'super_admin' || r.id === 'usr_admin');
 
         return emailMatch || idMatch || nameMatch || phoneMatch || adminAliasMatch;
       });
 
       // Special fallback if admin credentials matched
-      if (!matched && (clean === 'admin' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
-        if (cleanPass === 'admin123' || cleanPass === 'admin' || cleanPass === 'admin@123' || cleanPass === '123456') {
+      if (!matched && (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
+        if (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123') {
           return res.json({
             success: true,
             user: {
               id: 'usr_admin',
               name: 'Central System Admin',
-              email: 'admin@rayancargo.af',
+              email: 'armaghansadeq@cargo.af',
               phone: '+93 79 900 1122',
               role: 'super_admin',
               branchId: 'all',
-              password: 'admin123',
+              password: 'Armaghanrayan123',
               passwordChangedByBranch: false,
               status: 'active',
               createdAt: new Date().toISOString(),
@@ -725,14 +725,14 @@ async function startServer() {
       }
 
       // Check password
-      const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
+      const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'armaghansadeq@cargo.af' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
       let passValid = false;
       if (!cleanPass && !matched.password) {
         passValid = true;
       } else if (cleanPass) {
         if (matched.password && matched.password === cleanPass) {
           passValid = true;
-        } else if (isSuperAdmin && (cleanPass === 'admin123' || cleanPass === 'admin' || cleanPass === 'admin@123' || cleanPass === '123456')) {
+        } else if (isSuperAdmin && (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123')) {
           passValid = true;
         }
       }
@@ -758,6 +758,33 @@ async function startServer() {
       };
 
       res.json({ success: true, user: formatted });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Supabase Connect & Migrate endpoint
+  app.post('/api/database/connect', async (req, res) => {
+    try {
+      const { connectionString, password } = req.body;
+      let finalConn = (connectionString || '').trim();
+
+      if (!finalConn && password) {
+        const pass = encodeURIComponent(password.trim());
+        // Default Supabase project host provided by user
+        finalConn = `postgresql://postgres:${pass}@db.wgdmwuhkuanxykwqvpyp.supabase.co:5432/postgres`;
+      }
+
+      if (!finalConn) {
+        return res.status(400).json({ success: false, error: 'Database password or full connection string is required.' });
+      }
+
+      const result = await connectToSupabase(finalConn);
+      if (result.success) {
+        res.json({ success: true, message: result.message });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }

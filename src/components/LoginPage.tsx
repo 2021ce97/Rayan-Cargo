@@ -29,8 +29,8 @@ export const LoginPage: React.FC = () => {
     setSelectedShipmentForReceipt
   } = useApp();
 
-  // Active Tab
-  const [activeTab, setActiveTab] = useState<'track' | 'customer' | 'branch'>('track');
+  // Active Tab - default to branch/admin login
+  const [activeTab, setActiveTab] = useState<'track' | 'customer' | 'branch'>('branch');
 
   // Public Tracking State
   const [searchCn, setSearchCn] = useState('');
@@ -668,7 +668,7 @@ export const LoginPage: React.FC = () => {
                       required
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="admin@armaghansadeq.af or branch email/phone"
+                      placeholder="armaghansadeq@cargo.af or branch email/phone"
                       className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>

@@ -1,4 +1,6 @@
 import pg from 'pg';
+import fs from 'fs';
+import path from 'path';
 const { Pool } = pg;
 
 interface MockDbStore {
@@ -16,6 +18,49 @@ const memoryStore: MockDbStore = {
   branch_expenses: new Map(),
   branch_settlements: new Map()
 };
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_FILE = path.join(DATA_DIR, 'db_store.json');
+
+export function saveStoreToDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const data = {
+      branches: Array.from(memoryStore.branches.entries()),
+      users: Array.from(memoryStore.users.entries()),
+      shipments: Array.from(memoryStore.shipments.entries()),
+      branch_expenses: Array.from(memoryStore.branch_expenses.entries()),
+      branch_settlements: Array.from(memoryStore.branch_settlements.entries()),
+    };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('Could not save database store to disk:', err);
+  }
+}
+
+export function loadStoreFromDisk(): boolean {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.branches)) memoryStore.branches = new Map(data.branches);
+      if (Array.isArray(data.users)) memoryStore.users = new Map(data.users);
+      if (Array.isArray(data.shipments)) memoryStore.shipments = new Map(data.shipments);
+      if (Array.isArray(data.branch_expenses)) memoryStore.branch_expenses = new Map(data.branch_expenses);
+      if (Array.isArray(data.branch_settlements)) memoryStore.branch_settlements = new Map(data.branch_settlements);
+      console.log(`📦 Loaded ${memoryStore.branches.size} branches, ${memoryStore.shipments.size} shipments, ${memoryStore.users.size} users from persistent disk store.`);
+      return true;
+    }
+  } catch (err) {
+    console.warn('Could not load database store from disk:', err);
+  }
+  return false;
+}
+
+// Attempt immediate load from disk on module import
+loadStoreFromDisk();
 
 let useMock = !process.env.DATABASE_URL;
 let realPool: pg.Pool | null = null;
@@ -81,6 +126,7 @@ const mockDb = {
         created_at: created_at || existing.created_at || new Date().toISOString()
       };
       memoryStore.branches.set(id, updated);
+      saveStoreToDisk();
       return { rows: [updated], rowCount: 1 };
     }
 
@@ -92,6 +138,7 @@ const mockDb = {
         if (target) {
           target.total_parcels_dispatched = (target.total_parcels_dispatched || 0) + 1;
           target.total_revenue_afn = (parseFloat(target.total_revenue_afn || '0') + parseFloat(revenueAdd || '0'));
+          saveStoreToDisk();
         }
       }
       return { rows: [], rowCount: 1 };
@@ -101,6 +148,7 @@ const mockDb = {
       const [branchId] = params;
       if (branchId) {
         memoryStore.branches.delete(branchId);
+        saveStoreToDisk();
       }
       return { rows: [], rowCount: 1 };
     }
@@ -146,6 +194,7 @@ const mockDb = {
         last_login: last_login || 'Never'
       };
       memoryStore.users.set(id, updated);
+      saveStoreToDisk();
       return { rows: [updated], rowCount: 1 };
     }
 
@@ -156,6 +205,7 @@ const mockDb = {
         u.password = newPass;
         u.password_changed_by_branch = true;
         u.last_password_change = now;
+        saveStoreToDisk();
       }
       return { rows: [], rowCount: 1 };
     }
@@ -169,6 +219,7 @@ const mockDb = {
         if (name) u.name = name;
         if (phone) u.phone = phone;
         u.password_changed_by_branch = false;
+        saveStoreToDisk();
       }
       return { rows: [], rowCount: 1 };
     }
@@ -207,6 +258,7 @@ const mockDb = {
         created_at: new Date().toISOString()
       };
       memoryStore.shipments.set(id, record);
+      saveStoreToDisk();
       return { rows: [record], rowCount: 1 };
     }
 
@@ -219,6 +271,7 @@ const mockDb = {
         if (actualDelivery) s.actual_delivery = actualDelivery;
         if (financials) s.financials = typeof financials === 'string' ? JSON.parse(financials) : financials;
         if (currentBranchId) s.current_branch_id = currentBranchId;
+        saveStoreToDisk();
       }
       return { rows: [], rowCount: 1 };
     }
@@ -270,12 +323,14 @@ const mockDb = {
         created_at: created_at || new Date().toISOString()
       };
       memoryStore.branch_expenses.set(id, record);
+      saveStoreToDisk();
       return { rows: [record], rowCount: 1 };
     }
 
     if (upper.startsWith('DELETE FROM BRANCH_EXPENSES')) {
       const [id] = params;
       memoryStore.branch_expenses.delete(id);
+      saveStoreToDisk();
       return { rows: [], rowCount: 1 };
     }
 
@@ -307,6 +362,7 @@ const mockDb = {
         created_at: created_at || new Date().toISOString()
       };
       memoryStore.branch_settlements.set(id, record);
+      saveStoreToDisk();
       return { rows: [record], rowCount: 1 };
     }
 
@@ -641,11 +697,133 @@ export function getDatabaseInfo() {
 
   return {
     isRealDb: !useMock && !!realPool,
-    type: !useMock && !!realPool ? 'Supabase PostgreSQL Cloud Pooler' : 'In-Memory High-Speed Fallback Engine',
-    connectionUrl: maskedUrl || 'Not configured (In-Memory active)',
+    type: !useMock && !!realPool ? 'Supabase PostgreSQL Cloud Pooler' : 'Persistent High-Speed Multi-Device Database Engine',
+    connectionUrl: maskedUrl || 'Not configured (Persistent Local Store active)',
     region: 'AWS South Asia / Direct Cloud',
+    stats: {
+      branches: memoryStore.branches.size,
+      users: memoryStore.users.size,
+      shipments: memoryStore.shipments.size,
+      expenses: memoryStore.branch_expenses.size,
+      settlements: memoryStore.branch_settlements.size,
+    },
     tables: ['branches', 'users', 'shipments', 'branch_expenses', 'branch_settlements']
   };
+}
+
+export async function connectToSupabase(connectionString: string): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    console.log('🔄 Connecting to Supabase PostgreSQL...');
+    const testPool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 8000
+    });
+
+    // 1. Verify connection
+    await testPool.query('SELECT NOW()');
+
+    // 2. Run migrations
+    await migrateSupabaseSchema(testPool);
+
+    // 3. Populate / sync records from current store to Supabase tables
+    for (const b of memoryStore.branches.values()) {
+      await testPool.query(`
+        INSERT INTO branches (
+          id, name, name_fa, name_ps, code, province, city, address, phone, email,
+          manager_name, tazkira_number, is_head_office, active_shipments_count,
+          total_parcels_dispatched, total_parcels_received, total_revenue_afn, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        ON CONFLICT (id) DO NOTHING;
+      `, [
+        b.id, b.name, b.name_fa || b.name, b.name_ps || b.name, b.code, b.province, b.city,
+        b.address, b.phone, b.email, b.manager_name, b.tazkira_number || '', b.is_head_office || false,
+        b.active_shipments_count || 0, b.total_parcels_dispatched || 0, b.total_parcels_received || 0,
+        b.total_revenue_afn || 0, b.created_at || new Date().toISOString()
+      ]);
+    }
+
+    for (const u of memoryStore.users.values()) {
+      await testPool.query(`
+        INSERT INTO users (
+          id, name, email, phone, role, branch_id, password,
+          password_changed_by_branch, last_password_change, status, avatar, created_at, last_login
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ON CONFLICT (id) DO UPDATE SET
+          email = EXCLUDED.email,
+          password = EXCLUDED.password,
+          role = EXCLUDED.role,
+          branch_id = EXCLUDED.branch_id;
+      `, [
+        u.id, u.name, u.email, u.phone, u.role, u.branch_id, u.password,
+        u.password_changed_by_branch || false, u.last_password_change || null,
+        u.status || 'active', u.avatar || null, u.created_at || new Date().toISOString(), u.last_login || 'Just now'
+      ]);
+    }
+
+    for (const s of memoryStore.shipments.values()) {
+      await testPool.query(`
+        INSERT INTO shipments (
+          id, cn_number, origin_branch_id, destination_branch_id, current_branch_id,
+          sender, receiver, package_info, financials, status, status_history,
+          booked_at, estimated_delivery, actual_delivery, pod_signature, receiver_id_proof,
+          delivery_notes, booked_by_user_id, booked_by_user_name, dest_branch_commission,
+          remittance_status, origin_remittance_due, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        ON CONFLICT (id) DO NOTHING;
+      `, [
+        s.id, s.cn_number, s.origin_branch_id, s.destination_branch_id, s.current_branch_id,
+        JSON.stringify(s.sender), JSON.stringify(s.receiver), JSON.stringify(s.package_info),
+        JSON.stringify(s.financials), s.status, JSON.stringify(s.status_history || []),
+        s.booked_at, s.estimated_delivery, s.actual_delivery, s.pod_signature, s.receiver_id_proof,
+        s.delivery_notes, s.booked_by_user_id, s.booked_by_user_name, s.dest_branch_commission || 100,
+        s.remittance_status || 'unsettled', s.origin_remittance_due || 0, s.created_at || new Date().toISOString()
+      ]);
+    }
+
+    for (const e of memoryStore.branch_expenses.values()) {
+      await testPool.query(`
+        INSERT INTO branch_expenses (
+          id, branch_id, category, amount, currency, description, receipt_url,
+          recorded_by_user_id, recorded_by_user_name, recorded_at, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (id) DO NOTHING;
+      `, [
+        e.id, e.branch_id, e.category, e.amount, e.currency || 'AFN', e.description,
+        e.receipt_url, e.recorded_by_user_id, e.recorded_by_user_name, e.recorded_at, e.created_at
+      ]);
+    }
+
+    if (realPool) {
+      try { await realPool.end(); } catch {}
+    }
+    realPool = testPool;
+    useMock = false;
+    process.env.DATABASE_URL = connectionString;
+
+    // Persist to .env
+    try {
+      const envPath = path.join(process.cwd(), '.env');
+      let envContent = '';
+      if (fs.existsSync(envPath)) {
+        envContent = fs.readFileSync(envPath, 'utf-8');
+      }
+      if (envContent.includes('DATABASE_URL=')) {
+        envContent = envContent.replace(/DATABASE_URL=.*/g, `DATABASE_URL="${connectionString}"`);
+      } else {
+        envContent += `\nDATABASE_URL="${connectionString}"\n`;
+      }
+      fs.writeFileSync(envPath, envContent.trim() + '\n', 'utf-8');
+    } catch (e) {
+      console.warn('Could not write to .env:', e);
+    }
+
+    console.log('✅ Supabase PostgreSQL connected and synchronized successfully!');
+    return { success: true, message: 'Connected to Supabase PostgreSQL successfully! All tables migrated and data synchronized.' };
+  } catch (err: any) {
+    console.error('Supabase connection failed:', err.message);
+    return { success: false, error: err.message || 'Failed to connect to Supabase PostgreSQL.' };
+  }
 }
 
 export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ success: boolean; error?: any }> {
@@ -656,14 +834,14 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
     memoryStore.branch_expenses.clear();
     memoryStore.branch_settlements.clear();
 
-    const adminUser = initialUsers[0] || {
+    const adminUser = {
       id: 'usr_admin',
       name: 'Central System Admin',
-      email: 'admin@rayancargo.af',
+      email: 'armaghansadeq@cargo.af',
       phone: '+93 79 900 1122',
       role: 'super_admin',
       branchId: 'all',
-      password: 'admin123',
+      password: 'Armaghanrayan123',
       passwordChangedByBranch: false,
       status: 'active',
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -678,7 +856,7 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
       phone: adminUser.phone,
       role: adminUser.role,
       branch_id: adminUser.branchId,
-      password: adminUser.password || 'admin123',
+      password: adminUser.password,
       password_changed_by_branch: false,
       last_password_change: null,
       status: 'active',
@@ -686,6 +864,8 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
       created_at: adminUser.createdAt || new Date().toISOString(),
       last_login: adminUser.lastLogin || 'Just now'
     });
+
+    saveStoreToDisk();
 
     if (!useMock && realPool) {
       try {
@@ -715,7 +895,7 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
           adminUser.phone,
           adminUser.role,
           adminUser.branchId,
-          adminUser.password || 'admin123'
+          adminUser.password
         ]);
       } catch (e) {
         console.warn('Real PG wipe error:', e);
@@ -729,17 +909,84 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
 }
 
 export async function initDatabase(
-  initialBranches: any[], 
-  initialUsers: any[], 
-  initialShipments: any[]
+  initialBranches: any[] = [], 
+  initialUsers: any[] = [], 
+  initialShipments: any[] = []
 ): Promise<{ success: boolean; error?: any }> {
   try {
-    console.log('🔄 Initializing Clean Slate Database Store...');
-    await wipeDatabaseClean(initialUsers);
-    console.log('✅ Rayan Cargo Clean Slate Database Initialized (0 Parcels, 0 Branches, 0 Expenses, 1 Super Admin)!');
+    console.log('🔄 Initializing Database Store...');
+    // 1. Load any persisted store from disk
+    loadStoreFromDisk();
+
+    const adminUser = {
+      id: 'usr_admin',
+      name: 'Central System Admin',
+      email: 'armaghansadeq@cargo.af',
+      phone: '+93 79 900 1122',
+      role: 'super_admin',
+      branchId: 'all',
+      password: 'Armaghanrayan123',
+      passwordChangedByBranch: false,
+      status: 'active',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      createdAt: new Date().toISOString(),
+      lastLogin: 'Just now'
+    };
+
+    // Ensure the central super admin account always exists with the required credentials
+    const existingAdmin = memoryStore.users.get(adminUser.id);
+    memoryStore.users.set(adminUser.id, {
+      id: adminUser.id,
+      name: adminUser.name,
+      email: adminUser.email,
+      phone: adminUser.phone,
+      role: adminUser.role,
+      branch_id: adminUser.branchId,
+      password: adminUser.password,
+      password_changed_by_branch: false,
+      last_password_change: null,
+      status: 'active',
+      avatar: adminUser.avatar,
+      created_at: existingAdmin?.created_at || adminUser.createdAt,
+      last_login: existingAdmin?.last_login || 'Just now'
+    });
+
+    saveStoreToDisk();
+
+    // 2. If Supabase / PostgreSQL database is configured, migrate and sync
+    if (process.env.DATABASE_URL) {
+      try {
+        const pool = getDbPool();
+        if (pool && !useMock) {
+          await migrateSupabaseSchema(pool);
+          await pool.query(`
+            INSERT INTO users (
+              id, name, email, phone, role, branch_id, password, password_changed_by_branch, status, created_at, last_login
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, 'active', NOW(), 'Just now')
+            ON CONFLICT (id) DO UPDATE SET
+              email = EXCLUDED.email,
+              password = EXCLUDED.password,
+              role = 'super_admin',
+              branch_id = 'all';
+          `, [
+            adminUser.id,
+            adminUser.name,
+            adminUser.email,
+            adminUser.phone,
+            adminUser.role,
+            adminUser.branchId,
+            adminUser.password
+          ]);
+        }
+      } catch (e) {
+        console.warn('PostgreSQL database init warning:', e);
+      }
+    }
+
+    console.log(`✅ Rayan Cargo Database Store Active (${memoryStore.branches.size} branches, ${memoryStore.shipments.size} shipments, ${memoryStore.users.size} users preserved).`);
     return { success: true };
   } catch (error) {
-    console.warn('Database initialization warning (in-memory active):', error);
+    console.warn('Database initialization notice:', error);
     return { success: true };
   }
 }

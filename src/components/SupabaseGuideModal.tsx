@@ -24,7 +24,7 @@ interface SupabaseGuideModalProps {
 }
 
 export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, onClose }) => {
-  const { t, language } = useApp();
+  const { t, language, syncWithDatabase } = useApp();
   const isRtl = language === 'fa' || language === 'ps';
   const [dbInfo, setDbInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -32,6 +32,13 @@ export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, 
   const [copiedEnv, setCopiedEnv] = useState(false);
   const [sqlSchema, setSqlSchema] = useState('');
   const [activeTab, setActiveTab] = useState<'status' | 'guide' | 'sql'>('status');
+
+  // Interactive connection states
+  const [dbPassword, setDbPassword] = useState('');
+  const [connectionString, setConnectionString] = useState('');
+  const [showAdvancedUri, setShowAdvancedUri] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectResult, setConnectResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const fetchDbInfo = async () => {
     setLoading(true);
@@ -50,6 +57,44 @@ export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, 
       console.warn('Failed to fetch db info:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConnectSupabase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsConnecting(true);
+    setConnectResult(null);
+
+    try {
+      const payload: any = {};
+      if (connectionString.trim()) {
+        payload.connectionString = connectionString.trim();
+      } else if (dbPassword.trim()) {
+        payload.password = dbPassword.trim();
+      } else {
+        setConnectResult({ success: false, message: 'Please enter your Supabase database password.' });
+        setIsConnecting(false);
+        return;
+      }
+
+      const res = await fetch('/api/database/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setConnectResult({ success: true, message: data.message || 'Connected to Supabase PostgreSQL successfully!' });
+        await fetchDbInfo();
+        await syncWithDatabase();
+      } else {
+        setConnectResult({ success: false, message: data.error || 'Failed to connect. Please verify your password.' });
+      }
+    } catch (err: any) {
+      setConnectResult({ success: false, message: err.message || 'Network error while contacting database endpoint.' });
+    } finally {
+      setIsConnecting(false);
     }
   };
 
@@ -220,6 +265,111 @@ export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, 
                     <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">settlements</div>
                   </div>
                 </div>
+              </div>
+
+              {/* Interactive Live Supabase Connection Setup */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-lg space-y-4 border border-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-black text-sm text-white flex items-center gap-2">
+                      <Database className="w-4 h-4 text-emerald-400" />
+                      <span>Connect Your Supabase Project (wgdmwuhkuanxykwqvpyp)</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Enter your Supabase database password to instantly connect, run migrations, and synchronize all data to your tables.
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                    Live Connector
+                  </span>
+                </div>
+
+                <form onSubmit={handleConnectSupabase} className="space-y-3">
+                  {!showAdvancedUri ? (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                        Supabase Database Password (Postgres user):
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={dbPassword}
+                          onChange={(e) => setDbPassword(e.target.value)}
+                          placeholder="Enter your Supabase database password..."
+                          className="flex-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isConnecting || !dbPassword.trim()}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isConnecting ? 'animate-spin' : ''}`} />
+                          <span>{isConnecting ? 'Connecting...' : 'Connect Supabase'}</span>
+                        </button>
+                      </div>
+                      <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400">
+                        <span>Target: db.wgdmwuhkuanxykwqvpyp.supabase.co</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvancedUri(true)}
+                          className="text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          Custom URI / Connection String →
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-slate-300">
+                          Full Direct Connection String (PostgreSQL URI):
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setShowAdvancedUri(false)}
+                          className="text-[10px] text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          ← Simple Password Mode
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={connectionString}
+                          onChange={(e) => setConnectionString(e.target.value)}
+                          placeholder="postgresql://postgres:[PASSWORD]@db.wgdmwuhkuanxykwqvpyp.supabase.co:5432/postgres"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isConnecting || !connectionString.trim()}
+                          className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/30"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isConnecting ? 'animate-spin' : ''}`} />
+                          <span>{isConnecting ? 'Validating & Migrating Tables...' : 'Test & Connect Custom URI'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {connectResult && (
+                    <div className={`p-3 rounded-xl text-xs flex items-start gap-2 ${
+                      connectResult.success
+                        ? 'bg-emerald-950/80 border border-emerald-600 text-emerald-200'
+                        : 'bg-red-950/80 border border-red-700 text-red-200'
+                    }`}>
+                      {connectResult.success ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <div className="font-bold">{connectResult.success ? 'Success!' : 'Connection Warning'}</div>
+                        <div className="text-[11px] mt-0.5 opacity-90">{connectResult.message}</div>
+                      </div>
+                    </div>
+                  )}
+                </form>
               </div>
 
               {/* Security & Multi-Tenant Highlights */}

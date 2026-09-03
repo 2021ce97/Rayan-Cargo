@@ -224,10 +224,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.RECEIPT_PRINT_MODE, mode);
   };
 
-  // Authentication state
+  // Authentication state - always requires login on fresh link / new tab
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.IS_AUTH);
-    return saved !== null ? saved === 'true' : true;
+    try {
+      localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
+      const sessionAuth = sessionStorage.getItem(STORAGE_KEYS.IS_AUTH);
+      return sessionAuth === 'true';
+    } catch {
+      return false;
+    }
   });
 
   // Current logged in user (defaults to Central System Admin)
@@ -395,8 +400,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     syncWithDatabase();
-    const interval = setInterval(syncWithDatabase, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(syncWithDatabase, 5000);
+
+    const handleFocus = () => {
+      syncWithDatabase();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        syncWithDatabase();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [syncWithDatabase]);
 
   // Login methods
@@ -433,14 +455,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const idMatch = uId === clean;
       const nameMatch = clean.length >= 3 && uName === clean;
       const phoneMatch = cleanPhone.length >= 5 && uPhone.length >= 5 && (uPhone.includes(cleanPhone) || cleanPhone.includes(uPhone));
-      const adminAliasMatch = (clean === 'admin' || clean === 'admin@rayancargo.af' || clean === 'superadmin') && (u.role === 'super_admin' || u.id === 'usr_admin');
+      const adminAliasMatch = (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin') && (u.role === 'super_admin' || u.id === 'usr_admin');
 
       return emailMatch || idMatch || nameMatch || phoneMatch || adminAliasMatch;
     });
 
     // Special fallback for Super Admin if user array was purged or desynchronized
-    if (!matched && (clean === 'admin' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
-      if (cleanPass === 'admin123' || cleanPass === 'admin' || cleanPass === 'admin@123' || cleanPass === '123456') {
+    if (!matched && (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
+      if (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123') {
         matched = INITIAL_USERS[0];
       }
     }
@@ -453,7 +475,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
+    const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'armaghansadeq@cargo.af' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
     
     let passValid = false;
     if (!cleanPass && !matched.password) {
@@ -461,7 +483,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else if (cleanPass) {
       if (matched.password && matched.password === cleanPass) {
         passValid = true;
-      } else if (isSuperAdmin && (cleanPass === 'admin123' || cleanPass === 'admin' || cleanPass === 'admin@123' || cleanPass === '123456')) {
+      } else if (isSuperAdmin && (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123')) {
         passValid = true;
       }
     }
@@ -496,7 +518,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Successful login: update session and role view
     setCurrentUser(matched);
     setIsAuthenticated(true);
-    localStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
+    sessionStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
+    localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, matched.id);
     
     if (matched.role === 'super_admin') {
@@ -537,7 +560,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUsers(prev => [...prev, newUser]);
     setCurrentUser(newUser);
     setIsAuthenticated(true);
-    localStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
+    sessionStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
+    localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
     setActiveBranchId('customer');
     setActiveView('customer_portal');
@@ -555,7 +579,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loginWithUser = (user: User) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
-    localStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
+    sessionStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
+    localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, user.id);
     
     if (user.role === 'super_admin') {
@@ -569,7 +594,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setIsAuthenticated(false);
-    localStorage.setItem(STORAGE_KEYS.IS_AUTH, 'false');
+    sessionStorage.removeItem(STORAGE_KEYS.IS_AUTH);
+    localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
     showToast(t('logged_out_notice') || 'Signed out successfully.');
   };
 

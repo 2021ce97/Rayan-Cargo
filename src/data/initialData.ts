@@ -12,11 +12,11 @@ export const INITIAL_USERS: User[] = [
   {
     id: 'usr_admin',
     name: 'Central System Admin',
-    email: 'admin@rayancargo.af',
+    email: 'armaghansadeq@cargo.af',
     phone: '+93 79 900 1122',
     role: 'super_admin',
     branchId: 'all',
-    password: 'admin123',
+    password: 'Armaghanrayan123',
     passwordChangedByBranch: false,
     status: 'active',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
