@@ -14,13 +14,13 @@
         "phone": "+93 79 123 4567",
         "email": "kabul@rayancargo.af",
         "manager_name": "Ahmad Rashid Safi",
-        "tazkira_number": "1401-209-1102",
         "is_head_office": true,
         "active_shipments_count": 142,
-        "total_parcels_dispatched": 1890,
+        "total_parcels_dispatched": 1891,
         "total_parcels_received": 1420,
-        "total_revenue_afn": 984500,
-        "created_at": "2026-08-31T08:00:00.000Z"
+        "total_revenue_afn": "984880.00",
+        "created_at": "2025-01-10T08:00:00.000Z",
+        "tazkira_number": null
       }
     ],
     [
@@ -37,13 +37,13 @@
         "phone": "+93 77 441 2233",
         "email": "kandahar@rayancargo.af",
         "manager_name": "Noor Ahmad Popalzai",
-        "tazkira_number": "1401-441-3321",
         "is_head_office": false,
         "active_shipments_count": 52,
         "total_parcels_dispatched": 640,
         "total_parcels_received": 620,
-        "total_revenue_afn": 340000,
-        "created_at": "2026-08-31T08:00:00.000Z"
+        "total_revenue_afn": "340000.00",
+        "created_at": "2025-02-10T11:15:00.000Z",
+        "tazkira_number": null
       }
     ],
     [
@@ -60,13 +60,13 @@
         "phone": "+93 72 990 1234",
         "email": "kunduz@rayancargo.af",
         "manager_name": "Sardar Wali Qadiri",
-        "tazkira_number": "1401-990-4412",
         "is_head_office": false,
         "active_shipments_count": 28,
         "total_parcels_dispatched": 310,
         "total_parcels_received": 290,
-        "total_revenue_afn": 175000,
-        "created_at": "2026-08-31T08:00:00.000Z"
+        "total_revenue_afn": "175000.00",
+        "created_at": "2025-03-01T12:00:00.000Z",
+        "tazkira_number": null
       }
     ],
     [
@@ -83,13 +83,13 @@
         "phone": "+93 78 554 9900",
         "email": "mazar@rayancargo.af",
         "manager_name": "Zabihullah Balkhi",
-        "tazkira_number": "1401-554-7788",
         "is_head_office": false,
         "active_shipments_count": 64,
         "total_parcels_dispatched": 780,
         "total_parcels_received": 710,
-        "total_revenue_afn": 395000,
-        "created_at": "2026-08-31T08:00:00.000Z"
+        "total_revenue_afn": "395000.00",
+        "created_at": "2025-02-01T10:00:00.000Z",
+        "tazkira_number": null
       }
     ]
   ],
@@ -185,7 +185,767 @@
       }
     ]
   ],
-  "shipments": [],
+  "shipments": [
+    [
+      "shp_894201",
+      {
+        "id": "shp_894201",
+        "cn_number": "RYN-894201",
+        "origin_branch_id": "br_kbl_01",
+        "destination_branch_id": "br_hrt_02",
+        "current_branch_id": "br_hrt_02",
+        "sender": {
+          "city": "Kabul",
+          "name": "Haji Abdul Qayoom Trading Co.",
+          "email": "qayoom.textiles@gmail.com",
+          "phone": "+93 79 555 1234",
+          "address": "Shop 42, Mandawi Wholesale Market",
+          "province": "Kabul",
+          "nationalId": "TK-98234120"
+        },
+        "receiver": {
+          "city": "Herat City",
+          "name": "Farid Silk & Clothing House",
+          "phone": "+93 70 223 8899",
+          "address": "Chawk Golha, Silk Market Plaza #12",
+          "altPhone": "+93 78 119 4433",
+          "province": "Herat"
+        },
+        "package_info": {
+          "pieces": 4,
+          "category": "garments",
+          "weightKg": 28.5,
+          "isFragile": false,
+          "dimensions": "60x45x35 cm",
+          "description": "4 Large cartons of high-grade silk garments & raw fabric",
+          "serviceType": "express",
+          "declaredValueAfn": 120000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 350,
+          "amountDue": 0,
+          "amountPaid": 1732.5,
+          "serviceFee": 150,
+          "weightCost": 1425,
+          "totalAmount": 1732.5,
+          "discountType": "percentage",
+          "discountValue": 10,
+          "paymentMethod": "cash",
+          "paymentStatus": "paid",
+          "discountAmount": 192.5,
+          "discountReason": "Regular Merchant Discount 10%"
+        },
+        "status": "received_at_branch",
+        "status_history": [
+          {
+            "id": "st_1",
+            "note": "Consignment booked by Kabul Branch Officer.",
+            "status": "booked",
+            "location": "Kabul Central Hub",
+            "timestamp": "2026-08-25T09:15:00Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Kabul Central Hub"
+          },
+          {
+            "id": "st_2",
+            "note": "Dispatched by Kabul Branch in express container truck #AF-9921",
+            "status": "in_transit",
+            "location": "Kabul-Kandahar-Herat Highway Transit",
+            "timestamp": "2026-08-25T14:30:00Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Logistics Fleet Vehicle #849",
+            "driverName": "Ramin Noori",
+            "driverPhone": "+93 79 881 2233"
+          },
+          {
+            "id": "st_3",
+            "note": "Safely arrived at Herat warehouse. Received and acknowledged by Herat Manager.",
+            "status": "received_at_branch",
+            "location": "Herat Western Terminal Hub",
+            "timestamp": "2026-08-26T18:45:00Z",
+            "updatedBy": "Mohammad Farhad Nazari",
+            "branchName": "Herat Western Terminal"
+          }
+        ],
+        "booked_at": "2026-08-25T09:15:00.000Z",
+        "estimated_delivery": "2026-08-27T12:00:00.000Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": null,
+        "booked_by_user_id": "usr_kbl_01",
+        "booked_by_user_name": "Ahmad Rashid Safi",
+        "dest_branch_commission": "100",
+        "remittance_status": "unsettled",
+        "origin_remittance_due": "0",
+        "created_at": "2026-08-31T07:25:50.175Z"
+      }
+    ],
+    [
+      "shp_894203",
+      {
+        "id": "shp_894203",
+        "cn_number": "RYN-894203",
+        "origin_branch_id": "br_kbl_01",
+        "destination_branch_id": "br_kdh_04",
+        "current_branch_id": "br_kdh_04",
+        "sender": {
+          "city": "Kabul",
+          "name": "Kabul Medical & Pharma Distribution",
+          "phone": "+93 79 111 4455",
+          "address": "Dehbouri Medical Market, Block C",
+          "province": "Kabul",
+          "nationalId": "TK-55099823"
+        },
+        "receiver": {
+          "city": "Kandahar",
+          "name": "Mirwais Hospital Pharmacy Supply",
+          "phone": "+93 77 999 1100",
+          "address": "Near Mirwais Regional Hospital, Aino Mina",
+          "province": "Kandahar"
+        },
+        "package_info": {
+          "pieces": 6,
+          "category": "general",
+          "weightKg": 45,
+          "isFragile": true,
+          "dimensions": "50x50x40 cm",
+          "description": "Sterile surgical kits, diagnostic strips, and medical monitors",
+          "serviceType": "same_day_air",
+          "declaredValueAfn": 280000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 800,
+          "amountDue": 0,
+          "amountPaid": 3612.5,
+          "serviceFee": 300,
+          "weightCost": 3150,
+          "totalAmount": 3612.5,
+          "discountType": "percentage",
+          "discountValue": 15,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "paid",
+          "discountAmount": 637.5,
+          "discountReason": "Ministry & Hospital Emergency Cargo rate"
+        },
+        "status": "delivered",
+        "status_history": [
+          {
+            "id": "st_8",
+            "note": "Air cargo booked at Kabul Hub.",
+            "status": "booked",
+            "location": "Kabul Central Hub",
+            "timestamp": "2026-08-26T07:00:00Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Kabul Central Hub"
+          },
+          {
+            "id": "st_9",
+            "note": "Dispatched by Kabul Hub via Express Cargo Flight.",
+            "status": "in_transit",
+            "location": "Kabul Airport to Kandahar Terminal",
+            "timestamp": "2026-08-26T10:30:00Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Ariana Cargo Flight FG-201"
+          },
+          {
+            "id": "st_10",
+            "note": "Received at Kandahar terminal by Kandahar Manager.",
+            "status": "received_at_branch",
+            "location": "Kandahar Southern Terminal",
+            "timestamp": "2026-08-26T12:45:00Z",
+            "updatedBy": "Noor Ahmad Popalzai",
+            "branchName": "Kandahar Southern Terminal"
+          },
+          {
+            "id": "st_11",
+            "note": "Successfully handed over to Dr. Abdullah. Verified and confirmed by Kandahar Branch.",
+            "status": "delivered",
+            "location": "Mirwais Hospital Pharmacy Supply, Aino Mina",
+            "timestamp": "2026-08-26T15:30:00Z",
+            "updatedBy": "Noor Ahmad Popalzai",
+            "branchName": "Kandahar Southern Terminal"
+          }
+        ],
+        "booked_at": "2026-08-26T07:00:00.000Z",
+        "estimated_delivery": "2026-08-26T16:00:00.000Z",
+        "actual_delivery": "2026-08-26T15:30:00.000Z",
+        "pod_signature": "Dr. Abdullah Popal",
+        "receiver_id_proof": "NID-772819",
+        "delivery_notes": null,
+        "booked_by_user_id": "usr_kbl_01",
+        "booked_by_user_name": "Ahmad Rashid Safi",
+        "dest_branch_commission": "100",
+        "remittance_status": "unsettled",
+        "origin_remittance_due": "0",
+        "created_at": "2026-08-31T07:25:50.373Z"
+      }
+    ],
+    [
+      "shp_894202",
+      {
+        "id": "shp_894202",
+        "cn_number": "RYN-894202",
+        "origin_branch_id": "br_mzr_03",
+        "destination_branch_id": "br_kbl_01",
+        "current_branch_id": "br_kbl_01",
+        "sender": {
+          "city": "Mazar-i-Sharif",
+          "name": "Balkh Electronic Supplies",
+          "phone": "+93 78 889 9001",
+          "address": "Shahre Naw Electronic Plaza, Mazar",
+          "province": "Balkh",
+          "nationalId": "TK-11029384"
+        },
+        "receiver": {
+          "city": "Kabul",
+          "name": "Techno Kabul Solutions Ltd.",
+          "phone": "+93 79 334 5566",
+          "address": "Torabaz Khan St., Shar-e-Naw, Shop #18",
+          "province": "Kabul"
+        },
+        "package_info": {
+          "pieces": 2,
+          "category": "electronics",
+          "weightKg": 12,
+          "isFragile": true,
+          "dimensions": "40x30x25 cm",
+          "description": "Laptops, networking routers, and high-frequency transceivers",
+          "serviceType": "express",
+          "declaredValueAfn": 350000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 400,
+          "amountDue": 0,
+          "amountPaid": 1270,
+          "serviceFee": 250,
+          "weightCost": 720,
+          "totalAmount": 1270,
+          "discountType": "fixed",
+          "discountValue": 100,
+          "paymentMethod": "bank_transfer",
+          "paymentStatus": "paid",
+          "discountAmount": 100,
+          "discountReason": "VIP Corporate Partner"
+        },
+        "status": "returned",
+        "status_history": [
+          {
+            "id": "st_4",
+            "note": "Package registered with Fragile Seal by Mazar Hub.",
+            "status": "booked",
+            "location": "Mazar-i-Sharif Northern Hub",
+            "timestamp": "2026-08-26T08:30:00Z",
+            "updatedBy": "Zabihullah Balkhi",
+            "branchName": "Mazar-i-Sharif Northern Hub"
+          },
+          {
+            "id": "st_5",
+            "note": "Dispatched from Mazar towards Kabul via Salang Highway.",
+            "status": "in_transit",
+            "location": "Salang Pass Transit Route",
+            "timestamp": "2026-08-26T13:00:00Z",
+            "updatedBy": "Zabihullah Balkhi",
+            "branchName": "Cargo Convoy #03"
+          },
+          {
+            "id": "st_6",
+            "note": "Safely received at Kabul Central Hub and sorted for delivery.",
+            "status": "received_at_branch",
+            "location": "Kabul Central Hub",
+            "timestamp": "2026-08-27T04:20:00Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Kabul Central Hub"
+          },
+          {
+            "id": "st_7",
+            "note": "Kabul Branch courier is en route to receiver address.",
+            "status": "out_for_delivery",
+            "location": "Shar-e-Naw Kabul Zone",
+            "timestamp": "2026-08-27T08:00:00Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Kabul Central Hub",
+            "driverName": "Jawid Samim",
+            "driverPhone": "+93 77 112 3344"
+          },
+          {
+            "id": "st_1788269309212",
+            "note": "Status updated to returned by Eng. Sayed Mustafa Hashemi (Branch)",
+            "status": "returned",
+            "location": "Transit Station",
+            "timestamp": "2026-09-01T13:28:29.212Z",
+            "updatedBy": "Eng. Sayed Mustafa Hashemi (Branch)",
+            "branchName": "Kabul Central Hub"
+          }
+        ],
+        "booked_at": "2026-08-26T08:30:00.000Z",
+        "estimated_delivery": "2026-08-27T14:00:00.000Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": null,
+        "booked_by_user_id": "usr_mzr_03",
+        "booked_by_user_name": "Zabihullah Balkhi",
+        "dest_branch_commission": "100",
+        "remittance_status": "unsettled",
+        "origin_remittance_due": "0",
+        "created_at": "2026-08-31T07:25:50.277Z"
+      }
+    ],
+    [
+      "shp_894205",
+      {
+        "id": "shp_894205",
+        "cn_number": "RYN-894205",
+        "origin_branch_id": "br_hrt_02",
+        "destination_branch_id": "br_mzr_03",
+        "current_branch_id": "br_hrt_02",
+        "sender": {
+          "city": "Herat",
+          "name": "Herat Saffron Guild Export Group",
+          "phone": "+93 70 551 2233",
+          "address": "Darwaza Qandahar, Saffron Complex #3",
+          "province": "Herat",
+          "nationalId": "TK-77890123"
+        },
+        "receiver": {
+          "city": "Mazar-i-Sharif",
+          "name": "Aryana Northern Spices Trading",
+          "phone": "+93 78 332 1199",
+          "address": "Mazar Grand Bazaar, Alley 4",
+          "province": "Balkh"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "fragile",
+          "weightKg": 4.5,
+          "isFragile": true,
+          "dimensions": "30x20x15 cm",
+          "description": "Super Negin Grade A Pure Saffron vacuum-sealed gift tins",
+          "serviceType": "express",
+          "declaredValueAfn": 450000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 400,
+          "amountDue": 0,
+          "amountPaid": 1000,
+          "serviceFee": 300,
+          "weightCost": 350,
+          "totalAmount": 1000,
+          "discountType": "fixed",
+          "discountValue": 50,
+          "paymentMethod": "cash",
+          "paymentStatus": "paid",
+          "discountAmount": 50,
+          "discountReason": "Valued Customer Promo"
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_14",
+            "note": "Sealed with tamper-evident high security tags by Herat Branch.",
+            "status": "booked",
+            "location": "Herat Western Terminal",
+            "timestamp": "2026-08-27T07:30:00Z",
+            "updatedBy": "Mohammad Farhad Nazari",
+            "branchName": "Herat Western Terminal"
+          }
+        ],
+        "booked_at": "2026-08-27T07:30:00.000Z",
+        "estimated_delivery": "2026-08-29T14:00:00.000Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": null,
+        "booked_by_user_id": "usr_hrt_02",
+        "booked_by_user_name": "Mohammad Farhad Nazari",
+        "dest_branch_commission": "100",
+        "remittance_status": "unsettled",
+        "origin_remittance_due": "0",
+        "created_at": "2026-08-31T07:25:50.575Z"
+      }
+    ],
+    [
+      "shp_894206",
+      {
+        "id": "shp_894206",
+        "cn_number": "RYN-894206",
+        "origin_branch_id": "br_kbl_01",
+        "destination_branch_id": "br_knd_06",
+        "current_branch_id": "br_kbl_01",
+        "sender": {
+          "city": "Kabul",
+          "name": "Afghan Legal & Notary Documentation Center",
+          "phone": "+93 79 778 9900",
+          "address": "Supreme Court Rd, Shar-e-Naw",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "Kunduz",
+          "name": "Kunduz Land Authority & Municipal Office",
+          "phone": "+93 72 334 5566",
+          "address": "Main Governor Street, Government Complex",
+          "province": "Kunduz"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "document",
+          "weightKg": 0.8,
+          "isFragile": false,
+          "dimensions": "35x25x2 cm",
+          "description": "Official verified deed documents & court case legal files",
+          "serviceType": "express",
+          "declaredValueAfn": 15000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 250,
+          "amountDue": 0,
+          "amountPaid": 350,
+          "serviceFee": 50,
+          "weightCost": 50,
+          "totalAmount": 350,
+          "discountType": "percentage",
+          "discountValue": 0,
+          "paymentMethod": "cash",
+          "paymentStatus": "paid",
+          "discountAmount": 0
+        },
+        "status": "in_transit",
+        "status_history": [
+          {
+            "id": "st_15",
+            "note": "Express Document sealed envelope registered by Kabul Hub.",
+            "status": "booked",
+            "location": "Kabul Central Hub",
+            "timestamp": "2026-08-27T05:00:00Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Kabul Central Hub"
+          },
+          {
+            "id": "st_16",
+            "note": "Dispatched from Kabul towards Kunduz North Gateway.",
+            "status": "in_transit",
+            "location": "Pol-e Khomri Transit Station",
+            "timestamp": "2026-08-27T08:15:00Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Northern Route Express Courier"
+          }
+        ],
+        "booked_at": "2026-08-27T05:00:00.000Z",
+        "estimated_delivery": "2026-08-27T16:00:00.000Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": null,
+        "booked_by_user_id": "usr_kbl_01",
+        "booked_by_user_name": "Ahmad Rashid Safi",
+        "dest_branch_commission": "100",
+        "remittance_status": "unsettled",
+        "origin_remittance_due": "0",
+        "created_at": "2026-08-31T07:25:50.673Z"
+      }
+    ],
+    [
+      "shp_894207",
+      {
+        "id": "shp_894207",
+        "cn_number": "RYN-894207",
+        "origin_branch_id": "br_knd_06",
+        "destination_branch_id": "br_hrt_02",
+        "current_branch_id": "br_knd_06",
+        "sender": {
+          "city": "Kunduz",
+          "name": "Kunduz Rice & Agricultural Grain Traders",
+          "phone": "+93 72 665 4433",
+          "address": "Bandar-e-Kabul Agro Complex",
+          "province": "Kunduz"
+        },
+        "receiver": {
+          "city": "Herat City",
+          "name": "Herat Royal Foodstuff Importers",
+          "phone": "+93 70 443 1122",
+          "address": "Darwaza Malik, Commercial Market #6",
+          "province": "Herat"
+        },
+        "package_info": {
+          "pieces": 2,
+          "category": "foodstuff",
+          "weightKg": 50,
+          "isFragile": false,
+          "dimensions": "80x50x30 cm",
+          "description": "2 Sacks of Kunduz Long-Grain Super Kernal Rice (A-Grade)",
+          "serviceType": "standard",
+          "declaredValueAfn": 48000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 400,
+          "amountDue": 0,
+          "amountPaid": 1900,
+          "serviceFee": 100,
+          "weightCost": 1500,
+          "totalAmount": 1900,
+          "discountType": "percentage",
+          "discountValue": 5,
+          "paymentMethod": "cash",
+          "paymentStatus": "paid",
+          "discountAmount": 100
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_17",
+            "note": "Consignment booked by Kunduz Branch. Awaiting dispatch to Herat.",
+            "status": "booked",
+            "location": "Kunduz North Gateway",
+            "timestamp": "2026-08-27T08:00:00Z",
+            "updatedBy": "Sardar Wali Qadiri",
+            "branchName": "Kunduz North Gateway"
+          }
+        ],
+        "booked_at": "2026-08-27T08:00:00.000Z",
+        "estimated_delivery": "2026-08-30T16:00:00.000Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": null,
+        "booked_by_user_id": "usr_knd_06",
+        "booked_by_user_name": "Sardar Wali Qadiri",
+        "dest_branch_commission": "100",
+        "remittance_status": "unsettled",
+        "origin_remittance_due": "0",
+        "created_at": "2026-08-31T07:25:50.773Z"
+      }
+    ],
+    [
+      "shp_894204",
+      {
+        "id": "shp_894204",
+        "cn_number": "RYN-894204",
+        "origin_branch_id": "br_jlb_05",
+        "destination_branch_id": "br_kbl_01",
+        "current_branch_id": "br_kbl_01",
+        "sender": {
+          "city": "Jalalabad",
+          "name": "Nangarhar Citrus & Dry Fruit Exporters",
+          "phone": "+93 74 990 0011",
+          "address": "Behsud Bridge Agro Market, Shop 7",
+          "province": "Nangarhar",
+          "nationalId": "TK-44392019"
+        },
+        "receiver": {
+          "city": "Kabul",
+          "name": "Pamir Gourmet & Nuts Market",
+          "phone": "+93 78 777 6622",
+          "address": "Kote Sangi, Main Commercial Avenue #8",
+          "province": "Kabul"
+        },
+        "package_info": {
+          "pieces": 10,
+          "category": "foodstuff",
+          "weightKg": 85,
+          "isFragile": false,
+          "dimensions": "40x40x40 cm x 10",
+          "description": "10 Sealed Wooden Crates of premium Jalalabad oranges & dried mulberries",
+          "serviceType": "standard",
+          "declaredValueAfn": 195000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 500,
+          "amountDue": 3150,
+          "amountPaid": 0,
+          "serviceFee": 100,
+          "weightCost": 2550,
+          "totalAmount": 3150,
+          "discountType": "percentage",
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 0,
+          "discountReason": ""
+        },
+        "status": "out_for_delivery",
+        "status_history": [
+          {
+            "id": "st_12",
+            "note": "Booked with Cash-on-Delivery (To-Pay) mode by Jalalabad Branch.",
+            "status": "booked",
+            "location": "Jalalabad Eastern Hub",
+            "timestamp": "2026-08-27T06:15:00Z",
+            "updatedBy": "Hikmatullah Shinwari",
+            "branchName": "Jalalabad Eastern Hub"
+          },
+          {
+            "id": "st_13",
+            "note": "Dispatched by Jalalabad Branch towards Kabul sorting terminal.",
+            "status": "in_transit",
+            "location": "Mahipar Highway Pass en route to Kabul",
+            "timestamp": "2026-08-27T07:45:00Z",
+            "updatedBy": "Hikmatullah Shinwari",
+            "branchName": "East Fleet Truck #29",
+            "driverName": "Wali Khan",
+            "driverPhone": "+93 74 123 9988"
+          },
+          {
+            "id": "st_1788247294137",
+            "note": "Status updated to out for_delivery by Ahmad Rashid Safi (Kabul Central Hub)",
+            "status": "out_for_delivery",
+            "location": "Kabul Central Hub (Kabul City (Shahr-e-Naw))",
+            "timestamp": "2026-09-01T07:21:34.136Z",
+            "updatedBy": "Ahmad Rashid Safi (Kabul Central Hub)",
+            "branchName": "Kabul Central Hub"
+          }
+        ],
+        "booked_at": "2026-08-27T06:15:00.000Z",
+        "estimated_delivery": "2026-08-27T17:00:00.000Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": null,
+        "booked_by_user_id": "usr_jlb_05",
+        "booked_by_user_name": "Hikmatullah Shinwari",
+        "dest_branch_commission": "100",
+        "remittance_status": "unsettled",
+        "origin_remittance_due": "0",
+        "created_at": "2026-08-31T07:25:50.473Z"
+      }
+    ],
+    [
+      "shp_pr_749589",
+      {
+        "id": "shp_pr_749589",
+        "cn_number": "RYN-PR-749589",
+        "origin_branch_id": "br_kbl_01",
+        "destination_branch_id": "br_jlb_05",
+        "current_branch_id": "br_jlb_05",
+        "sender": {
+          "city": "Kabul",
+          "name": "Khoshal",
+          "email": "0798787876@customer.rayancargo.af",
+          "phone": "0798787876",
+          "address": "Khairkhwa market, Kabul",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "Jalalabad City",
+          "name": "Sadam",
+          "phone": "0787965342",
+          "address": "Chaprhar, Ningarhar",
+          "province": "Nangarhar"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "document",
+          "weightKg": 0.5,
+          "isFragile": false,
+          "description": "document - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 250,
+          "amountDue": 365,
+          "amountPaid": 0,
+          "serviceFee": 0,
+          "weightCost": 15,
+          "totalAmount": 365,
+          "discountType": "fixed",
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "unpaid",
+          "discountAmount": 0,
+          "transportationFee": 100,
+          "originRemittanceDue": 265,
+          "destBranchCommission": 100
+        },
+        "status": "delivered",
+        "status_history": [
+          {
+            "id": "st_1788178717029",
+            "note": "Pre-booking created by customer Khoshal. Awaiting physical drop-off at Kabul Central Hub.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-08-31T12:18:37.029Z",
+            "updatedBy": "Customer Khoshal",
+            "branchName": "Kabul Central Hub"
+          },
+          {
+            "id": "st_1788180126582",
+            "note": "Customer pre-booking verified, weighed & officially accepted by Ahmad Rashid Safi. Verified weight: 0.5 kg, 1 pcs. Freight: 365 AFN (UNPAID).",
+            "status": "booked",
+            "location": "Kabul Central Hub (Kabul City (Shahr-e-Naw))",
+            "timestamp": "2026-08-31T12:42:06.582Z",
+            "updatedBy": "Ahmad Rashid Safi",
+            "branchName": "Kabul Central Hub"
+          },
+          {
+            "id": "st_1788247369344",
+            "note": "Status updated to in transit by Ahmad Rashid Safi (Kabul Central Hub)",
+            "status": "in_transit",
+            "location": "Kabul Central Hub (Kabul City (Shahr-e-Naw))",
+            "timestamp": "2026-09-01T07:22:49.344Z",
+            "updatedBy": "Ahmad Rashid Safi (Kabul Central Hub)",
+            "branchName": "Kabul Central Hub"
+          },
+          {
+            "id": "st_1788247379484",
+            "note": "Status updated to in transit by Ahmad Rashid Safi (Kabul Central Hub)",
+            "status": "in_transit",
+            "location": "Kabul Central Hub (Kabul City (Shahr-e-Naw))",
+            "timestamp": "2026-09-01T07:22:59.484Z",
+            "updatedBy": "Ahmad Rashid Safi (Kabul Central Hub)",
+            "branchName": "Kabul Central Hub"
+          },
+          {
+            "id": "st_1788247409710",
+            "note": "Status updated to out for_delivery by Hikmatullah Shinwari (Jalalabad Eastern Hub)",
+            "status": "out_for_delivery",
+            "location": "Jalalabad Eastern Hub (Jalalabad City)",
+            "timestamp": "2026-09-01T07:23:29.710Z",
+            "updatedBy": "Hikmatullah Shinwari (Jalalabad Eastern Hub)",
+            "branchName": "Jalalabad Eastern Hub"
+          },
+          {
+            "id": "st_1788257366799",
+            "note": "Status updated to delivered by Central System Admin (Branch)",
+            "status": "delivered",
+            "location": "Transit Station",
+            "timestamp": "2026-09-01T10:09:26.799Z",
+            "updatedBy": "Central System Admin (Branch)",
+            "branchName": "Cargo Hub"
+          },
+          {
+            "id": "st_1788438732328",
+            "note": "Status updated to delivered by Eng. Sayed Mustafa Hashemi (Branch)",
+            "status": "delivered",
+            "location": "Transit Station",
+            "timestamp": "2026-09-03T12:32:12.328Z",
+            "updatedBy": "Eng. Sayed Mustafa Hashemi (Branch)",
+            "branchName": "Cargo Hub"
+          }
+        ],
+        "booked_at": "2026-08-31T12:18:37.029Z",
+        "estimated_delivery": "2026-09-03T12:18:37.029Z",
+        "actual_delivery": "2026-09-03T12:32:12.328Z",
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": null,
+        "booked_by_user_id": "usr_cust_554179",
+        "booked_by_user_name": "Khoshal",
+        "dest_branch_commission": "100",
+        "remittance_status": "unsettled",
+        "origin_remittance_due": "0",
+        "created_at": "2026-08-31T12:18:37.442Z"
+      }
+    ]
+  ],
   "branch_expenses": [],
   "branch_settlements": []
 }

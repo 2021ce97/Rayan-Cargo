@@ -701,6 +701,30 @@ export const LoginPage: React.FC = () => {
                 </button>
               </form>
 
+              {/* Quick Admin Access Helper */}
+              <div className="p-3 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    Central Admin (Super Admin):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('armaghansadeq@cargo.af');
+                      setPassword('Armaghanrayan123');
+                      login('armaghansadeq@cargo.af', 'Armaghanrayan123', 'branch_staff');
+                    }}
+                    className="px-2.5 py-1 text-[11px] font-bold bg-red-600 hover:bg-red-700 text-white rounded-md shadow-xs transition-colors cursor-pointer"
+                  >
+                    1-Click Sign In
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <span className="select-all">armaghansadeq@cargo.af</span>
+                  <span className="select-all text-slate-400">Armaghanrayan123</span>
+                </div>
+              </div>
+
               <div className="pt-1 text-center">
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">
                   {t('staff_login_help') || 'Head Office Admin can create new branches and branch manager accounts in the Branches menu.'}

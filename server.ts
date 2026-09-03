@@ -7,6 +7,10 @@ import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from './src/data/i
 
 dotenv.config();
 
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'postgresql://postgres.wgdmwuhkuanxykwqvpyp:Cargorayan%40123@aws-0-ap-south-1.pooler.supabase.com:5432/postgres';
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;

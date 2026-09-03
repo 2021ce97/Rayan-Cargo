@@ -62,7 +62,14 @@ export function loadStoreFromDisk(): boolean {
 // Attempt immediate load from disk on module import
 loadStoreFromDisk();
 
-let useMock = !process.env.DATABASE_URL;
+// Supabase AWS South Asia (ap-south-1) Pooler Connection URL
+export const DEFAULT_SUPABASE_DATABASE_URL = 'postgresql://postgres.wgdmwuhkuanxykwqvpyp:Cargorayan%40123@aws-0-ap-south-1.pooler.supabase.com:5432/postgres';
+
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = DEFAULT_SUPABASE_DATABASE_URL;
+}
+
+let useMock = false;
 let realPool: pg.Pool | null = null;
 
 // In-Memory Database Handler for instant offline/container support
@@ -1031,30 +1038,31 @@ export async function initDatabase(
       last_login: existingAdmin?.last_login || 'Just now'
     });
 
-    // Populate initial branches if memoryStore has no branches
-    if (memoryStore.branches.size === 0 && Array.isArray(initialBranches) && initialBranches.length > 0) {
-      console.log(`🌱 Seeding ${initialBranches.length} initial branches into database store...`);
+    // Ensure all 4 initial branches always exist in memoryStore
+    if (Array.isArray(initialBranches) && initialBranches.length > 0) {
       for (const b of initialBranches) {
-        memoryStore.branches.set(b.id, {
-          id: b.id,
-          name: b.name,
-          name_fa: b.nameFa || b.name,
-          name_ps: b.namePs || b.name,
-          code: b.code,
-          province: b.province,
-          city: b.city,
-          address: b.address,
-          phone: b.phone,
-          email: b.email,
-          manager_name: b.managerName,
-          tazkira_number: b.tazkiraNumber || '',
-          is_head_office: b.isHeadOffice || false,
-          active_shipments_count: b.activeShipmentsCount || 0,
-          total_parcels_dispatched: b.totalParcelsDispatched || 0,
-          total_parcels_received: b.totalParcelsReceived || 0,
-          total_revenue_afn: b.totalRevenueAfn || 0,
-          created_at: b.createdAt || new Date().toISOString()
-        });
+        if (!memoryStore.branches.has(b.id)) {
+          memoryStore.branches.set(b.id, {
+            id: b.id,
+            name: b.name,
+            name_fa: b.nameFa || b.name,
+            name_ps: b.namePs || b.name,
+            code: b.code,
+            province: b.province,
+            city: b.city,
+            address: b.address,
+            phone: b.phone,
+            email: b.email,
+            manager_name: b.managerName,
+            tazkira_number: b.tazkiraNumber || '',
+            is_head_office: b.isHeadOffice || false,
+            active_shipments_count: b.activeShipmentsCount || 0,
+            total_parcels_dispatched: b.totalParcelsDispatched || 0,
+            total_parcels_received: b.totalParcelsReceived || 0,
+            total_revenue_afn: b.totalRevenueAfn || 0,
+            created_at: b.createdAt || new Date().toISOString()
+          });
+        }
       }
     }
 
@@ -1107,6 +1115,64 @@ export async function initDatabase(
             adminUser.branchId,
             adminUser.password
           ]);
+
+          // Ensure all 4 initial branches are in Supabase table
+          for (const b of initialBranches) {
+            await pool.query(`
+              INSERT INTO branches (
+                id, name, name_fa, name_ps, code, province, city, address, phone, email,
+                manager_name, tazkira_number, is_head_office, active_shipments_count,
+                total_parcels_dispatched, total_parcels_received, total_revenue_afn, created_at
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+              ON CONFLICT (id) DO NOTHING;
+            `, [
+              b.id, b.name, b.nameFa || b.name, b.namePs || b.name, b.code, b.province, b.city,
+              b.address, b.phone, b.email, b.managerName, b.tazkiraNumber || '', b.isHeadOffice || false,
+              b.activeShipmentsCount || 0, b.totalParcelsDispatched || 0, b.totalParcelsReceived || 0,
+              b.totalRevenueAfn || 0, b.createdAt || new Date().toISOString()
+            ]);
+          }
+
+          // Pull all branches from Supabase into memoryStore
+          const { rows: sbBranches } = await pool.query('SELECT * FROM branches');
+          for (const sbb of sbBranches) {
+            memoryStore.branches.set(sbb.id, sbb);
+          }
+
+          // Pull all shipments from Supabase into memoryStore
+          const { rows: sbShipments } = await pool.query('SELECT * FROM shipments');
+          for (const s of sbShipments) {
+            const parseJson = (val: any) => {
+              try { return typeof val === 'string' ? JSON.parse(val) : val; } catch { return val; }
+            };
+            memoryStore.shipments.set(s.id, {
+              id: s.id,
+              cn_number: s.cn_number,
+              origin_branch_id: s.origin_branch_id,
+              destination_branch_id: s.destination_branch_id,
+              current_branch_id: s.current_branch_id,
+              sender: parseJson(s.sender),
+              receiver: parseJson(s.receiver),
+              package_info: parseJson(s.package_info),
+              financials: parseJson(s.financials),
+              status: s.status,
+              status_history: parseJson(s.status_history || '[]'),
+              booked_at: s.booked_at,
+              estimated_delivery: s.estimated_delivery,
+              actual_delivery: s.actual_delivery,
+              pod_signature: s.pod_signature,
+              receiver_id_proof: s.receiver_id_proof,
+              delivery_notes: s.delivery_notes,
+              booked_by_user_id: s.booked_by_user_id,
+              booked_by_user_name: s.booked_by_user_name,
+              dest_branch_commission: s.dest_branch_commission,
+              remittance_status: s.remittance_status,
+              origin_remittance_due: s.origin_remittance_due,
+              created_at: s.created_at
+            });
+          }
+
+          saveStoreToDisk();
         }
       } catch (e) {
         console.warn('PostgreSQL database init warning:', e);
