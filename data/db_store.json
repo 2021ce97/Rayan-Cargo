@@ -1,0 +1,191 @@
+{
+  "branches": [
+    [
+      "br_kbl_01",
+      {
+        "id": "br_kbl_01",
+        "name": "Kabul Central Hub",
+        "name_fa": "نمایندگی مرکزی کابل",
+        "name_ps": "د کابل مرکزي څانګه",
+        "code": "KBL-01",
+        "province": "Kabul",
+        "city": "Kabul City (Shahr-e-Naw)",
+        "address": "Ansari Square, Shahr-e-Naw, Cargo Center #4",
+        "phone": "+93 79 123 4567",
+        "email": "kabul@rayancargo.af",
+        "manager_name": "Ahmad Rashid Safi",
+        "tazkira_number": "1401-209-1102",
+        "is_head_office": true,
+        "active_shipments_count": 142,
+        "total_parcels_dispatched": 1890,
+        "total_parcels_received": 1420,
+        "total_revenue_afn": 984500,
+        "created_at": "2026-08-31T08:00:00.000Z"
+      }
+    ],
+    [
+      "br_kdh_04",
+      {
+        "id": "br_kdh_04",
+        "name": "Kandahar Southern Terminal",
+        "name_fa": "نمایندگی ولایت قندهار",
+        "name_ps": "د کندهار ولایت څانګه",
+        "code": "KDH-04",
+        "province": "Kandahar",
+        "city": "Kandahar City",
+        "address": "Shahidano Chawk, Commercial Cargo Terminal",
+        "phone": "+93 77 441 2233",
+        "email": "kandahar@rayancargo.af",
+        "manager_name": "Noor Ahmad Popalzai",
+        "tazkira_number": "1401-441-3321",
+        "is_head_office": false,
+        "active_shipments_count": 52,
+        "total_parcels_dispatched": 640,
+        "total_parcels_received": 620,
+        "total_revenue_afn": 340000,
+        "created_at": "2026-08-31T08:00:00.000Z"
+      }
+    ],
+    [
+      "br_knd_06",
+      {
+        "id": "br_knd_06",
+        "name": "Kunduz North Gateway",
+        "name_fa": "نمایندگی ولایت کندز",
+        "name_ps": "د کندز ولایت څانګه",
+        "code": "KND-06",
+        "province": "Kunduz",
+        "city": "Kunduz City",
+        "address": "Main Bandar Khanabad, Cargo Hub 2",
+        "phone": "+93 72 990 1234",
+        "email": "kunduz@rayancargo.af",
+        "manager_name": "Sardar Wali Qadiri",
+        "tazkira_number": "1401-990-4412",
+        "is_head_office": false,
+        "active_shipments_count": 28,
+        "total_parcels_dispatched": 310,
+        "total_parcels_received": 290,
+        "total_revenue_afn": 175000,
+        "created_at": "2026-08-31T08:00:00.000Z"
+      }
+    ],
+    [
+      "br_mzr_03",
+      {
+        "id": "br_mzr_03",
+        "name": "Mazar-i-Sharif Northern Hub",
+        "name_fa": "نمایندگی مزارشریف و بلخ",
+        "name_ps": "د مزارشریف څانګه (بلخ)",
+        "code": "MZR-03",
+        "province": "Balkh",
+        "city": "Mazar-i-Sharif",
+        "address": "Kefayat Market Road, Near Rawza Square",
+        "phone": "+93 78 554 9900",
+        "email": "mazar@rayancargo.af",
+        "manager_name": "Zabihullah Balkhi",
+        "tazkira_number": "1401-554-7788",
+        "is_head_office": false,
+        "active_shipments_count": 64,
+        "total_parcels_dispatched": 780,
+        "total_parcels_received": 710,
+        "total_revenue_afn": 395000,
+        "created_at": "2026-08-31T08:00:00.000Z"
+      }
+    ]
+  ],
+  "users": [
+    [
+      "usr_admin",
+      {
+        "id": "usr_admin",
+        "name": "Central System Admin",
+        "email": "armaghansadeq@cargo.af",
+        "phone": "+93 79 900 1122",
+        "role": "super_admin",
+        "branch_id": "all",
+        "password": "Armaghanrayan123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        "created_at": "2026-08-31T08:00:00.000Z",
+        "last_login": "Just now"
+      }
+    ],
+    [
+      "usr_kbl_01",
+      {
+        "id": "usr_kbl_01",
+        "name": "Ahmad Rashid Safi",
+        "email": "kabul@rayancargo.af",
+        "phone": "+93 79 123 4567",
+        "role": "branch_manager",
+        "branch_id": "br_kbl_01",
+        "password": "kabul123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-08-31T08:00:00.000Z",
+        "last_login": "2 hours ago"
+      }
+    ],
+    [
+      "usr_kdh_04",
+      {
+        "id": "usr_kdh_04",
+        "name": "Noor Ahmad Popalzai",
+        "email": "kandahar@rayancargo.af",
+        "phone": "+93 77 441 2233",
+        "role": "branch_manager",
+        "branch_id": "br_kdh_04",
+        "password": "kandahar123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-08-31T08:00:00.000Z",
+        "last_login": "Yesterday"
+      }
+    ],
+    [
+      "usr_knd_06",
+      {
+        "id": "usr_knd_06",
+        "name": "Sardar Wali Qadiri",
+        "email": "kunduz@rayancargo.af",
+        "phone": "+93 72 990 1234",
+        "role": "branch_manager",
+        "branch_id": "br_knd_06",
+        "password": "kunduz123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-08-31T08:00:00.000Z",
+        "last_login": "3 days ago"
+      }
+    ],
+    [
+      "usr_mzr_03",
+      {
+        "id": "usr_mzr_03",
+        "name": "Zabihullah Balkhi",
+        "email": "mazar@rayancargo.af",
+        "phone": "+93 78 554 9900",
+        "role": "branch_manager",
+        "branch_id": "br_mzr_03",
+        "password": "mazar123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-08-31T08:00:00.000Z",
+        "last_login": "5 hours ago"
+      }
+    ]
+  ],
+  "shipments": [],
+  "branch_expenses": [],
+  "branch_settlements": []
+}

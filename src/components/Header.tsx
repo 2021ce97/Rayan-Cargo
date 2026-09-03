@@ -13,12 +13,14 @@ import {
   Lock,
   KeyRound,
   Menu,
-  X
+  X,
+  Database
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Language, UserRole, Branch } from '../types';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { ArmaghanLogo } from './ArmaghanLogo';
+import { SupabaseGuideModal } from './SupabaseGuideModal';
 
 export const Header: React.FC = () => {
   const { 
@@ -36,7 +38,10 @@ export const Header: React.FC = () => {
     toastMessage,
     logout,
     isMobileSidebarOpen,
-    setIsMobileSidebarOpen
+    setIsMobileSidebarOpen,
+    dbStatus,
+    realtimeStatus,
+    isSyncing
   } = useApp();
 
   const [searchCn, setSearchCn] = useState('');
@@ -45,6 +50,7 @@ export const Header: React.FC = () => {
   const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [isDbModalOpen, setIsDbModalOpen] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,6 +211,31 @@ export const Header: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Database & Real-time Sync Indicator */}
+              <button
+                onClick={() => setIsDbModalOpen(true)}
+                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                  realtimeStatus === 'SUBSCRIBED' || dbStatus.connected
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                    : isSyncing
+                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 animate-pulse'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                }`}
+                title="Supabase PostgreSQL & Real-time Database Status (Click to inspect)"
+              >
+                <Database className={`w-3.5 h-3.5 shrink-0 ${realtimeStatus === 'SUBSCRIBED' || dbStatus.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`} />
+                <span className="hidden sm:inline font-mono text-[11px]">
+                  {realtimeStatus === 'SUBSCRIBED'
+                    ? 'Live DB'
+                    : dbStatus.connected
+                    ? 'Supabase'
+                    : isSyncing
+                    ? 'Syncing...'
+                    : 'Database'}
+                </span>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${realtimeStatus === 'SUBSCRIBED' ? 'bg-emerald-500 animate-pulse' : dbStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              </button>
 
               {/* Language Switcher */}
               <div className="relative">
@@ -427,6 +458,12 @@ export const Header: React.FC = () => {
       <ChangePasswordModal 
         isOpen={isPasswordModalOpen} 
         onClose={() => setIsPasswordModalOpen(false)} 
+      />
+
+      {/* Supabase Database & Real-Time Sync Guide Modal */}
+      <SupabaseGuideModal 
+        isOpen={isDbModalOpen} 
+        onClose={() => setIsDbModalOpen(false)} 
       />
     </>
   );

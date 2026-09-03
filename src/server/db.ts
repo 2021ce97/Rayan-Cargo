@@ -794,6 +794,86 @@ export async function connectToSupabase(connectionString: string): Promise<{ suc
       ]);
     }
 
+    // 4. Load all existing data from Supabase tables into memoryStore
+    try {
+      const dbBranches = await testPool.query('SELECT * FROM branches');
+      for (const b of dbBranches.rows) {
+        memoryStore.branches.set(b.id, {
+          id: b.id,
+          name: b.name,
+          name_fa: b.name_fa || b.name,
+          name_ps: b.name_ps || b.name,
+          code: b.code,
+          province: b.province,
+          city: b.city,
+          address: b.address,
+          phone: b.phone,
+          email: b.email,
+          manager_name: b.manager_name,
+          tazkira_number: b.tazkira_number || '',
+          is_head_office: b.is_head_office || false,
+          active_shipments_count: b.active_shipments_count || 0,
+          total_parcels_dispatched: b.total_parcels_dispatched || 0,
+          total_parcels_received: b.total_parcels_received || 0,
+          total_revenue_afn: Number(b.total_revenue_afn || 0),
+          created_at: b.created_at || new Date().toISOString()
+        });
+      }
+
+      const dbUsers = await testPool.query('SELECT * FROM users');
+      for (const u of dbUsers.rows) {
+        memoryStore.users.set(u.id, {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          role: u.role,
+          branch_id: u.branch_id,
+          password: u.password,
+          password_changed_by_branch: u.password_changed_by_branch || false,
+          last_password_change: u.last_password_change || null,
+          status: u.status || 'active',
+          avatar: u.avatar || null,
+          created_at: u.created_at || new Date().toISOString(),
+          last_login: u.last_login || 'Never'
+        });
+      }
+
+      const dbShipments = await testPool.query('SELECT * FROM shipments ORDER BY booked_at DESC');
+      for (const s of dbShipments.rows) {
+        const parseJson = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
+        memoryStore.shipments.set(s.id, {
+          id: s.id,
+          cn_number: s.cn_number,
+          origin_branch_id: s.origin_branch_id,
+          destination_branch_id: s.destination_branch_id,
+          current_branch_id: s.current_branch_id,
+          sender: parseJson(s.sender),
+          receiver: parseJson(s.receiver),
+          package_info: parseJson(s.package_info),
+          financials: parseJson(s.financials),
+          status: s.status,
+          status_history: parseJson(s.status_history || '[]'),
+          booked_at: s.booked_at,
+          estimated_delivery: s.estimated_delivery,
+          actual_delivery: s.actual_delivery,
+          pod_signature: s.pod_signature,
+          receiver_id_proof: s.receiver_id_proof,
+          delivery_notes: s.delivery_notes,
+          booked_by_user_id: s.booked_by_user_id,
+          booked_by_user_name: s.booked_by_user_name,
+          dest_branch_commission: s.dest_branch_commission,
+          remittance_status: s.remittance_status,
+          origin_remittance_due: s.origin_remittance_due,
+          created_at: s.created_at
+        });
+      }
+
+      saveStoreToDisk();
+    } catch (pullErr) {
+      console.warn('Could not pull existing records from Supabase tables:', pullErr);
+    }
+
     if (realPool) {
       try { await realPool.end(); } catch {}
     }
@@ -950,6 +1030,56 @@ export async function initDatabase(
       created_at: existingAdmin?.created_at || adminUser.createdAt,
       last_login: existingAdmin?.last_login || 'Just now'
     });
+
+    // Populate initial branches if memoryStore has no branches
+    if (memoryStore.branches.size === 0 && Array.isArray(initialBranches) && initialBranches.length > 0) {
+      console.log(`🌱 Seeding ${initialBranches.length} initial branches into database store...`);
+      for (const b of initialBranches) {
+        memoryStore.branches.set(b.id, {
+          id: b.id,
+          name: b.name,
+          name_fa: b.nameFa || b.name,
+          name_ps: b.namePs || b.name,
+          code: b.code,
+          province: b.province,
+          city: b.city,
+          address: b.address,
+          phone: b.phone,
+          email: b.email,
+          manager_name: b.managerName,
+          tazkira_number: b.tazkiraNumber || '',
+          is_head_office: b.isHeadOffice || false,
+          active_shipments_count: b.activeShipmentsCount || 0,
+          total_parcels_dispatched: b.totalParcelsDispatched || 0,
+          total_parcels_received: b.totalParcelsReceived || 0,
+          total_revenue_afn: b.totalRevenueAfn || 0,
+          created_at: b.createdAt || new Date().toISOString()
+        });
+      }
+    }
+
+    // Populate initial staff users (branch managers) if missing
+    if (Array.isArray(initialUsers) && initialUsers.length > 0) {
+      for (const u of initialUsers) {
+        if (!memoryStore.users.has(u.id)) {
+          memoryStore.users.set(u.id, {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            role: u.role,
+            branch_id: u.branchId,
+            password: u.password,
+            password_changed_by_branch: u.passwordChangedByBranch || false,
+            last_password_change: null,
+            status: u.status || 'active',
+            avatar: u.avatar || null,
+            created_at: u.createdAt || new Date().toISOString(),
+            last_login: u.lastLogin || 'Never'
+          });
+        }
+      }
+    }
 
     saveStoreToDisk();
 

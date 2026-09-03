@@ -771,15 +771,24 @@ async function startServer() {
 
       if (!finalConn && password) {
         const pass = encodeURIComponent(password.trim());
-        // Default Supabase project host provided by user
-        finalConn = `postgresql://postgres:${pass}@db.wgdmwuhkuanxykwqvpyp.supabase.co:5432/postgres`;
+        // Use Supabase AWS South Asia (ap-south-1) pooler host for IPv4 compatibility
+        finalConn = `postgresql://postgres.wgdmwuhkuanxykwqvpyp:${pass}@aws-0-ap-south-1.pooler.supabase.com:6543/postgres`;
       }
 
       if (!finalConn) {
         return res.status(400).json({ success: false, error: 'Database password or full connection string is required.' });
       }
 
-      const result = await connectToSupabase(finalConn);
+      let result = await connectToSupabase(finalConn);
+      // If pooler failed and user only gave password, try session mode / direct as fallback
+      if (!result.success && password && !connectionString) {
+        const pass = encodeURIComponent(password.trim());
+        const sessionConn = `postgresql://postgres.wgdmwuhkuanxykwqvpyp:${pass}@aws-0-ap-south-1.pooler.supabase.com:5432/postgres`;
+        const retryResult = await connectToSupabase(sessionConn);
+        if (retryResult.success) {
+          result = retryResult;
+        }
+      }
       if (result.success) {
         res.json({ success: true, message: result.message });
       } else {

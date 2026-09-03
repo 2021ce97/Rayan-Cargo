@@ -16,6 +16,18 @@ import {
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
+import { 
+  getSupabase, 
+  isSupabaseReady, 
+  subscribeToSupabaseRealtime, 
+  directSupabaseFetchAll,
+  directSupabaseInsertBranch,
+  directSupabaseInsertUser,
+  directSupabaseInsertShipment,
+  directSupabaseUpdateShipmentStatus,
+  directSupabaseInsertExpense,
+  directSupabaseInsertSettlement
+} from '../lib/supabase';
 
 export interface AddBranchInput {
   name: string;
@@ -111,6 +123,7 @@ interface AppContextType {
   setIsMobileSidebarOpen: (open: boolean) => void;
   dbStatus: DbStatusInfo;
   isSyncing: boolean;
+  realtimeStatus: 'DISCONNECTED' | 'CONNECTING' | 'SUBSCRIBED' | 'TIMED_OUT';
   syncWithDatabase: () => Promise<void>;
   resetToCleanSlate: () => Promise<void>;
 }
@@ -157,14 +170,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     database: 'Supabase PostgreSQL (AWS South Asia)',
   });
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [realtimeStatus, setRealtimeStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'SUBSCRIBED' | 'TIMED_OUT'>('DISCONNECTED');
 
-  // Branches
+  // Branches - Ensure initial branches are always loaded if empty
   const [branches, setBranches] = useState<Branch[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.BRANCHES);
     if (saved) {
       try { 
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
       } catch (e) { console.error(e); }
@@ -172,23 +186,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_BRANCHES;
   });
 
-  // Users
+  // Users - Ensure initial super admin and branch manager accounts are always preserved
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.USERS);
     if (saved) {
       try { 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const hasAdmin = parsed.some((u: any) => u.role === 'super_admin' || u.id === 'usr_admin' || u.email?.toLowerCase() === 'admin@rayancargo.af');
-          if (hasAdmin) {
-            return parsed.map((u: any) => {
-              if (u.role === 'super_admin' || u.id === 'usr_admin' || u.email?.toLowerCase() === 'admin@rayancargo.af') {
-                return { ...u, password: u.password || 'admin123' };
-              }
-              return u;
-            });
-          }
-          return [INITIAL_USERS[0], ...parsed];
+          const userMap = new Map<string, User>();
+          INITIAL_USERS.forEach(u => userMap.set(u.id, u));
+          parsed.forEach((u: any) => userMap.set(u.id, { ...userMap.get(u.id), ...u }));
+          return Array.from(userMap.values());
         }
       } catch (e) { console.error(e); }
     }
@@ -224,16 +232,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.RECEIPT_PRINT_MODE, mode);
   };
 
-  // Authentication state - always requires login on fresh link / new tab
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    try {
-      localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
-      const sessionAuth = sessionStorage.getItem(STORAGE_KEYS.IS_AUTH);
-      return sessionAuth === 'true';
-    } catch {
-      return false;
-    }
-  });
+  // Authentication state - always requires login on fresh link / new tab (user requirement)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   // Current logged in user (defaults to Central System Admin)
   const [currentUser, setCurrentUser] = useState<User>(() => {
@@ -285,6 +285,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncWithDatabase = useCallback(async () => {
     setIsSyncing(true);
     try {
+      // 0. Direct Supabase Query (if client configured with Anon Key)
+      if (isSupabaseReady()) {
+        try {
+          const directData = await directSupabaseFetchAll();
+          if (directData.success) {
+            if (directData.branches && directData.branches.length > 0) {
+              setBranches(directData.branches);
+              localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(directData.branches));
+            }
+            if (directData.users && directData.users.length > 0) {
+              setUsers(directData.users);
+              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(directData.users));
+            }
+            if (directData.shipments) {
+              setShipments(directData.shipments);
+              localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(directData.shipments));
+            }
+            if (directData.expenses) {
+              setExpenses(directData.expenses);
+              localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(directData.expenses));
+            }
+          }
+        } catch (supErr) {
+          console.warn('Direct Supabase fetch query notice:', supErr);
+        }
+      }
+
       // 1. Health check
       const healthRes = await fetch('/api/health');
       if (healthRes.ok) {
@@ -301,7 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const branchRes = await fetch('/api/branches');
       if (branchRes.ok) {
         const branchData = await branchRes.json();
-        if (branchData.success && Array.isArray(branchData.branches)) {
+        if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
           setBranches(branchData.branches);
           localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branchData.branches));
         }
@@ -342,6 +369,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsSyncing(false);
     }
   }, []);
+
+  // Supabase Real-time Channel Subscription (Instantly propagates database changes to all connected devices)
+  useEffect(() => {
+    if (!isSupabaseReady()) return;
+
+    console.log('⚡ Initializing Supabase Real-time websocket subscriptions...');
+    const cleanup = subscribeToSupabaseRealtime({
+      onStatusChange: (status) => {
+        setRealtimeStatus(status as any);
+        if (status === 'SUBSCRIBED') {
+          console.log('🟢 Supabase Real-time websocket connected and active!');
+        }
+      },
+      onDataChanged: (table, eventType, newRow, oldRow) => {
+        console.log(`📡 Supabase postgres_changes on ${table} [${eventType}]:`, newRow || oldRow);
+        // Instantly refresh and synchronize across all tabs/devices
+        syncWithDatabase();
+      }
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [syncWithDatabase]);
 
   // Reset Entire System to Clean Slate (0 Parcels, 0 Branches, 0 Expenses)
   const resetToCleanSlate = useCallback(async () => {
@@ -566,6 +617,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveBranchId('customer');
     setActiveView('customer_portal');
 
+    // Persist to Supabase Database (both direct client and backend API)
+    directSupabaseInsertUser(newUser);
+
     fetch('/api/auth/customer-signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -731,7 +785,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBranches(prev => [...prev, newBranch]);
     setUsers(prev => [...prev, newUser]);
 
-    // Persist to Supabase Database
+    // Persist to Supabase Database (direct client & backend API)
+    directSupabaseInsertBranch(newBranch);
+    directSupabaseInsertUser(newUser);
+
     fetch('/api/branches', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -987,6 +1044,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setExpenses(prev => [newExp, ...prev]);
 
+    // Persist to Supabase Database (direct client & backend API)
+    directSupabaseInsertExpense(newExp);
+
     fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1089,6 +1149,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setShipments(prev => [newShipment, ...prev]);
+
+    // Persist to Supabase Database (direct client & backend API)
+    directSupabaseInsertShipment(newShipment);
 
     fetch('/api/shipments', {
       method: 'POST',
@@ -1203,6 +1266,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setShipments(prev => prev.map(s => s.id === shipmentId ? updatedShipment : s));
 
+    // Direct Supabase status update
+    directSupabaseUpdateShipmentStatus(shipmentId, 'booked', updatedShipment.statusHistory);
+
     fetch(`/api/shipments/${shipmentId}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -1245,6 +1311,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setShipments(prev => prev.map(s => s.id === shipmentId ? updatedShipment : s));
+
+    // Direct Supabase settlement & status update
+    directSupabaseInsertSettlement({
+      shipmentId,
+      originBranchId: target.originBranchId,
+      destinationBranchId: target.destinationBranchId,
+      amountSettled: target.financials.totalAmount,
+      commissionDeducted: target.destBranchCommission || target.financials.destBranchCommission || 100,
+      remittedAmount: target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount,
+      settledByName: currentUser.name
+    });
+    directSupabaseUpdateShipmentStatus(shipmentId, target.status, updatedShipment.statusHistory);
 
     fetch(`/api/shipments/${shipmentId}/status`, {
       method: 'PATCH',
@@ -1387,7 +1465,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return b;
     }));
 
-    // Persist directly to Supabase Database
+    // Persist directly to Supabase Database (direct client & backend API)
+    directSupabaseInsertShipment(newShipment);
+
     fetch('/api/shipments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1468,7 +1548,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTrackedShipment(updatedShipment);
     }
 
-    // Persist to Supabase Database
+    // Persist to Supabase Database (direct client & backend API)
+    directSupabaseUpdateShipmentStatus(shipmentId, newStatus, newHistory);
+
     fetch(`/api/shipments/${shipmentId}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -1544,6 +1626,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsMobileSidebarOpen,
         dbStatus,
         isSyncing,
+        realtimeStatus,
         syncWithDatabase,
         resetToCleanSlate
       }}
