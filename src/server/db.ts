@@ -671,13 +671,15 @@ export function getDbPool(): any {
       });
 
       realPool.on('error', (err) => {
-        console.warn('PostgreSQL pool error, switching to in-memory engine:', err.message);
-        useMock = true;
+        console.warn('PostgreSQL pool error (usually idle connection closed):', err.message);
+        // Do NOT set useMock = true here. Let the pool recover automatically.
       });
 
       // Trigger automatic schema migration on connection
       migrateSupabaseSchema(realPool).catch(e => console.warn('Schema init:', e));
-    } catch {
+    } catch (err) {
+      console.error('Failed to initialize PostgreSQL pool:', err);
+      // We only fallback to mock if the pool creation itself throws synchronously
       useMock = true;
       return mockDb;
     }

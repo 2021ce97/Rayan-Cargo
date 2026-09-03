@@ -91,6 +91,29 @@
         "created_at": "2025-02-01T10:00:00.000Z",
         "tazkira_number": null
       }
+    ],
+    [
+      "br_test_99",
+      {
+        "id": "br_test_99",
+        "name": "Test Branch",
+        "name_fa": "Test Branch",
+        "name_ps": "Test Branch",
+        "code": "TST-99",
+        "province": "Kabul",
+        "city": "Kabul",
+        "address": "Test",
+        "phone": "07000000",
+        "email": "test@test.com",
+        "manager_name": "Test Manager",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-03T13:51:43.046Z",
+        "tazkira_number": "1234567890123"
+      }
     ]
   ],
   "users": [
