@@ -292,7 +292,7 @@ export const ParcelInventory: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `RayanCargo_Consignments_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `Armaghan_Sadeq_Transfers_Consignments_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -309,7 +309,7 @@ export const ParcelInventory: React.FC = () => {
         : branches.find(b => b.id === activeBranchId);
 
       const manifestNumber = `MNF-${new Date().getFullYear()}-${processedParcels.length.toString().padStart(3, '0')}`;
-      const branchName = origBranch?.name || 'Rayan Central Hub';
+      const branchName = origBranch?.name || 'Armaghan Sadeq Transfers HQ';
 
       const ok = generateDispatchManifestPdf(
         manifestNumber,

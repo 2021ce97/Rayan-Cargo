@@ -29,12 +29,20 @@ import confetti from 'canvas-confetti';
 export const NewBookingModal: React.FC = () => {
   const { 
     t, 
+    language,
     branches, 
     currentUser, 
     addShipment, 
     setSelectedShipmentForReceipt,
     setActiveView 
   } = useApp();
+
+  const getLocalizedBranchName = (b: { name: string; nameFa?: string; namePs?: string } | undefined) => {
+    if (!b) return '';
+    if (language === 'fa' && b.nameFa) return b.nameFa;
+    if (language === 'ps' && b.namePs) return b.namePs;
+    return b.name;
+  };
 
   const isBranchUser = currentUser.role !== 'super_admin';
   const userBranchId = isBranchUser ? currentUser.branchId : (branches[0]?.id || 'br_kbl_01');
@@ -280,10 +288,10 @@ export const NewBookingModal: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                Consignment Booking & Waybill Entry
+                {t('booking_page_title')}
               </h1>
               <p className="text-xs text-slate-500">
-                Register sender, receiver, destination branch, weight specs, and print waybill
+                {t('booking_page_subtitle')}
               </p>
             </div>
           </div>
@@ -297,14 +305,14 @@ export const NewBookingModal: React.FC = () => {
               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>Auto-fill Sample Data</span>
+              <span>{t('autofill_sample_btn')}</span>
             </button>
           )}
           <button
             onClick={handleReset}
             type="button"
             className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-            title="Clear Form"
+            title={t('clear_form_btn')}
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -320,10 +328,10 @@ export const NewBookingModal: React.FC = () => {
             </div>
             <div>
               <h3 className="font-extrabold text-sm text-slate-900">
-                Branch Setup Required Before Booking Consignments
+                {t('branch_setup_required_title')}
               </h3>
               <p className="text-xs text-slate-600 mt-0.5">
-                The database currently has {branches.length} branch(es). Inter-branch cargo routing requires at least two operational branches (origin hub & destination hub).
+                {t('branch_setup_required_desc')}
               </p>
             </div>
           </div>
@@ -333,7 +341,7 @@ export const NewBookingModal: React.FC = () => {
               className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Building2 className="w-4 h-4 text-amber-400" />
-              <span>Go to Branch Management to Add Branches</span>
+              <span>{t('go_to_branches_btn')}</span>
             </button>
           </div>
         </div>
@@ -348,25 +356,25 @@ export const NewBookingModal: React.FC = () => {
           <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100 text-sm font-bold text-slate-900">
               <Building2 className="w-4 h-4 text-red-600" />
-              <span>Inter-Branch Route Assignment</span>
+              <span>{t('route_assignment_title')}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Origin Branch: Available as default, locked for branch users */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                  <span>Origin / Sender Branch (مبدأ)</span>
+                  <span>{t('origin_branch_lbl')}</span>
                   {isBranchUser && (
                     <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                       <Lock className="w-2.5 h-2.5" />
-                      Default (Locked)
+                      {t('default_locked_badge')}
                     </span>
                   )}
                 </label>
 
                 {isBranchUser ? (
                   <div className="w-full h-11 px-3.5 flex items-center justify-between text-xs font-bold bg-slate-100 border border-slate-300 rounded-xl text-slate-900">
-                    <span className="truncate">🏢 {originBranchObj?.name}</span>
+                    <span className="truncate">🏢 {getLocalizedBranchName(originBranchObj)}</span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
                       {originBranchObj?.code}
                     </span>
@@ -379,22 +387,22 @@ export const NewBookingModal: React.FC = () => {
                   >
                     {branches.map(b => (
                       <option key={b.id} value={b.id}>
-                        {b.name} ({b.city} - {b.code})
+                        {getLocalizedBranchName(b)} ({b.city} - {b.code})
                       </option>
                     ))}
                   </select>
                 )}
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Located in: {originBranchObj?.city}, {originBranchObj?.province}
+                  {t('located_in_prefix')} {originBranchObj?.city}, {originBranchObj?.province}
                 </p>
               </div>
 
               {/* Destination Branch (Dropdown of other branches) */}
               <div>
                 <label className="block text-xs font-bold text-red-600 mb-1.5 flex items-center justify-between">
-                  <span>Destination Branch (مقصد) *</span>
+                  <span>{t('dest_branch_lbl')}</span>
                   <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
-                    Select Target Hub
+                    {t('select_target_hub')}
                   </span>
                 </label>
                 <select
@@ -404,12 +412,12 @@ export const NewBookingModal: React.FC = () => {
                 >
                   {availableDestinations.map(b => (
                     <option key={b.id} value={b.id}>
-                      📍 {b.name} ({b.city}, {b.province} - {b.code})
+                      📍 {getLocalizedBranchName(b)} ({b.city}, {b.province} - {b.code})
                     </option>
                   ))}
                 </select>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Receiver Terminal: {destBranchObj?.city}, {destBranchObj?.province}
+                  {t('receiver_terminal_prefix')} {destBranchObj?.city}, {destBranchObj?.province}
                 </p>
               </div>
             </div>
@@ -417,14 +425,14 @@ export const NewBookingModal: React.FC = () => {
             {/* Route visual arrow */}
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
               <div className="font-bold text-slate-700">
-                {originBranchObj?.name}
+                {getLocalizedBranchName(originBranchObj)}
               </div>
               <div className="flex items-center gap-1.5 text-red-600 font-bold font-mono">
                 <span>-----------</span>
                 <ArrowRight className="w-4 h-4" />
               </div>
               <div className="font-bold text-red-700">
-                {destBranchObj?.name}
+                {getLocalizedBranchName(destBranchObj)}
               </div>
             </div>
           </div>
@@ -435,13 +443,13 @@ export const NewBookingModal: React.FC = () => {
             {/* Sender Box */}
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 pb-1 border-b border-slate-100">
-                <span className="text-red-600">Sender Information (Origin)</span>
-                <span className="text-[10px] text-slate-400 font-normal">Registered at {originBranchObj?.code}</span>
+                <span className="text-red-600">{t('sender_info_origin')}</span>
+                <span className="text-[10px] text-slate-400 font-normal">{t('registered_at_branch')} {originBranchObj?.code}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Sender Full Name *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('sender_full_name')}</label>
                   <input
                     type="text"
                     value={senderName}
@@ -451,7 +459,7 @@ export const NewBookingModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Sender Phone / WhatsApp *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('sender_phone_whatsapp')}</label>
                   <input
                     type="text"
                     value={senderPhone}
@@ -461,7 +469,7 @@ export const NewBookingModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">National ID / Tazkira No.</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('national_id_tazkira')}</label>
                   <input
                     type="text"
                     value={senderNid}
@@ -471,7 +479,7 @@ export const NewBookingModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Origin City & Province</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('origin_city_prov')}</label>
                   <input
                     type="text"
                     value={`${senderCity}, ${senderProvince}`}
@@ -482,7 +490,7 @@ export const NewBookingModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Sender Street Address / Market</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t('sender_address_street')}</label>
                 <input
                   type="text"
                   value={senderAddress}
@@ -496,13 +504,13 @@ export const NewBookingModal: React.FC = () => {
             {/* Receiver Box */}
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 pb-1 border-b border-slate-100">
-                <span className="text-emerald-600">Receiver Information (Destination)</span>
-                <span className="text-[10px] text-slate-400 font-normal">Delivering via {destBranchObj?.code}</span>
+                <span className="text-emerald-600">{t('receiver_info_dest')}</span>
+                <span className="text-[10px] text-slate-400 font-normal">{t('delivering_via')} {destBranchObj?.code}</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Receiver Full Name *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('receiver_full_name')}</label>
                   <input
                     type="text"
                     value={receiverName}
@@ -512,7 +520,7 @@ export const NewBookingModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Receiver Phone Number *</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('receiver_phone_num')}</label>
                   <input
                     type="text"
                     value={receiverPhone}
@@ -522,7 +530,7 @@ export const NewBookingModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Alternate Contact (Optional)</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('receiver_alt_phone')}</label>
                   <input
                     type="text"
                     value={receiverAltPhone}
@@ -532,7 +540,7 @@ export const NewBookingModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Destination City & Province</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('dest_city_prov')}</label>
                   <input
                     type="text"
                     value={`${receiverCity}, ${receiverProvince}`}
@@ -543,7 +551,7 @@ export const NewBookingModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Destination Delivery Address / Branch Pickup</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t('dest_delivery_address')}</label>
                 <input
                   type="text"
                   value={receiverAddress}
@@ -559,30 +567,30 @@ export const NewBookingModal: React.FC = () => {
           {/* Section 3: Cargo & Package Specifications */}
           <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-sm font-bold text-slate-900">
-              <span>Cargo Specifications</span>
-              <span className="text-xs font-normal text-slate-400">Weight & Category</span>
+              <span>{t('cargo_specifications')}</span>
+              <span className="text-xs font-normal text-slate-400">{t('weight_and_category')}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Cargo Category</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t('cargo_category_lbl')}</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as ParcelCategory)}
                   className="w-full h-9 px-2.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                 >
-                  <option value="general">General Goods</option>
-                  <option value="electronics">Electronics & Gadgets</option>
-                  <option value="garments">Garments & Textiles</option>
-                  <option value="document">Documents & Envelopes</option>
-                  <option value="foodstuff">Foodstuff & Dry Fruits</option>
-                  <option value="machinery">Machinery & Spares</option>
-                  <option value="fragile">Fragile Goods</option>
+                  <option value="general">{t('cat_general')}</option>
+                  <option value="electronics">{t('cat_electronics')}</option>
+                  <option value="garments">{t('cat_garments')}</option>
+                  <option value="document">{t('cat_document')}</option>
+                  <option value="foodstuff">{t('cat_foodstuff')}</option>
+                  <option value="machinery">{t('cat_machinery')}</option>
+                  <option value="fragile">{t('cat_fragile')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Total Weight (KG)</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t('total_weight_kg')}</label>
                 <input
                   type="number"
                   step="0.1"
@@ -594,7 +602,7 @@ export const NewBookingModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Pieces Count</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t('pieces_count_lbl')}</label>
                 <input
                   type="number"
                   min="1"
@@ -607,21 +615,21 @@ export const NewBookingModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Service Speed</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t('service_speed_lbl')}</label>
                 <select
                   value={serviceType}
                   onChange={(e) => setServiceType(e.target.value as ServiceType)}
                   className="w-full h-9 px-2.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                 >
-                  <option value="standard">Standard Highway Ground (2-3 Days)</option>
-                  <option value="express">Express Express Cargo (Next Day)</option>
-                  <option value="same_day_air">Same-Day Air Cargo</option>
-                  <option value="heavy_cargo">Heavy & Bulk Freight</option>
+                  <option value="standard">{t('speed_standard')}</option>
+                  <option value="express">{t('speed_express')}</option>
+                  <option value="same_day_air">{t('speed_same_day')}</option>
+                  <option value="heavy_cargo">{t('speed_heavy')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Declared Value (AFN)</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">{t('declared_value_afn')}</label>
                 <input
                   type="number"
                   value={declaredValueAfn}
@@ -632,7 +640,7 @@ export const NewBookingModal: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Contents Description</label>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">{t('contents_description')}</label>
               <input
                 type="text"
                 value={description}
@@ -651,7 +659,7 @@ export const NewBookingModal: React.FC = () => {
                 className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300"
               />
               <label htmlFor="fragile-check" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                Fragile Cargo / Special Caution Required (+150 AFN handling)
+                {t('fragile_checkbox_lbl')}
               </label>
             </div>
           </div>
@@ -745,10 +753,10 @@ export const NewBookingModal: React.FC = () => {
               <div className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center justify-between pb-1 border-b border-slate-200">
                 <span className="flex items-center gap-1.5">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-red-600" />
-                  <span>Set Terminal Rates (AFN)</span>
+                  <span>{t('set_rates_title')}</span>
                 </span>
                 <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                  Editable by Manager
+                  {t('editable_by_mgr')}
                 </span>
               </div>
 
@@ -756,7 +764,7 @@ export const NewBookingModal: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
                   <span>{t('base_booking_rate_lbl')}:</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Fixed Intake Fee</span>
+                  <span className="text-[10px] text-slate-400 font-normal">{t('fixed_intake_fee')}</span>
                 </div>
                 <div className="relative">
                   <input
@@ -777,7 +785,7 @@ export const NewBookingModal: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
                   <span>{t('rate_per_kg_lbl')}:</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Highway Freight / KG</span>
+                  <span className="text-[10px] text-slate-400 font-normal">{t('highway_freight_per_kg')}</span>
                 </div>
                 <div className="relative">
                   <input
@@ -798,7 +806,7 @@ export const NewBookingModal: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
                   <span>{t('service_handling_fee_lbl')}:</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Loading & Storage</span>
+                  <span className="text-[10px] text-slate-400 font-normal">{t('loading_storage_fee')}</span>
                 </div>
                 <div className="relative">
                   <input
@@ -819,35 +827,35 @@ export const NewBookingModal: React.FC = () => {
             {/* Live Calculations Summary Box */}
             <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-2 text-xs shadow-inner">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-800 flex items-center justify-between">
-                <span>Calculated Invoice Math</span>
-                <span className="font-mono text-emerald-400">Live Auto-Update</span>
+                <span>{t('calculated_invoice_math')}</span>
+                <span className="font-mono text-emerald-400">{t('live_auto_update')}</span>
               </div>
 
               <div className="flex items-center justify-between text-slate-300">
-                <span>Base Booking Rate:</span>
+                <span>{t('base_booking_rate_lbl')}:</span>
                 <span className="font-mono font-bold text-white">{baseRate} AFN</span>
               </div>
 
               <div className="flex items-center justify-between text-slate-300">
-                <span>Weight Charge ({weightKg} kg × {ratePerKg} AFN):</span>
+                <span>{t('weight_charge_lbl')} ({weightKg} kg × {ratePerKg} AFN):</span>
                 <span className="font-mono font-bold text-white">{weightCost} AFN</span>
               </div>
 
               <div className="flex items-center justify-between text-slate-300">
-                <span>Service & Handling:</span>
+                <span>{t('service_handling_fee')}:</span>
                 <span className="font-mono font-bold text-white">{serviceFee} AFN</span>
               </div>
 
               {isFragile && (
                 <div className="flex items-center justify-between text-amber-300">
-                  <span>Fragile Cargo Care Surcharge:</span>
+                  <span>{t('fragile_fee_lbl')}:</span>
                   <span className="font-mono font-bold">+{fragileFee} AFN</span>
                 </div>
               )}
 
               {calculatedDiscount > 0 && (
                 <div className="flex items-center justify-between text-emerald-400 font-bold">
-                  <span>Applied Promo / Discount:</span>
+                  <span>{t('applied_discount_lbl')}:</span>
                   <span className="font-mono">-{calculatedDiscount} AFN</span>
                 </div>
               )}
@@ -862,7 +870,7 @@ export const NewBookingModal: React.FC = () => {
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <div className="font-bold text-slate-700 flex items-center justify-between">
                 <span>{t('applied_discount_lbl')}</span>
-                <span className="text-[10px] text-slate-400">Optional</span>
+                <span className="text-[10px] text-slate-400">{t('optional_badge')}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <select
@@ -870,8 +878,8 @@ export const NewBookingModal: React.FC = () => {
                   onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
                   className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-medium"
                 >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount (AFN)</option>
+                  <option value="percentage">{t('disc_percentage')}</option>
+                  <option value="fixed">{t('disc_fixed')}</option>
                 </select>
                 <input
                   type="number"
@@ -899,7 +907,7 @@ export const NewBookingModal: React.FC = () => {
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    {p === 'to_pay' ? 'COD (To-Pay)' : p.toUpperCase()}
+                    {p === 'to_pay' ? t('cod_topay') : t(`payment_status_${p}` as any) || p.toUpperCase()}
                   </button>
                 ))}
               </div>

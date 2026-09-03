@@ -136,7 +136,39 @@ export const Sidebar: React.FC = () => {
 
   const renderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
-      <div className="space-y-5">
+      <div className="space-y-4">
+        {/* Armaghan Sadeq Transfers Official Brand Header (All Roles) */}
+        <div className="p-3 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 rounded-2xl border border-amber-500/20 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 p-1.5 bg-white rounded-xl shadow-xs border border-amber-500/30 flex items-center justify-center">
+              <img
+                src="/logo.jpg"
+                alt="Armaghan Sadeq Transfers - خدمات انتقالات ارمغان صادق"
+                className="w-10 h-10 object-contain rounded-lg"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-black text-sm text-white tracking-tight leading-tight">
+                  Armaghan Sadeq
+                </span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                  Transfers
+                </span>
+              </div>
+              <p className="text-[11px] font-bold text-amber-400 mt-0.5 truncate">
+                خدمات انتقالات ارمغان صادق
+              </p>
+              <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="truncate">
+                  {isSuperAdmin ? t('central_hq_kabul') : isCustomer ? t('nav_customer_portal') : getLocalizedBranchName(currentBranch)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Quick Booking Action Callout */}
         {isCustomer ? (
           <button
@@ -159,7 +191,7 @@ export const Sidebar: React.FC = () => {
         {/* Main Navigation Items */}
         <nav className="space-y-1">
           <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-            {isCustomer ? 'Customer Services' : t('app_title')}
+            {isCustomer ? t('customer_services_label') : t('app_title')}
           </p>
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -266,7 +298,7 @@ export const Sidebar: React.FC = () => {
         <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-              {isSuperAdmin ? t('role_super_admin') : isCustomer ? 'Customer Account' : t('role_branch_manager')}
+              {isSuperAdmin ? t('role_super_admin') : isCustomer ? t('customer_account_badge') : t('role_branch_manager')}
             </span>
             <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
               isSuperAdmin 
@@ -275,7 +307,7 @@ export const Sidebar: React.FC = () => {
                 ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                 : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
             }`}>
-              {isSuperAdmin ? 'Central HQ' : isCustomer ? 'Customer' : currentBranch?.code || 'Terminal'}
+              {isSuperAdmin ? t('central_hq_kabul') : isCustomer ? t('customer_badge_title') : currentBranch?.code || 'Terminal'}
             </span>
           </div>
           
@@ -350,16 +382,25 @@ export const Sidebar: React.FC = () => {
           <div className="relative w-80 max-w-[85vw] bg-[#0B0F17] text-slate-300 shadow-2xl border-e border-slate-800 p-4 flex flex-col justify-between h-full z-10 overflow-y-auto animate-in slide-in-from-start duration-300">
             {/* Mobile Drawer Top Brand Bar with Close Button */}
             <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-amber-500 flex items-center justify-center text-white">
-                  <Package className="w-4 h-4" />
+              <div className="flex items-center gap-2.5">
+                <div className="shrink-0 p-1 bg-white rounded-xl shadow-xs border border-amber-500/30 flex items-center justify-center">
+                  <img
+                    src="/logo.jpg"
+                    alt="Armaghan Sadeq Transfers"
+                    className="w-8 h-8 object-contain rounded-lg"
+                  />
                 </div>
                 <div>
-                  <span className="text-sm font-extrabold bg-gradient-to-r from-red-500 to-amber-500 bg-clip-text text-transparent">
-                    Rayan Cargo
-                  </span>
-                  <span className="block text-[9px] text-slate-400">
-                    {getLocalizedBranchName(currentBranch)}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-black text-white">
+                      Armaghan Sadeq
+                    </span>
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 uppercase">
+                      Transfers
+                    </span>
+                  </div>
+                  <span className="block text-[10px] font-bold text-amber-400">
+                    خدمات انتقالات ارمغان صادق
                   </span>
                 </div>
               </div>
@@ -390,7 +431,7 @@ export const Sidebar: React.FC = () => {
               }`}
             >
               <Package className="w-5 h-5 mb-0.5" />
-              <span>Portal</span>
+              <span>{t('portal_tab')}</span>
             </button>
             <button
               onClick={() => handleNavClick('tracking')}
@@ -406,7 +447,7 @@ export const Sidebar: React.FC = () => {
               className="flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <Menu className="w-5 h-5 mb-0.5" />
-              <span>Menu</span>
+              <span>{t('menu_tab')}</span>
             </button>
           </>
         ) : (
@@ -418,7 +459,7 @@ export const Sidebar: React.FC = () => {
               }`}
             >
               <LayoutDashboard className="w-5 h-5 mb-0.5" />
-              <span>Home</span>
+              <span>{t('home_tab')}</span>
             </button>
             
             <button
@@ -428,7 +469,7 @@ export const Sidebar: React.FC = () => {
               }`}
             >
               <Boxes className="w-5 h-5 mb-0.5" />
-              <span>Parcels</span>
+              <span>{t('nav_parcels')}</span>
               {filteredShipments.length > 0 && (
                 <span className="absolute top-0 end-1.5 w-2 h-2 rounded-full bg-red-500" />
               )}
@@ -450,7 +491,7 @@ export const Sidebar: React.FC = () => {
               }`}
             >
               <Crosshair className="w-5 h-5 mb-0.5" />
-              <span>Track</span>
+              <span>{t('track_btn')}</span>
             </button>
 
             <button
@@ -458,7 +499,7 @@ export const Sidebar: React.FC = () => {
               className="flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <Menu className="w-5 h-5 mb-0.5" />
-              <span>More</span>
+              <span>{t('more_tab')}</span>
             </button>
           </>
         )}

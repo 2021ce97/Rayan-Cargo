@@ -155,10 +155,10 @@ export const PrintReceiptModal: React.FC = () => {
           >
             {/* Thermal Slip Header */}
             <div className="text-center space-y-1 pb-2 border-b border-dashed border-slate-900">
-              <div className="text-base font-black tracking-tighter">RAYAN CARGO AFGHANISTAN</div>
-              <div className="text-[10px] font-bold">NATIONWIDE LOGISTICS & FREIGHT</div>
-              <div className="text-[9px] text-slate-600">Helpline: 079 123 4567 | Kabul Hub</div>
-              <div className="text-[10px] font-bold pt-1">*** CARGO RECEIPT SLIP ***</div>
+              <div className="text-sm font-black tracking-tight">ARMAGHAN SADEQ TRANSFERS</div>
+              <div className="text-[11px] font-bold">خدمات انتقالات ارمغان صادق</div>
+              <div className="text-[9px] text-slate-600">Helpline: +93 799 123 456 | Central Hub Kabul</div>
+              <div className="text-[10px] font-bold pt-1">*** OFFICIAL CONSIGNMENT SLIP ***</div>
             </div>
 
             {/* CN & Date */}
@@ -264,10 +264,16 @@ export const PrintReceiptModal: React.FC = () => {
                 <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={35} displayValue={false} />
               </div>
               <div className="text-[9px] text-slate-600">
-                Track live at www.rayancargo.af using CN #{shipment.cnNumber}
+                Track live at www.armaghansadeq.af using CN #{shipment.cnNumber}
               </div>
               <div className="text-[8px] text-slate-500 pt-1 border-t border-dashed border-slate-400">
-                Please present this slip at destination branch for parcel collection. Thank you for choosing Rayan Cargo!
+                Please present this slip at destination branch for parcel collection. Thank you for choosing Armaghan Sadeq Transfers!
+              </div>
+              <div className="text-[8px] text-slate-500 pt-0.5 font-medium">
+                Developed by Rayan tech solutions | Rayan-Tech-Solution.tech
+              </div>
+              <div className="text-[7.5px] text-slate-400">
+                سیستم توسعه یافته توسط خدمات تکنالوژی رایان
               </div>
               <div className="text-center text-[10px] font-bold text-slate-400">--------------------------------</div>
             </div>
@@ -279,18 +285,21 @@ export const PrintReceiptModal: React.FC = () => {
             {/* Header */}
             <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4 gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-red-600 text-white flex items-center justify-center font-black text-2xl tracking-tighter">
-                  RYN
+                <div className="p-1 bg-white rounded-lg border border-amber-500/30 flex items-center justify-center shrink-0">
+                  <img src="/logo.jpg" alt="Armaghan Sadeq Transfers" className="w-12 h-12 object-contain" />
                 </div>
                 <div>
                   <h1 className="text-xl font-black tracking-tight text-slate-900">
-                    RAYAN CARGO DB & LOGISTICS
+                    ARMAGHAN SADEQ TRANSFERS
                   </h1>
-                  <p className="text-xs text-slate-600 font-semibold">
-                    Nationwide Express Waybill & Freight Delivery Network
+                  <p className="text-xs text-amber-700 font-bold">
+                    خدمات انتقالات ارمغان صادق
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Afghanistan Nationwide Express Transfers & Freight Logistics
                   </p>
                   <div className="text-[10px] text-slate-500 mt-0.5">
-                    Helpline: +93 79 123 4567 | info@rayancargo.af | www.rayancargo.af
+                    Helpline: +93 799 123 456 | info@armaghansadeq.af | Kabul HQ
                   </div>
                 </div>
               </div>
@@ -497,6 +506,14 @@ export const PrintReceiptModal: React.FC = () => {
                 <div className="border-b border-slate-400 w-3/4 mx-auto pb-1" />
                 <div className="text-[10px] text-slate-500">(Sign upon handover)</div>
               </div>
+            </div>
+
+            {/* Attribution Footer */}
+            <div className="pt-3 border-t border-dashed border-slate-200 flex flex-col sm:flex-row justify-between items-center text-[10px] text-slate-400 gap-1">
+              <span>Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق</span>
+              <span className="font-medium text-slate-500">
+                Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)
+              </span>
             </div>
 
           </div>

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus } from '../types';
+import { ArmaghanLogo } from './ArmaghanLogo';
 
 export const LoginPage: React.FC = () => {
   const { 
@@ -111,7 +112,7 @@ export const LoginPage: React.FC = () => {
       const success = signupCustomer(
         customerName.trim(),
         customerPhone.trim() || '0700000000',
-        customerEmail.trim() || `${customerPhone.trim()}@customer.rayancargo.af`,
+        customerEmail.trim() || `${customerPhone.trim()}@customer.armaghansadeq.af`,
         customerPassword
       );
       if (!success) {
@@ -160,24 +161,7 @@ export const LoginPage: React.FC = () => {
       
       {/* Top Header */}
       <header className="border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-700 text-white flex items-center justify-center font-black text-xl shadow-md shadow-red-600/20">
-            R
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 bg-clip-text text-transparent">
-                {t('app_title')}
-              </span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 uppercase">
-                {t('system_secured_badge') || 'Secure DB'}
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
-              {t('app_subtitle')}
-            </p>
-          </div>
-        </div>
+        <ArmaghanLogo variant="badge" size="sm" showSubtitle={true} />
 
         {/* Language Selector */}
         <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
@@ -205,6 +189,11 @@ export const LoginPage: React.FC = () => {
       {/* Main Container */}
       <main className="flex-1 max-w-5xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex flex-col justify-center">
         
+        {/* Central Company Presentation Banner with Official Logo */}
+        <div className="mb-6 flex flex-col items-center text-center">
+          <ArmaghanLogo variant="full" size="xl" showSubtitle={true} />
+        </div>
+
         {/* Navigation Tabs for 3 Modes */}
         <div className="flex justify-center mb-6 sm:mb-8">
           <div className="inline-flex p-1 rounded-2xl bg-slate-200/90 dark:bg-slate-800/90 border border-slate-300 dark:border-slate-700 shadow-xs">
@@ -258,7 +247,7 @@ export const LoginPage: React.FC = () => {
                 
                 <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-wider mb-4 border border-white/20 shadow-xs">
                   <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
-                  <span>{t('cargo_network_badge') || 'RAYAN CARGO LOGISTICS & FREIGHT NETWORK'}</span>
+                  <span>{t('cargo_network_badge') || 'ARMAGHAN SADEQ TRANSFERS • خدمات انتقالات ارمغان صادق'}</span>
                 </div>
 
                 <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight mb-2">
@@ -679,7 +668,7 @@ export const LoginPage: React.FC = () => {
                       required
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="admin@rayancargo.af or branch email/phone"
+                      placeholder="admin@armaghansadeq.af or branch email/phone"
                       className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -725,9 +714,14 @@ export const LoginPage: React.FC = () => {
 
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
-        <p>© {new Date().getFullYear()} {t('app_title')} — {t('secure_logistics_system') || 'Secure Logistics Network & Parcel Management System'}</p>
+      {/* Footer with Rayan Tech Solutions Attribution */}
+      <footer className="border-t border-slate-200 dark:border-slate-800 py-6 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 space-y-1.5">
+        <p className="font-semibold text-slate-700 dark:text-slate-300">
+          © {new Date().getFullYear()} Armaghan Sadeq Transfers (خدمات انتقالات ارمغان صادق) — {t('secure_logistics_system') || 'تمام حقوق محفوظ است'}
+        </p>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          Developed by <strong className="font-bold text-slate-700 dark:text-slate-300">Rayan tech solutions</strong> | سیستم توسعه یافته توسط خدمات تکنالوژی رایان (<a href="https://rayan-tech-solution.tech" target="_blank" rel="noopener noreferrer" className="text-red-600 dark:text-red-400 hover:underline font-mono">Rayan-Tech-Solution.tech</a>)
+        </p>
       </footer>
 
     </div>

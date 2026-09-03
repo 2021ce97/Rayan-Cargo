@@ -24,10 +24,15 @@ import {
   LayoutGrid,
   List,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  FileSpreadsheet,
+  Download,
+  Database,
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Branch, User } from '../types';
+import { exportBranchesToCsv } from '../utils/exportUtils';
 
 const AFGHAN_PROVINCES = [
   'Kabul', 'Herat', 'Balkh', 'Kandahar', 'Nangarhar', 'Kunduz', 'Ghazni', 
@@ -103,6 +108,27 @@ export const BranchManagement: React.FC = () => {
   const [copiedNewCreds, setCopiedNewCreds] = useState(false);
   const [copiedTazkiraId, setCopiedTazkiraId] = useState<string | null>(null);
 
+  // CSV Export state
+  const [exportSuccessMessage, setExportSuccessMessage] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportCsv = () => {
+    setIsExporting(true);
+    const usersMap = new Map<string, any>();
+    users.forEach(u => {
+      if (u.branchId) usersMap.set(u.branchId, u);
+    });
+
+    const targetList = filteredBranches.length > 0 ? filteredBranches : branches;
+    exportBranchesToCsv(targetList, usersMap);
+
+    setIsExporting(false);
+    setExportSuccessMessage(true);
+    setTimeout(() => {
+      setExportSuccessMessage(false);
+    }, 4000);
+  };
+
   const isSuperAdmin = currentUser.role === 'super_admin';
 
   // 13-Digit Standard Afghan Electronic Tazkira / National CNIC Validator
@@ -172,7 +198,7 @@ export const BranchManagement: React.FC = () => {
   const handleCopyCredentials = () => {
     if (!provisionBranch) return;
     const branchUser = users.find(u => u.branchId === provisionBranch.id);
-    const text = `Rayan Cargo Login Credentials:\nBranch: ${provisionBranch.name}\nEmail: ${branchUser?.email}\nTemporary Password: ${tempPassword}\n\nPlease sign in and immediately change your private password in the top bar.`;
+    const text = `Armaghan Sadeq Transfers Login Credentials:\nBranch: ${provisionBranch.name}\nEmail: ${branchUser?.email}\nTemporary Password: ${tempPassword}\n\nPlease sign in and immediately change your private password in the top bar.`;
     navigator.clipboard.writeText(text);
     setCopiedInfo(true);
     setTimeout(() => setCopiedInfo(false), 3000);
@@ -249,7 +275,7 @@ export const BranchManagement: React.FC = () => {
     const defaultCity = `${prov} City`;
     const suggestedCode = `${prov.slice(0, 3).toUpperCase()}-0${branches.length + 1}`;
     const cleanProv = prov.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const suggestedEmail = `${cleanProv}@rayancargo.af`;
+    const suggestedEmail = `${cleanProv}@armaghansadeq.af`;
     const suggestedPass = `${cleanProv}123`;
 
     setNewBranchData(prev => ({
@@ -301,7 +327,7 @@ export const BranchManagement: React.FC = () => {
 
   const handleCopyNewBranchCreds = () => {
     if (!createdBranchResult) return;
-    const text = `Rayan Cargo Login Credentials (New Hub):\nBranch: ${createdBranchResult.branch.name} (${createdBranchResult.branch.code})\nEmail: ${createdBranchResult.user.email}\nManager Tazkira / CNIC: ${createdBranchResult.branch.tazkiraNumber}\nTemporary Password: ${createdBranchResult.user.password}\n\nPlease sign in to Rayan Cargo and update your private password.`;
+    const text = `Armaghan Sadeq Transfers Login Credentials (New Hub):\nBranch: ${createdBranchResult.branch.name} (${createdBranchResult.branch.code})\nEmail: ${createdBranchResult.user.email}\nManager Tazkira / CNIC: ${createdBranchResult.branch.tazkiraNumber}\nTemporary Password: ${createdBranchResult.user.password}\n\nPlease sign in to Armaghan Sadeq Transfers and update your private password.`;
     navigator.clipboard.writeText(text);
     setCopiedNewCreds(true);
     setTimeout(() => setCopiedNewCreds(false), 3000);
@@ -329,8 +355,19 @@ export const BranchManagement: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Export to Excel / CSV Button */}
+          <button
+            onClick={handleExportCsv}
+            disabled={isExporting || branches.length === 0}
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all transform active:scale-98 cursor-pointer disabled:opacity-50"
+            title={t('btn_export_csv_desc') || 'Export branch records and 13-digit Tazkira credentials to Excel CSV'}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>{t('btn_export_csv') || 'Export to Excel / CSV'}</span>
+          </button>
+
           {/* Privacy badge */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 font-semibold">
+          <div className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 font-semibold">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>{t('branch_revenue_privacy_enforced')}</span>
           </div>
@@ -347,6 +384,27 @@ export const BranchManagement: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Export Success Notification Banner */}
+      {exportSuccessMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-600 text-white text-xs font-bold flex items-center justify-between shadow-lg shadow-emerald-600/20 animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-200 shrink-0" />
+            <div>
+              <div className="text-sm font-extrabold">{t('export_csv_success') || 'Branch directory exported successfully!'}</div>
+              <p className="text-[11px] font-normal text-emerald-100 mt-0.5">
+                Includes all 13-digit verified Tazkira ID numbers, manager contacts, and terminal coordinates in UTF-8 formatted CSV.
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setExportSuccessMessage(false)}
+            className="p-1.5 rounded-lg bg-emerald-700/60 hover:bg-emerald-700 text-emerald-100 hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Policy Notice Box */}
       <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-700 flex items-start gap-3">
@@ -1437,7 +1495,7 @@ export const BranchManagement: React.FC = () => {
                         required
                         value={newBranchData.email}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="e.g. ghazni@rayancargo.af"
+                        placeholder="e.g. ghazni@armaghansadeq.af"
                         className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>

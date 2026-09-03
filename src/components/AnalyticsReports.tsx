@@ -250,7 +250,7 @@ export const AnalyticsReports: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rayan_Cargo_Revenue_PnL_Audit_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Armaghan_Sadeq_Transfers_Revenue_PnL_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -443,7 +443,7 @@ export const AnalyticsReports: React.FC = () => {
                   : `${getLocalizedBranchName(branches.find(b => b.id === selectedBranchId))} Terminal P&L — ${dateRange.toUpperCase()}`}
               </h2>
               <p className="text-xs text-slate-500">
-                Generated: {new Date().toLocaleDateString()} | Rayan Cargo Afghanistan DB System
+                Generated: {new Date().toLocaleDateString()} | {t('system_name')}
               </p>
             </div>
 

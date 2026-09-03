@@ -194,7 +194,7 @@ export const ExpenseManager: React.FC = () => {
             {analytics.totalRevenue.toLocaleString()} <span className="text-xs font-bold text-slate-500">AFN</span>
           </div>
           <div className="text-[11px] text-emerald-600 font-medium">
-            From {analytics.totalParcels} parcel consignments
+            {analytics.totalParcels} {t('consignments_booked_count')}
           </div>
         </div>
 
@@ -210,7 +210,7 @@ export const ExpenseManager: React.FC = () => {
             {totalExpenseSum.toLocaleString()} <span className="text-xs font-bold text-slate-500">AFN</span>
           </div>
           <div className="text-[11px] text-slate-500 font-medium">
-            {branchExpenses.length} operational expense entries
+            {branchExpenses.length} {t('operational_expense_entries')}
           </div>
         </div>
 
@@ -226,7 +226,7 @@ export const ExpenseManager: React.FC = () => {
             {(analytics.totalRevenue - totalExpenseSum).toLocaleString()} <span className="text-xs font-bold text-slate-300">AFN</span>
           </div>
           <div className="text-[11px] text-slate-400 font-medium">
-            Gross Revenue minus Branch Expenses
+            {t('gross_rev_minus_expenses')}
           </div>
         </div>
 
@@ -243,14 +243,14 @@ export const ExpenseManager: React.FC = () => {
               onChange={(e) => setSelectedCategoryFilter(e.target.value)}
               className="px-3 py-1.5 rounded-xl border border-slate-300 bg-slate-50 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none"
             >
-              <option value="all">All Categories</option>
-              <option value="rent">Shop / Warehouse Rent</option>
-              <option value="salary">Staff Salary & Wages</option>
-              <option value="food_tea">Staff Meals & Tea</option>
-              <option value="fuel_transport">Fuel & Transport</option>
-              <option value="utilities">Electricity & Utilities</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="other">Other Costs</option>
+              <option value="all">{t('filter_all_categories_exp')}</option>
+              <option value="rent">{t('cat_rent')}</option>
+              <option value="salary">{t('cat_salary')}</option>
+              <option value="food_tea">{t('cat_food')}</option>
+              <option value="fuel_transport">{t('cat_fuel_transport')}</option>
+              <option value="utilities">{t('cat_utilities')}</option>
+              <option value="maintenance">{t('cat_maintenance')}</option>
+              <option value="other">{t('cat_other')}</option>
             </select>
           </div>
 
@@ -268,9 +268,9 @@ export const ExpenseManager: React.FC = () => {
         {filteredExpenses.length === 0 ? (
           <div className="p-10 text-center space-y-2">
             <Receipt className="w-10 h-10 text-slate-300 mx-auto" />
-            <div className="text-xs font-bold text-slate-600">No Branch Expenses Recorded Yet</div>
+            <div className="text-xs font-bold text-slate-600">{t('no_expenses_recorded')}</div>
             <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-              Add operational costs such as shop rent, meals, employee salaries, and fuel using the "Record Branch Expense" button.
+              {t('no_expenses_recorded_desc')}
             </p>
           </div>
         ) : (
@@ -278,13 +278,13 @@ export const ExpenseManager: React.FC = () => {
             <table className="w-full text-start text-xs">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-400 uppercase font-bold text-[10px]">
-                  <th className="pb-3 text-start">Date</th>
-                  <th className="pb-3 text-start">Category</th>
-                  <th className="pb-3 text-start">Description</th>
-                  <th className="pb-3 text-start">Paid To</th>
-                  <th className="pb-3 text-start">Receipt #</th>
-                  <th className="pb-3 text-end">Amount</th>
-                  <th className="pb-3 text-center">Action</th>
+                  <th className="pb-3 text-start">{t('col_date')}</th>
+                  <th className="pb-3 text-start">{t('col_category')}</th>
+                  <th className="pb-3 text-start">{t('col_description')}</th>
+                  <th className="pb-3 text-start">{t('col_paid_to')}</th>
+                  <th className="pb-3 text-start">{t('col_receipt_no')}</th>
+                  <th className="pb-3 text-end">{t('col_amount')}</th>
+                  <th className="pb-3 text-center">{t('col_action')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -358,7 +358,7 @@ export const ExpenseManager: React.FC = () => {
               {currentUser.role === 'super_admin' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Select Branch
+                    {t('select_branch')}
                   </label>
                   <select
                     value={formBranchId}
@@ -470,13 +470,13 @@ export const ExpenseManager: React.FC = () => {
                   onClick={() => setShowAddModal(false)}
                   className="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
                 >
-                  Cancel
+                  {t('btn_cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-600/20 cursor-pointer"
                 >
-                  Record Expense
+                  {t('record_branch_expense_btn')}
                 </button>
               </div>
 

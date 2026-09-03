@@ -203,29 +203,29 @@ export const CustomerPortal: React.FC = () => {
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-xs p-2.5 rounded-xl">
             <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-xs shrink-0">1</div>
             <div>
-              <div className="font-bold text-white">Pre-Book Online</div>
-              <div className="text-[10px] text-red-100">Add cargo & contact details</div>
+              <div className="font-bold text-white">{t('step_prebook_online')}</div>
+              <div className="text-[10px] text-red-100">{t('step_prebook_online_desc')}</div>
             </div>
           </div>
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-xs p-2.5 rounded-xl">
             <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-xs shrink-0">2</div>
             <div>
-              <div className="font-bold text-white">Drop at Origin Branch</div>
-              <div className="text-[10px] text-red-100">Hand over package at branch</div>
+              <div className="font-bold text-white">{t('step_drop_branch')}</div>
+              <div className="text-[10px] text-red-100">{t('step_drop_branch_desc')}</div>
             </div>
           </div>
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-xs p-2.5 rounded-xl">
             <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-xs shrink-0">3</div>
             <div>
-              <div className="font-bold text-white">Origin Branch Pricing</div>
-              <div className="text-[10px] text-red-100">Scale weighed & price assigned</div>
+              <div className="font-bold text-white">{t('step_branch_pricing')}</div>
+              <div className="text-[10px] text-red-100">{t('step_branch_pricing_desc')}</div>
             </div>
           </div>
           <div className="flex items-center gap-2.5 bg-white/10 backdrop-blur-xs p-2.5 rounded-xl">
             <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-900 font-black flex items-center justify-center text-xs shrink-0">4</div>
             <div>
-              <div className="font-bold text-white">Live Tracking & Invoicing</div>
-              <div className="text-[10px] text-red-100">View price in portal & track</div>
+              <div className="font-bold text-white">{t('step_tracking_invoicing')}</div>
+              <div className="text-[10px] text-red-100">{t('step_tracking_invoicing_desc')}</div>
             </div>
           </div>
         </div>
@@ -236,9 +236,9 @@ export const CustomerPortal: React.FC = () => {
           <div className="flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <div>
-              <div className="text-xs font-bold">Consignment Pre-Booked Successfully!</div>
+              <div className="text-xs font-bold">{t('order_confirmed_success')}</div>
               <div className="text-[11px] text-emerald-700">
-                Your CN Reference Number is <span className="font-mono font-bold text-slate-900">{submittedCn}</span>. Please drop off the parcel at your selected Origin Branch. The Branch Manager will weigh it on the scale, set the official freight price, and it will immediately update in your account history.
+                {t('your_cn_lbl') || 'CN'}: <span className="font-mono font-bold text-slate-900">{submittedCn}</span>. {t('origin_drop_prompt')}
               </div>
             </div>
           </div>
@@ -246,7 +246,7 @@ export const CustomerPortal: React.FC = () => {
             onClick={() => setSubmittedCn(null)}
             className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline cursor-pointer"
           >
-            Dismiss
+            {t('btn_close')}
           </button>
         </div>
       )}
@@ -267,8 +267,8 @@ export const CustomerPortal: React.FC = () => {
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs">
               <Scale className="w-4 h-4 text-amber-600 shrink-0" />
               <div className="text-start">
-                <div className="font-bold text-[11px]">Pricing Policy: Branch Determined</div>
-                <div className="text-[10px] text-amber-700">Calculated upon physical scale weighing at origin branch</div>
+                <div className="font-bold text-[11px]">{t('pricing_policy_branch_title')}</div>
+                <div className="text-[10px] text-amber-700">{t('pricing_policy_branch_desc')}</div>
               </div>
             </div>
           </div>
@@ -276,7 +276,7 @@ export const CustomerPortal: React.FC = () => {
           <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs flex items-start gap-2.5">
             <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <span className="font-bold">{t('customer_pricing_policy_info')}</span> You only need to provide package details and receiver contacts. When you drop off the parcel at the origin branch, the branch manager will inspect and weigh it, enter the official freight price, and you will see the confirmed price in your account.
+              <span className="font-bold">{t('customer_pricing_policy_info')}</span> {t('origin_drop_prompt')}
             </div>
           </div>
 
@@ -286,7 +286,7 @@ export const CustomerPortal: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Origin Cargo Branch (Where you will drop the parcel)
+                  {t('origin_cargo_branch_lbl')}
                 </label>
                 <select
                   value={originBranchId}
@@ -303,7 +303,7 @@ export const CustomerPortal: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Destination Cargo Branch (Destination Province)
+                  {t('dest_cargo_branch_lbl')}
                 </label>
                 <select
                   value={destinationBranchId}
@@ -326,11 +326,11 @@ export const CustomerPortal: React.FC = () => {
               <div className="space-y-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
                 <div className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" />
-                  <span>Sender Information (You)</span>
+                  <span>{t('sender_info_you')}</span>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Your Full Name</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('your_full_name')}</label>
                   <input
                     type="text"
                     required
@@ -342,7 +342,7 @@ export const CustomerPortal: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Phone Number</label>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('phone_number')}</label>
                     <input
                       type="text"
                       required
@@ -352,7 +352,7 @@ export const CustomerPortal: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">Email (Optional)</label>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('email_optional')}</label>
                     <input
                       type="email"
                       value={senderEmail}
@@ -363,7 +363,7 @@ export const CustomerPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Sender Street Address</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('sender_address_lbl')}</label>
                   <input
                     type="text"
                     value={senderAddress}
@@ -378,11 +378,11 @@ export const CustomerPortal: React.FC = () => {
               <div className="space-y-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
                 <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>Receiver Information (Destination)</span>
+                  <span>{t('receiver_info_dest')}</span>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Receiver Full Name</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('receiver_full_name')}</label>
                   <input
                     type="text"
                     required
@@ -394,7 +394,7 @@ export const CustomerPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Receiver Phone Number</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('receiver_phone_lbl')}</label>
                   <input
                     type="text"
                     required
@@ -406,7 +406,7 @@ export const CustomerPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Delivery / Street Address</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('receiver_address_lbl')}</label>
                   <input
                     type="text"
                     value={receiverAddress}
@@ -422,7 +422,7 @@ export const CustomerPortal: React.FC = () => {
             {/* 3. Parcel Details */}
             <div className="space-y-4 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
               <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Parcel Specifications & Declared Value
+                {t('parcel_specs_declared_val')}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -440,7 +440,7 @@ export const CustomerPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Estimated Weight (KG)</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('estimated_weight_kg')}</label>
                   <input
                     type="number"
                     min="0.5"
@@ -453,7 +453,7 @@ export const CustomerPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">No. of Pieces / Boxes</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('pieces_boxes_count')}</label>
                   <input
                     type="number"
                     min="1"
@@ -465,7 +465,7 @@ export const CustomerPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Goods Value (AFN)</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('goods_value_afn')}</label>
                   <input
                     type="number"
                     min="0"
@@ -477,7 +477,7 @@ export const CustomerPortal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">Contents Description & Notes</label>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('contents_desc_notes')}</label>
                 <input
                   type="text"
                   value={description}
@@ -495,11 +495,11 @@ export const CustomerPortal: React.FC = () => {
                     onChange={(e) => setIsFragile(e.target.checked)}
                     className="w-4 h-4 rounded text-red-600 focus:ring-red-500"
                   />
-                  <span>Fragile Cargo (Requires special handling)</span>
+                  <span>{t('fragile_cargo_notice')}</span>
                 </label>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-slate-700">Payment Preference:</span>
+                  <span className="text-xs font-bold text-slate-700">{t('payment_preference_lbl')}:</span>
                   <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                     <input
                       type="radio"
@@ -508,7 +508,7 @@ export const CustomerPortal: React.FC = () => {
                       onChange={() => setPaymentPreference('pay_at_branch')}
                       className="text-red-600"
                     />
-                    <span>Pay at Origin Branch</span>
+                    <span>{t('pay_at_origin_branch')}</span>
                   </label>
                   <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
                     <input
@@ -518,7 +518,7 @@ export const CustomerPortal: React.FC = () => {
                       onChange={() => setPaymentPreference('pay_on_delivery')}
                       className="text-red-600"
                     />
-                    <span>Receiver Pays (COD)</span>
+                    <span>{t('receiver_pays_cod')}</span>
                   </label>
                 </div>
               </div>
@@ -529,7 +529,7 @@ export const CustomerPortal: React.FC = () => {
               className="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <Package className="w-4 h-4" />
-              <span>Submit Pre-Booking & Generate CN Reference</span>
+              <span>{t('submit_prebook_btn')}</span>
             </button>
 
           </form>
@@ -546,7 +546,7 @@ export const CustomerPortal: React.FC = () => {
                 {t('customer_shipment_history')}
               </h2>
               <p className="text-xs text-slate-500">
-                Real-time records of all your dispatched and incoming cargo parcels
+                {t('customer_history_subtitle')}
               </p>
             </div>
 
@@ -567,16 +567,16 @@ export const CustomerPortal: React.FC = () => {
               <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                 <Package className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-slate-700">No Cargo Shipments Found</h3>
+              <h3 className="text-sm font-bold text-slate-700">{t('no_shipments_found_customer')}</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                You have not registered any parcels yet. Click "Pre-book New Parcel" to add your first cargo consignment.
+                {t('no_shipments_found_customer_desc')}
               </p>
               <button
                 onClick={() => setActiveTab('prebook')}
                 className="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Pre-book Your First Parcel</span>
+                <span>{t('prebook_first_parcel_btn')}</span>
               </button>
             </div>
           ) : (
@@ -637,7 +637,7 @@ export const CustomerPortal: React.FC = () => {
                           className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-red-500 hover:text-red-600 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
                         >
                           <Printer className="w-3.5 h-3.5" />
-                          <span>Receipt</span>
+                          <span>{t('btn_print')}</span>
                         </button>
                       </div>
                     </div>
@@ -645,25 +645,25 @@ export const CustomerPortal: React.FC = () => {
                     {/* Route & Cargo details */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1 border-t border-slate-200">
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Route</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold">{t('route_lbl')}</span>
                         <div className="font-bold text-slate-900 mt-0.5 flex items-center gap-1.5">
                           <span>{originBr?.city || 'Origin'}</span>
                           <ArrowRight className="w-3 h-3 text-slate-400" />
                           <span>{destBr?.city || 'Destination'}</span>
                         </div>
-                        <div className="text-[11px] text-slate-500">Receiver: {shipment.receiver.name} ({shipment.receiver.phone})</div>
+                        <div className="text-[11px] text-slate-500">{t('receiver')}: {shipment.receiver.name} ({shipment.receiver.phone})</div>
                       </div>
 
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Cargo Specs</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold">{t('cargo_specs_lbl')}</span>
                         <div className="font-bold text-slate-900 mt-0.5">
-                          {shipment.packageInfo.category} • {shipment.packageInfo.weightKg} KG • {shipment.packageInfo.pieces} pcs
+                          {shipment.packageInfo.category} • {shipment.packageInfo.weightKg} KG • {shipment.packageInfo.pieces} {t('pcs_unit')}
                         </div>
                         <div className="text-[11px] text-slate-500">{shipment.packageInfo.description || 'Standard Consignment'}</div>
                       </div>
 
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">Latest Status / Branch Note</span>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold">{t('latest_status_note_lbl')}</span>
                         <div className="font-bold text-slate-900 mt-0.5 text-[11px] leading-tight">
                           {shipment.statusHistory[shipment.statusHistory.length - 1]?.note || 'In system'}
                         </div>
@@ -677,9 +677,9 @@ export const CustomerPortal: React.FC = () => {
                       <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-800 text-[11px] flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <Info className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span>Please drop off parcel at <strong>{originBr?.name || 'Origin Branch'} ({originBr?.city})</strong> to complete scale inspection and have the official price added.</span>
+                          <span>{t('origin_drop_prompt')} (<strong>{originBr?.name || 'Origin Branch'} - {originBr?.city}</strong>)</span>
                         </div>
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Origin: {originBr?.code || 'ORIG'}</span>
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">{originBr?.code || 'ORIG'}</span>
                       </div>
                     )}
 
@@ -687,7 +687,7 @@ export const CustomerPortal: React.FC = () => {
                       <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-800 text-[11px] flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>Official freight verified by <strong>{originBr?.name || 'Origin Branch'}</strong>: Base {shipment.financials.baseRate} AFN + Weight {shipment.financials.weightCost} AFN + Service {shipment.financials.serviceFee} AFN = <strong>{shipment.financials.totalAmount} AFN</strong></span>
+                          <span>{t('official_freight_verified_note')} (<strong>{originBr?.name || 'Origin Branch'}</strong>): {t('base_rate_lbl')} {shipment.financials.baseRate} AFN + {t('weight_rate_lbl')} {shipment.financials.weightCost} AFN + {t('service_rate_lbl')} {shipment.financials.serviceFee} AFN = <strong>{shipment.financials.totalAmount} AFN</strong></span>
                         </div>
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">{shipment.financials.paymentStatus.toUpperCase()}</span>
                       </div>

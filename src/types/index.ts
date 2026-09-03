@@ -253,3 +253,22 @@ export interface StatusPermissionResult {
   allowedStatuses: ShipmentStatus[];
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  titleFa: string;
+  titlePs: string;
+  message: string;
+  messageFa: string;
+  messagePs: string;
+  timestamp: string;
+  read: boolean;
+  type: 'status_change' | 'new_assignment' | 'dispatch' | 'delivery' | 'payment';
+  parcelId?: string;
+  cnNumber?: string;
+  originBranchId?: string;
+  targetBranchId?: string; // specific branch id or 'all'
+  targetRoles?: UserRole[];
+}
+
+

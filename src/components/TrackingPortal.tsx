@@ -117,7 +117,7 @@ export const TrackingPortal: React.FC = () => {
           
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-wider mb-4">
             <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
-            <span>Rayan Cargo DB Logistics & Freight Network</span>
+            <span>Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق</span>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight mb-2">
@@ -355,7 +355,7 @@ export const TrackingPortal: React.FC = () => {
                   </div>
                   <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
                     <span className="text-slate-500">{t('pieces_count')}:</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">{trackedShipment.packageInfo.pieces} Boxes</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{trackedShipment.packageInfo.pieces} {t('pcs_unit')}</span>
                   </div>
                   {trackedShipment.packageInfo.dimensions && (
                     <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
@@ -391,10 +391,10 @@ export const TrackingPortal: React.FC = () => {
                     <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 space-y-1.5">
                       <div className="flex items-center gap-1.5 font-bold text-xs">
                         <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Price Pending Origin Branch Weighing</span>
+                        <span>{t('price_pending_branch_weighing')}</span>
                       </div>
                       <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                        Official freight will be calculated by the origin branch upon physical parcel drop-off and digital scale weighing.
+                        {t('origin_drop_prompt')}
                       </p>
                     </div>
                   ) : (
@@ -434,7 +434,7 @@ export const TrackingPortal: React.FC = () => {
                   <span>{t('timeline_title')}</span>
                 </h4>
                 <span className="text-xs text-slate-400 font-mono">
-                  {trackedShipment.statusHistory.length} Milestones Recorded
+                  {trackedShipment.statusHistory.length} {t('operational_expense_entries') || 'Records'}
                 </span>
               </div>
 

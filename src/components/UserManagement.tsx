@@ -98,7 +98,7 @@ export const UserManagement: React.FC = () => {
   const handleCopy = () => {
     if (!provisionUser) return;
     const branch = branches.find(b => b.id === provisionUser.branchId);
-    const text = `Rayan Cargo Login Credentials:\nBranch: ${branch?.name || 'HQ'}\nEmail: ${provisionUser.email}\nTemporary Password: ${tempPassword}\n\nPlease sign in and immediately change your private password in the top bar.`;
+    const text = `Armaghan Sadeq Transfers Login Credentials:\nBranch: ${branch?.name || 'HQ'}\nEmail: ${provisionUser.email}\nTemporary Password: ${tempPassword}\n\nPlease sign in and immediately change your private password in the top bar.`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
@@ -115,7 +115,7 @@ export const UserManagement: React.FC = () => {
       city: 'Ghazni City',
       address: 'Main Commercial Cargo Hub',
       phone: '+93 79 ',
-      email: 'ghazni@rayancargo.af',
+      email: 'ghazni@armaghansadeq.af',
       managerName: '',
       tazkiraNumber: '',
       initialPassword: 'ghazni123'
@@ -134,7 +134,7 @@ export const UserManagement: React.FC = () => {
       city: `${prov} City`,
       name: `${prov} Regional Hub`,
       code: nextCode,
-      email: `${cleanProv}@rayancargo.af`,
+      email: `${cleanProv}@armaghansadeq.af`,
       initialPassword: `${cleanProv}123`
     }));
   };
@@ -518,7 +518,7 @@ export const UserManagement: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      const text = `Rayan Cargo Login Credentials:\nBranch: ${createdResult.branch.name} (${createdResult.branch.code})\nEmail: ${createdResult.user.email}\nTemporary Password: ${createdResult.user.password}\n\nPlease sign in to Rayan Cargo and update your private password.`;
+                      const text = `Armaghan Sadeq Transfers Login Credentials:\nBranch: ${createdResult.branch.name} (${createdResult.branch.code})\nEmail: ${createdResult.user.email}\nTemporary Password: ${createdResult.user.password}\n\nPlease sign in to Armaghan Sadeq Transfers and update your private password.`;
                       navigator.clipboard.writeText(text);
                       setCopiedNew(true);
                       setTimeout(() => setCopiedNew(false), 3000);
@@ -712,7 +712,7 @@ export const UserManagement: React.FC = () => {
                         required
                         value={newBranchData.email}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="e.g. ghazni@rayancargo.af"
+                        placeholder="e.g. ghazni@armaghansadeq.af"
                         className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>

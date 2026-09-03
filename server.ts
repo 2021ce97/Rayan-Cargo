@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import { getDbPool, initDatabase, wipeDatabaseClean } from './src/server/db.ts';
+import { getDbPool, initDatabase, wipeDatabaseClean, isUsingRealDatabase, getDatabaseInfo, SUPABASE_SCHEMA_SQL } from './src/server/db.ts';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from './src/data/initialData.ts';
 
 dotenv.config();
@@ -56,6 +56,50 @@ async function startServer() {
         message: err?.message || 'Database connection error'
       });
     }
+  });
+
+  // Database Connection Info & Supabase Guide API
+  app.get('/api/database/info', async (req, res) => {
+    try {
+      const dbInfo = getDatabaseInfo();
+      const db = getDbPool();
+      let liveTime = new Date().toISOString();
+      let pgVersion = 'PostgreSQL In-Memory';
+      try {
+        const { rows } = await db.query('SELECT NOW() as server_time, version() as pg_version');
+        if (rows && rows[0]) {
+          liveTime = rows[0].server_time;
+          pgVersion = rows[0].pg_version;
+        }
+      } catch (e) {
+        console.warn('DB query time check:', e);
+      }
+
+      const { rows: bCount } = await db.query('SELECT COUNT(*) as count FROM branches');
+      const { rows: uCount } = await db.query('SELECT COUNT(*) as count FROM users');
+      const { rows: sCount } = await db.query('SELECT COUNT(*) as count FROM shipments');
+      const { rows: eCount } = await db.query('SELECT COUNT(*) as count FROM branch_expenses');
+      const { rows: stCount } = await db.query('SELECT COUNT(*) as count FROM branch_settlements');
+
+      res.json({
+        ...dbInfo,
+        serverTime: liveTime,
+        pgVersion,
+        stats: {
+          branches: parseInt(bCount[0]?.count || '0', 10),
+          users: parseInt(uCount[0]?.count || '0', 10),
+          shipments: parseInt(sCount[0]?.count || '0', 10),
+          expenses: parseInt(eCount[0]?.count || '0', 10),
+          settlements: parseInt(stCount[0]?.count || '0', 10)
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message });
+    }
+  });
+
+  app.get('/api/database/schema', (req, res) => {
+    res.type('text/plain').send(SUPABASE_SCHEMA_SQL);
   });
 
   // 1. Branches API

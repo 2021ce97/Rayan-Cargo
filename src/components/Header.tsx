@@ -12,14 +12,13 @@ import {
   LogOut,
   Lock,
   KeyRound,
-  Database,
-  RefreshCw,
   Menu,
   X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Language, UserRole, Branch } from '../types';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { ArmaghanLogo } from './ArmaghanLogo';
 
 export const Header: React.FC = () => {
   const { 
@@ -36,9 +35,6 @@ export const Header: React.FC = () => {
     setActiveView,
     toastMessage,
     logout,
-    dbStatus,
-    isSyncing,
-    syncWithDatabase,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen
   } = useApp();
@@ -110,24 +106,9 @@ export const Header: React.FC = () => {
 
               <div 
                 onClick={() => setActiveView('dashboard')}
-                className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
+                className="cursor-pointer transition-transform hover:opacity-95"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-red-600 via-rose-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-red-500/20 group-hover:scale-105 transition-transform">
-                  <Package className="w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1 sm:gap-1.5">
-                    <span className="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 bg-clip-text text-transparent">
-                      Rayan
-                    </span>
-                    <span className="text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 uppercase tracking-wider">
-                      Cargo DB
-                    </span>
-                  </div>
-                  <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden md:block">
-                    {t('app_subtitle')}
-                  </p>
-                </div>
+                <ArmaghanLogo variant="badge" size="sm" showSubtitle={true} />
               </div>
             </div>
 
@@ -163,23 +144,6 @@ export const Header: React.FC = () => {
                 title="Search CN"
               >
                 <Search className="w-4 h-4" />
-              </button>
-
-              {/* Supabase PostgreSQL Status & Live Sync */}
-              <button
-                onClick={() => syncWithDatabase()}
-                className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                  dbStatus.connected 
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100' 
-                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
-                }`}
-                title={`Supabase PostgreSQL Pooler (${dbStatus.connected ? 'Connected' : 'Connecting...'}) - Click to Sync`}
-              >
-                <Database className={`w-3.5 h-3.5 ${dbStatus.connected ? 'text-emerald-600' : 'text-amber-600'}`} />
-                <span className="text-[11px] font-medium hidden 2xl:inline">
-                  {dbStatus.connected ? 'Supabase DB' : 'Connecting DB'}
-                </span>
-                <RefreshCw className={`w-3 h-3 text-slate-400 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
               </button>
 
               {/* Branch Switcher (for super_admin only) / Lock Badge (for branch) */}

@@ -128,11 +128,11 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text('RAYAN CARGO DB & LOGISTICS', margin + 6, margin + 9);
+    doc.text('ARMAGHAN SADEQ TRANSFERS', margin + 6, margin + 9);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
-    doc.text('AFGHANISTAN NATIONWIDE EXPRESS FREIGHT & PARCEL NETWORK', margin + 6, margin + 15);
+    doc.text('AFGHANISTAN NATIONWIDE EXPRESS TRANSFERS & FREIGHT NETWORK', margin + 6, margin + 15);
     doc.text('Kabul HQ | 34 Provinces Connected | Fast & Secure Delivery', margin + 6, margin + 20);
 
     // CN Number Box on Header Right
@@ -319,8 +319,8 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('Scan barcode or enter CN on Rayan Cargo Portal to track live status in real time.', margin + 95, y + 7);
-    doc.text(`Support Hotline: +93 799 123 456 | support@rayancargo.af`, margin + 95, y + 13);
+    doc.text('Scan barcode or enter CN on Armaghan Sadeq Transfers Portal to track live status in real time.', margin + 95, y + 7);
+    doc.text(`Support Hotline: +93 799 123 456 | support@armaghansadeq.af`, margin + 95, y + 13);
 
     y += 24;
 
@@ -360,14 +360,17 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
     doc.text(`Origin: ${originBranch?.name || shipment.originBranchId}`, sig3X + 3, y + 9);
     doc.text('Official Seal: [ VERIFIED ]', sig3X + 3, y + 22);
 
-    // Footer
+    // Footer with Rayan Tech Solutions Attribution
     y += sigHeight + 5;
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text('Rayan Cargo DB Logistics System | Official Afghanistan Freight Consignment Document | Page 1 of 1', margin, y);
+    doc.text('Armaghan Sadeq Transfers | Official Afghanistan Freight Consignment Document', margin, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 68, y);
 
     // Save and download PDF directly
-    const filename = `Rayan_Cargo_Waybill_${shipment.cnNumber}.pdf`;
+    const filename = `Armaghan_Sadeq_Waybill_${shipment.cnNumber}.pdf`;
     doc.save(filename);
     return true;
   } catch (err) {
@@ -406,7 +409,7 @@ export function generateDispatchManifestPdf(
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
-    doc.text('RAYAN CARGO DB — OFFICIAL CARGO DISPATCH & TRANSIT MANIFEST', margin + 6, margin + 8);
+    doc.text('ARMAGHAN SADEQ TRANSFERS — OFFICIAL CARGO DISPATCH & TRANSIT MANIFEST', margin + 6, margin + 8);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
@@ -496,7 +499,16 @@ export function generateDispatchManifestPdf(
     doc.text('Transit Driver Signature: _______________________', margin + 100, y + 5);
     doc.text('Receiving Hub Seal & Sign: _______________________', margin + 195, y + 5);
 
-    const filename = `Rayan_Cargo_Manifest_${manifestNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+    y += 11;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Armaghan Sadeq Transfers Express Logistics Network | Afghanistan Nationwide Operations', margin + 4, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 140, y);
+
+    const filename = `Armaghan_Sadeq_Manifest_${manifestNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
     return true;
   } catch (err) {
@@ -536,7 +548,7 @@ export function generateExecutiveReportPdf(
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
-    doc.text('RAYAN CARGO DB — EXECUTIVE AUDIT REPORT', margin + 6, margin + 9);
+    doc.text('ARMAGHAN SADEQ TRANSFERS — EXECUTIVE AUDIT REPORT', margin + 6, margin + 9);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.text(`Branch: ${branchName} | Period: ${dateRange.toUpperCase()} | Generated: ${new Date().toLocaleString()}`, margin + 6, margin + 16);
@@ -610,7 +622,16 @@ export function generateExecutiveReportPdf(
     doc.text('• Inter-provincial waybills adhere to Afghanistan Ministry of Transport and Cargo regulations.', margin + 4, y + 12);
     doc.text('• Confidential internal document. Unauthorized reproduction is strictly prohibited.', margin + 4, y + 18);
 
-    const filename = `Rayan_Cargo_Executive_Report_${dateRange}_${new Date().toISOString().split('T')[0]}.pdf`;
+    y += 24;
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق', margin + 4, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 70, y);
+
+    const filename = `Armaghan_Sadeq_Executive_Report_${dateRange}_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
     return true;
   } catch (err) {
