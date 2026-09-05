@@ -1019,7 +1019,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Analytics Computation (All branches for super_admin, or single branch)
   const analytics: AnalyticsSummary = React.useMemo(() => {
-    const relevant = filteredShipments;
     let totalRevenue = 0;
     let totalPaid = 0;
     let totalPending = 0;
@@ -1030,21 +1029,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let discountsGiven = 0;
     let totalRemittancesPending = 0;
 
-    relevant.forEach(s => {
-      totalRevenue += s.financials.totalAmount;
-      totalPaid += s.financials.amountPaid;
-      totalPending += s.financials.amountDue;
-      discountsGiven += s.financials.discountAmount || 0;
+    const isSuperAdmin = currentUser.role === 'super_admin';
+    const targetBranchId = isSuperAdmin ? activeBranchId : currentUser.branchId;
 
-      if (s.remittanceStatus === 'pending' && s.status === 'delivered') {
-        totalRemittancesPending += (s.originRemittanceDue || (s.financials.totalAmount - (s.destBranchCommission || 0)));
-      }
+    if (isSuperAdmin && targetBranchId === 'all') {
+      // Super Admin sees ALL shipments and entire business revenue across all branches
+      shipments.forEach(s => {
+        totalRevenue += s.financials.totalAmount;
+        totalPaid += s.financials.amountPaid;
+        totalPending += s.financials.amountDue;
+        discountsGiven += s.financials.discountAmount || 0;
 
-      if (s.status === 'delivered') deliveredParcels++;
-      else if (s.status === 'in_transit' || s.status === 'out_for_delivery') inProgressParcels++;
-      else if (s.status === 'received_at_branch') receivedParcels++;
-      else if (s.status === 'returned') returnedParcels++;
-    });
+        if (s.remittanceStatus === 'pending' && s.status === 'delivered') {
+          totalRemittancesPending += (s.originRemittanceDue || (s.financials.totalAmount - (s.destBranchCommission || 0)));
+        }
+
+        if (s.status === 'delivered') deliveredParcels++;
+        else if (s.status === 'in_transit' || s.status === 'out_for_delivery') inProgressParcels++;
+        else if (s.status === 'received_at_branch') receivedParcels++;
+        else if (s.status === 'returned') returnedParcels++;
+      });
+    } else {
+      // Single Branch Scope (Branch Manager or Admin inspecting one specific branch)
+      // Branch revenue is strictly isolated: only freight booked at this branch + destination commission earned
+      shipments.forEach(s => {
+        const isOrigin = s.originBranchId === targetBranchId;
+        const isDest = s.destinationBranchId === targetBranchId;
+        const isCurrent = s.currentBranchId === targetBranchId;
+
+        if (isOrigin) {
+          totalRevenue += s.financials.totalAmount;
+          totalPaid += s.financials.amountPaid;
+          totalPending += s.financials.amountDue;
+          discountsGiven += s.financials.discountAmount || 0;
+        } else if (isDest) {
+          // Destination branch earns destination commission for handling the parcel
+          const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : 100;
+          totalRevenue += comm;
+        }
+
+        if (isOrigin || isDest || isCurrent) {
+          if (s.remittanceStatus === 'pending' && s.status === 'delivered' && isOrigin) {
+            totalRemittancesPending += (s.originRemittanceDue || (s.financials.totalAmount - (s.destBranchCommission || 0)));
+          }
+
+          if (s.status === 'delivered') deliveredParcels++;
+          else if (s.status === 'in_transit' || s.status === 'out_for_delivery') inProgressParcels++;
+          else if (s.status === 'received_at_branch') receivedParcels++;
+          else if (s.status === 'returned') returnedParcels++;
+        }
+      });
+    }
 
     const totalExpensesAfn = branchExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const netProfitAfn = totalRevenue - totalExpensesAfn;
@@ -1053,7 +1088,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       totalRevenue,
       totalPaid,
       totalPending,
-      totalParcels: relevant.length,
+      totalParcels: isSuperAdmin && targetBranchId === 'all' ? shipments.length : filteredShipments.length,
       receivedParcels,
       inProgressParcels,
       deliveredParcels,
@@ -1063,7 +1098,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       netProfitAfn,
       totalRemittancesPending
     };
-  }, [filteredShipments, branchExpenses]);
+  }, [shipments, filteredShipments, branchExpenses, currentUser, activeBranchId]);
 
   // Expense Management
   const addExpense = (input: AddExpenseInput): BranchExpense => {

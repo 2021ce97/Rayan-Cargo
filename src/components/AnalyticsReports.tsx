@@ -73,20 +73,38 @@ export const AnalyticsReports: React.FC = () => {
     return b.name;
   };
 
-  // Scope shipments based on selectedBranchId
-  const scopedShipments = useMemo(() => {
-    if (selectedBranchId === 'all') return shipments;
-    return shipments.filter(s => s.originBranchId === selectedBranchId || s.destinationBranchId === selectedBranchId);
-  }, [shipments, selectedBranchId]);
+  const isSuperAdmin = currentUser.role === 'super_admin';
+  const managerBranchId = currentUser.branchId;
 
-  // Scope expenses based on selectedBranchId
+  // Scope shipments based on role and selectedBranchId
+  const scopedShipments = useMemo(() => {
+    if (isSuperAdmin && selectedBranchId === 'all') return shipments;
+    const targetBranch = isSuperAdmin ? selectedBranchId : managerBranchId;
+    return shipments.filter(s => s.originBranchId === targetBranch || s.destinationBranchId === targetBranch);
+  }, [shipments, selectedBranchId, isSuperAdmin, managerBranchId]);
+
+  // Scope expenses based on role and selectedBranchId
   const scopedExpenses = useMemo(() => {
-    if (selectedBranchId === 'all') return expenses;
-    return expenses.filter(e => e.branchId === selectedBranchId);
-  }, [expenses, selectedBranchId]);
+    if (isSuperAdmin && selectedBranchId === 'all') return expenses;
+    const targetBranch = isSuperAdmin ? selectedBranchId : managerBranchId;
+    return expenses.filter(e => e.branchId === targetBranch);
+  }, [expenses, selectedBranchId, isSuperAdmin, managerBranchId]);
 
   // Financial calculations
-  const totalGrossRevenue = scopedShipments.reduce((acc, curr) => acc + curr.financials.totalAmount, 0);
+  const totalGrossRevenue = useMemo(() => {
+    if (isSuperAdmin && selectedBranchId === 'all') {
+      return scopedShipments.reduce((acc, curr) => acc + curr.financials.totalAmount, 0);
+    }
+    const targetBranch = isSuperAdmin ? selectedBranchId : managerBranchId;
+    const originFreight = scopedShipments
+      .filter(s => s.originBranchId === targetBranch)
+      .reduce((acc, curr) => acc + curr.financials.totalAmount, 0);
+    const destCommission = scopedShipments
+      .filter(s => s.destinationBranchId === targetBranch)
+      .reduce((acc, curr) => acc + (curr.destBranchCommission !== undefined ? curr.destBranchCommission : 100), 0);
+    return originFreight + destCommission;
+  }, [scopedShipments, isSuperAdmin, selectedBranchId, managerBranchId]);
+
   const totalPaidAtOrigin = scopedShipments.reduce((acc, curr) => acc + curr.financials.amountPaid, 0);
   const totalCodDue = scopedShipments.reduce((acc, curr) => acc + curr.financials.amountDue, 0);
   const totalWeight = scopedShipments.reduce((acc, curr) => acc + curr.packageInfo.weightKg, 0);
@@ -138,7 +156,11 @@ export const AnalyticsReports: React.FC = () => {
 
   // Branch Performance Matrix with Gross, Commission, Expense & Net Profit
   const branchPerformance = useMemo(() => {
-    return branches.map(b => {
+    const targetBranches = isSuperAdmin 
+      ? branches 
+      : branches.filter(b => b.id === managerBranchId);
+
+    return targetBranches.map(b => {
       // Shipments originated at this branch (Gross booking freight)
       const originShipments = shipments.filter(s => s.originBranchId === b.id);
       const grossOriginRev = originShipments.reduce((acc, s) => acc + s.financials.totalAmount, 0);
@@ -159,8 +181,10 @@ export const AnalyticsReports: React.FC = () => {
         .reduce((sum, e) => sum + e.amount, 0);
 
       // Net profit for this branch hub
-      const branchNet = grossOriginRev - branchExp;
-      const margin = grossOriginRev > 0 ? Math.round(((branchNet / grossOriginRev) * 100) * 10) / 10 : 0;
+      const branchNet = (grossOriginRev + destCommissionEarned) - branchExp;
+      const margin = (grossOriginRev + destCommissionEarned) > 0 
+        ? Math.round(((branchNet / (grossOriginRev + destCommissionEarned)) * 100) * 10) / 10 
+        : 0;
 
       const dispatched = originShipments.length;
       const received = destShipments.length;
@@ -173,6 +197,7 @@ export const AnalyticsReports: React.FC = () => {
         code: b.code,
         city: b.city,
         province: b.province,
+        isHeadOffice: b.isHeadOffice,
         grossRevenue: grossOriginRev,
         destCodCollected,
         destCommissionEarned,
@@ -184,7 +209,7 @@ export const AnalyticsReports: React.FC = () => {
         totalVolume: dispatched + received
       };
     });
-  }, [branches, shipments, expenses, language, t]);
+  }, [branches, shipments, expenses, language, t, isSuperAdmin, managerBranchId]);
 
   // Chart data for Branch Comparison (Gross vs Expenses vs Net Profit)
   const branchChartData = useMemo(() => {
@@ -349,18 +374,29 @@ export const AnalyticsReports: React.FC = () => {
           <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
             {t('filter_branch_select', 'Target Branch Scope')}:
           </span>
-          <select
-            value={selectedBranchId}
-            onChange={(e) => setSelectedBranchId(e.target.value)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white cursor-pointer focus:ring-2 focus:ring-red-500"
-          >
-            <option value="all">🏢 {t('all_terminals_pnl', 'All Provincial Terminals (HQ Consolidated)')}</option>
-            {branches.map(b => (
-              <option key={b.id} value={b.id}>
-                📍 {getLocalizedBranchName(b)} ({b.city})
-              </option>
-            ))}
-          </select>
+          {isSuperAdmin ? (
+            <select
+              value={selectedBranchId}
+              onChange={(e) => setSelectedBranchId(e.target.value)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white cursor-pointer focus:ring-2 focus:ring-red-500"
+            >
+              <option value="all">🏢 {t('all_terminals_pnl', 'All Provincial Terminals (HQ Consolidated)')}</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.isHeadOffice ? `👑 [${t('admin_main_office_badge', 'Main Branch (Admin HQ)')}] ` : '📍 '}
+                  {getLocalizedBranchName(b)} ({b.city})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
+              <Lock className="w-3.5 h-3.5 text-red-500" />
+              <span>{getLocalizedBranchName(branches.find(b => b.id === managerBranchId))}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                {t('branch_isolated_revenue_badge', 'Confidential')}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Actions (Export CSV, PDF, Print) */}
@@ -644,7 +680,9 @@ export const AnalyticsReports: React.FC = () => {
                 <tfoot>
                   <tr className="bg-slate-100 dark:bg-slate-800/80 font-bold border-t-2 border-slate-300 dark:border-slate-600">
                     <td className="p-3 text-slate-900 dark:text-white uppercase tracking-wider" colSpan={4}>
-                      {t('all_terminals_pnl', 'Total Consolidated Network')}
+                      {isSuperAdmin 
+                        ? t('all_terminals_pnl', 'Total Consolidated Network')
+                        : `${getLocalizedBranchName(branches.find(b => b.id === managerBranchId))} (${t('branch_isolated_revenue_badge', 'Confidential')})`}
                     </td>
                     <td className="p-3 text-end font-mono font-black text-slate-900 dark:text-white">
                       {totalGrossRevenue.toLocaleString()} AFN

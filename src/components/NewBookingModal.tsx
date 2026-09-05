@@ -32,6 +32,7 @@ export const NewBookingModal: React.FC = () => {
     language,
     branches, 
     currentUser, 
+    activeBranchId,
     addShipment, 
     setSelectedShipmentForReceipt,
     setActiveView 
@@ -45,17 +46,20 @@ export const NewBookingModal: React.FC = () => {
   };
 
   const isBranchUser = currentUser.role !== 'super_admin';
-  const userBranchId = isBranchUser ? currentUser.branchId : (branches[0]?.id || 'br_kbl_01');
+  const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
+  const defaultOrigin = isBranchUser 
+    ? currentUser.branchId 
+    : (activeBranchId && activeBranchId !== 'all' ? activeBranchId : (mainBranch?.id || 'br_kbl_01'));
 
   // Origin Branch is defaulted & locked to current branch
-  const [originBranchId, setOriginBranchId] = useState<string>(userBranchId);
+  const [originBranchId, setOriginBranchId] = useState<string>(defaultOrigin);
 
   // Available destination branches (the other 5 branches)
   const availableDestinations = branches.filter(b => b.id !== originBranchId);
 
   // Selected Destination Branch
   const [destBranchId, setDestBranchId] = useState<string>(
-    availableDestinations[0]?.id || (branches.find(b => b.id !== userBranchId)?.id || 'br_hrt_02')
+    availableDestinations[0]?.id || (branches.find(b => b.id !== defaultOrigin)?.id || 'br_hrt_02')
   );
 
   // Sender Info
@@ -298,6 +302,21 @@ export const NewBookingModal: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {!isBranchUser && mainBranch && (
+            <button
+              onClick={() => handleOriginChange(mainBranch.id)}
+              type="button"
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border ${
+                originBranchId === mainBranch.id
+                  ? 'bg-red-600 text-white border-red-600 shadow-sm'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+              }`}
+              title={t('admin_office_dispatch_desc')}
+            >
+              <Building2 className="w-4 h-4 text-amber-300" />
+              <span>{t('send_from_admin_office')}</span>
+            </button>
+          )}
           {branches.length >= 2 && (
             <button
               onClick={handleAutoFillSample}
@@ -387,14 +406,20 @@ export const NewBookingModal: React.FC = () => {
                   >
                     {branches.map(b => (
                       <option key={b.id} value={b.id}>
+                        {b.isHeadOffice ? `👑 [${t('admin_main_office_badge', 'Main Branch (Admin HQ)')}] ` : '📍 '}
                         {getLocalizedBranchName(b)} ({b.city} - {b.code})
                       </option>
                     ))}
                   </select>
                 )}
-                <p className="text-[10px] text-slate-400 mt-1">
-                  {t('located_in_prefix')} {originBranchObj?.city}, {originBranchObj?.province}
-                </p>
+                <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                  {originBranchObj?.isHeadOffice && (
+                    <span className="font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded text-[10px] border border-amber-200">
+                      👑 {t('admin_main_office_badge', 'Main Branch (Admin HQ)')}
+                    </span>
+                  )}
+                  <span>{t('located_in_prefix')} {originBranchObj?.city}, {originBranchObj?.province}</span>
+                </div>
               </div>
 
               {/* Destination Branch (Dropdown of other branches) */}

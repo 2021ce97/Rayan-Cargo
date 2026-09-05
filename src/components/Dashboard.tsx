@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   DollarSign, 
   Package, 
@@ -36,13 +36,32 @@ export const Dashboard: React.FC = () => {
     users,
     shipments,
     activeBranchId, 
+    setActiveBranchId,
     currentUser,
     setActiveView, 
     setSelectedShipmentForReceipt
   } = useApp();
 
   const isSuperAdmin = currentUser.role === 'super_admin';
+  const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
   const currentBranchObj = branches.find(b => b.id === (isSuperAdmin ? activeBranchId : currentUser.branchId));
+
+  // Branch revenue & operations matrix for Admin
+  const branchMatrix = useMemo(() => {
+    return branches.map(b => {
+      const bOriginShipments = shipments.filter(s => s.originBranchId === b.id);
+      const bDestShipments = shipments.filter(s => s.destinationBranchId === b.id);
+      const grossRevenue = bOriginShipments.reduce((sum, s) => sum + s.financials.totalAmount, 0);
+      const dispatched = bOriginShipments.length;
+      const received = bDestShipments.length;
+      return {
+        ...b,
+        grossRevenue,
+        dispatched,
+        received
+      };
+    });
+  }, [branches, shipments]);
 
   const getLocalizedBranchName = (b: Branch | undefined) => {
     if (!b) return t('all_branches');
@@ -107,10 +126,23 @@ export const Dashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {isSuperAdmin && mainBranch && (
+            <button
+              onClick={() => {
+                setActiveBranchId(mainBranch.id);
+                setActiveView('booking');
+              }}
+              className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-2 transition-all transform active:scale-98 cursor-pointer"
+              title={t('admin_office_dispatch_desc')}
+            >
+              <Building2 className="w-4 h-4 text-amber-300" />
+              <span>{t('send_from_admin_office', 'Send from Admin Office')}</span>
+            </button>
+          )}
           {branches.length >= 2 ? (
             <button
               onClick={() => setActiveView('booking')}
-              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-2 transition-all cursor-pointer"
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>{t('new_consignment_btn')}</span>
@@ -163,47 +195,79 @@ export const Dashboard: React.FC = () => {
       )}
 
 
-      {/* Admin Privacy Guarantee Banner (when logged in as admin) */}
+      {/* Admin Privacy & Ownership Banner */}
       {isSuperAdmin && (
-        <div className="p-4 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-700 flex items-center justify-between gap-3">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-white text-xs flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2.5">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>
-              <strong>{t('branch_revenue_privacy_enforced')}:</strong> {t('branch_ownership_notice')}
+            <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <span className="font-extrabold text-amber-300">
+                {t('admin_owner_revenue_overview', 'Business Revenue (Owner Overview)')}:
+              </span>{' '}
+              <span className="text-slate-300">
+                Full network visibility enabled. Individual provincial branch managers can only view their own branch data.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {mainBranch && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                👑 {t('admin_main_office_badge', 'Main Branch (Admin HQ)')}
+              </span>
+            )}
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white/10 text-slate-200 border border-white/20">
+              {branches.length} {t('active_terminals_status')}
             </span>
           </div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-300">
-            {branches.length} {t('active_terminals_status')}
-          </span>
         </div>
       )}
 
       {/* Core Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Metric 1: Financials for Branch / Network Volume for Admin */}
+        {/* Metric 1: Financials */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {isSuperAdmin ? t('metric_total_bookings') : t('metric_total_revenue')}
+              {isSuperAdmin ? t('admin_owner_revenue_overview', 'Business Revenue') : t('metric_total_revenue')}
             </span>
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-              isSuperAdmin ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'
-            }`}>
-              {isSuperAdmin ? <Boxes className="w-5 h-5" /> : <DollarSign className="w-5 h-5" />}
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <DollarSign className="w-5 h-5" />
             </div>
           </div>
           <div>
             <div className="text-2xl font-black text-slate-900 font-mono">
-              {isSuperAdmin ? analytics.totalParcels : `${analytics.totalRevenue.toLocaleString()} ${t('currency_symbol')}`}
+              {`${analytics.totalRevenue.toLocaleString()} ${t('currency_symbol')}`}
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              {isSuperAdmin ? `${branches.length} ${t('all_branches')}` : `${getLocalizedBranchName(currentBranchObj)}`}
+              {isSuperAdmin 
+                ? (activeBranchId === 'all' ? `${branches.length} ${t('all_branches')} (Consolidated HQ)` : `${getLocalizedBranchName(currentBranchObj)}`)
+                : `${getLocalizedBranchName(currentBranchObj)} (${t('branch_isolated_revenue_badge', 'Isolated')})`}
             </p>
           </div>
         </div>
 
-        {/* Metric 2: Active in Transit */}
+        {/* Metric 2: Volume / Dispatched */}
+        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {isSuperAdmin ? t('metric_total_bookings') : t('inv_tab_outbound')}
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+              <Boxes className="w-5 h-5" />
+            </div>
+          </div>
+          <div>
+            <div className="text-2xl font-black text-slate-900 font-mono">
+              {isSuperAdmin ? analytics.totalParcels : filteredShipments.filter(s => s.originBranchId === currentUser.branchId).length}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {isSuperAdmin ? `${branches.length} ${t('all_branches')}` : `Dispatched from ${getLocalizedBranchName(currentBranchObj)}`}
+            </p>
+          </div>
+        </div>
+
+        {/* Metric 3: Active in Transit */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -223,42 +287,22 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Metric 3: Delivered Consignments */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {t('delivered_metric')}
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              {analytics.deliveredParcels}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {t('metric_delivered')}
-            </p>
-          </div>
-        </div>
-
-        {/* Metric 4: Branch Terminals */}
+        {/* Metric 4: Branch Terminals for Admin / Warehouse for Branch Manager */}
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               {isSuperAdmin ? t('nav_branches') : t('received_at_hub_metric')}
             </span>
             <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              {isSuperAdmin ? <Building2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+              {isSuperAdmin ? <Building2 className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
             </div>
           </div>
           <div>
             <div className="text-2xl font-black text-slate-900 font-mono">
-              {isSuperAdmin ? `${branches.length} ${t('nav_branches')}` : analytics.receivedParcels}
+              {isSuperAdmin ? `${branches.length}` : analytics.receivedParcels}
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              {isSuperAdmin ? branches.map(b => b.code).join(', ') : t('inv_tab_warehouse')}
+              {isSuperAdmin ? t('online_terminals_badge') : t('inv_tab_warehouse')}
             </p>
           </div>
         </div>
@@ -438,6 +482,102 @@ export const Dashboard: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Super Admin: Branch Revenue & Operations Performance Matrix */}
+      {isSuperAdmin && (
+        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-red-600" />
+                <h2 className="text-base font-bold text-slate-900">
+                  {t('branch_performance_owner_title', 'Branch Revenue & Operations Matrix')}
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {t('branch_performance_owner_subtitle', 'Complete financial and parcel volume breakdown per provincial branch terminal')}
+              </p>
+            </div>
+            <span className="text-xs font-extrabold px-3 py-1 rounded-xl bg-amber-50 text-amber-800 border border-amber-200">
+              👑 {t('admin_owner_revenue_overview', 'Owner Access')}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-start text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50">
+                  <th className="p-3 text-start">{t('nav_branches', 'Branch Terminal')}</th>
+                  <th className="p-3 text-start">{t('city_province', 'Location')}</th>
+                  <th className="p-3 text-center">{t('inv_tab_outbound', 'Dispatched')}</th>
+                  <th className="p-3 text-center">{t('inv_tab_inbound', 'Received')}</th>
+                  <th className="p-3 text-end">{t('branch_total_revenue', 'Gross Revenue (AFN)')}</th>
+                  <th className="p-3 text-end">{t('col_actions', 'Quick Action')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {branchMatrix.map((b) => (
+                  <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-3 font-bold text-slate-900">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{b.isHeadOffice ? '👑' : '🏢'}</span>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span>{getLocalizedBranchName(b)}</span>
+                            {b.isHeadOffice && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                                {t('admin_main_office_badge', 'Main Branch (Admin HQ)')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono">{b.code}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3 text-slate-600">
+                      <div>{b.city}</div>
+                      <div className="text-[10px] text-slate-400">{b.province}</div>
+                    </td>
+                    <td className="p-3 text-center font-mono font-bold text-slate-800">
+                      <span className="px-2 py-0.5 rounded bg-red-50 text-red-700">
+                        {b.dispatched}
+                      </span>
+                    </td>
+                    <td className="p-3 text-center font-mono font-bold text-slate-800">
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700">
+                        {b.received}
+                      </span>
+                    </td>
+                    <td className="p-3 text-end font-mono font-black text-emerald-700 text-sm">
+                      {b.grossRevenue.toLocaleString()} AFN
+                    </td>
+                    <td className="p-3 text-end">
+                      <button
+                        onClick={() => {
+                          setActiveBranchId(b.id);
+                          setActiveView('booking');
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 ms-auto ${
+                          b.isHeadOffice
+                            ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white shadow-red-600/20'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200'
+                        }`}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>
+                          {b.isHeadOffice
+                            ? t('send_from_admin_office', 'Send from Admin Office')
+                            : t('btn_send_from_here', 'Dispatch from here')}
+                        </span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
     </div>
   );

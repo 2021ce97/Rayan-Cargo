@@ -78,7 +78,9 @@ export const Header: React.FC = () => {
   const currentBranchObj = branches.find(b => b.id === activeBranchId);
   const currentBranchName = activeBranchId === 'all'
     ? t('all_branches')
-    : getLocalizedBranchName(currentBranchObj);
+    : (currentBranchObj?.isHeadOffice
+        ? `👑 ${getLocalizedBranchName(currentBranchObj)}`
+        : getLocalizedBranchName(currentBranchObj));
 
   return (
     <>
@@ -202,7 +204,15 @@ export const Header: React.FC = () => {
                         className={`w-full text-start px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${activeBranchId === b.id ? 'text-red-600 font-bold bg-red-50/50 dark:bg-red-950/30' : 'text-slate-700 dark:text-slate-300'}`}
                       >
                         <div>
-                          <div className="font-semibold">{getLocalizedBranchName(b)}</div>
+                          <div className="flex items-center gap-1.5 font-semibold">
+                            <span>{b.isHeadOffice ? '👑' : '📍'}</span>
+                            <span>{getLocalizedBranchName(b)}</span>
+                            {b.isHeadOffice && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold border border-amber-300 dark:border-amber-700">
+                                {t('admin_main_office_badge', 'Main Branch (Admin HQ)')}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-slate-400">{b.city}, {b.province} ({b.code})</div>
                         </div>
                         {activeBranchId === b.id && <span className="w-2 h-2 rounded-full bg-red-600" />}
