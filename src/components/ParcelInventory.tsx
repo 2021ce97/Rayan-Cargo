@@ -31,12 +31,14 @@ import {
   Receipt,
   UserCheck,
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  Users
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
 import { generateDispatchManifestPdf, printElementUsingIframe } from '../utils/pdfExport';
 import { BarcodeGenerator } from './BarcodeGenerator';
+import { CombinedCustomerReceiptModal } from './CombinedCustomerReceiptModal';
 
 type SortField = 'date' | 'weight' | 'amount' | 'cn' | 'status';
 type SortOrder = 'asc' | 'desc';
@@ -104,6 +106,9 @@ export const ParcelInventory: React.FC = () => {
   const [isGeneratingManifestPdf, setIsGeneratingManifestPdf] = useState(false);
   const [manifestPdfSuccess, setManifestPdfSuccess] = useState(false);
   const manifestRef = useRef<HTMLDivElement>(null);
+
+  // Combined Customer Multi-Parcel PDF Modal state
+  const [isCombinedCustomerOpen, setIsCombinedCustomerOpen] = useState(false);
 
   // Toggle sorting helper
   const handleSort = (field: SortField) => {
@@ -380,7 +385,7 @@ export const ParcelInventory: React.FC = () => {
           </div>
         </div>
 
-        {/* Top actions: New Booking, Export Manifest, Export CSV */}
+        {/* Top actions: New Booking, Export Manifest, Combined Customer PDF, Export CSV */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setActiveView('booking')}
@@ -397,6 +402,16 @@ export const ParcelInventory: React.FC = () => {
           >
             <FileText className="w-4 h-4 text-amber-400" />
             <span>{t('manifest_title')}</span>
+          </button>
+
+          <button
+            onClick={() => setIsCombinedCustomerOpen(true)}
+            id="btn-combined-customer-pdf"
+            className="px-3.5 py-2.5 bg-sky-700 hover:bg-sky-800 text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+            title="Generate Combined PDF for a single customer receiving multiple parcels"
+          >
+            <Users className="w-4 h-4 text-sky-200" />
+            <span>Combined Customer PDF (چند بسته)</span>
           </button>
 
           <button
@@ -657,6 +672,8 @@ export const ParcelInventory: React.FC = () => {
                   const updatePerm = canUserUpdateStatus(s);
                   const isPrebooked = s.status === 'pre_booked';
                   const isPendingSettlement = s.remittanceStatus === 'pending';
+                  const userBranchId = currentUser.role === 'super_admin' ? (activeBranchId !== 'all' ? activeBranchId : 'br_kabul') : currentUser.branchId;
+                  const isOriginBranch = s.originBranchId === userBranchId || (currentUser.role === 'super_admin' && activeBranchId === 'all');
 
                   return (
                     <tr 
@@ -750,13 +767,24 @@ export const ParcelInventory: React.FC = () => {
                       {/* Status / Pre-booked / Settlement Action */}
                       <td className="p-3.5 text-center">
                         {isPrebooked ? (
-                          <button
-                            onClick={() => handleOpenConfirmPreBooking(s)}
-                            className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer"
-                          >
-                            <Scale className="w-3.5 h-3.5" />
-                            <span>Weigh & Set Price</span>
-                          </button>
+                          isOriginBranch ? (
+                            <button
+                              onClick={() => handleOpenConfirmPreBooking(s)}
+                              className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer"
+                              title="Verify, weigh, set pricing and book this customer pre-booking"
+                            >
+                              <Scale className="w-3.5 h-3.5" />
+                              <span>Weigh & Set Price</span>
+                            </button>
+                          ) : (
+                            <div 
+                              className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1 mx-auto cursor-not-allowed"
+                              title={`Only the designated Origin Branch (${orig?.name || 'Sender Hub'}) can process and verify this customer pre-booking.`}
+                            >
+                              <Lock className="w-3 h-3 text-slate-400" />
+                              <span>Origin ({orig?.city || 'Sender'}) Only</span>
+                            </div>
+                          )
                         ) : (
                           <button
                             onClick={() => handleOpenStatusModal(s)}
@@ -1746,6 +1774,12 @@ export const ParcelInventory: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Combined Customer Multi-Parcel PDF Modal */}
+      <CombinedCustomerReceiptModal
+        isOpen={isCombinedCustomerOpen}
+        onClose={() => setIsCombinedCustomerOpen(false)}
+      />
 
     </div>
   );

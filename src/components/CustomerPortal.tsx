@@ -50,6 +50,7 @@ export const CustomerPortal: React.FC = () => {
 
   const [receiverName, setReceiverName] = useState('');
   const [receiverPhone, setReceiverPhone] = useState('');
+  const [receiverNationalId, setReceiverNationalId] = useState('');
   const [receiverAddress, setReceiverAddress] = useState('');
   const [receiverCity, setReceiverCity] = useState('Herat');
   const [receiverProvince, setReceiverProvince] = useState('Herat');
@@ -100,6 +101,7 @@ export const CustomerPortal: React.FC = () => {
       senderProvince,
       receiverName,
       receiverPhone,
+      receiverNationalId: receiverNationalId.trim() || undefined,
       receiverAddress: receiverAddress || `${receiverCity} Central`,
       receiverCity,
       receiverProvince,
@@ -401,6 +403,22 @@ export const CustomerPortal: React.FC = () => {
                     value={receiverPhone}
                     onChange={(e) => setReceiverPhone(e.target.value)}
                     placeholder="0700 987 654"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-slate-600">
+                      {t('receiver_tazkira_optional') || 'Receiver Tazkira / National ID (نمبر تذکره گیرنده)'}
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-semibold">(Optional / اختیاری)</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={receiverNationalId}
+                    onChange={(e) => setReceiverNationalId(e.target.value)}
+                    placeholder="e.g. 1402-0987-12345"
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>

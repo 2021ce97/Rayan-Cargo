@@ -1162,6 +1162,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         name: input.senderName,
         phone: input.senderPhone,
         email: input.senderEmail,
+        nationalId: input.senderNationalId,
         address: input.senderAddress,
         city: input.senderCity,
         province: input.senderProvince
@@ -1169,6 +1170,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       receiver: {
         name: input.receiverName,
         phone: input.receiverPhone,
+        nationalId: input.receiverNationalId,
         address: input.receiverAddress,
         city: input.receiverCity,
         province: input.receiverProvince
@@ -1260,6 +1262,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const target = shipments.find(s => s.id === shipmentId);
     if (!target) return false;
 
+    // Strict check: Only the designated origin branch (or super_admin) can verify and process booking-stage information
+    const userBranch = currentUser.role === 'super_admin' ? (activeBranchId !== 'all' ? activeBranchId : target.originBranchId) : currentUser.branchId;
+    const isOriginBranch = target.originBranchId === userBranch || currentUser.role === 'super_admin';
+
+    if (!isOriginBranch) {
+      const origObj = branches.find(b => b.id === target.originBranchId);
+      showToast(`⚠️ Unauthorized: Only the designated Origin Branch (${origObj?.name || 'Sender Hub'}) can verify, weigh, and set pricing for this pre-booking.`);
+      return false;
+    }
+
     let actualWeightKg = 1;
     let pieces = 1;
     let baseRate = 300;
@@ -1292,7 +1304,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const totalAmount = Math.max(0, subtotal - discountAmount);
     const originRemittanceDue = Math.max(0, totalAmount - destBranchCommission);
     const now = new Date().toISOString();
-    const userBranch = branches.find(b => b.id === currentUser.branchId) || branches.find(b => b.id === target.originBranchId);
+    const branchInfo = branches.find(b => b.id === currentUser.branchId) || branches.find(b => b.id === target.originBranchId);
 
     const updatedFinancials: BillingFinancials = {
       ...target.financials,
@@ -1314,8 +1326,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newHistoryItem = {
       id: `st_${Date.now()}`,
       status: 'booked' as ShipmentStatus,
-      location: userBranch ? `${userBranch.name} (${userBranch.city})` : 'Origin Branch',
-      branchName: userBranch ? userBranch.name : 'Origin Hub',
+      location: branchInfo ? `${branchInfo.name} (${branchInfo.city})` : 'Origin Branch',
+      branchName: branchInfo ? branchInfo.name : 'Origin Hub',
       timestamp: now,
       note: `Customer pre-booking verified, weighed & priced by ${currentUser.name}. Verified weight: ${actualWeightKg} kg, ${pieces} pcs (Base: ${baseRate} AFN, Rate: ${ratePerKg} AFN/kg, Service: ${serviceFee} AFN). Total: ${totalAmount} AFN (${paymentStatus.toUpperCase()}).`,
       updatedBy: currentUser.name
@@ -1413,7 +1425,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  // Permission Validator for Status Updates
+  // Permission Validator for Status Updates (Origin vs Destination Workflow Enforcement)
   const canUserUpdateStatus = (shipment: Shipment): StatusPermissionResult => {
     if (currentUser.role === 'customer') {
       return {
@@ -1424,17 +1436,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         allowedStatuses: []
       };
     }
-    if (currentUser.role === 'super_admin') {
+
+    // Super Admin acts as Kabul Hub when activeBranchId is 'br_kabul' or has full master oversight when 'all'
+    if (currentUser.role === 'super_admin' && activeBranchId === 'all') {
       return {
         allowed: true,
         canUpdate: true,
         roleType: 'admin',
-        reason: t('perm_super_admin_all') || 'Super Admin: Full master access across all provincial cargo branches.',
+        reason: t('perm_super_admin_all') || 'Super Admin (Kabul Central HQ): Full master access across all cargo branches.',
         allowedStatuses: ['booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled']
       };
     }
 
-    const currentBranch = currentUser.branchId;
+    const currentBranch = currentUser.role === 'super_admin' ? (activeBranchId !== 'all' ? activeBranchId : 'br_kabul') : currentUser.branchId;
     const isOrigin = shipment.originBranchId === currentBranch;
     const isDestination = shipment.destinationBranchId === currentBranch;
 
@@ -1448,39 +1462,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
+    // Origin Branch: Can ONLY perform dispatching stages (pre_booked -> booked, booked -> in_transit)
     if (isOrigin) {
-      if (shipment.status === 'received_at_branch' || shipment.status === 'out_for_delivery' || shipment.status === 'delivered') {
+      if (shipment.status === 'pre_booked') {
         return {
-          allowed: false,
-          canUpdate: false,
+          allowed: true,
+          canUpdate: true,
           roleType: 'sender_branch',
-          reason: t('perm_origin_cannot_deliver') || 'This parcel has arrived at destination. Only the Destination (Receiver) branch can update subsequent delivery stages.',
-          allowedStatuses: []
+          allowedStatuses: ['booked', 'in_transit']
+        };
+      }
+      if (shipment.status === 'booked') {
+        return {
+          allowed: true,
+          canUpdate: true,
+          roleType: 'sender_branch',
+          allowedStatuses: ['in_transit', 'cancelled']
         };
       }
       return {
-        allowed: true,
-        canUpdate: true,
+        allowed: false,
+        canUpdate: false,
         roleType: 'sender_branch',
-        allowedStatuses: ['booked', 'in_transit']
+        reason: t('perm_origin_cannot_deliver') || 'This parcel has been dispatched from Origin. Only the Destination (Receiver) branch can update arrival at hub and delivery stages.',
+        allowedStatuses: []
       };
     }
 
+    // Destination Branch: Can ONLY perform delivery stages (in_transit -> received_at_branch -> out_for_delivery -> delivered)
     if (isDestination) {
-      if (shipment.status === 'booked' || shipment.status === 'pre_booked') {
+      if (shipment.status === 'pre_booked' || shipment.status === 'booked') {
         return {
           allowed: false,
           canUpdate: false,
           roleType: 'receiver_branch',
-          reason: t('perm_dest_not_dispatched') || 'This parcel has not departed from the Origin branch yet.',
+          reason: t('perm_dest_not_dispatched') || 'This parcel is at the Origin branch for booking & dispatch. Destination branch will receive it once it is In Transit.',
           allowedStatuses: []
         };
       }
+      if (shipment.status === 'in_transit') {
+        return {
+          allowed: true,
+          canUpdate: true,
+          roleType: 'receiver_branch',
+          allowedStatuses: ['received_at_branch']
+        };
+      }
+      if (shipment.status === 'received_at_branch') {
+        return {
+          allowed: true,
+          canUpdate: true,
+          roleType: 'receiver_branch',
+          allowedStatuses: ['out_for_delivery', 'delivered', 'returned']
+        };
+      }
+      if (shipment.status === 'out_for_delivery') {
+        return {
+          allowed: true,
+          canUpdate: true,
+          roleType: 'receiver_branch',
+          allowedStatuses: ['delivered', 'returned']
+        };
+      }
       return {
-        allowed: true,
-        canUpdate: true,
+        allowed: false,
+        canUpdate: false,
         roleType: 'receiver_branch',
-        allowedStatuses: ['received_at_branch', 'out_for_delivery', 'delivered', 'returned']
+        reason: 'Consignment delivery lifecycle already completed.',
+        allowedStatuses: []
       };
     }
 

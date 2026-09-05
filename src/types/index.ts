@@ -202,11 +202,13 @@ export interface CustomerPreBookingInput {
   senderName: string;
   senderPhone: string;
   senderEmail?: string;
+  senderNationalId?: string;
   senderAddress: string;
   senderCity: string;
   senderProvince: string;
   receiverName: string;
   receiverPhone: string;
+  receiverNationalId?: string; // Optional: Tazkira / National ID of receiver
   receiverAddress: string;
   receiverCity: string;
   receiverProvince: string;

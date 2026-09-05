@@ -566,6 +566,236 @@ export function generateDispatchManifestPdf(
 }
 
 /**
+ * Direct Vector jsPDF generator for Combined Multi-Parcel Customer Waybill / Delivery Note.
+ * Generates an official consolidated delivery note for a single receiver (Person A) receiving multiple parcels
+ * sent from different origin branches.
+ */
+export function generateCombinedCustomerPdf(
+  customer: {
+    name: string;
+    phone: string;
+    address?: string;
+    city?: string;
+    province?: string;
+    nationalId?: string;
+    receiverTazkira?: string;
+  },
+  shipments: Shipment[],
+  destBranch?: Branch,
+  branches: Branch[] = []
+): boolean {
+  try {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    const pageWidth = 210;
+    const margin = 12;
+    const contentWidth = pageWidth - margin * 2; // 186mm
+
+    // Header Background Accent (Deep Blue & Red)
+    doc.setFillColor(15, 23, 42); // Slate-900
+    doc.rect(margin, margin, contentWidth, 24, 'F');
+
+    // Decorative top stripe
+    doc.setFillColor(225, 29, 72); // Red-600
+    doc.rect(margin, margin, contentWidth, 3, 'F');
+
+    // Header Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('ARMAGHAN SADEQ TRANSFERS', margin + 6, margin + 11);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('CONSOLIDATED MULTI-PARCEL DELIVERY NOTE (سند تحویلی بسته های همزمان)', margin + 6, margin + 16);
+    doc.text('Helplines: 0711299680 / 0774144004 / 0799001122 | Kabul Central HQ & Nationwide Hubs', margin + 6, margin + 21);
+
+    // Voucher Number Box
+    const voucherNo = `COMB-${Date.now().toString().slice(-6)}`;
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(margin + contentWidth - 60, margin + 5.5, 56, 15, 2, 2, 'F');
+    doc.setTextColor(225, 29, 72);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('DELIVERY BATCH #', margin + contentWidth - 58, margin + 10);
+    doc.setFontSize(11);
+    doc.text(voucherNo, margin + contentWidth - 58, margin + 17);
+
+    let y = margin + 28;
+
+    // RECEIVER / CONSIGNEE (PERSON A) PROFILE CARD
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 24, 2, 2, 'FD');
+
+    doc.setFillColor(225, 29, 72);
+    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('CONSIGNEE (RECEIVER) PROFILE — PERSON A', margin + 4, y + 4.2);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(customer.name, margin + 4, y + 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text(`Phone: ${customer.phone}`, margin + 4, y + 17);
+    doc.text(`City / Address: ${customer.city || destBranch?.city || 'Afghanistan'}, ${customer.address || 'Local Address'}`, margin + 4, y + 22);
+
+    const tazkiraVal = customer.receiverTazkira || customer.nationalId;
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Tazkira / ID: ${tazkiraVal || 'Recorded on Delivery'}`, margin + 100, y + 12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Destination Hub: ${destBranch?.name || customer.city || 'Destination Branch'}`, margin + 100, y + 17);
+    doc.text(`Delivery Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, margin + 100, y + 22);
+
+    y += 28;
+
+    // CONSOLIDATED TOTALS BAR
+    const totalPcs = shipments.reduce((sum, s) => sum + (s.packageInfo.pieces || 1), 0);
+    const totalWeight = shipments.reduce((sum, s) => sum + (s.packageInfo.weightKg || 0), 0);
+    const totalFreight = shipments.reduce((sum, s) => sum + (s.financials.totalAmount || 0), 0);
+    const totalPaid = shipments.reduce((sum, s) => sum + (s.financials.paymentStatus === 'paid' ? s.financials.totalAmount : (s.financials.amountPaid || 0)), 0);
+    const totalDue = shipments.reduce((sum, s) => sum + (s.financials.paymentStatus === 'to_pay' ? s.financials.totalAmount : (s.financials.amountDue || 0)), 0);
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, contentWidth, 12, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, y, contentWidth, 12, 'S');
+
+    doc.setTextColor(51, 65, 85);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text(`Total Consignments: ${shipments.length} Parcels`, margin + 4, y + 4.5);
+    doc.text(`Total Pieces: ${totalPcs} Pkgs`, margin + 52, y + 4.5);
+    doc.text(`Total Weight: ${totalWeight} KG`, margin + 98, y + 4.5);
+
+    doc.setFontSize(8.5);
+    doc.text(`Total Freight: ${totalFreight.toLocaleString()} AFN`, margin + 4, y + 9.5);
+    doc.setTextColor(22, 163, 74);
+    doc.text(`Paid: ${totalPaid.toLocaleString()} AFN`, margin + 52, y + 9.5);
+    doc.setTextColor(225, 29, 72);
+    doc.text(`NET COD TO COLLECT: ${totalDue.toLocaleString()} AFN`, margin + 98, y + 9.5);
+
+    y += 16;
+
+    // ITEMIZATION TABLE HEADER
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin, y, contentWidth, 6.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('#', margin + 2, y + 4.5);
+    doc.text('CN Number', margin + 8, y + 4.5);
+    doc.text('Origin Branch (Sender)', margin + 34, y + 4.5);
+    doc.text('Description / Category', margin + 84, y + 4.5);
+    doc.text('Pcs/Wt', margin + 128, y + 4.5);
+    doc.text('Freight Amount', margin + 148, y + 4.5);
+    doc.text('Payment', margin + 170, y + 4.5);
+
+    y += 6.5;
+
+    // ITEMIZATION ROWS
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+
+    shipments.slice(0, 14).forEach((s, idx) => {
+      const orig = branches.find(b => b.id === s.originBranchId);
+      const isCod = s.financials.paymentStatus === 'to_pay';
+
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentWidth, 6.5, 'F');
+      }
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(margin, y, contentWidth, 6.5, 'S');
+
+      doc.text(`${idx + 1}`, margin + 2, y + 4.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(s.cnNumber, margin + 8, y + 4.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${orig?.name || s.sender.city} (${s.sender.name.substring(0, 14)})`, margin + 34, y + 4.5);
+      doc.text(`${(s.packageInfo.description || s.packageInfo.category).substring(0, 22)}`, margin + 84, y + 4.5);
+      doc.text(`${s.packageInfo.pieces}p / ${s.packageInfo.weightKg}k`, margin + 128, y + 4.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${s.financials.totalAmount} AFN`, margin + 148, y + 4.5);
+      doc.setTextColor(isCod ? 225 : 22, isCod ? 29 : 163, isCod ? 72 : 74);
+      doc.text(isCod ? 'TO PAY' : 'PAID', margin + 170, y + 4.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'normal');
+
+      y += 6.5;
+    });
+
+    // RECEIVER ACKNOWLEDGEMENT & SIGNATURE SECTION
+    y = Math.max(y + 6, 215);
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 42, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text('RECEIVER ACKNOWLEDGMENT & HANDOVER CONFIRMATION (اقرار خط و تسلیمی بسته ها)', margin + 4, y + 5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`I, ${customer.name}, hereby confirm that I have inspected and received the ${shipments.length} consignments listed above in good, sealed,`, margin + 4, y + 10);
+    doc.text('and undamaged condition from Armaghan Sadeq Transfers. All freight charges / COD payments have been settled as recorded.', margin + 4, y + 14);
+
+    // Signatures row
+    const sigY = y + 26;
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.3);
+    doc.line(margin + 4, sigY, margin + 54, sigY);
+    doc.line(margin + 66, sigY, margin + 116, sigY);
+    doc.line(margin + 128, sigY, margin + 180, sigY);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('Receiver (Person A) Signature', margin + 4, sigY + 4);
+    doc.text('Verified Tazkira / ID #', margin + 66, sigY + 4);
+    doc.text('Branch Delivery Officer Stamp', margin + 128, sigY + 4);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, margin + 4, sigY + 8);
+    doc.text(`${tazkiraVal || 'Checked & Stamped'}`, margin + 66, sigY + 8);
+    doc.text(`${destBranch?.name || 'Destination Hub'}`, margin + 128, sigY + 8);
+
+    // Footer Credits
+    y = 268;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق | Nationwide Express Network', margin + 4, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 60, y);
+
+    const filename = `Armaghan_Sadeq_Combined_${customer.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+    return true;
+  } catch (err) {
+    console.error('Error generating combined customer PDF:', err);
+    return false;
+  }
+}
+
+/**
  * Direct Vector jsPDF generator for Executive Financial & Volume Reports.
  */
 export function generateExecutiveReportPdf(
