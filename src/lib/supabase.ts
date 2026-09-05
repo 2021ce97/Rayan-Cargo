@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { Branch, User, Shipment, BranchExpense } from '../types';
 
-export const SUPABASE_URL = 'https://wgdmwuhkuanxykwqvpyp.supabase.co';
+export const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://wgdmwuhkuanxykwqvpyp.supabase.co';
 export const STORAGE_KEY_SUPABASE_ANON = 'rayan_cargo_supabase_anon_key';
 
 let supabaseInstance: SupabaseClient | null = null;

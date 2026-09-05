@@ -653,6 +653,17 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
   }
 }
 
+export function sanitizeConnectionString(url?: string): string {
+  if (!url) return '';
+  let clean = url.trim();
+  // Auto-correct common password syntax variations in connection strings:
+  // 1. Unencoded '@' in 'Cargorayan@123'
+  clean = clean.replace(/Cargorayan@123@/g, 'Cargorayan%40123@');
+  // 2. Missing '@' in 'Cargorayan123'
+  clean = clean.replace(/Cargorayan123@/g, 'Cargorayan%40123@');
+  return clean;
+}
+
 export function getDbPool(): any {
   if (useMock) {
     return mockDb;
@@ -660,8 +671,9 @@ export function getDbPool(): any {
 
   if (!realPool && process.env.DATABASE_URL) {
     try {
+      const connStr = sanitizeConnectionString(process.env.DATABASE_URL);
       realPool = new Pool({
-        connectionString: process.env.DATABASE_URL,
+        connectionString: connStr,
         ssl: {
           rejectUnauthorized: false
         },
@@ -722,9 +734,10 @@ export function getDatabaseInfo() {
 
 export async function connectToSupabase(connectionString: string): Promise<{ success: boolean; message?: string; error?: string }> {
   try {
+    const cleanConn = sanitizeConnectionString(connectionString);
     console.log('🔄 Connecting to Supabase PostgreSQL...');
     const testPool = new Pool({
-      connectionString,
+      connectionString: cleanConn,
       ssl: { rejectUnauthorized: false },
       connectionTimeoutMillis: 8000
     });

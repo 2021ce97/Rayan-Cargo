@@ -290,19 +290,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           const directData = await directSupabaseFetchAll();
           if (directData.success) {
-            if (directData.branches && directData.branches.length > 0) {
+            if (directData.branches && Array.isArray(directData.branches)) {
               setBranches(directData.branches);
               localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(directData.branches));
             }
-            if (directData.users && directData.users.length > 0) {
-              setUsers(directData.users);
-              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(directData.users));
+            if (directData.users && Array.isArray(directData.users)) {
+              const uList = directData.users.length > 0 ? directData.users : INITIAL_USERS;
+              setUsers(uList);
+              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(uList));
             }
-            if (directData.shipments) {
+            if (directData.shipments && Array.isArray(directData.shipments)) {
               setShipments(directData.shipments);
               localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(directData.shipments));
             }
-            if (directData.expenses) {
+            if (directData.expenses && Array.isArray(directData.expenses)) {
               setExpenses(directData.expenses);
               localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(directData.expenses));
             }
@@ -328,7 +329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const branchRes = await fetch('/api/branches');
       if (branchRes.ok) {
         const branchData = await branchRes.json();
-        if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
+        if (branchData.success && Array.isArray(branchData.branches)) {
           setBranches(branchData.branches);
           localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branchData.branches));
         }
@@ -338,9 +339,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const userRes = await fetch('/api/users');
       if (userRes.ok) {
         const userData = await userRes.json();
-        if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
-          setUsers(userData.users);
-          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(userData.users));
+        if (userData.success && Array.isArray(userData.users)) {
+          const uList = userData.users.length > 0 ? userData.users : INITIAL_USERS;
+          setUsers(uList);
+          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(uList));
         }
       }
 
@@ -793,9 +795,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...newBranch, initialPassword: initialPass })
-    }).catch(err => console.error('Error adding branch to Supabase:', err));
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          showToast(`⚠️ Supabase notice: ${data.error || 'Database could not save branch'}`);
+        } else {
+          showToast(t('branch_added_successfully') || 'New branch registered and saved to Supabase!');
+        }
+      })
+      .catch((err) => {
+        console.error('Error adding branch to Supabase:', err);
+        showToast('⚠️ Notice: Backend connection error while saving branch');
+      });
 
-    showToast(t('branch_added_successfully') || 'New branch registered and saved to Supabase!');
     return { branch: newBranch, user: newUser };
   };
 
