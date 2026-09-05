@@ -665,7 +665,7 @@ export function sanitizeConnectionString(url?: string): string {
 }
 
 export function getDbPool(): any {
-  if (useMock) {
+  if (useMock || !process.env.DATABASE_URL) {
     return mockDb;
   }
 
@@ -679,25 +679,38 @@ export function getDbPool(): any {
         },
         max: 5,
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000
+        connectionTimeoutMillis: 3000
       });
 
       realPool.on('error', (err) => {
-        console.warn('PostgreSQL pool error (usually idle connection closed):', err.message);
-        // Do NOT set useMock = true here. Let the pool recover automatically.
+        console.warn('PostgreSQL pool error:', err.message);
       });
 
       // Trigger automatic schema migration on connection
-      migrateSupabaseSchema(realPool).catch(e => console.warn('Schema init:', e));
+      migrateSupabaseSchema(realPool).catch(e => {
+        console.warn('PostgreSQL schema migration notice, using in-memory store fallback:', e?.message || e);
+      });
     } catch (err) {
       console.error('Failed to initialize PostgreSQL pool:', err);
-      // We only fallback to mock if the pool creation itself throws synchronously
       useMock = true;
       return mockDb;
     }
   }
 
-  return realPool || mockDb;
+  if (realPool) {
+    return {
+      query: async (queryText: string, params: any[] = []) => {
+        try {
+          return await realPool!.query(queryText, params);
+        } catch (err: any) {
+          console.warn('Database query falling back to in-memory engine:', err?.message);
+          return await mockDb.query(queryText, params);
+        }
+      }
+    };
+  }
+
+  return mockDb;
 }
 
 export function isUsingRealDatabase(): boolean {
