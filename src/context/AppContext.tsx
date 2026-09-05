@@ -290,12 +290,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         try {
           const directData = await directSupabaseFetchAll();
           if (directData.success) {
-            if (directData.branches && Array.isArray(directData.branches)) {
+            if (directData.branches && Array.isArray(directData.branches) && directData.branches.length > 0) {
               setBranches(directData.branches);
               localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(directData.branches));
             }
-            if (directData.users && Array.isArray(directData.users)) {
-              const uList = directData.users.length > 0 ? directData.users : INITIAL_USERS;
+            if (directData.users && Array.isArray(directData.users) && directData.users.length > 0) {
+              const uList = directData.users;
               setUsers(uList);
               localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(uList));
             }
@@ -329,7 +329,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const branchRes = await fetch('/api/branches');
       if (branchRes.ok) {
         const branchData = await branchRes.json();
-        if (branchData.success && Array.isArray(branchData.branches)) {
+        if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
           setBranches(branchData.branches);
           localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branchData.branches));
         }
@@ -339,8 +339,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const userRes = await fetch('/api/users');
       if (userRes.ok) {
         const userData = await userRes.json();
-        if (userData.success && Array.isArray(userData.users)) {
-          const uList = userData.users.length > 0 ? userData.users : INITIAL_USERS;
+        if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
+          const uList = userData.users;
           setUsers(uList);
           localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(uList));
         }
@@ -784,8 +784,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastLogin: 'Never'
     };
 
-    setBranches(prev => [...prev, newBranch]);
-    setUsers(prev => [...prev, newUser]);
+    setBranches(prev => {
+      const updated = [...prev, newBranch];
+      try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
+    setUsers(prev => {
+      const updated = [...prev, newUser];
+      try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
 
     // Persist to Supabase Database (direct client & backend API)
     directSupabaseInsertBranch(newBranch);
@@ -822,8 +830,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    setBranches(prev => prev.filter(b => b.id !== branchId));
-    setUsers(prev => prev.filter(u => u.branchId !== branchId));
+    setBranches(prev => {
+      const updated = prev.filter(b => b.id !== branchId);
+      try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
+    setUsers(prev => {
+      const updated = prev.filter(u => u.branchId !== branchId);
+      try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
 
     if (activeBranchId === branchId) {
       setActiveBranchId('all');
@@ -851,22 +867,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...updates
     };
 
-    setBranches(prev => prev.map(b => b.id === branchId ? updatedBranch : b));
+    setBranches(prev => {
+      const updated = prev.map(b => b.id === branchId ? updatedBranch : b);
+      try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
 
     // If manager name, email, or phone is updated, sync with branch manager user
     if (updates.managerName || updates.email || updates.phone) {
-      setUsers(prev => prev.map(u => {
-        if (u.branchId === branchId) {
-          return {
-            ...u,
-            name: updates.managerName?.trim() || u.name,
-            email: updates.email?.trim().toLowerCase() || u.email,
-            phone: updates.phone?.trim() || u.phone
-          };
-        }
-        return u;
-      }));
+      setUsers(prev => {
+        const updated = prev.map(u => {
+          if (u.branchId === branchId) {
+            return {
+              ...u,
+              name: updates.managerName?.trim() || u.name,
+              email: updates.email?.trim().toLowerCase() || u.email,
+              phone: updates.phone?.trim() || u.phone
+            };
+          }
+          return u;
+        });
+        try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
+        return updated;
+      });
     }
+
+    // Persist to direct Supabase & API
+    directSupabaseInsertBranch(updatedBranch);
 
     // Persist to database
     fetch('/api/branches', {

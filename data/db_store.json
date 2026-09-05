@@ -1,5 +1,144 @@
 {
-  "branches": [],
+  "branches": [
+    [
+      "br_nan01_0813",
+      {
+        "id": "br_nan01_0813",
+        "name": "Nangarhar Regional Hub",
+        "name_fa": "Nangarhar Cargo",
+        "name_ps": "Nangarhar Cargo",
+        "code": "NAN-01",
+        "province": "Nangarhar",
+        "city": "Nangarhar Cargo",
+        "address": "Nangarhar Main Commercial Cargo Hub",
+        "phone": "07777777777",
+        "email": "nangarhar@armaghansadeq.af",
+        "manager_name": "Noman",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-05T08:46:21.053Z",
+        "tazkira_number": "1111111111111"
+      }
+    ],
+    [
+      "br_far01_8916",
+      {
+        "id": "br_far01_8916",
+        "name": "Faryab Hub",
+        "name_fa": "Faryab Hub",
+        "name_ps": "Faryab Hub",
+        "code": "FAR-01",
+        "province": "Faryab",
+        "city": "Maymana",
+        "address": "Main Bazar",
+        "phone": "+93 79 123 4567",
+        "email": "faryab@armaghansadeq.af",
+        "manager_name": "Basir",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-05T09:49:00.836Z",
+        "tazkira_number": "1401-1234567-8"
+      }
+    ],
+    [
+      "br_kbl_01",
+      {
+        "id": "br_kbl_01",
+        "name": "Kabul Central Hub",
+        "name_fa": "مرکز مرکزی کابل",
+        "name_ps": "د کابل مرکزي څانګه",
+        "code": "KBL-01",
+        "province": "Kabul",
+        "city": "Kabul City",
+        "address": "Cinema Pamir, Jade Maywand, Kabul",
+        "phone": "+93 79 900 1122",
+        "email": "kabul@armaghansadeq.af",
+        "manager_name": "Ahmadzai Qaderi",
+        "is_head_office": true,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-05T09:51:54.756Z",
+        "tazkira_number": "1401-8829102-1"
+      }
+    ],
+    [
+      "br_mzk_02",
+      {
+        "id": "br_mzk_02",
+        "name": "Mazar-i-Sharif Northern Terminal",
+        "name_fa": "ترمینل شمال مزار شریف",
+        "name_ps": "د مزار شریف شمالي څانګه",
+        "code": "MZR-02",
+        "province": "Balkh",
+        "city": "Mazar-i-Sharif",
+        "address": "Kefayat Market, Rawza Square, Mazar",
+        "phone": "+93 78 811 2233",
+        "email": "mazar@armaghansadeq.af",
+        "manager_name": "Noor Mohammad",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-05T09:51:54.829Z",
+        "tazkira_number": "1402-4910293-4"
+      }
+    ],
+    [
+      "br_hrt_03",
+      {
+        "id": "br_hrt_03",
+        "name": "Herat Western Gateway",
+        "name_fa": "دروازه غربی هرات",
+        "name_ps": "د هرات لویدیځه څانګه",
+        "code": "HRT-03",
+        "province": "Herat",
+        "city": "Herat City",
+        "address": "Darwaza Qandahar, Main Ring Road, Herat",
+        "phone": "+93 70 022 3344",
+        "email": "herat@armaghansadeq.af",
+        "manager_name": "Farhad Rahimi",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-05T09:51:54.898Z",
+        "tazkira_number": "1401-1928374-2"
+      }
+    ],
+    [
+      "br_kdh_04",
+      {
+        "id": "br_kdh_04",
+        "name": "Kandahar Southern Depot",
+        "name_fa": "دیپوی جنوبی قندهار",
+        "name_ps": "د کندهار سویلي څانګه",
+        "code": "KDH-04",
+        "province": "Kandahar",
+        "city": "Kandahar City",
+        "address": "Shahidano Chawk, Herat Bazar Road, Kandahar",
+        "phone": "+93 77 733 4455",
+        "email": "kandahar@armaghansadeq.af",
+        "manager_name": "Abdul Bari Popal",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-05T09:51:54.966Z",
+        "tazkira_number": "1403-9182736-5"
+      }
+    ]
+  ],
   "users": [
     [
       "usr_admin",

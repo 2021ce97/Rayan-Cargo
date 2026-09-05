@@ -86,6 +86,7 @@ export async function directSupabaseInsertBranch(branch: Branch): Promise<{ succ
       phone: branch.phone,
       email: branch.email,
       manager_name: branch.managerName,
+      tazkira_number: branch.tazkiraNumber || '',
       is_head_office: branch.isHeadOffice || false,
       active_shipments_count: branch.activeShipmentsCount || 0,
       total_parcels_dispatched: branch.totalParcelsDispatched || 0,
