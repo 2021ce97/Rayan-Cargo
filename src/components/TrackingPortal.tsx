@@ -471,13 +471,13 @@ export const TrackingPortal: React.FC = () => {
 
                       {item.driverName && (
                         <div className="pt-2 mt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-500">
-                          <span>Driver: <strong>{item.driverName}</strong></span>
-                          {item.driverPhone && <span>Contact: {item.driverPhone}</span>}
+                          <span>{t('driver_assigned')}: <strong>{item.driverName}</strong></span>
+                          {item.driverPhone && <span>{t('phone')}: {item.driverPhone}</span>}
                         </div>
                       )}
 
                       <div className="text-[10px] text-slate-400 pt-1">
-                        Logged by: {item.updatedBy}
+                        {t('booked_by_officer')}: {item.updatedBy}
                       </div>
                     </div>
                   </div>
@@ -493,8 +493,8 @@ export const TrackingPortal: React.FC = () => {
                   </div>
                   <div className="text-xs text-emerald-900 dark:text-emerald-200">
                     <div>{t('signed_by')}: <strong>{trackedShipment.podSignature || trackedShipment.receiver.name}</strong></div>
-                    {trackedShipment.receiverIdProof && <div>ID / Tazkira Proof: {trackedShipment.receiverIdProof}</div>}
-                    {trackedShipment.actualDelivery && <div>Delivered Timestamp: {new Date(trackedShipment.actualDelivery).toLocaleString()}</div>}
+                    {trackedShipment.receiverIdProof && <div>{t('receiver_tazkira_label')}: {trackedShipment.receiverIdProof}</div>}
+                    {trackedShipment.actualDelivery && <div>{t('status_delivered')}: {new Date(trackedShipment.actualDelivery).toLocaleString()}</div>}
                   </div>
                 </div>
               )}

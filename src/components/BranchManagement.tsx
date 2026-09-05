@@ -475,9 +475,9 @@ export const BranchManagement: React.FC = () => {
             <Building2 className="w-7 h-7" />
           </div>
           <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="text-base font-extrabold text-slate-900">No Branches Found</h3>
+            <h3 className="text-base font-extrabold text-slate-900">{t('no_branches_found')}</h3>
             <p className="text-xs text-slate-500">
-              No provincial cargo terminal matches your search query.
+              {t('no_records_found')}
             </p>
           </div>
           {isSuperAdmin && (
@@ -619,7 +619,7 @@ export const BranchManagement: React.FC = () => {
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md">
                               <AlertCircle className="w-3 h-3 text-rose-600" />
-                              <span>Not Provided</span>
+                              <span>{t('not_provided')}</span>
                             </span>
                             {isSuperAdmin && (
                               <button
@@ -637,11 +637,11 @@ export const BranchManagement: React.FC = () => {
                       <td className="py-4 px-4 align-middle">
                         <div className="space-y-1 text-[11px]">
                           <div className="flex items-center justify-between gap-3 text-slate-600">
-                            <span>Dispatched:</span>
+                            <span>{t('dispatched_label')}:</span>
                             <span className="font-bold font-mono text-slate-900">{branch.totalParcelsDispatched || 0}</span>
                           </div>
                           <div className="flex items-center justify-between gap-3 text-slate-600">
-                            <span>Received:</span>
+                            <span>{t('received_label')}:</span>
                             <span className="font-bold font-mono text-slate-900">{branch.totalParcelsReceived || 0}</span>
                           </div>
                         </div>

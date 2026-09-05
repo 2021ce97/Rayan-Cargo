@@ -237,14 +237,14 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold tracking-tight">
-                  Combined Customer Multi-Parcel PDF & Delivery Manifest
+                  {t('combined_pdf_modal_title')}
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">
-                  چند بسته یک گیرنده
+                  {t('combined_pdf_badge')}
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Consolidate and print a single combined waybill / delivery slip for a customer receiving multiple parcels from different origin hubs
+                {t('combined_pdf_modal_desc')}
               </p>
             </div>
           </div>
@@ -271,7 +271,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search customer name, phone, tazkira..."
+                  placeholder={t('combined_search_placeholder')}
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-red-500"
@@ -289,11 +289,11 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                   }`}
                 >
                   <Package className="w-3 h-3" />
-                  <span>Only Multiple Parcels (2+)</span>
+                  <span>{t('filter_multiple_only')}</span>
                 </button>
 
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                  {filteredCustomerGroups.length} Receivers
+                  {filteredCustomerGroups.length} {t('receivers_count_lbl')}
                 </span>
               </div>
             </div>
@@ -303,7 +303,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
               {filteredCustomerGroups.length === 0 ? (
                 <div className="p-6 text-center text-slate-400 text-xs">
                   <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p>No customer found matching your search</p>
+                  <p>{t('no_customer_found')}</p>
                 </div>
               ) : (
                 filteredCustomerGroups.map(grp => {
@@ -335,7 +335,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                             ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black'
                             : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}>
-                          {grp.shipments.length} {grp.shipments.length > 1 ? 'Parcels' : 'Parcel'}
+                          {grp.shipments.length} {grp.shipments.length > 1 ? t('parcels_unit_lbl') : t('parcel_unit_singular')}
                         </span>
                       </div>
 
@@ -345,7 +345,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                       </div>
 
                       <div className="text-[10px] text-slate-500 dark:text-slate-500 truncate mt-0.5">
-                        Origins: {originNames.join(', ')}
+                        {t('origins_prefix')}: {originNames.join(', ')}
                       </div>
                     </button>
                   );
@@ -367,7 +367,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                          Consignee (Person A):
+                          {t('consignee_person_a')}:
                         </span>
                         <span className="text-sm font-black text-slate-900 dark:text-white">
                           {currentSelectedGroup.receiverName}
@@ -388,7 +388,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                     {/* Tazkira Input */}
                     <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
                       <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                        Receiver Tazkira:
+                        {t('receiver_tazkira_label')}:
                       </span>
                       <input
                         type="text"
@@ -412,23 +412,23 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                       {selectedShipmentIds.length === currentSelectedGroup.shipments.length ? (
                         <>
                           <CheckSquare className="w-4 h-4" />
-                          <span>Deselect All</span>
+                          <span>{t('deselect_all')}</span>
                         </>
                       ) : (
                         <>
                           <Square className="w-4 h-4" />
-                          <span>Select All ({currentSelectedGroup.shipments.length})</span>
+                          <span>{t('select_all_count')} ({currentSelectedGroup.shipments.length})</span>
                         </>
                       )}
                     </button>
                     <span className="text-slate-400">|</span>
                     <span className="text-slate-500">
-                      {selectedShipmentIds.length} of {currentSelectedGroup.shipments.length} parcels included in combined PDF
+                      {selectedShipmentIds.length} / {currentSelectedGroup.shipments.length} {t('parcels_included_in_combined')}
                     </span>
                   </div>
 
                   <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                    Destination Hub: {destBranch?.name || 'Local Hub'}
+                    {t('destination_hub_prefix')}: {destBranch?.name || 'Local Hub'}
                   </span>
                 </div>
 
@@ -464,10 +464,10 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                                 {s.cnNumber}
                               </span>
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
-                                From: {origBranch?.name || s.sender.city}
+                                {origBranch?.name || s.sender.city}
                               </span>
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
-                                Shipper: {s.sender.name}
+                                {s.sender.name}
                               </span>
                             </div>
 
@@ -476,8 +476,8 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                               <span className="font-mono text-slate-500">
                                 {s.packageInfo.pieces} pcs ({s.packageInfo.weightKg} kg)
                               </span>
-                              <span className="text-[10px] text-slate-400">
-                                Status: {s.status.replace('_', ' ').toUpperCase()}
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {s.status.replace('_', ' ').toUpperCase()}
                               </span>
                             </div>
                           </div>
@@ -508,28 +508,28 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                     {/* Totals Summary */}
                     <div className="flex flex-wrap items-center gap-4 text-xs">
                       <div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Selected Consignments</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">{t('selected_consignments')}</div>
                         <div className="font-bold text-slate-900 dark:text-white">
-                          {activeSelectedShipments.length} Parcels ({totalPcs} pcs, {totalWeight} kg)
+                          {activeSelectedShipments.length} {t('parcels_unit_lbl')} ({totalPcs} pcs, {totalWeight} kg)
                         </div>
                       </div>
 
                       <div className="border-l border-slate-300 dark:border-slate-600 pl-4">
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400">Total Freight Value</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">{t('total_freight_value')}</div>
                         <div className="font-bold text-slate-900 dark:text-white">
                           {totalFreight.toLocaleString()} AFN
                         </div>
                       </div>
 
                       <div className="border-l border-slate-300 dark:border-slate-600 pl-4">
-                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Already Paid</div>
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">{t('already_paid')}</div>
                         <div className="font-bold text-emerald-700 dark:text-emerald-300">
                           {totalPaid.toLocaleString()} AFN
                         </div>
                       </div>
 
                       <div className="border-l border-slate-300 dark:border-slate-600 pl-4">
-                        <div className="text-[10px] text-rose-600 dark:text-rose-400 font-black">NET COD TO COLLECT</div>
+                        <div className="text-[10px] text-rose-600 dark:text-rose-400 font-black">{t('net_cod_to_collect')}</div>
                         <div className="font-black text-sm text-rose-700 dark:text-rose-300">
                           {totalCodDue.toLocaleString()} AFN
                         </div>
@@ -547,17 +547,17 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                         {isGeneratingPdf ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Generating PDF...</span>
+                            <span>{t('generating_pdf_report')}</span>
                           </>
                         ) : downloadSuccess ? (
                           <>
                             <FileCheck className="w-4 h-4 text-emerald-200" />
-                            <span>PDF Downloaded!</span>
+                            <span>{t('pdf_report_downloaded')}</span>
                           </>
                         ) : (
                           <>
                             <Download className="w-4 h-4" />
-                            <span>Download Combined PDF</span>
+                            <span>{t('download_combined_pdf_btn')}</span>
                           </>
                         )}
                       </button>
@@ -569,7 +569,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                         className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <Printer className="w-4 h-4 text-amber-400" />
-                        <span>Print Delivery Slip</span>
+                        <span>{t('print_delivery_slip_btn')}</span>
                       </button>
                     </div>
 
@@ -580,9 +580,9 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400">
                 <Users className="w-12 h-12 mb-3 opacity-30 text-slate-400" />
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No Receiver Selected</h3>
+                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">{t('no_receiver_selected_title')}</h3>
                 <p className="text-xs text-slate-500 max-w-sm mt-1">
-                  Select a customer from the left list to view all their consignments and generate a combined multi-parcel PDF.
+                  {t('no_receiver_selected_desc')}
                 </p>
               </div>
             )}

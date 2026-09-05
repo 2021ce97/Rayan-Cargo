@@ -753,9 +753,9 @@ export const AnalyticsReports: React.FC = () => {
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                    Expense Cost Centers
+                    {t('expense_categories', 'Expense Categories')}
                   </h3>
-                  <p className="text-xs text-slate-500">Distribution of operating overhead</p>
+                  <p className="text-xs text-slate-500">{t('distribution_operating_overhead')}</p>
                 </div>
                 <Receipt className="w-4 h-4 text-rose-500" />
               </div>
@@ -809,62 +809,62 @@ export const AnalyticsReports: React.FC = () => {
           <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs flex items-center justify-between">
             <div>
               <div className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">
-                Rayan Cargo Nationwide Audit
+                {t('cargo_network_badge')}
               </div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white">
-                Operations & Cargo Traffic Report — {dateRange.toUpperCase()}
+                {t('tab_financial_reports')} — {dateRange.toUpperCase()}
               </h2>
               <p className="text-xs text-slate-500">
-                Audit Date: {new Date().toLocaleDateString()} | Central Logistics Terminal
+                {t('receipt_date')}: {new Date().toLocaleDateString()}
               </p>
             </div>
             <div className="text-end font-mono text-xs">
               <div className="font-bold text-slate-900 dark:text-white">
-                Branch: {selectedBranchId === 'all' ? 'All 6 Provincial Hubs' : selectedBranchId}
+                {t('col_branch')}: {selectedBranchId === 'all' ? t('all_hubs') : selectedBranchId}
               </div>
-              <div className="text-slate-500">Consignments Audited: {scopedShipments.length}</div>
+              <div className="text-slate-500">{t('total_parcels_handled')}: {scopedShipments.length}</div>
             </div>
           </div>
 
           {/* Operational Highlight Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-              <div className="text-xs font-bold text-slate-500 uppercase">Total Parcels Handled</div>
+              <div className="text-xs font-bold text-slate-500 uppercase">{t('total_parcels_handled')}</div>
               <div className="text-2xl font-black text-slate-900 dark:text-white mt-2 font-mono">
                 {scopedShipments.length}
               </div>
               <div className="text-[11px] text-emerald-600 font-bold mt-1">
-                {deliveredCount} delivered successfully
+                {deliveredCount} {t('delivered_title')}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-              <div className="text-xs font-bold text-slate-500 uppercase">Total Weight Moved</div>
+              <div className="text-xs font-bold text-slate-500 uppercase">{t('total_weight_moved')}</div>
               <div className="text-2xl font-black text-slate-900 dark:text-white mt-2 font-mono">
                 {totalWeight.toLocaleString()} <span className="text-xs font-normal text-slate-500">KG</span>
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                {inTransitCount} packages currently on highway routes
+                {inTransitCount} {t('in_transit_title')}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-              <div className="text-xs font-bold text-slate-500 uppercase">Delivery Success Rate</div>
+              <div className="text-xs font-bold text-slate-500 uppercase">{t('delivery_success_rate')}</div>
               <div className="text-2xl font-black text-emerald-600 mt-2 font-mono">
                 {scopedShipments.length > 0 ? Math.round((deliveredCount / scopedShipments.length) * 100) : 0}%
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                Verified with receiver signature & POD
+                {t('delivered_title')}
               </div>
             </div>
 
             <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-              <div className="text-xs font-bold text-slate-500 uppercase">Avg Consignment Weight</div>
+              <div className="text-xs font-bold text-slate-500 uppercase">{t('avg_consignment_weight')}</div>
               <div className="text-2xl font-black text-indigo-600 mt-2 font-mono">
                 {scopedShipments.length > 0 ? Math.round(totalWeight / scopedShipments.length) : 0} <span className="text-xs font-normal text-slate-500">KG</span>
               </div>
               <div className="text-[11px] text-slate-500 mt-1">
-                Standard & express cargo mix
+                {t('weight_and_category')}
               </div>
             </div>
           </div>
@@ -877,16 +877,16 @@ export const AnalyticsReports: React.FC = () => {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                    Delivery & Revenue Trajectory Trend
+                    {t('revenue_overview_title')}
                   </h3>
-                  <p className="text-xs text-slate-500">Daily logistics throughput and completion velocity</p>
+                  <p className="text-xs text-slate-500">{t('daily_logistics_velocity')}</p>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-red-600" /> Revenue (AFN)
+                    <span className="w-3 h-3 rounded-full bg-red-600" /> {t('afn_curr')}
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded-full bg-blue-600" /> Deliveries
+                    <span className="w-3 h-3 rounded-full bg-blue-600" /> {t('delivered_title')}
                   </span>
                 </div>
               </div>
@@ -912,9 +912,9 @@ export const AnalyticsReports: React.FC = () => {
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                    Cargo Commodity Types
+                    {t('cargo_category')}
                   </h3>
-                  <p className="text-xs text-slate-500">Breakdown by cargo category</p>
+                  <p className="text-xs text-slate-500">{t('breakdown_cargo_category')}</p>
                 </div>
                 <PieIcon className="w-4 h-4 text-slate-400" />
               </div>
@@ -947,7 +947,7 @@ export const AnalyticsReports: React.FC = () => {
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                       <span className="capitalize">{item.name.toLowerCase()}</span>
                     </div>
-                    <span className="font-bold text-slate-900 dark:text-white">{item.value} items</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{item.value} {t('parcels_unit_lbl')}</span>
                   </div>
                 ))}
               </div>

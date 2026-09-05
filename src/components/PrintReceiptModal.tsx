@@ -87,7 +87,7 @@ export const PrintReceiptModal: React.FC = () => {
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              <span>Standard A4</span>
+              <span>{t('print_format_a4')}</span>
             </button>
             <button
               onClick={() => setPrintFormat('thermal')}
@@ -96,7 +96,7 @@ export const PrintReceiptModal: React.FC = () => {
               }`}
             >
               <Receipt className="w-3.5 h-3.5" />
-              <span>Thermal POS (58/80mm)</span>
+              <span>{t('print_format_thermal')}</span>
             </button>
           </div>
 
