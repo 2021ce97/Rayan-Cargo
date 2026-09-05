@@ -7,7 +7,10 @@ import {
   Loader2,
   FileCheck,
   Receipt,
-  FileText
+  FileText,
+  Phone,
+  AlertCircle,
+  Building2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { BarcodeGenerator, QRCodeVisual } from './BarcodeGenerator';
@@ -190,6 +193,9 @@ export const PrintReceiptModal: React.FC = () => {
               <div className="text-[10px] pt-1">
                 <div><span className="font-bold">TO:</span> {shipment.receiver.name}</div>
                 <div><span className="font-bold">TEL:</span> {shipment.receiver.phone}</div>
+                {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
+                  <div><span className="font-bold">TAZKIRA:</span> {shipment.receiver.nationalId || shipment.sender.receiverTazkira}</div>
+                )}
                 <div><span className="font-bold">DEST:</span> {shipment.receiver.city}</div>
               </div>
             </div>
@@ -256,6 +262,23 @@ export const PrintReceiptModal: React.FC = () => {
                   </div>
                 </>
               )}
+            </div>
+
+            {/* Official 3 Helpline Contacts */}
+            <div className="border-t border-b border-dashed border-slate-900 py-1.5 my-1 text-[9px] space-y-0.5">
+              <div className="font-bold text-center uppercase tracking-wider text-[8.5px]">Official Helpline Contacts</div>
+              <div className="flex justify-between">
+                <span>1. Sender Hub:</span>
+                <span className="font-bold font-mono">{originBranch?.phone || 'Origin Hub'}</span>
+              </div>
+              <div className="flex justify-between text-amber-900">
+                <span className="font-bold">2. Complaints (شکایات):</span>
+                <span className="font-bold font-mono text-[9.5px]">0711299680</span>
+              </div>
+              <div className="flex justify-between text-blue-900">
+                <span className="font-bold">3. Main Office (مرکزی):</span>
+                <span className="font-bold font-mono text-[9.5px]">0774144004</span>
+              </div>
             </div>
 
             {/* Barcode & Footer Notice */}
@@ -376,6 +399,11 @@ export const PrintReceiptModal: React.FC = () => {
                     Tazkira / ID: {shipment.sender.nationalId}
                   </div>
                 )}
+                {shipment.sender.receiverTazkira && (
+                  <div className="text-[11px] font-mono text-slate-500">
+                    Receiver Tazkira recorded: {shipment.sender.receiverTazkira}
+                  </div>
+                )}
               </div>
 
               {/* Receiver / Destination */}
@@ -396,6 +424,11 @@ export const PrintReceiptModal: React.FC = () => {
                 <div className="text-xs text-slate-600">
                   {shipment.receiver.address}, {shipment.receiver.city}, {shipment.receiver.province}
                 </div>
+                {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
+                  <div className="text-[11px] font-mono font-semibold text-emerald-700">
+                    Receiver Tazkira / ID: {shipment.receiver.nationalId || shipment.sender.receiverTazkira}
+                  </div>
+                )}
                 {shipment.receiver.altPhone && (
                   <div className="text-[11px] font-mono text-slate-500">
                     Alt Tel: {shipment.receiver.altPhone}
@@ -505,6 +538,42 @@ export const PrintReceiptModal: React.FC = () => {
                 <div className="font-bold text-slate-800">Receiver Signature (POD)</div>
                 <div className="border-b border-slate-400 w-3/4 mx-auto pb-1" />
                 <div className="text-[10px] text-slate-500">(Sign upon handover)</div>
+              </div>
+            </div>
+
+            {/* Official 3 Mandatory Helpline Contacts Strip */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-red-100 text-red-700 rounded-lg shrink-0 mt-0.5">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">1. Sender Branch Phone</div>
+                  <div className="font-mono font-bold text-slate-900 text-xs">{originBranch?.phone || 'Origin Branch Hub'}</div>
+                  <div className="text-[9.5px] text-slate-500">{originBranch?.name || 'Origin Hub'}</div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
+                  <AlertCircle className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">2. Complaints Hotline (شکایات)</div>
+                  <div className="font-mono font-bold text-amber-800 text-sm">0711299680</div>
+                  <div className="text-[9.5px] text-amber-700 font-medium">Nationwide Complaint Centre</div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-blue-100 text-blue-800 rounded-lg shrink-0 mt-0.5">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 font-bold uppercase">3. Main Office Contact (دفتر مرکزی)</div>
+                  <div className="font-mono font-bold text-blue-900 text-sm">0774144004</div>
+                  <div className="text-[9.5px] text-blue-700 font-medium">Kabul Central HQ Office</div>
+                </div>
               </div>
             </div>
 

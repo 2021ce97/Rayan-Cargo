@@ -123,7 +123,8 @@ export interface SenderInfo {
   name: string;
   phone: string;
   email?: string;
-  nationalId?: string;
+  nationalId?: string; // Sender's Tazkira / National ID
+  receiverTazkira?: string; // Optional: Receiver's Tazkira recorded by sender at booking
   address: string;
   city: string;
   province: string;
@@ -133,6 +134,7 @@ export interface ReceiverInfo {
   name: string;
   phone: string;
   altPhone?: string;
+  nationalId?: string; // Optional: Receiver's Tazkira / National ID
   address: string;
   city: string;
   province: string;

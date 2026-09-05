@@ -210,9 +210,16 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
-    doc.text(`Phone: ${shipment.receiver.phone}`, rxX + 3, y + 19);
-    if (shipment.receiver.altPhone) {
-      doc.text(`Alt Phone: ${shipment.receiver.altPhone}`, rxX + 3, y + 25);
+    const rxPhoneLine = shipment.receiver.altPhone 
+      ? `Phone: ${shipment.receiver.phone} / ${shipment.receiver.altPhone}`
+      : `Phone: ${shipment.receiver.phone}`;
+    doc.text(rxPhoneLine, rxX + 3, y + 19);
+
+    const receiverTazkiraNumber = shipment.receiver.nationalId || shipment.sender.receiverTazkira;
+    if (receiverTazkiraNumber) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Receiver Tazkira: ${receiverTazkiraNumber}`, rxX + 3, y + 25);
+      doc.setFont('helvetica', 'normal');
     }
     doc.text(`Destination City: ${destBranch?.city || shipment.receiver.city} (${shipment.receiver.province || 'AFG'})`, rxX + 3, y + 31);
     doc.text(`Address: ${shipment.receiver.address.substring(0, 38)}`, rxX + 3, y + 37);
@@ -320,48 +327,89 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.text('Scan barcode or enter CN on Armaghan Sadeq Transfers Portal to track live status in real time.', margin + 95, y + 7);
-    doc.text(`Support Hotline: +93 799 123 456 | support@armaghansadeq.af`, margin + 95, y + 13);
+    const senderHubPhone = originBranch?.phone ? originBranch.phone : 'Hub Contact';
+    doc.text(`Helplines: Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 95, y + 13);
 
     y += 24;
 
     // SIGNATURE & STAMP BOXES
     const sigColWidth = (contentWidth - 8) / 3;
-    const sigHeight = 26;
+    const sigHeight = 24;
 
     // 1. Shipper Signature
     doc.rect(margin, y, sigColWidth, sigHeight);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('Sender Signature & Verification', margin + 3, y + 5);
+    doc.text('Sender Signature & Verification', margin + 3, y + 4.5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.text('I confirm package contents comply with cargo laws.', margin + 3, y + 9);
-    doc.text('Signature: ____________________', margin + 3, y + 22);
+    doc.text('I confirm package contents comply with cargo laws.', margin + 3, y + 8.5);
+    doc.text('Signature: ____________________', margin + 3, y + 20.5);
 
     // 2. Consignee Signature
     const sig2X = margin + sigColWidth + 4;
     doc.rect(sig2X, y, sigColWidth, sigHeight);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('Receiver Signature / Fingerprint', sig2X + 3, y + 5);
+    doc.text('Receiver Signature / Fingerprint', sig2X + 3, y + 4.5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.text('Received package in sealed & good condition.', sig2X + 3, y + 9);
-    doc.text('Sign / Thumb: _________________', sig2X + 3, y + 22);
+    doc.text('Received package in sealed & good condition.', sig2X + 3, y + 8.5);
+    doc.text('Sign / Thumb: _________________', sig2X + 3, y + 20.5);
 
     // 3. Authorized Stamp
     const sig3X = sig2X + sigColWidth + 4;
     doc.rect(sig3X, y, sigColWidth, sigHeight);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('Branch Authorized Stamp', sig3X + 3, y + 5);
+    doc.text('Branch Authorized Stamp', sig3X + 3, y + 4.5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.text(`Origin: ${originBranch?.name || shipment.originBranchId}`, sig3X + 3, y + 9);
-    doc.text('Official Seal: [ VERIFIED ]', sig3X + 3, y + 22);
+    doc.text(`Origin: ${originBranch?.name || shipment.originBranchId}`, sig3X + 3, y + 8.5);
+    doc.text('Official Seal: [ VERIFIED ]', sig3X + 3, y + 20.5);
+
+    // OFFICIAL 3 MANDATORY CONTACT NUMBERS STRIP AT BOTTOM OF PDF
+    y += sigHeight + 3;
+    doc.setFillColor(248, 250, 252); // Slate-50
+    doc.setDrawColor(203, 213, 225); // Slate-300
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, y, contentWidth, 12, 1.5, 1.5, 'FD');
+
+    const colContactW = contentWidth / 3;
+
+    // Contact 1: Sender Branch Phone (Added by Admin when creating the branch)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(225, 29, 72); // Red-600
+    doc.text('1. SENDER BRANCH PHONE:', margin + 3, y + 4.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(15, 23, 42);
+    const originContactStr = originBranch?.phone ? `${originBranch.phone} (${originBranch.city})` : 'Registered at Origin Hub';
+    doc.text(originContactStr, margin + 3, y + 9);
+
+    // Contact 2: Complaints Hotline (0711299680 - Global across all PDFs)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(180, 83, 9); // Amber-700
+    doc.text('2. COMPLAINTS / SHIKAYAT:', margin + colContactW + 3, y + 4.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text('0711299680', margin + colContactW + 3, y + 9);
+
+    // Contact 3: Main Office Contact (0774144004 - Global across all PDFs)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(30, 58, 138); // Blue-800
+    doc.text('3. MAIN OFFICE (KABUL HQ):', margin + colContactW * 2 + 3, y + 4.2);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text('0774144004', margin + colContactW * 2 + 3, y + 9);
 
     // Footer with Rayan Tech Solutions Attribution
-    y += sigHeight + 5;
+    y += 15;
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
     doc.text('Armaghan Sadeq Transfers | Official Afghanistan Freight Consignment Document', margin, y);
