@@ -64,7 +64,7 @@
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
+        "total_revenue_afn": 350,
         "created_at": "2026-09-05T09:51:54.756Z",
         "tazkira_number": "1401-8829102-1"
       }
@@ -85,7 +85,7 @@
         "manager_name": "Noor Mohammad",
         "is_head_office": false,
         "active_shipments_count": 0,
-        "total_parcels_dispatched": 0,
+        "total_parcels_dispatched": 1,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
         "created_at": "2026-09-05T09:51:54.829Z",
@@ -137,6 +137,29 @@
         "created_at": "2026-09-05T09:51:54.966Z",
         "tazkira_number": "1403-9182736-5"
       }
+    ],
+    [
+      "br_kho06_0281",
+      {
+        "id": "br_kho06_0281",
+        "name": "Khost Regional Hub",
+        "name_fa": "Rayn Khost",
+        "name_ps": "Rayn Khost",
+        "code": "KHO-06",
+        "province": "Khost",
+        "city": "Khost city",
+        "address": "Rayn Khost Main Commercial Cargo Hub",
+        "phone": "+93 79 2222222",
+        "email": "khost@armaghansadeq.af",
+        "manager_name": "Dalil",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-05T09:59:50.281Z",
+        "tazkira_number": "5555555555555"
+      }
     ]
   ],
   "users": [
@@ -159,7 +182,262 @@
       }
     ]
   ],
-  "shipments": [],
+  "shipments": [
+    [
+      "shp_pr_491945",
+      {
+        "id": "shp_pr_491945",
+        "cn_number": "RYN-PR-491945",
+        "origin_branch_id": "br_kbl_01",
+        "destination_branch_id": "br_kho06_0281",
+        "current_branch_id": "br_kbl_01",
+        "sender": {
+          "city": "Kabul City",
+          "name": "Tariq Zaland",
+          "email": "tariq@gmail.com",
+          "phone": "0774444444",
+          "address": "Karte naw",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "Khost city",
+          "name": "Shakir",
+          "phone": "0733333333",
+          "address": "Gardez",
+          "province": "Khost"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "garments",
+          "weightKg": 2,
+          "isFragile": false,
+          "description": "garments - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 3000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 0,
+          "amountDue": 0,
+          "amountPaid": 0,
+          "serviceFee": 0,
+          "weightCost": 0,
+          "totalAmount": 0,
+          "discountType": "fixed",
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 0,
+          "transportationFee": 0,
+          "originRemittanceDue": 0,
+          "destBranchCommission": 0
+        },
+        "status": "pre_booked",
+        "status_history": [
+          {
+            "id": "st_1788605636237",
+            "note": "Consignment pre-booked online by customer Tariq Zaland. Awaiting physical drop-off at Kabul Central Hub for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-05T10:53:56.237Z",
+            "updatedBy": "Customer Tariq Zaland",
+            "branchName": "Kabul Central Hub"
+          }
+        ],
+        "booked_at": "2026-09-05T10:53:56.237Z",
+        "estimated_delivery": "2026-09-08T10:53:56.237Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_cust_526366",
+        "booked_by_user_name": "Tariq Zaland",
+        "dest_branch_commission": "100",
+        "remittance_status": "pending",
+        "origin_remittance_due": "0",
+        "created_at": "2026-09-05T10:53:56.237Z"
+      }
+    ],
+    [
+      "shp_pr_649806",
+      {
+        "id": "shp_pr_649806",
+        "cn_number": "RYN-PR-649806",
+        "origin_branch_id": "br_mzk_02",
+        "destination_branch_id": "br_hrt_03",
+        "current_branch_id": "br_mzk_02",
+        "sender": {
+          "city": "Mazar-i-Sharif",
+          "name": "Tariq Zaland",
+          "email": "tariq@gmail.com",
+          "phone": "0774444444",
+          "address": "Karte naw",
+          "province": "Balkh"
+        },
+        "receiver": {
+          "city": "Herat City",
+          "name": "Talha",
+          "phone": "0700989763",
+          "address": "Herat ",
+          "province": "Herat",
+          "nationalId": "1234567890876"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "machinery",
+          "weightKg": 3,
+          "isFragile": false,
+          "description": "machinery - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 6000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 300,
+          "amountDue": 520,
+          "amountPaid": 0,
+          "serviceFee": 100,
+          "weightCost": 120,
+          "totalAmount": 520,
+          "discountType": "fixed",
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 0,
+          "transportationFee": 100,
+          "originRemittanceDue": 420,
+          "destBranchCommission": 100
+        },
+        "status": "in_transit",
+        "status_history": [
+          {
+            "id": "st_1788609461463",
+            "note": "Consignment pre-booked online by customer Tariq Zaland. Awaiting physical drop-off at Mazar-i-Sharif Northern Terminal for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-05T11:57:41.463Z",
+            "updatedBy": "Customer Tariq Zaland",
+            "branchName": "Mazar-i-Sharif Northern Terminal"
+          },
+          {
+            "id": "st_1788609537904",
+            "note": "Customer pre-booking verified, weighed & priced by Noor Mohammad. Verified weight: 3 kg, 1 pcs (Base: 300 AFN, Rate: 40 AFN/kg, Service: 100 AFN). Total: 520 AFN (TO_PAY).",
+            "status": "booked",
+            "location": "Mazar-i-Sharif Northern Terminal (Mazar-i-Sharif)",
+            "timestamp": "2026-09-05T11:58:57.904Z",
+            "updatedBy": "Noor Mohammad",
+            "branchName": "Mazar-i-Sharif Northern Terminal"
+          },
+          {
+            "id": "st_1788609545530",
+            "note": "Status updated to in transit by Noor Mohammad (Mazar-i-Sharif Northern Terminal)",
+            "status": "in_transit",
+            "location": "Mazar-i-Sharif Northern Terminal (Mazar-i-Sharif)",
+            "timestamp": "2026-09-05T11:59:05.530Z",
+            "updatedBy": "Noor Mohammad (Mazar-i-Sharif Northern Terminal)",
+            "branchName": "Mazar-i-Sharif Northern Terminal"
+          }
+        ],
+        "booked_at": "2026-09-05T11:57:41.463Z",
+        "estimated_delivery": "2026-09-08T11:57:41.463Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_cust_526366",
+        "booked_by_user_name": "Tariq Zaland",
+        "dest_branch_commission": "100",
+        "remittance_status": "pending",
+        "origin_remittance_due": "0",
+        "created_at": "2026-09-05T11:57:41.463Z"
+      }
+    ],
+    [
+      "shp_pr_542111",
+      {
+        "id": "shp_pr_542111",
+        "cn_number": "RYN-PR-542111",
+        "origin_branch_id": "br_kdh_04",
+        "destination_branch_id": "br_hrt_03",
+        "current_branch_id": "br_kdh_04",
+        "sender": {
+          "city": "Kandahar City",
+          "name": "Tariq Zaland",
+          "email": "tariq@gmail.com",
+          "phone": "0774444444",
+          "address": "kart e naw",
+          "province": "Kandahar"
+        },
+        "receiver": {
+          "city": "Herat City",
+          "name": "Talha",
+          "phone": "0700989763",
+          "address": "Herat city",
+          "province": "Herat",
+          "nationalId": "3333333333333"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "foodstuff",
+          "weightKg": 0.5,
+          "isFragile": false,
+          "description": "foodstuff - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 3000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 300,
+          "amountDue": 420,
+          "amountPaid": 0,
+          "serviceFee": 100,
+          "weightCost": 20,
+          "totalAmount": 420,
+          "discountType": "fixed",
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 0,
+          "transportationFee": 100,
+          "originRemittanceDue": 320,
+          "destBranchCommission": 100
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1788675181840",
+            "note": "Consignment pre-booked online by customer Tariq Zaland. Awaiting physical drop-off at Kandahar Southern Depot for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-06T06:13:01.840Z",
+            "updatedBy": "Customer Tariq Zaland",
+            "branchName": "Kandahar Southern Depot"
+          },
+          {
+            "id": "st_1788678276325",
+            "note": "Customer pre-booking verified, weighed & priced by Abdul Bari Popal. Verified weight: 0.5 kg, 1 pcs (Base: 300 AFN, Rate: 40 AFN/kg, Service: 100 AFN). Total: 420 AFN (TO_PAY).",
+            "status": "booked",
+            "location": "Kandahar Southern Depot (Kandahar City)",
+            "timestamp": "2026-09-06T07:04:36.324Z",
+            "updatedBy": "Abdul Bari Popal",
+            "branchName": "Kandahar Southern Depot"
+          }
+        ],
+        "booked_at": "2026-09-06T06:13:01.840Z",
+        "estimated_delivery": "2026-09-09T06:13:01.840Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_kdh_mgr",
+        "booked_by_user_name": "Abdul Bari Popal",
+        "dest_branch_commission": "100",
+        "remittance_status": "pending",
+        "origin_remittance_due": "320",
+        "created_at": "2026-09-06T06:13:01.840Z"
+      }
+    ]
+  ],
   "branch_expenses": [],
   "branch_settlements": []
 }

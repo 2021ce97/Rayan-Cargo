@@ -172,19 +172,27 @@ export interface BillingFinancials {
 
 export interface BranchRemittanceTransfer {
   id: string;
-  batchNumber: string; // e.g. REM-KBL-8921
-  fromBranchId: string;
+  batchNumber: string; // e.g. REM-HRT-8921 or STL-8921
+  fromBranchId: string; // Destination branch recording the handover
   fromBranchName: string;
-  toBranchId: string; // Main Branch (Head Office)
+  originBranchId?: string; // Origin / Sender branch (e.g. Kabul HQ or Faryab)
+  originBranchName?: string;
+  destinationBranchId?: string; // Destination branch delivering to receiver (e.g. Herat)
+  destinationBranchName?: string;
+  toBranchId: string; // Main Branch (Head Office / Central Treasury)
   toBranchName: string;
   parcelIds: string[]; // List of shipment IDs or CNs
   parcelCount: number;
-  totalCollectedAfn: number; // Total money collected from receivers (e.g. 100 or 600)
-  totalCommissionKeptAfn: number; // Commission retained by branch (e.g. 30 or 140)
-  netRemittanceAmountAfn: number; // Remaining money sent to Main Branch (e.g. 70 or 460)
+  totalCollectedAfn: number; // Total money collected from receiver (e.g. 100 or 600 AFN)
+  destCommissionAfn: number; // Commission kept by receiving branch (e.g. 30 AFN)
+  transportationFeeAfn: number; // Transportation fee kept by receiver branch (e.g. 20 AFN)
+  destTotalRetainedAfn: number; // Total kept by receiving branch = destCommission + transportationFee (e.g. 50 AFN)
+  originCommissionAfn?: number; // Commission credited to origin branch if provincial sender (e.g. 20 AFN for Faryab)
+  totalCommissionKeptAfn: number; // Legacy/Aggregate kept by branch
+  netRemittanceAmountAfn: number; // Remaining balance remitted to Main Branch (e.g. 50 or 30 AFN)
   paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury';
-  referenceNumber?: string; // Hawala code or bank deposit voucher
-  transferAgentName?: string; // Sarafi or driver name
+  referenceNumber?: string; // Hawala code, Sarafi voucher, or Bank transaction ID
+  transferAgentName?: string; // Sarafi agent name or bank branch
   notes?: string;
   status: 'submitted_to_headoffice' | 'confirmed_by_headoffice' | 'rejected';
   submittedByUserId: string;
@@ -194,6 +202,30 @@ export interface BranchRemittanceTransfer {
   confirmedByUserName?: string;
   confirmedAt?: string;
   confirmationNotes?: string;
+}
+
+export interface BranchSettlementRecord {
+  id: string;
+  shipmentId?: string;
+  cnNumber: string;
+  originBranchId: string;
+  originBranchName?: string;
+  destinationBranchId: string;
+  destinationBranchName?: string;
+  grossCollectedAmount: number; // e.g. 100 AFN
+  destBranchCommission: number; // e.g. 30 AFN
+  transportationFee: number; // e.g. 20 AFN
+  destTotalRetained: number; // e.g. 50 AFN
+  originBranchCommission?: number; // e.g. 20 AFN (if provincial sender)
+  netRemittedAmount: number; // e.g. 50 AFN or 30 AFN
+  settlementChannel: string;
+  sarafiReferenceNo?: string;
+  sarafiName?: string;
+  settlementStatus: 'pending_confirmation' | 'verified_by_headoffice' | 'settled';
+  settledByUserName: string;
+  settledAt: string;
+  notes?: string;
+  createdAt: string;
 }
 
 export interface Shipment {

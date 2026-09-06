@@ -62,15 +62,109 @@ export const RemittanceManager: React.FC = () => {
   // Remit submission modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedParcelIds, setSelectedParcelIds] = useState<string[]>([]);
+  const [customOriginBranchId, setCustomOriginBranchId] = useState<string>('br_kbl');
+  const [customDestBranchId, setCustomDestBranchId] = useState<string>('br_herat');
   const [customTotalCollected, setCustomTotalCollected] = useState<number>(100);
   const [customCommission, setCustomCommission] = useState<number>(30);
-  const [customNetToHq, setCustomNetToHq] = useState<number>(70);
+  const [customTransportationFee, setCustomTransportationFee] = useState<number>(20);
+  const [customOriginCommission, setCustomOriginCommission] = useState<number>(0);
+  const [customNetToHq, setCustomNetToHq] = useState<number>(50);
   const [paymentMethod, setPaymentMethod] = useState<'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury'>('hawala');
   const [refNumber, setRefNumber] = useState('');
   const [agentName, setAgentName] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Confirmation modal state (Super Admin)
+  // Recompute net to HQ whenever any money parameter changes
+  const recomputeNetToHq = (
+    collected: number,
+    destComm: number,
+    transportFee: number,
+    origComm: number
+  ) => {
+    const destRetained = destComm + transportFee;
+    const net = Math.max(0, collected - destRetained - origComm);
+    setCustomNetToHq(net);
+  };
+
+  // Open modal for single or batch
+  const handleOpenRemitModal = (parcels: Shipment[]) => {
+    if (parcels.length === 0) return;
+    const ids = parcels.map(p => p.id);
+    setSelectedParcelIds(ids);
+
+    const totalColl = parcels.reduce((sum, p) => sum + (p.financials?.totalAmount || 0), 0);
+    const totalComm = parcels.reduce((sum, p) => {
+      const comm = p.destBranchCommission !== undefined ? p.destBranchCommission : (p.financials?.destBranchCommission || 30);
+      return sum + comm;
+    }, 0);
+    const transportFee = parcels.length > 0 ? parcels.length * 20 : 20;
+    
+    // Check if any parcel originated from provincial branch (e.g., Faryab)
+    const firstParcel = parcels[0];
+    const isProvincialOrigin = firstParcel?.originBranchId && firstParcel.originBranchId !== 'br_kbl';
+    const origComm = isProvincialOrigin ? 20 : 0;
+    const destRetained = totalComm + transportFee;
+    const net = Math.max(0, totalColl - destRetained - origComm);
+
+    setCustomOriginBranchId(firstParcel?.originBranchId || 'br_kbl');
+    setCustomDestBranchId(firstParcel?.destinationBranchId || currentBranchId || 'br_herat');
+    setCustomTotalCollected(totalColl);
+    setCustomCommission(totalComm);
+    setCustomTransportationFee(transportFee);
+    setCustomOriginCommission(origComm);
+    setCustomNetToHq(net);
+    setRefNumber(`HAW-${Math.floor(100000 + Math.random() * 900000)}`);
+    setAgentName('Sarafi Khorasan / Kabul Central');
+    setNotes(`Settlement for ${parcels.length} parcel(s) delivered by ${currentBranch?.name || 'Branch'}.`);
+    setIsCreateModalOpen(true);
+  };
+
+  // Handlers for manual edits
+  const handleTotalCollectedChange = (newTotal: number) => {
+    setCustomTotalCollected(newTotal);
+    recomputeNetToHq(newTotal, customCommission, customTransportationFee, customOriginCommission);
+  };
+
+  const handleCommissionChange = (newComm: number) => {
+    setCustomCommission(newComm);
+    recomputeNetToHq(customTotalCollected, newComm, customTransportationFee, customOriginCommission);
+  };
+
+  const handleTransportFeeChange = (newFee: number) => {
+    setCustomTransportationFee(newFee);
+    recomputeNetToHq(customTotalCollected, customCommission, newFee, customOriginCommission);
+  };
+
+  const handleOriginCommChange = (newOrigComm: number) => {
+    setCustomOriginCommission(newOrigComm);
+    recomputeNetToHq(customTotalCollected, customCommission, customTransportationFee, newOrigComm);
+  };
+
+  // Submit Remittance
+  const handleSubmitRemittance = () => {
+    if (selectedParcelIds.length === 0 && !customTotalCollected) return;
+
+    const fromBr = isSuperAdmin ? (selectedBranchFilter !== 'all' ? selectedBranchFilter : branches[1]?.id || 'br_kbl') : (currentUser.branchId || 'br_kbl');
+
+    createBatchRemittance(
+      selectedParcelIds,
+      fromBr,
+      customTotalCollected,
+      customCommission,
+      customNetToHq,
+      paymentMethod,
+      refNumber,
+      agentName,
+      notes,
+      customTransportationFee,
+      customOriginCommission,
+      customOriginBranchId
+    );
+
+    setIsCreateModalOpen(false);
+    setSelectedParcelIds([]);
+    setActiveTab('transfers_submitted');
+  };
   const [confirmModalTransfer, setConfirmModalTransfer] = useState<BranchRemittanceTransfer | null>(null);
   const [confirmationNote, setConfirmationNote] = useState('');
 
@@ -117,62 +211,6 @@ export const RemittanceManager: React.FC = () => {
       return matchesSearch && matchesBranch && matchesTab;
     });
   }, [remittanceTransfers, searchTerm, isSuperAdmin, selectedBranchFilter, currentBranchId, activeTab]);
-
-  // Open modal for single or batch
-  const handleOpenRemitModal = (parcels: Shipment[]) => {
-    if (parcels.length === 0) return;
-    const ids = parcels.map(p => p.id);
-    setSelectedParcelIds(ids);
-
-    const totalColl = parcels.reduce((sum, p) => sum + (p.financials?.totalAmount || 0), 0);
-    const totalComm = parcels.reduce((sum, p) => {
-      const comm = p.destBranchCommission !== undefined ? p.destBranchCommission : (p.financials?.destBranchCommission || 100);
-      return sum + comm;
-    }, 0);
-    const net = Math.max(0, totalColl - totalComm);
-
-    setCustomTotalCollected(totalColl);
-    setCustomCommission(totalComm);
-    setCustomNetToHq(net);
-    setRefNumber(`HAW-${Math.floor(100000 + Math.random() * 900000)}`);
-    setAgentName('Sarafi Khorasan / Kabul Central');
-    setNotes(`Remittance from ${currentBranch?.name || 'Branch'} to Main Branch Head Office.`);
-    setIsCreateModalOpen(true);
-  };
-
-  // When custom commission or total collected changes, recompute net to HQ
-  const handleCommissionChange = (newComm: number) => {
-    setCustomCommission(newComm);
-    setCustomNetToHq(Math.max(0, customTotalCollected - newComm));
-  };
-
-  const handleTotalCollectedChange = (newTotal: number) => {
-    setCustomTotalCollected(newTotal);
-    setCustomNetToHq(Math.max(0, newTotal - customCommission));
-  };
-
-  // Submit Remittance
-  const handleSubmitRemittance = () => {
-    if (selectedParcelIds.length === 0 && !customTotalCollected) return;
-
-    const fromBr = isSuperAdmin ? (selectedBranchFilter !== 'all' ? selectedBranchFilter : branches[1]?.id || 'br_kbl') : (currentUser.branchId || 'br_kbl');
-
-    createBatchRemittance(
-      selectedParcelIds,
-      fromBr,
-      customTotalCollected,
-      customCommission,
-      customNetToHq,
-      paymentMethod,
-      refNumber,
-      agentName,
-      notes
-    );
-
-    setIsCreateModalOpen(false);
-    setSelectedParcelIds([]);
-    setActiveTab('transfers_submitted');
-  };
 
   // Confirm Remittance (Super Admin)
   const handleConfirmSubmit = () => {
@@ -728,48 +766,171 @@ export const RemittanceManager: React.FC = () => {
 
             {/* Live Financial Breakdown Card */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                Financial Calculation Matrix (محاسبه کمیشن و انتقال به مرکز)
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                <span>Financial Calculation Matrix (محاسبه کمیشن، کرایه و انتقال به مرکز)</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">
+                  Kabul HQ Owner
+                </span>
               </div>
 
-              {/* Total collected input */}
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  1. Total Money Collected from Receiver (مبلغ کل اخذ شده از گیرنده - AFN):
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={customTotalCollected}
-                  onChange={(e) => handleTotalCollectedChange(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full h-10 px-3 font-mono font-black text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl"
-                  placeholder="100"
-                />
+              {/* Branch Route Selectors if manually creating */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                    Origin Hub (نمایندگی مبدا / فرستنده):
+                  </label>
+                  <select
+                    value={customOriginBranchId}
+                    onChange={(e) => {
+                      const orig = e.target.value;
+                      setCustomOriginBranchId(orig);
+                      const isProv = orig !== 'br_kbl';
+                      const origComm = isProv ? 20 : 0;
+                      setCustomOriginCommission(origComm);
+                      recomputeNetToHq(customTotalCollected, customCommission, customTransportationFee, origComm);
+                    }}
+                    className="w-full h-8 px-2 font-medium bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
+                  >
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} {b.isHeadOffice ? '(HQ Main)' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                    Destination Hub (نمایندگی گیرنده / تحویل‌دهنده):
+                  </label>
+                  <select
+                    value={customDestBranchId}
+                    onChange={(e) => setCustomDestBranchId(e.target.value)}
+                    className="w-full h-8 px-2 font-medium bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
+                  >
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {/* Branch Commission input */}
-              <div>
-                <label className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
-                  2. Branch Retained Commission (کمیشن کسر شده توسط شعبه - AFN):
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={customCommission}
-                  onChange={(e) => handleCommissionChange(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full h-10 px-3 font-mono font-black text-sm text-emerald-600 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 rounded-xl"
-                  placeholder="30"
-                />
+              {/* Grid of Money Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. Total collected input */}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    1. Collected from Receiver (AFN):
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={customTotalCollected}
+                    onChange={(e) => handleTotalCollectedChange(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full h-9 px-3 font-mono font-black text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                    placeholder="100"
+                  />
+                  <span className="text-[9px] text-slate-500">مجموع پول نقد اخذ شده</span>
+                </div>
+
+                {/* 2. Destination Branch Commission */}
+                <div>
+                  <label className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
+                    2. Receiver Commission (AFN):
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={customCommission}
+                    onChange={(e) => handleCommissionChange(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full h-9 px-3 font-mono font-black text-sm text-emerald-600 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 rounded-xl"
+                    placeholder="30"
+                  />
+                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400">کمیشن نمایندگی گیرنده</span>
+                </div>
+
+                {/* 3. Transportation Fee */}
+                <div>
+                  <label className="block text-[10px] font-bold text-teal-700 dark:text-teal-400 mb-1">
+                    3. Transport Fee to Receiver:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={customTransportationFee}
+                    onChange={(e) => handleTransportFeeChange(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full h-9 px-3 font-mono font-black text-sm text-teal-700 bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-xl"
+                    placeholder="20"
+                  />
+                  <span className="text-[9px] text-teal-600 dark:text-teal-400">کرایه انتقال نمایندگی گیرنده</span>
+                </div>
+              </div>
+
+              {/* Inter-branch Origin Commission row if origin is not Kabul */}
+              {customOriginBranchId !== 'br_kbl' && (
+                <div className="p-2.5 rounded-lg bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-blue-900 dark:text-blue-300">
+                      4. Origin Branch Commission ({branches.find(b => b.id === customOriginBranchId)?.name || 'Origin'}):
+                    </span>
+                    <p className="text-[10px] text-blue-700 dark:text-blue-400">
+                      کمیشن نمایندگی مبدا (ولایت فرستنده)
+                    </p>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    value={customOriginCommission}
+                    onChange={(e) => handleOriginCommChange(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-24 h-8 px-2 font-mono font-bold text-xs text-end text-blue-700 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-lg"
+                  />
+                </div>
+              )}
+
+              {/* Total Retained Summary for Receiver Branch */}
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
+                <span className="font-bold text-emerald-900 dark:text-emerald-200">
+                  Total Retained by Receiver Branch (کمیشن + کرایه انتقال):
+                </span>
+                <span className="font-mono font-black text-emerald-700 dark:text-emerald-400 text-sm">
+                  {customCommission + customTransportationFee} AFN
+                </span>
+              </div>
+
+              {/* Visual Money Distribution Bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-slate-500">
+                  <span>Receiver: {customCommission + customTransportationFee} AFN</span>
+                  {customOriginCommission > 0 && <span>Sender: {customOriginCommission} AFN</span>}
+                  <span>HQ Remit: {customNetToHq} AFN</span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full flex overflow-hidden">
+                  <div 
+                    style={{ width: `${Math.min(100, Math.round(((customCommission + customTransportationFee) / (customTotalCollected || 1)) * 100))}%` }}
+                    className="bg-emerald-500 h-full" 
+                    title="Receiver Commission + Transport"
+                  />
+                  {customOriginCommission > 0 && (
+                    <div 
+                      style={{ width: `${Math.min(100, Math.round((customOriginCommission / (customTotalCollected || 1)) * 100))}%` }}
+                      className="bg-blue-500 h-full" 
+                      title="Sender Branch Commission"
+                    />
+                  )}
+                  <div 
+                    style={{ width: `${Math.min(100, Math.round((customNetToHq / (customTotalCollected || 1)) * 100))}%` }}
+                    className="bg-amber-500 h-full" 
+                    title="Net to Main Branch HQ"
+                  />
+                </div>
               </div>
 
               {/* Net Remittance to HQ result */}
               <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                    3. Net Remaining to Send to Main Branch (مبلغ ارسالی به مرکز):
+                    Net Remaining to Send to Main Branch (مبلغ ارسالی به نمایندگی اصلی کابل):
                   </div>
-                  <div className="text-[10px] text-amber-700 dark:text-amber-400">
-                    {customTotalCollected} - {customCommission} = {customNetToHq} AFN
+                  <div className="text-[10px] text-amber-700 dark:text-amber-400 font-mono">
+                    {customTotalCollected} - ({customCommission} + {customTransportationFee}) {customOriginCommission > 0 ? `- ${customOriginCommission}` : ''} = {customNetToHq} AFN
                   </div>
                 </div>
                 <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
@@ -1065,15 +1226,27 @@ export const RemittanceManager: React.FC = () => {
               <table className="w-full border-collapse text-xs border border-slate-200">
                 <tbody>
                   <tr className="border-b border-slate-200 bg-slate-50">
-                    <td className="p-2 font-bold text-slate-700">Total Money Collected from Receivers:</td>
+                    <td className="p-2 font-bold text-slate-700">Total Money Collected from Receivers (مجموع پول اخذ شده):</td>
                     <td className="p-2 font-mono font-bold text-end">{viewDetailTransfer.totalCollectedAfn.toLocaleString()} AFN</td>
                   </tr>
                   <tr className="border-b border-slate-200">
-                    <td className="p-2 font-bold text-emerald-700">Deducted Branch Handling Commission:</td>
+                    <td className="p-2 font-bold text-emerald-700">Deducted Receiver Branch Commission (کمیشن نمایندگی تحویل‌دهنده):</td>
                     <td className="p-2 font-mono font-bold text-emerald-700 text-end">- {viewDetailTransfer.totalCommissionKeptAfn.toLocaleString()} AFN</td>
                   </tr>
+                  {((viewDetailTransfer as any).transportationFeeAfn || 0) > 0 && (
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2 font-bold text-teal-700">Deducted Transportation Fee to Receiver (کرایه انتقال نمایندگی):</td>
+                      <td className="p-2 font-mono font-bold text-teal-700 text-end">- {((viewDetailTransfer as any).transportationFeeAfn).toLocaleString()} AFN</td>
+                    </tr>
+                  )}
+                  {((viewDetailTransfer as any).originCommissionAfn || 0) > 0 && (
+                    <tr className="border-b border-slate-200">
+                      <td className="p-2 font-bold text-blue-700">Sender Branch Commission (کمیشن نمایندگی مبدا):</td>
+                      <td className="p-2 font-mono font-bold text-blue-700 text-end">- {((viewDetailTransfer as any).originCommissionAfn).toLocaleString()} AFN</td>
+                    </tr>
+                  )}
                   <tr className="bg-amber-50/60 font-black text-amber-900 text-sm">
-                    <td className="p-2.5">Net Remitted to Main Branch HQ:</td>
+                    <td className="p-2.5">Net Remitted to Main Branch HQ (مبلغ تسلیم شده به مرکز کابل):</td>
                     <td className="p-2.5 font-mono text-end text-base text-amber-700">{viewDetailTransfer.netRemittanceAmountAfn.toLocaleString()} AFN</td>
                   </tr>
                 </tbody>

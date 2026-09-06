@@ -121,7 +121,9 @@ interface AppContextType {
     paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury',
     referenceNumber?: string,
     transferAgentName?: string,
-    notes?: string
+    notes?: string,
+    transportationFee?: number,
+    originCommission?: number
   ) => boolean;
   createBatchRemittance: (
     parcelIds: string[], 
@@ -132,7 +134,10 @@ interface AppContextType {
     paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury',
     referenceNumber?: string,
     transferAgentName?: string,
-    notes?: string
+    notes?: string,
+    transportationFee?: number,
+    originCommission?: number,
+    originBranchId?: string
   ) => boolean;
   confirmRemittanceByHeadOffice: (transferId: string, confirmationNotes?: string) => boolean;
   rejectRemittanceByHeadOffice: (transferId: string, rejectionReason: string) => boolean;
@@ -1221,7 +1226,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury',
     referenceNumber?: string,
     transferAgentName?: string,
-    notes?: string
+    notes?: string,
+    transportationFee: number = 0,
+    originCommission: number = 0,
+    originBranchId?: string
   ): boolean => {
     const fromBranch = branches.find(b => b.id === fromBranchId);
     const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
@@ -1230,21 +1238,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const batchNumber = `REM-${fromBranch?.code || 'BR'}-${randomCode}`;
 
+    const destTotalRetained = totalCommissionKept + transportationFee;
+
     const newTransfer: BranchRemittanceTransfer = {
       id: batchId,
       batchNumber,
       fromBranchId,
       fromBranchName: fromBranch?.name || 'Sender Branch',
-      toBranchId: mainBranch?.id || 'br_hq',
+      originBranchId: originBranchId || 'br_kbl',
+      destinationBranchId: fromBranchId,
+      destinationBranchName: fromBranch?.name,
+      toBranchId: mainBranch?.id || 'br_kbl',
       toBranchName: mainBranch?.name || 'Main Branch (Head Office Admin HQ)',
       parcelIds,
       parcelCount: parcelIds.length,
       totalCollectedAfn: totalCollected,
-      totalCommissionKeptAfn: totalCommissionKept,
+      destCommissionAfn: totalCommissionKept,
+      transportationFeeAfn: transportationFee,
+      destTotalRetainedAfn: destTotalRetained,
+      originCommissionAfn: originCommission,
+      totalCommissionKeptAfn: destTotalRetained,
       netRemittanceAmountAfn: netToHq,
       paymentMethod,
       referenceNumber: referenceNumber || `REF-${randomCode}`,
-      transferAgentName,
+      transferAgentName: transferAgentName || 'Sarafi Central',
       notes,
       status: 'submitted_to_headoffice',
       submittedByUserId: currentUser.id,
@@ -1261,7 +1278,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           location: `${fromBranch?.name || 'Branch'} → ${mainBranch?.name || 'Head Office'}`,
           branchName: fromBranch?.name || 'Branch',
           timestamp: now,
-          note: `Revenue remittance batch ${batchNumber} submitted to Head Office: Collected ${s.financials.totalAmount} AFN, Commission retained: ${s.destBranchCommission || 100} AFN, Remitted to HQ: ${s.originRemittanceDue || (s.financials.totalAmount - (s.destBranchCommission || 100))} AFN (${paymentMethod.toUpperCase()}: ${referenceNumber || 'N/A'}). Awaiting HQ confirmation.`,
+          note: `Financial Settlement & Remittance ${batchNumber}: Collected ${totalCollected} AFN from receiver. Retained dest commission (${totalCommissionKept} AFN) + transport fee (${transportationFee} AFN) = ${destTotalRetained} AFN. Origin commission: ${originCommission} AFN. Net Remitted to Main Branch HQ: ${netToHq} AFN (${paymentMethod.toUpperCase()}: ${referenceNumber || 'N/A'}). Awaiting HQ confirmation.`,
           updatedBy: currentUser.name
         };
         return {
@@ -1276,13 +1293,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setRemittanceTransfers(prev => [newTransfer, ...prev]);
 
+    // Send to /api/remittances
     fetch('/api/remittances', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTransfer)
     }).catch(err => console.warn('Remittance sync error:', err));
 
-    showToast(`✓ Remittance batch ${batchNumber} (${netToHq.toLocaleString()} AFN) submitted to Head Office for verification!`);
+    // Send to /api/settlements
+    fetch('/api/settlements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: `stl_${batchId}`,
+        shipmentId: parcelIds[0] || null,
+        cnNumber: batchNumber,
+        originBranchId: originBranchId || 'br_kbl',
+        destinationBranchId: fromBranchId,
+        grossCollectedAmount: totalCollected,
+        destBranchCommission: totalCommissionKept,
+        netRemittedAmount: netToHq,
+        settlementChannel: paymentMethod,
+        sarafiReferenceNo: referenceNumber,
+        settlementStatus: 'pending_confirmation',
+        settledByUserName: currentUser.name,
+        settledAt: now,
+        notes: notes || `Settlement for ${parcelIds.length} parcel(s)`
+      })
+    }).catch(err => console.warn('Settlement sync error:', err));
+
+    showToast(`✓ Settlement & Remittance ${batchNumber} (${netToHq.toLocaleString()} AFN) submitted to Main Branch for verification!`);
     return true;
   };
 
@@ -1294,7 +1334,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury',
     referenceNumber?: string,
     transferAgentName?: string,
-    notes?: string
+    notes?: string,
+    transportationFee: number = 0,
+    originCommission: number = 0
   ): boolean => {
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) return false;
@@ -1323,7 +1365,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentMethod,
       referenceNumber,
       transferAgentName,
-      notes
+      notes,
+      transportationFee,
+      originCommission,
+      target.originBranchId
     );
   };
 

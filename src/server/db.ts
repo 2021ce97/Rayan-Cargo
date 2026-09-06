@@ -138,7 +138,22 @@ const mockDb = {
     }
 
     if (upper.startsWith('UPDATE BRANCHES SET')) {
-      if (params.length === 2) {
+      if (upper.includes('TOTAL_REVENUE_AFN = TOTAL_REVENUE_AFN +') && (upper.includes('IS_HEAD_OFFICE') || upper.includes('BR_KBL') || params.length === 2)) {
+        const [revenueAdd, targetBranchId] = params;
+        const addVal = parseFloat(revenueAdd || '0');
+        let updatedAny = false;
+        for (const b of memoryStore.branches.values()) {
+          if (b.is_head_office || b.id === 'br_kbl' || (targetBranchId && b.id === targetBranchId)) {
+            b.total_revenue_afn = (parseFloat(b.total_revenue_afn || '0') + addVal);
+            updatedAny = true;
+          }
+        }
+        if (!updatedAny && memoryStore.branches.size > 0) {
+          const first = Array.from(memoryStore.branches.values())[0];
+          first.total_revenue_afn = (parseFloat(first.total_revenue_afn || '0') + addVal);
+        }
+        saveStoreToDisk();
+      } else if (params.length === 2) {
         // [amount, originBranchId]
         const [revenueAdd, branchId] = params;
         const target = memoryStore.branches.get(branchId);
@@ -351,26 +366,50 @@ const mockDb = {
 
     if (upper.startsWith('INSERT INTO BRANCH_SETTLEMENTS')) {
       const [id, shipment_id, cn_number, origin_branch_id, destination_branch_id, gross_collected_amount, dest_branch_commission, net_remitted_amount, settlement_channel, sarafi_reference_no, settlement_status, settled_by_user_name, settled_at, notes, created_at] = params;
+      const existing = memoryStore.branch_settlements.get(id) || {};
       const record = {
+        ...existing,
         id,
-        shipment_id: shipment_id || null,
-        cn_number,
-        origin_branch_id,
-        destination_branch_id,
-        gross_collected_amount: gross_collected_amount || 0,
-        dest_branch_commission: dest_branch_commission || 100,
-        net_remitted_amount: net_remitted_amount || 0,
-        settlement_channel: settlement_channel || 'sarafi_hawala',
-        sarafi_reference_no: sarafi_reference_no || null,
-        settlement_status: settlement_status || 'settled',
-        settled_by_user_name: settled_by_user_name || 'Branch Cashier',
-        settled_at: settled_at || new Date().toISOString(),
-        notes: notes || null,
-        created_at: created_at || new Date().toISOString()
+        shipment_id: shipment_id || existing.shipment_id || null,
+        cn_number: cn_number || existing.cn_number,
+        origin_branch_id: origin_branch_id || existing.origin_branch_id,
+        destination_branch_id: destination_branch_id || existing.destination_branch_id,
+        gross_collected_amount: gross_collected_amount !== undefined ? gross_collected_amount : existing.gross_collected_amount || 0,
+        dest_branch_commission: dest_branch_commission !== undefined ? dest_branch_commission : existing.dest_branch_commission || 100,
+        net_remitted_amount: net_remitted_amount !== undefined ? net_remitted_amount : existing.net_remitted_amount || 0,
+        settlement_channel: settlement_channel || existing.settlement_channel || 'sarafi_hawala',
+        sarafi_reference_no: sarafi_reference_no || existing.sarafi_reference_no || null,
+        settlement_status: settlement_status || existing.settlement_status || 'settled',
+        settled_by_user_name: settled_by_user_name || existing.settled_by_user_name || 'Branch Cashier',
+        settled_at: settled_at || existing.settled_at || new Date().toISOString(),
+        notes: notes || existing.notes || null,
+        created_at: created_at || existing.created_at || new Date().toISOString()
       };
       memoryStore.branch_settlements.set(id, record);
       saveStoreToDisk();
       return { rows: [record], rowCount: 1 };
+    }
+
+    if (upper.startsWith('UPDATE BRANCH_SETTLEMENTS SET')) {
+      if (upper.includes('SETTLEMENT_STATUS = \'SETTLED\'')) {
+        const [notes, id] = params;
+        const target = memoryStore.branch_settlements.get(id);
+        if (target) {
+          target.settlement_status = 'settled';
+          if (notes) target.notes = notes;
+          target.settled_at = new Date().toISOString();
+          saveStoreToDisk();
+        }
+      } else if (upper.includes('SETTLEMENT_STATUS = \'REJECTED\'')) {
+        const [notes, id] = params;
+        const target = memoryStore.branch_settlements.get(id);
+        if (target) {
+          target.settlement_status = 'rejected';
+          if (notes) target.notes = notes;
+          saveStoreToDisk();
+        }
+      }
+      return { rows: [], rowCount: 1 };
     }
 
     // 8. Analytics queries

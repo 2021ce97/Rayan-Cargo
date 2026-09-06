@@ -569,6 +569,124 @@ api.post('/settlements', async (req: Request, res: Response) => {
   }
 });
 
+// 5b. Remittances API (Transfers submitted by Branches to Main Branch HQ)
+api.get('/remittances', async (req: Request, res: Response) => {
+  try {
+    const db = getDbPool();
+    const { rows } = await db.query('SELECT * FROM branch_settlements ORDER BY created_at DESC LIMIT 100');
+    const formatted = rows.map((r: any) => ({
+      id: r.id,
+      batchNumber: r.sarafi_reference_no ? `REM-${r.sarafi_reference_no}` : `REM-${r.id.slice(-5)}`,
+      fromBranchId: r.destination_branch_id || r.branch_id,
+      fromBranchName: 'Branch',
+      toBranchId: 'br_kbl',
+      toBranchName: 'Main Branch (Kabul HQ)',
+      parcelIds: r.shipment_id ? [r.shipment_id] : [],
+      parcelCount: 1,
+      totalCollectedAfn: parseFloat(r.gross_collected_amount || '0'),
+      destCommissionAfn: parseFloat(r.dest_branch_commission || '0'),
+      transportationFeeAfn: 0,
+      destTotalRetainedAfn: parseFloat(r.dest_branch_commission || '0'),
+      totalCommissionKeptAfn: parseFloat(r.dest_branch_commission || '0'),
+      netRemittanceAmountAfn: parseFloat(r.net_remitted_amount || '0'),
+      paymentMethod: (r.settlement_channel || 'hawala') as any,
+      referenceNumber: r.sarafi_reference_no,
+      status: r.settlement_status === 'settled' ? 'confirmed_by_headoffice' : 'submitted_to_headoffice',
+      submittedByUserId: 'usr_manager',
+      submittedByUserName: r.settled_by_user_name || 'Branch Manager',
+      submittedAt: r.settled_at || r.created_at,
+      notes: r.notes
+    }));
+    res.json({ success: true, remittances: formatted });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+api.post('/remittances', async (req: Request, res: Response) => {
+  try {
+    const db = getDbPool();
+    const r = req.body;
+    const id = r.id || `rem_${Date.now().toString().slice(-6)}`;
+    const now = new Date().toISOString();
+
+    await db.query(
+      `INSERT INTO branch_settlements (
+        id, shipment_id, cn_number, origin_branch_id, destination_branch_id,
+        gross_collected_amount, dest_branch_commission, net_remitted_amount,
+        settlement_channel, sarafi_reference_no, settlement_status,
+        settled_by_user_name, settled_at, notes, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ON CONFLICT (id) DO UPDATE SET
+        settlement_status = EXCLUDED.settlement_status,
+        notes = EXCLUDED.notes`,
+      [
+        id, r.parcelIds?.[0] || null, r.batchNumber || `REM-${Date.now().toString().slice(-4)}`,
+        r.originBranchId || 'br_kbl', r.fromBranchId || 'br_hrt',
+        r.totalCollectedAfn || 0, r.destCommissionAfn || r.totalCommissionKeptAfn || 0,
+        r.netRemittanceAmountAfn || 0, r.paymentMethod || 'hawala',
+        r.referenceNumber || r.batchNumber || null,
+        r.status === 'confirmed_by_headoffice' ? 'settled' : 'pending_confirmation',
+        r.submittedByUserName || 'Branch Cashier',
+        r.submittedAt || now, r.notes || null, now
+      ]
+    );
+
+    res.json({ success: true, remittance: { ...r, id, createdAt: now } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+api.patch('/remittances/:id/confirm', async (req: Request, res: Response) => {
+  try {
+    const db = getDbPool();
+    const { id } = req.params;
+    const body = req.body;
+    const now = new Date().toISOString();
+
+    await db.query(
+      `UPDATE branch_settlements SET 
+        settlement_status = 'settled',
+        notes = COALESCE($1, notes)
+      WHERE id = $2`,
+      [body.confirmationNotes || 'Confirmed by Head Office Admin', id]
+    );
+
+    // Update main branch revenue
+    if (body.netRemittanceAmountAfn) {
+      await db.query(
+        `UPDATE branches SET total_revenue_afn = total_revenue_afn + $1 WHERE is_head_office = TRUE OR id = $2`,
+        [parseFloat(body.netRemittanceAmountAfn), 'br_kbl']
+      );
+    }
+
+    res.json({ success: true, confirmedAt: now });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+api.patch('/remittances/:id/reject', async (req: Request, res: Response) => {
+  try {
+    const db = getDbPool();
+    const { id } = req.params;
+    const { rejectionReason } = req.body;
+
+    await db.query(
+      `UPDATE branch_settlements SET 
+        settlement_status = 'rejected',
+        notes = $1
+      WHERE id = $2`,
+      [`Rejected by HQ: ${rejectionReason || 'Voucher mismatch'}`, id]
+    );
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 6. Analytics Revenue Overview Aggregation API
 api.get('/analytics/revenue-overview', async (req: Request, res: Response) => {
   try {
