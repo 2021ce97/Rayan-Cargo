@@ -35,6 +35,9 @@ export const Sidebar: React.FC = () => {
     setActiveBranchPartnerId,
     customerShipments,
     branchExpenses,
+    branchOwedToHeadOffice,
+    headOfficePendingRemittancesTotal,
+    remittanceTransfers,
     isMobileSidebarOpen,
     setIsMobileSidebarOpen
   } = useApp();
@@ -97,6 +100,16 @@ export const Sidebar: React.FC = () => {
       label: t('nav_expenses'),
       icon: DollarSign,
       badge: branchExpenses.length > 0 ? branchExpenses.length : null,
+      visible: true
+    },
+    {
+      id: 'remittances' as const,
+      label: language === 'fa' ? 'حسابداری و ارسال پول به مرکز' : (language === 'ps' ? 'د پیسو انتقال او کمیشن' : 'Remittances & Commissions'),
+      icon: ArrowRightLeft,
+      badge: isSuperAdmin 
+        ? (headOfficePendingRemittancesTotal > 0 ? `${headOfficePendingRemittancesTotal.toLocaleString()} AFN` : null)
+        : (branchOwedToHeadOffice > 0 ? `${branchOwedToHeadOffice.toLocaleString()} AFN` : null),
+      highlight: !isSuperAdmin && branchOwedToHeadOffice > 0,
       visible: true
     },
     {

@@ -264,6 +264,38 @@ export const PrintReceiptModal: React.FC = () => {
               )}
             </div>
 
+            {/* 5 Official Cargo Rules & Legal Conditions (شرایط، قوانین و مقررات بارنامه و انتقال امانات) */}
+            <div className="border-t border-b border-dashed border-slate-900 py-2 my-1 text-[8px] leading-tight space-y-1.5 text-slate-900">
+              <div className="font-bold text-center uppercase tracking-wider text-[8.5px] bg-slate-100 py-0.5 border-y border-dashed border-slate-400">
+                قوانین و مقررات بارنامه و انتقال امانات
+              </div>
+              <div className="text-[7.5px] text-center font-bold text-slate-700 tracking-wider">
+                CARGO TRANSPORT RULES & CONDITIONS
+              </div>
+              <div className="space-y-1">
+                <div>
+                  <span className="font-bold">۱. مسئولیت امانات:</span> شرکت در قبال پول نقد، طلا، جواهرات، اسناد بهادار و اجناس فاسدشدنی بدون ثبت رسمی و بیمه هیچ‌گونه مسئولیتی ندارد.
+                  <div className="text-[7.5px] text-slate-600">1. No liability for undeclared cash, jewelry, precious metals or perishables.</div>
+                </div>
+                <div>
+                  <span className="font-bold">۲. مهلت ادعا و بررسی:</span> در صورت وارد شدن خسارت یا کسر کالا، صاحب مال مکلف است ظرف حداکثر ۴۸ ساعت با ارائه اصل بارنامه رسماً اطلاع دهد.
+                  <div className="text-[7.5px] text-slate-600">2. Damage/loss claims must be lodged within 48h with original CN slip.</div>
+                </div>
+                <div>
+                  <span className="font-bold">۳. اقلام ممنوعه و تعهد فرستنده:</span> انتقال سلاح، مواد منفجره، قاچاق، مواد مخدر و کالاهای غیرقانونی اکیداً ممنوع بوده و مسئولیت قانونی مستقیماً به عهده فرستنده است.
+                  <div className="text-[7.5px] text-slate-600">3. Weapons, explosives, drugs & contraband strictly forbidden; shipper is 100% liable.</div>
+                </div>
+                <div>
+                  <span className="font-bold">۴. تحویل‌دهی و احراز هویت:</span> تحویل امانت صرفاً با ارائه تذکره / کارت هویت معتبر گیرنده، امضا و ثبت اثر انگشت در نمایندگی صورت می‌گیرد.
+                  <div className="text-[7.5px] text-slate-600">4. Handover strictly upon original Tazkira ID, signature and thumbprint.</div>
+                </div>
+                <div>
+                  <span className="font-bold">۵. نگهداری و انبارداری:</span> اماناتی که بیش از ۳۰ روز در انبار نمایندگی بلاتکلیف بمانند، شامل هزینه انبارداری شده و مسئولیت افت کیفیت متوجه صاحب مال خواهد بود.
+                  <div className="text-[7.5px] text-slate-600">5. Unclaimed parcels after 30 days incur storage fees at receiver's risk.</div>
+                </div>
+              </div>
+            </div>
+
             {/* Official 3 Helpline Contacts */}
             <div className="border-t border-b border-dashed border-slate-900 py-1.5 my-1 text-[9px] space-y-0.5">
               <div className="font-bold text-center uppercase tracking-wider text-[8.5px]">Official Helpline Contacts</div>

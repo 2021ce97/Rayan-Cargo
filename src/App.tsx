@@ -10,6 +10,7 @@ import { BranchManagement } from './components/BranchManagement';
 import { UserManagement } from './components/UserManagement';
 import { AnalyticsReports } from './components/AnalyticsReports';
 import { ExpenseManager } from './components/ExpenseManager';
+import { RemittanceManager } from './components/RemittanceManager';
 import { CustomerPortal } from './components/CustomerPortal';
 import { PrintReceiptModal } from './components/PrintReceiptModal';
 import { LoginPage } from './components/LoginPage';
@@ -39,6 +40,8 @@ const MainLayout: React.FC = () => {
         return <CustomerPortal />;
       case 'expenses':
         return <ExpenseManager />;
+      case 'remittances':
+        return <RemittanceManager />;
       case 'parcels':
         return <ParcelInventory />;
       case 'booking':

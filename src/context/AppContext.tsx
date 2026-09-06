@@ -12,7 +12,8 @@ import {
   CustomerPreBookingInput,
   StatusPermissionResult,
   BillingFinancials,
-  LoginResult
+  LoginResult,
+  BranchRemittanceTransfer
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
@@ -112,6 +113,33 @@ interface AppContextType {
   addExpense: (input: AddExpenseInput) => BranchExpense;
   deleteExpense: (id: string) => boolean;
   analytics: AnalyticsSummary;
+  remittanceTransfers: BranchRemittanceTransfer[];
+  createSingleParcelRemittance: (
+    shipmentId: string, 
+    customCommission: number, 
+    netToHq: number, 
+    paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury',
+    referenceNumber?: string,
+    transferAgentName?: string,
+    notes?: string
+  ) => boolean;
+  createBatchRemittance: (
+    parcelIds: string[], 
+    fromBranchId: string, 
+    totalCollected: number, 
+    totalCommissionKept: number, 
+    netToHq: number, 
+    paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury',
+    referenceNumber?: string,
+    transferAgentName?: string,
+    notes?: string
+  ) => boolean;
+  confirmRemittanceByHeadOffice: (transferId: string, confirmationNotes?: string) => boolean;
+  rejectRemittanceByHeadOffice: (transferId: string, rejectionReason: string) => boolean;
+  branchOwedToHeadOffice: number;
+  branchEarnedCommissions: number;
+  headOfficePendingRemittancesTotal: number;
+  headOfficeSettledRevenueTotal: number;
   filteredShipments: Shipment[];
   partnerShipments: Shipment[];
   customerShipments: Shipment[];
@@ -136,6 +164,7 @@ const STORAGE_KEYS = {
   USERS: 'rayan_cargo_users_v6_clean',
   SHIPMENTS: 'rayan_cargo_shipments_v6_clean',
   EXPENSES: 'rayan_cargo_expenses_v6_clean',
+  REMITTANCES: 'rayan_cargo_remittances_v6_clean',
   CURRENT_USER_ID: 'rayan_cargo_cur_user_v6_clean',
   ACTIVE_BRANCH_ID: 'rayan_cargo_active_branch_v6_clean',
   IS_AUTH: 'rayan_cargo_is_auth_v6_clean',
@@ -906,10 +935,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  // Local storage auto-sync
+  // Remittance Transfers state
+  const [remittanceTransfers, setRemittanceTransfers] = useState<BranchRemittanceTransfer[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.REMITTANCES);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error parsing saved remittances:', e);
+      }
+    }
+    return [];
+  });
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branches));
-  }, [branches]);
+    localStorage.setItem(STORAGE_KEYS.REMITTANCES, JSON.stringify(remittanceTransfers));
+  }, [remittanceTransfers]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
@@ -1084,6 +1125,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const totalExpensesAfn = branchExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
     const netProfitAfn = totalRevenue - totalExpensesAfn;
 
+    // Head office and branch remittance KPI metrics
+    const totalPendingHeadOfficeConfirmation = remittanceTransfers
+      .filter(r => r.status === 'submitted_to_headoffice')
+      .reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0);
+
+    const totalHeadOfficeSettledRevenue = remittanceTransfers
+      .filter(r => r.status === 'confirmed_by_headoffice')
+      .reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0);
+
+    const targetBr = isSuperAdmin ? activeBranchId : currentUser.branchId;
+    const branchOwedList = shipments.filter(s => {
+      const isTargetDest = targetBr === 'all' ? true : (s.destinationBranchId === targetBr);
+      return isTargetDest && s.status === 'delivered' && (s.remittanceStatus === 'pending' || !s.remittanceStatus);
+    });
+    const totalOwedToHeadOffice = branchOwedList.reduce((sum, s) => {
+      const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
+      return sum + (s.originRemittanceDue !== undefined ? s.originRemittanceDue : Math.max(0, s.financials.totalAmount - comm));
+    }, 0);
+
+    const totalBranchCommissionsEarned = shipments.filter(s => {
+      const isTargetDest = targetBr === 'all' ? true : (s.destinationBranchId === targetBr);
+      return isTargetDest && s.status === 'delivered';
+    }).reduce((sum, s) => {
+      const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
+      return sum + comm;
+    }, 0);
+
     return {
       totalRevenue,
       totalPaid,
@@ -1096,9 +1164,264 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       discountsGiven,
       totalExpensesAfn,
       netProfitAfn,
-      totalRemittancesPending
+      totalRemittancesPending,
+      totalOwedToHeadOffice,
+      totalBranchCommissionsEarned,
+      totalHeadOfficeSettledRevenue,
+      totalPendingHeadOfficeConfirmation
     };
-  }, [shipments, filteredShipments, branchExpenses, currentUser, activeBranchId]);
+  }, [shipments, filteredShipments, branchExpenses, currentUser, activeBranchId, remittanceTransfers]);
+
+  // Specific branch level money computations
+  const currentTargetBranch = currentUser.role === 'super_admin' ? activeBranchId : currentUser.branchId;
+
+  const branchOwedToHeadOffice = React.useMemo(() => {
+    return shipments
+      .filter(s => {
+        const isTargetDest = currentTargetBranch === 'all' ? true : (s.destinationBranchId === currentTargetBranch);
+        return isTargetDest && s.status === 'delivered' && (s.remittanceStatus === 'pending' || !s.remittanceStatus);
+      })
+      .reduce((sum, s) => {
+        const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
+        return sum + (s.originRemittanceDue !== undefined ? s.originRemittanceDue : Math.max(0, s.financials.totalAmount - comm));
+      }, 0);
+  }, [shipments, currentTargetBranch]);
+
+  const branchEarnedCommissions = React.useMemo(() => {
+    return shipments
+      .filter(s => {
+        const isTargetDest = currentTargetBranch === 'all' ? true : (s.destinationBranchId === currentTargetBranch);
+        return isTargetDest && s.status === 'delivered';
+      })
+      .reduce((sum, s) => {
+        const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
+        return sum + comm;
+      }, 0);
+  }, [shipments, currentTargetBranch]);
+
+  const headOfficePendingRemittancesTotal = React.useMemo(() => {
+    return remittanceTransfers
+      .filter(r => r.status === 'submitted_to_headoffice')
+      .reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0);
+  }, [remittanceTransfers]);
+
+  const headOfficeSettledRevenueTotal = React.useMemo(() => {
+    return remittanceTransfers
+      .filter(r => r.status === 'confirmed_by_headoffice')
+      .reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0);
+  }, [remittanceTransfers]);
+
+  // Create Batch Remittance (Branch -> Head Office)
+  const createBatchRemittance = (
+    parcelIds: string[], 
+    fromBranchId: string, 
+    totalCollected: number, 
+    totalCommissionKept: number, 
+    netToHq: number, 
+    paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury',
+    referenceNumber?: string,
+    transferAgentName?: string,
+    notes?: string
+  ): boolean => {
+    const fromBranch = branches.find(b => b.id === fromBranchId);
+    const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
+    const now = new Date().toISOString();
+    const batchId = `rem_${Date.now().toString().slice(-6)}`;
+    const randomCode = Math.floor(1000 + Math.random() * 9000);
+    const batchNumber = `REM-${fromBranch?.code || 'BR'}-${randomCode}`;
+
+    const newTransfer: BranchRemittanceTransfer = {
+      id: batchId,
+      batchNumber,
+      fromBranchId,
+      fromBranchName: fromBranch?.name || 'Sender Branch',
+      toBranchId: mainBranch?.id || 'br_hq',
+      toBranchName: mainBranch?.name || 'Main Branch (Head Office Admin HQ)',
+      parcelIds,
+      parcelCount: parcelIds.length,
+      totalCollectedAfn: totalCollected,
+      totalCommissionKeptAfn: totalCommissionKept,
+      netRemittanceAmountAfn: netToHq,
+      paymentMethod,
+      referenceNumber: referenceNumber || `REF-${randomCode}`,
+      transferAgentName,
+      notes,
+      status: 'submitted_to_headoffice',
+      submittedByUserId: currentUser.id,
+      submittedByUserName: currentUser.name,
+      submittedAt: now
+    };
+
+    // Update shipments: mark remittanceStatus = 'submitted_to_headoffice' and attach remittanceBatchId
+    setShipments(prev => prev.map(s => {
+      if (parcelIds.includes(s.id) || parcelIds.includes(s.cnNumber)) {
+        const historyItem = {
+          id: `st_rem_${Date.now()}_${s.id}`,
+          status: s.status,
+          location: `${fromBranch?.name || 'Branch'} → ${mainBranch?.name || 'Head Office'}`,
+          branchName: fromBranch?.name || 'Branch',
+          timestamp: now,
+          note: `Revenue remittance batch ${batchNumber} submitted to Head Office: Collected ${s.financials.totalAmount} AFN, Commission retained: ${s.destBranchCommission || 100} AFN, Remitted to HQ: ${s.originRemittanceDue || (s.financials.totalAmount - (s.destBranchCommission || 100))} AFN (${paymentMethod.toUpperCase()}: ${referenceNumber || 'N/A'}). Awaiting HQ confirmation.`,
+          updatedBy: currentUser.name
+        };
+        return {
+          ...s,
+          remittanceStatus: 'submitted_to_headoffice',
+          remittanceBatchId: batchId,
+          statusHistory: [...(s.statusHistory || []), historyItem]
+        };
+      }
+      return s;
+    }));
+
+    setRemittanceTransfers(prev => [newTransfer, ...prev]);
+
+    fetch('/api/remittances', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newTransfer)
+    }).catch(err => console.warn('Remittance sync error:', err));
+
+    showToast(`✓ Remittance batch ${batchNumber} (${netToHq.toLocaleString()} AFN) submitted to Head Office for verification!`);
+    return true;
+  };
+
+  // Create Single Parcel Remittance (Wrapper for single parcel submission)
+  const createSingleParcelRemittance = (
+    shipmentId: string, 
+    customCommission: number, 
+    netToHq: number, 
+    paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury',
+    referenceNumber?: string,
+    transferAgentName?: string,
+    notes?: string
+  ): boolean => {
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) return false;
+
+    const fromBranchId = target.destinationBranchId || currentUser.branchId;
+    const totalCollected = target.financials.totalAmount;
+
+    // Update target parcel with adjusted commission and net due if changed
+    setShipments(prev => prev.map(s => {
+      if (s.id === target.id || s.cnNumber === target.cnNumber) {
+        return {
+          ...s,
+          destBranchCommission: customCommission,
+          originRemittanceDue: netToHq
+        };
+      }
+      return s;
+    }));
+
+    return createBatchRemittance(
+      [target.id],
+      fromBranchId,
+      totalCollected,
+      customCommission,
+      netToHq,
+      paymentMethod,
+      referenceNumber,
+      transferAgentName,
+      notes
+    );
+  };
+
+  // Confirm Remittance Receipt (Head Office / Super Admin)
+  const confirmRemittanceByHeadOffice = (transferId: string, confirmationNotes?: string): boolean => {
+    const target = remittanceTransfers.find(r => r.id === transferId);
+    if (!target) return false;
+
+    const now = new Date().toISOString();
+    const updatedTransfer: BranchRemittanceTransfer = {
+      ...target,
+      status: 'confirmed_by_headoffice',
+      confirmedByUserId: currentUser.id,
+      confirmedByUserName: currentUser.name,
+      confirmedAt: now,
+      confirmationNotes: confirmationNotes || `Funds of ${target.netRemittanceAmountAfn.toLocaleString()} AFN verified and received at Main Branch.`
+    };
+
+    setRemittanceTransfers(prev => prev.map(r => r.id === transferId ? updatedTransfer : r));
+
+    // Update all shipments in this transfer: remittanceStatus = 'settled', remittanceSettledAt = now
+    setShipments(prev => prev.map(s => {
+      if (target.parcelIds.includes(s.id) || target.parcelIds.includes(s.cnNumber) || s.remittanceBatchId === transferId) {
+        const historyItem = {
+          id: `st_conf_${Date.now()}_${s.id}`,
+          status: s.status,
+          location: 'Main Branch (Admin HQ - Kabul)',
+          branchName: 'Head Office Admin',
+          timestamp: now,
+          note: `✓ Remittance batch ${target.batchNumber} confirmed received by ${currentUser.name}. ${target.netRemittanceAmountAfn.toLocaleString()} AFN added to Main Branch Revenue; ${target.totalCommissionKeptAfn.toLocaleString()} AFN credited to ${target.fromBranchName} commission.`,
+          updatedBy: currentUser.name
+        };
+        return {
+          ...s,
+          remittanceStatus: 'settled',
+          remittanceSettledAt: now,
+          statusHistory: [...(s.statusHistory || []), historyItem]
+        };
+      }
+      return s;
+    }));
+
+    // Update main branch revenue
+    const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
+    if (mainBranch) {
+      setBranches(prev => prev.map(b => {
+        if (b.id === mainBranch.id) {
+          return {
+            ...b,
+            totalRevenueAfn: (b.totalRevenueAfn || 0) + target.netRemittanceAmountAfn
+          };
+        }
+        return b;
+      }));
+    }
+
+    fetch(`/api/remittances/${transferId}/confirm`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedTransfer)
+    }).catch(err => console.warn('Remittance confirm sync error:', err));
+
+    showToast(`✓ Remittance ${target.batchNumber} confirmed! ${target.netRemittanceAmountAfn.toLocaleString()} AFN credited to Main Branch Revenue.`);
+    return true;
+  };
+
+  // Reject Remittance (Head Office / Super Admin)
+  const rejectRemittanceByHeadOffice = (transferId: string, rejectionReason: string): boolean => {
+    const target = remittanceTransfers.find(r => r.id === transferId);
+    if (!target) return false;
+
+    const now = new Date().toISOString();
+    const updatedTransfer: BranchRemittanceTransfer = {
+      ...target,
+      status: 'rejected',
+      confirmationNotes: `Rejected by HQ: ${rejectionReason}`,
+      confirmedByUserId: currentUser.id,
+      confirmedByUserName: currentUser.name,
+      confirmedAt: now
+    };
+
+    setRemittanceTransfers(prev => prev.map(r => r.id === transferId ? updatedTransfer : r));
+
+    // Reset shipments back to pending
+    setShipments(prev => prev.map(s => {
+      if (target.parcelIds.includes(s.id) || target.parcelIds.includes(s.cnNumber) || s.remittanceBatchId === transferId) {
+        return {
+          ...s,
+          remittanceStatus: 'pending',
+          remittanceBatchId: undefined
+        };
+      }
+      return s;
+    }));
+
+    showToast(`Remittance ${target.batchNumber} rejected. Reason: ${rejectionReason}`);
+    return true;
+  };
 
   // Expense Management
   const addExpense = (input: AddExpenseInput): BranchExpense => {
@@ -1243,10 +1566,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Helper to verify if the current user represents or has authority over the origin branch
   const isUserOriginBranch = (originBranchId: string): boolean => {
     if (currentUser.role === 'super_admin') return true;
-    if (!currentUser.branchId) return true;
+    if (!currentUser.branchId || currentUser.branchId === 'all') return true;
     if (originBranchId === currentUser.branchId) return true;
+    if (activeBranchId && activeBranchId !== 'all' && originBranchId === activeBranchId) return true;
 
-    const userBranch = branches.find(b => b.id === currentUser.branchId);
+    const userBranch = branches.find(b => b.id === currentUser.branchId || b.id === activeBranchId);
     const targetBranch = branches.find(b => b.id === originBranchId);
 
     if (userBranch && targetBranch) {
@@ -1259,9 +1583,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (userBranch) {
       const uCode = (userBranch.code || '').toLowerCase();
       const uCity = (userBranch.city || '').toLowerCase();
+      const uName = (userBranch.name || '').toLowerCase();
       const origLower = (originBranchId || '').toLowerCase();
       if (uCode && origLower.includes(uCode)) return true;
       if (uCity && origLower.includes(uCity)) return true;
+      if (uName && origLower.includes(uName)) return true;
     }
 
     return false;
@@ -1270,10 +1596,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Helper to verify if the current user represents or has authority over the destination branch
   const isUserDestBranch = (destBranchId: string): boolean => {
     if (currentUser.role === 'super_admin') return true;
-    if (!currentUser.branchId) return true;
+    if (!currentUser.branchId || currentUser.branchId === 'all') return true;
     if (destBranchId === currentUser.branchId) return true;
+    if (activeBranchId && activeBranchId !== 'all' && destBranchId === activeBranchId) return true;
 
-    const userBranch = branches.find(b => b.id === currentUser.branchId);
+    const userBranch = branches.find(b => b.id === currentUser.branchId || b.id === activeBranchId);
     const targetBranch = branches.find(b => b.id === destBranchId);
 
     if (userBranch && targetBranch) {
@@ -1286,9 +1613,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (userBranch) {
       const uCode = (userBranch.code || '').toLowerCase();
       const uCity = (userBranch.city || '').toLowerCase();
+      const uName = (userBranch.name || '').toLowerCase();
       const destLower = (destBranchId || '').toLowerCase();
       if (uCode && destLower.includes(uCode)) return true;
       if (uCity && destLower.includes(uCity)) return true;
+      if (uName && destLower.includes(uName)) return true;
     }
 
     return false;
@@ -1518,8 +1847,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const isOrigin = isUserOriginBranch(shipment.originBranchId);
     const isDestination = isUserDestBranch(shipment.destinationBranchId);
+    const isCurrent = (currentUser.branchId && shipment.currentBranchId === currentUser.branchId) || (activeBranchId && shipment.currentBranchId === activeBranchId);
 
-    if (!isOrigin && !isDestination) {
+    if (!isOrigin && !isDestination && !isCurrent) {
       return {
         allowed: false,
         canUpdate: false,
@@ -1529,8 +1859,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Origin Branch: Can perform dispatching stages (pre_booked -> booked, booked -> in_transit)
-    if (isOrigin) {
+    // Origin Branch or Current Handling Hub: Can perform dispatching stages (pre_booked -> booked, booked -> in_transit)
+    if (isOrigin || isCurrent) {
       if (shipment.status === 'pre_booked') {
         return {
           allowed: true,
@@ -1574,13 +1904,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         }
       }
-      return {
-        allowed: false,
-        canUpdate: false,
-        roleType: 'sender_branch',
-        reason: t('perm_origin_cannot_deliver') || 'This parcel has been dispatched from Origin. Only the Destination (Receiver) branch can update arrival at hub and delivery stages.',
-        allowedStatuses: []
-      };
+      if (shipment.status === 'in_transit' || shipment.status === 'received_at_branch' || shipment.status === 'out_for_delivery' || shipment.status === 'delivered') {
+        return {
+          allowed: false,
+          canUpdate: false,
+          roleType: 'sender_branch',
+          reason: t('perm_origin_cannot_deliver') || 'This parcel has been dispatched from Origin. Only the Destination (Receiver) branch can update arrival at hub and delivery stages.',
+          allowedStatuses: []
+        };
+      }
     }
 
     // Destination Branch: Can ONLY perform delivery stages (in_transit -> received_at_branch -> out_for_delivery -> delivered)
@@ -1836,6 +2168,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addExpense,
         deleteExpense,
         analytics,
+        remittanceTransfers,
+        createSingleParcelRemittance,
+        createBatchRemittance,
+        confirmRemittanceByHeadOffice,
+        rejectRemittanceByHeadOffice,
+        branchOwedToHeadOffice,
+        branchEarnedCommissions,
+        headOfficePendingRemittancesTotal,
+        headOfficeSettledRevenueTotal,
         filteredShipments,
         partnerShipments,
         customerShipments,

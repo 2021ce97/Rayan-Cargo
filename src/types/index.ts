@@ -170,6 +170,32 @@ export interface BillingFinancials {
   discountReason?: string;
 }
 
+export interface BranchRemittanceTransfer {
+  id: string;
+  batchNumber: string; // e.g. REM-KBL-8921
+  fromBranchId: string;
+  fromBranchName: string;
+  toBranchId: string; // Main Branch (Head Office)
+  toBranchName: string;
+  parcelIds: string[]; // List of shipment IDs or CNs
+  parcelCount: number;
+  totalCollectedAfn: number; // Total money collected from receivers (e.g. 100 or 600)
+  totalCommissionKeptAfn: number; // Commission retained by branch (e.g. 30 or 140)
+  netRemittanceAmountAfn: number; // Remaining money sent to Main Branch (e.g. 70 or 460)
+  paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury';
+  referenceNumber?: string; // Hawala code or bank deposit voucher
+  transferAgentName?: string; // Sarafi or driver name
+  notes?: string;
+  status: 'submitted_to_headoffice' | 'confirmed_by_headoffice' | 'rejected';
+  submittedByUserId: string;
+  submittedByUserName: string;
+  submittedAt: string;
+  confirmedByUserId?: string;
+  confirmedByUserName?: string;
+  confirmedAt?: string;
+  confirmationNotes?: string;
+}
+
 export interface Shipment {
   id: string;
   cnNumber: string; // Consignment Note number (e.g. RYN-894201 or RYN-PR-894201)
@@ -187,7 +213,9 @@ export interface Shipment {
   transportationFee?: number;
   destBranchCommission?: number;
   originRemittanceDue?: number;
-  remittanceStatus?: 'pending' | 'settled' | 'not_applicable';
+  remittanceStatus?: 'pending' | 'submitted_to_headoffice' | 'settled' | 'not_applicable';
+  remittanceBatchId?: string;
+  remittanceSettledAt?: string;
   bookedAt: string;
   estimatedDelivery: string;
   actualDelivery?: string;
@@ -236,6 +264,10 @@ export interface AnalyticsSummary {
   totalExpensesAfn?: number;
   netProfitAfn?: number;
   totalRemittancesPending?: number;
+  totalOwedToHeadOffice?: number;
+  totalBranchCommissionsEarned?: number;
+  totalHeadOfficeSettledRevenue?: number;
+  totalPendingHeadOfficeConfirmation?: number;
 }
 
 export type ActiveView = 
@@ -247,6 +279,7 @@ export type ActiveView =
   | 'branches' 
   | 'users' 
   | 'reports' 
+  | 'remittances' 
   | 'customer_portal';
 
 export interface StatusPermissionResult {

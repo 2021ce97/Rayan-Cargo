@@ -63,7 +63,8 @@ export const ParcelInventory: React.FC = () => {
     setActiveView,
     updateShipmentStatus,
     confirmCustomerPreBooking,
-    settleInterBranchRemittance
+    settleInterBranchRemittance,
+    createSingleParcelRemittance
   } = useApp();
 
   // Search & Filter state
@@ -82,6 +83,13 @@ export const ParcelInventory: React.FC = () => {
   const [statusChoice, setStatusChoice] = useState<ShipmentStatus>('in_transit');
   const [statusNote, setStatusNote] = useState('');
   const [detailsModalShipment, setDetailsModalShipment] = useState<Shipment | null>(null);
+
+  // Delivery Handover & Remittance fields in status modal
+  const [deliveryCollectedAfn, setDeliveryCollectedAfn] = useState<number>(100);
+  const [deliveryCommissionAfn, setDeliveryCommissionAfn] = useState<number>(30);
+  const [deliveryNetToHqAfn, setDeliveryNetToHqAfn] = useState<number>(70);
+  const [deliveryAutoRemit, setDeliveryAutoRemit] = useState<boolean>(true);
+  const [deliveryRefNumber, setDeliveryRefNumber] = useState<string>('');
 
   // Pre-booking confirmation modal state
   const [confirmModalShipment, setConfirmModalShipment] = useState<Shipment | null>(null);
@@ -200,6 +208,16 @@ export const ParcelInventory: React.FC = () => {
     const perm = canUserUpdateStatus(shipment);
     setStatusModalShipment(shipment);
     setStatusNote('');
+    
+    const collected = shipment.financials?.totalAmount || 100;
+    const comm = shipment.destBranchCommission !== undefined ? shipment.destBranchCommission : (shipment.financials?.destBranchCommission || 30);
+    const net = Math.max(0, collected - comm);
+    setDeliveryCollectedAfn(collected);
+    setDeliveryCommissionAfn(comm);
+    setDeliveryNetToHqAfn(net);
+    setDeliveryAutoRemit(true);
+    setDeliveryRefNumber(`HAW-${Math.floor(100000 + Math.random() * 900000)}`);
+
     if (perm.allowedStatuses.length > 0) {
       setStatusChoice(perm.allowedStatuses[0]);
     }
@@ -208,8 +226,27 @@ export const ParcelInventory: React.FC = () => {
   // Save status progression
   const handleSaveStatus = async () => {
     if (!statusModalShipment) return;
-    const ok = await updateShipmentStatus(statusModalShipment.id, statusChoice, statusNote);
+    let finalNote = statusNote;
+    if (statusChoice === 'delivered') {
+      const moneyNote = `Handed over to receiver. Collected: ${deliveryCollectedAfn} AFN, Retained Branch Commission: ${deliveryCommissionAfn} AFN, Net Remaining to Main Branch: ${deliveryNetToHqAfn} AFN (Ref: ${deliveryRefNumber})`;
+      finalNote = finalNote ? `${finalNote} | ${moneyNote}` : moneyNote;
+    }
+
+    const ok = await updateShipmentStatus(statusModalShipment.id, statusChoice, finalNote);
     if (ok) {
+      if (statusChoice === 'delivered' && deliveryAutoRemit) {
+        createSingleParcelRemittance(
+          statusModalShipment.id,
+          statusModalShipment.destinationBranchId || currentUser.branchId,
+          deliveryCollectedAfn,
+          deliveryCommissionAfn,
+          deliveryNetToHqAfn,
+          'hawala',
+          deliveryRefNumber,
+          'Sarafi Central',
+          'Submitted upon parcel handover to receiver'
+        );
+      }
       setStatusModalShipment(null);
     }
   };
@@ -1374,6 +1411,79 @@ export const ParcelInventory: React.FC = () => {
                       ))}
                     </select>
                   </div>
+
+                  {/* Financial Handover & Remittance System when delivering to Receiver */}
+                  {statusChoice === 'delivered' && (
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2.5">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
+                        <span className="flex items-center gap-1.5">
+                          <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Receiver Payment & Branch Commission Breakdown</span>
+                        </span>
+                        <span className="text-[10px] bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                          Financial Handover
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
+                            Total Collected (AFN)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={deliveryCollectedAfn}
+                            onChange={(e) => {
+                              const val = Math.max(0, Number(e.target.value) || 0);
+                              setDeliveryCollectedAfn(val);
+                              setDeliveryNetToHqAfn(Math.max(0, val - deliveryCommissionAfn));
+                            }}
+                            className="w-full h-8 px-2 font-bold bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-slate-900 dark:text-white text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-0.5">
+                            My Commission (AFN)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={deliveryCommissionAfn}
+                            onChange={(e) => {
+                              const comm = Math.max(0, Number(e.target.value) || 0);
+                              setDeliveryCommissionAfn(comm);
+                              setDeliveryNetToHqAfn(Math.max(0, deliveryCollectedAfn - comm));
+                            }}
+                            className="w-full h-8 px-2 font-bold bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-emerald-600 dark:text-emerald-400 text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5">
+                            Remaining to HQ (AFN)
+                          </label>
+                          <div className="w-full h-8 px-2 font-black bg-blue-50 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-700 dark:text-blue-300 text-xs flex items-center">
+                            {deliveryNetToHqAfn.toLocaleString()} AFN
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-emerald-200/70 dark:border-emerald-800/70 text-[11px]">
+                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 font-medium">
+                          <input
+                            type="checkbox"
+                            checked={deliveryAutoRemit}
+                            onChange={(e) => setDeliveryAutoRemit(e.target.checked)}
+                            className="w-3.5 h-3.5 rounded text-red-600 focus:ring-red-500"
+                          />
+                          <span>Submit Remittance to Main Branch for Confirmation</span>
+                        </label>
+                        <span className="text-[10px] text-slate-500 font-mono">Ref: {deliveryRefNumber}</span>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
