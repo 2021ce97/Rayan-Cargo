@@ -990,14 +990,14 @@ api.get('/track/:cn', async (req: Request, res: Response) => {
   }
 });
 
-// 11. System Clean Slate Reset (0 Parcels, 0 Branches, 0 Expenses)
+// 11. System Clean Slate Reset (0 Parcels, Preserved Branches, 0 Expenses)
 api.post('/system/reset-clean-slate', async (req: Request, res: Response) => {
   try {
-    await wipeDatabaseClean(INITIAL_USERS);
+    await wipeDatabaseClean(INITIAL_BRANCHES, INITIAL_USERS);
     res.json({
       success: true,
-      message: 'System database wiped clean. 0 parcels, 0 branches, 0 expenses.',
-      branches: [],
+      message: 'System database wiped clean. 0 parcels, 0 expenses, branches preserved with 0 counters.',
+      branches: INITIAL_BRANCHES,
       shipments: [],
       expenses: [],
       users: INITIAL_USERS

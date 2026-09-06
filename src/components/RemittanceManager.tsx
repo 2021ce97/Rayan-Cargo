@@ -249,13 +249,13 @@ export const RemittanceManager: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Branch Remittances & Commission System</span>
+                <span>{t('remittance_system_title')}</span>
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold border border-amber-300 dark:border-amber-800">
-                  سیستم حسابداری و انتقال عواید شعب
+                  {t('remittance_system_badge')}
                 </span>
               </h1>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Branches submit delivered parcels, deduct commission, and remit balance to Main Branch with Head Office receipt confirmation.
+                {t('remittance_system_subtitle')}
               </p>
             </div>
           </div>
@@ -273,7 +273,7 @@ export const RemittanceManager: React.FC = () => {
             }`}
           >
             <Send className="w-4 h-4" />
-            <span>Remit All Delivered ({pendingDeliveredShipments.length})</span>
+            <span>{t('remit_all_delivered_btn')} ({pendingDeliveredShipments.length})</span>
           </button>
         )}
 
@@ -291,7 +291,7 @@ export const RemittanceManager: React.FC = () => {
             className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-600 dark:hover:bg-amber-700 font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Create Test Remittance Transfer</span>
+            <span>{t('create_test_remittance_btn')}</span>
           </button>
         )}
       </div>
@@ -303,56 +303,56 @@ export const RemittanceManager: React.FC = () => {
             {/* HQ Stat 1: Pending Receipts from Branches */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-400">
-                <span>Pending Confirmation (Awaiting HQ)</span>
+                <span>{t('stat_pending_confirmation')}</span>
                 <Clock className="w-4 h-4" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-white">
                 {headOfficePendingRemittancesTotal.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {remittanceTransfers.filter(r => r.status === 'submitted_to_headoffice').length} transfers submitted by branches
+                {remittanceTransfers.filter(r => r.status === 'submitted_to_headoffice').length} {t('stat_transfers_submitted_desc')}
               </p>
             </div>
 
             {/* HQ Stat 2: Confirmed Main Branch Revenue */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/60 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                <span>Confirmed Main Branch Revenue</span>
+                <span>{t('stat_confirmed_hq_rev')}</span>
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                 {headOfficeSettledRevenueTotal.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Verified & deposited at Central Admin HQ
+                {t('stat_confirmed_hq_rev_desc')}
               </p>
             </div>
 
             {/* HQ Stat 3: Branch Retained Commissions */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-blue-700 dark:text-blue-400">
-                <span>Branch Retained Commissions</span>
+                <span>{t('stat_branch_retained_comm')}</span>
                 <DollarSign className="w-4 h-4" />
               </div>
               <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
                 {remittanceTransfers.filter(r => r.status === 'confirmed_by_headoffice').reduce((sum, r) => sum + r.totalCommissionKeptAfn, 0).toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Paid out to handling destination hubs
+                {t('stat_branch_retained_comm_desc')}
               </p>
             </div>
 
             {/* HQ Stat 4: Total Provincial Hubs Connected */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Active Branch Terminals</span>
+                <span>{t('stat_active_hubs')}</span>
                 <Building2 className="w-4 h-4 text-red-600" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-white">
-                {branches.length} <span className="text-xs font-normal text-slate-500">Hubs</span>
+                {branches.length} <span className="text-xs font-normal text-slate-500">{t('stat_hubs_unit')}</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Full bi-directional clearing network
+                {t('stat_full_network_desc')}
               </p>
             </div>
           </>
@@ -361,56 +361,56 @@ export const RemittanceManager: React.FC = () => {
             {/* Branch Stat 1: Ready to Remit to HQ */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-400">
-                <span>Owed to Main Branch (بدهی در انتظار ارسال)</span>
+                <span>{t('stat_owed_to_main_branch')}</span>
                 <Banknote className="w-4 h-4" />
               </div>
               <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
                 {branchOwedToHeadOffice.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {pendingDeliveredShipments.length} parcels delivered & collected
+                {pendingDeliveredShipments.length} {t('stat_parcels_delivered_collected')}
               </p>
             </div>
 
             {/* Branch Stat 2: My Earned Commissions */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                <span>My Earned Commission (کمیشن شعبه)</span>
+                <span>{t('stat_my_earned_commission')}</span>
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                 {branchEarnedCommissions.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Retained income from handled deliveries
+                {t('stat_earned_comm_desc')}
               </p>
             </div>
 
             {/* Branch Stat 3: Submitted to HQ (In Review) */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-blue-700 dark:text-blue-400">
-                <span>Submitted to HQ (در انتظار تأیید مرکز)</span>
+                <span>{t('stat_submitted_to_hq')}</span>
                 <Clock className="w-4 h-4" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-white">
                 {remittanceTransfers.filter(r => r.fromBranchId === currentBranchId && r.status === 'submitted_to_headoffice').reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0).toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {remittanceTransfers.filter(r => r.fromBranchId === currentBranchId && r.status === 'submitted_to_headoffice').length} transfers sent to Kabul HQ
+                {remittanceTransfers.filter(r => r.fromBranchId === currentBranchId && r.status === 'submitted_to_headoffice').length} {t('stat_submitted_to_hq_desc')}
               </p>
             </div>
 
             {/* Branch Stat 4: Settled & Cleared by HQ */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>Settled with HQ (تأیید شده نهایی)</span>
+                <span>{t('stat_settled_with_hq')}</span>
                 <Receipt className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-white">
                 {remittanceTransfers.filter(r => r.fromBranchId === currentBranchId && r.status === 'confirmed_by_headoffice').reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0).toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Audited & archived transfers
+                {t('stat_settled_with_hq_desc')}
               </p>
             </div>
           </>
@@ -429,7 +429,7 @@ export const RemittanceManager: React.FC = () => {
             }`}
           >
             <Banknote className="w-3.5 h-3.5 text-amber-500" />
-            <span>1. Pending Parcel Collections ({pendingDeliveredShipments.length})</span>
+            <span>{t('tab_remit_pending_deliveries')} ({pendingDeliveredShipments.length})</span>
           </button>
 
           <button
@@ -441,7 +441,7 @@ export const RemittanceManager: React.FC = () => {
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>2. Awaiting HQ Confirmation ({remittanceTransfers.filter(r => r.status === 'submitted_to_headoffice').length})</span>
+            <span>{t('tab_remit_transfers_submitted')} ({remittanceTransfers.filter(r => r.status === 'submitted_to_headoffice').length})</span>
           </button>
 
           <button
@@ -453,20 +453,20 @@ export const RemittanceManager: React.FC = () => {
             }`}
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>3. Confirmed & Settled Transfers ({remittanceTransfers.filter(r => r.status === 'confirmed_by_headoffice').length})</span>
+            <span>{t('tab_remit_settled_history')} ({remittanceTransfers.filter(r => r.status === 'confirmed_by_headoffice').length})</span>
           </button>
         </div>
 
         {/* Branch Filter for Admin */}
         {isSuperAdmin && (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-500">Filter Branch:</span>
+            <span className="text-xs font-bold text-slate-500">{t('filter_branch_lbl')}</span>
             <select
               value={selectedBranchFilter}
               onChange={(e) => setSelectedBranchFilter(e.target.value)}
               className="h-9 px-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white"
             >
-              <option value="all">All Provincial Hubs</option>
+              <option value="all">{t('all_provincial_hubs_opt')}</option>
               {branches.map(b => (
                 <option key={b.id} value={b.id}>{b.name} ({b.city})</option>
               ))}
@@ -481,10 +481,10 @@ export const RemittanceManager: React.FC = () => {
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-black text-slate-900 dark:text-white">
-                Delivered Parcels with Collected Funds (دریافت پول از گیرنده و کسر کمیشن)
+                {t('pending_deliveries_heading')}
               </h2>
               <p className="text-xs text-slate-500">
-                Select one or more delivered consignments to submit commission deduction and transfer remaining funds to Main Branch.
+                {t('pending_deliveries_subheading')}
               </p>
             </div>
 
@@ -494,7 +494,7 @@ export const RemittanceManager: React.FC = () => {
                 className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>Remit All {pendingDeliveredShipments.length} Parcels Together</span>
+                <span>{t('remit_all_together_btn')} ({pendingDeliveredShipments.length})</span>
               </button>
             )}
           </div>
@@ -505,10 +505,10 @@ export const RemittanceManager: React.FC = () => {
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                No Pending Remittances
+                {t('no_pending_remittances_title')}
               </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                All delivered parcels have been remitted and submitted to Main Branch Head Office.
+                {t('no_pending_remittances_desc')}
               </p>
             </div>
           ) : (
@@ -516,13 +516,13 @@ export const RemittanceManager: React.FC = () => {
               <table className="w-full text-start text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
-                    <th className="p-3 text-start">CN Number</th>
-                    <th className="p-3 text-start">Sender ➔ Receiver</th>
-                    <th className="p-3 text-start">Route</th>
-                    <th className="p-3 text-end">Collected (AFN)</th>
-                    <th className="p-3 text-end">Branch Commission</th>
-                    <th className="p-3 text-end">Remittance Due HQ</th>
-                    <th className="p-3 text-center">Action</th>
+                    <th className="p-3 text-start">{t('th_cn')}</th>
+                    <th className="p-3 text-start">{t('th_sender')} ➔ {t('th_receiver')}</th>
+                    <th className="p-3 text-start">{t('th_route')}</th>
+                    <th className="p-3 text-end">{t('th_remit_collected')}</th>
+                    <th className="p-3 text-end">{t('th_remit_commission')}</th>
+                    <th className="p-3 text-end">{t('th_remit_due_hq')}</th>
+                    <th className="p-3 text-center">{t('th_actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -540,7 +540,7 @@ export const RemittanceManager: React.FC = () => {
                         </td>
                         <td className="p-3">
                           <div className="font-bold text-slate-800 dark:text-slate-200">{s.receiver.name}</div>
-                          <div className="text-[11px] text-slate-500">From: {s.sender.name} ({s.sender.phone})</div>
+                          <div className="text-[11px] text-slate-500">{t('from_lbl')} {s.sender.name} ({s.sender.phone})</div>
                         </td>
                         <td className="p-3 text-slate-600 dark:text-slate-400 font-medium">
                           {origBranch?.city} ➔ <strong className="text-slate-900 dark:text-white">{destBranch?.city}</strong>
@@ -560,7 +560,7 @@ export const RemittanceManager: React.FC = () => {
                             className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs cursor-pointer shadow-xs transition-colors flex items-center gap-1 mx-auto"
                           >
                             <Send className="w-3.5 h-3.5" />
-                            <span>Remit to HQ</span>
+                            <span>{t('btn_remit_to_hq')}</span>
                           </button>
                         </td>
                       </tr>
@@ -580,13 +580,13 @@ export const RemittanceManager: React.FC = () => {
             <div>
               <h2 className="text-sm font-black text-slate-900 dark:text-white">
                 {activeTab === 'transfers_submitted' 
-                  ? 'Remittance Batches Awaiting Head Office Confirmation (در انتظار تأیید مرکز)'
-                  : 'Confirmed & Settled Remittance Archive (آرشیو انتقالات تایید شده)'}
+                  ? t('remit_batches_awaiting_title')
+                  : t('remit_batches_settled_title')}
               </h2>
               <p className="text-xs text-slate-500">
                 {activeTab === 'transfers_submitted' 
-                  ? 'The Main Branch (Head Office) verifies funds before releasing full credit into company records.'
-                  : 'Historical records of money submitted from branches and approved by the Main Branch.'}
+                  ? t('remit_batches_awaiting_desc')
+                  : t('remit_batches_settled_desc')}
               </p>
             </div>
 
@@ -597,7 +597,7 @@ export const RemittanceManager: React.FC = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search batch # or ref..."
+                placeholder={t('search_batch_placeholder')}
                 className="w-full h-8 ps-8 pe-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white"
               />
             </div>
@@ -609,12 +609,12 @@ export const RemittanceManager: React.FC = () => {
                 <Inbox className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                No Remittance Batches Found
+                {t('no_remit_batches_found')}
               </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 {activeTab === 'transfers_submitted' 
-                  ? 'No branch remittances are currently waiting for confirmation.' 
-                  : 'No confirmed historical batches match the filter.'}
+                  ? t('no_remit_batches_awaiting_desc') 
+                  : t('no_remit_batches_settled_desc')}
               </p>
             </div>
           ) : (
@@ -622,15 +622,15 @@ export const RemittanceManager: React.FC = () => {
               <table className="w-full text-start text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-slate-800">
-                    <th className="p-3 text-start">Batch Number</th>
-                    <th className="p-3 text-start">Branch (Originator)</th>
-                    <th className="p-3 text-start">Parcels</th>
-                    <th className="p-3 text-end">Total Collected</th>
-                    <th className="p-3 text-end">Branch Commission</th>
-                    <th className="p-3 text-end">Net Sent to HQ</th>
-                    <th className="p-3 text-start">Method & Ref</th>
-                    <th className="p-3 text-center">Status</th>
-                    <th className="p-3 text-center">Operations</th>
+                    <th className="p-3 text-start">{t('th_batch_num')}</th>
+                    <th className="p-3 text-start">{t('th_originator_branch')}</th>
+                    <th className="p-3 text-start">{t('th_parcels_count')}</th>
+                    <th className="p-3 text-end">{t('th_remit_collected')}</th>
+                    <th className="p-3 text-end">{t('th_remit_commission')}</th>
+                    <th className="p-3 text-end">{t('th_net_to_hq')}</th>
+                    <th className="p-3 text-start">{t('th_method_ref')}</th>
+                    <th className="p-3 text-center">{t('th_status')}</th>
+                    <th className="p-3 text-center">{t('th_actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -648,11 +648,11 @@ export const RemittanceManager: React.FC = () => {
                         </td>
                         <td className="p-3">
                           <div className="font-bold text-slate-800 dark:text-slate-200">{tr.fromBranchName}</div>
-                          <div className="text-[10px] text-slate-400">By: {tr.submittedByUserName}</div>
+                          <div className="text-[10px] text-slate-400">{t('by_lbl')} {tr.submittedByUserName}</div>
                         </td>
                         <td className="p-3">
                           <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[11px]">
-                            {tr.parcelCount} Parcels
+                            {tr.parcelCount} {t('parcels_unit_lbl')}
                           </span>
                         </td>
                         <td className="p-3 text-end font-mono font-bold text-slate-900 dark:text-white">
@@ -676,19 +676,19 @@ export const RemittanceManager: React.FC = () => {
                           {isPendingHq && (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1 justify-center w-fit mx-auto">
                               <Clock className="w-3 h-3" />
-                              <span>Awaiting HQ</span>
+                              <span>{t('status_awaiting_hq')}</span>
                             </span>
                           )}
                           {isConfirmed && (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 justify-center w-fit mx-auto">
                               <CheckCircle2 className="w-3 h-3" />
-                              <span>HQ Confirmed</span>
+                              <span>{t('status_hq_confirmed')}</span>
                             </span>
                           )}
                           {tr.status === 'rejected' && (
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1 justify-center w-fit mx-auto">
                               <X className="w-3 h-3" />
-                              <span>Rejected</span>
+                              <span>{t('status_rejected')}</span>
                             </span>
                           )}
                         </td>
@@ -698,7 +698,7 @@ export const RemittanceManager: React.FC = () => {
                             <button
                               onClick={() => setViewDetailTransfer(tr)}
                               className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
-                              title="View Remittance Voucher"
+                              title={t('btn_view_voucher')}
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
@@ -712,10 +712,10 @@ export const RemittanceManager: React.FC = () => {
                                     setConfirmationNote(`Verified and received at Main Branch (${tr.netRemittanceAmountAfn.toLocaleString()} AFN).`);
                                   }}
                                   className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
-                                  title="Confirm Receipt of Funds"
+                                  title={t('btn_confirm_receipt')}
                                 >
                                   <Check className="w-3.5 h-3.5" />
-                                  <span>Confirm Receipt</span>
+                                  <span>{t('btn_confirm_receipt')}</span>
                                 </button>
                                 <button
                                   onClick={() => {
@@ -723,7 +723,7 @@ export const RemittanceManager: React.FC = () => {
                                     setRejectionReason('Amount mismatch with Sarafi receipt.');
                                   }}
                                   className="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-bold text-xs border border-red-200 dark:border-red-800 cursor-pointer"
-                                  title="Reject Remittance"
+                                  title={t('btn_reject_remittance')}
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -750,10 +750,10 @@ export const RemittanceManager: React.FC = () => {
               <div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
                   <Banknote className="w-5 h-5 text-amber-600" />
-                  <span>Submit Money & Commission Remittance</span>
+                  <span>{t('modal_submit_remittance_title')}</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  From: {currentBranch?.name || 'Branch'} ➔ To: {mainBranch?.name || 'Main Branch HQ'}
+                  {t('from_lbl')}: {currentBranch?.name || t('branch_lbl')} ➔ {t('to_lbl')}: {mainBranch?.name || t('main_branch_hq_lbl')}
                 </p>
               </div>
               <button
@@ -767,9 +767,9 @@ export const RemittanceManager: React.FC = () => {
             {/* Live Financial Breakdown Card */}
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
               <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
-                <span>Financial Calculation Matrix (محاسبه کمیشن، کرایه و انتقال به مرکز)</span>
+                <span>{t('financial_calc_matrix_title')}</span>
                 <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">
-                  Kabul HQ Owner
+                  {t('kabul_hq_owner_lbl')}
                 </span>
               </div>
 
@@ -777,7 +777,7 @@ export const RemittanceManager: React.FC = () => {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                    Origin Hub (نمایندگی مبدا / فرستنده):
+                    {t('origin_hub_lbl')}:
                   </label>
                   <select
                     value={customOriginBranchId}
@@ -792,14 +792,14 @@ export const RemittanceManager: React.FC = () => {
                     className="w-full h-8 px-2 font-medium bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
                   >
                     {branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name} {b.isHeadOffice ? '(HQ Main)' : ''}</option>
+                      <option key={b.id} value={b.id}>{b.name} {b.isHeadOffice ? `(${t('hq_main_tag')})` : ''}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                    Destination Hub (نمایندگی گیرنده / تحویل‌دهنده):
+                    {t('destination_hub_lbl')}:
                   </label>
                   <select
                     value={customDestBranchId}
@@ -818,7 +818,7 @@ export const RemittanceManager: React.FC = () => {
                 {/* 1. Total collected input */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    1. Collected from Receiver (AFN):
+                    {t('input_collected_from_receiver')}:
                   </label>
                   <input
                     type="number"
@@ -828,13 +828,13 @@ export const RemittanceManager: React.FC = () => {
                     className="w-full h-9 px-3 font-mono font-black text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
                     placeholder="100"
                   />
-                  <span className="text-[9px] text-slate-500">مجموع پول نقد اخذ شده</span>
+                  <span className="text-[9px] text-slate-500">{t('input_total_cash_collected_sub')}</span>
                 </div>
 
                 {/* 2. Destination Branch Commission */}
                 <div>
                   <label className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
-                    2. Receiver Commission (AFN):
+                    {t('input_receiver_commission')}:
                   </label>
                   <input
                     type="number"
@@ -844,13 +844,13 @@ export const RemittanceManager: React.FC = () => {
                     className="w-full h-9 px-3 font-mono font-black text-sm text-emerald-600 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 rounded-xl"
                     placeholder="30"
                   />
-                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400">کمیشن نمایندگی گیرنده</span>
+                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400">{t('input_receiver_comm_sub')}</span>
                 </div>
 
                 {/* 3. Transportation Fee */}
                 <div>
                   <label className="block text-[10px] font-bold text-teal-700 dark:text-teal-400 mb-1">
-                    3. Transport Fee to Receiver:
+                    {t('input_transport_fee_to_receiver')}:
                   </label>
                   <input
                     type="number"
@@ -860,7 +860,7 @@ export const RemittanceManager: React.FC = () => {
                     className="w-full h-9 px-3 font-mono font-black text-sm text-teal-700 bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-xl"
                     placeholder="20"
                   />
-                  <span className="text-[9px] text-teal-600 dark:text-teal-400">کرایه انتقال نمایندگی گیرنده</span>
+                  <span className="text-[9px] text-teal-600 dark:text-teal-400">{t('input_transport_fee_sub')}</span>
                 </div>
               </div>
 
@@ -869,10 +869,10 @@ export const RemittanceManager: React.FC = () => {
                 <div className="p-2.5 rounded-lg bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center justify-between text-xs">
                   <div>
                     <span className="font-bold text-blue-900 dark:text-blue-300">
-                      4. Origin Branch Commission ({branches.find(b => b.id === customOriginBranchId)?.name || 'Origin'}):
+                      {t('input_origin_branch_comm')} ({branches.find(b => b.id === customOriginBranchId)?.name || t('th_sender')}):
                     </span>
                     <p className="text-[10px] text-blue-700 dark:text-blue-400">
-                      کمیشن نمایندگی مبدا (ولایت فرستنده)
+                      {t('input_origin_comm_sub')}
                     </p>
                   </div>
                   <input
@@ -888,7 +888,7 @@ export const RemittanceManager: React.FC = () => {
               {/* Total Retained Summary for Receiver Branch */}
               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
                 <span className="font-bold text-emerald-900 dark:text-emerald-200">
-                  Total Retained by Receiver Branch (کمیشن + کرایه انتقال):
+                  {t('total_retained_by_receiver_lbl')}:
                 </span>
                 <span className="font-mono font-black text-emerald-700 dark:text-emerald-400 text-sm">
                   {customCommission + customTransportationFee} AFN
@@ -898,9 +898,9 @@ export const RemittanceManager: React.FC = () => {
               {/* Visual Money Distribution Bar */}
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] text-slate-500">
-                  <span>Receiver: {customCommission + customTransportationFee} AFN</span>
-                  {customOriginCommission > 0 && <span>Sender: {customOriginCommission} AFN</span>}
-                  <span>HQ Remit: {customNetToHq} AFN</span>
+                  <span>{t('th_receiver')}: {customCommission + customTransportationFee} AFN</span>
+                  {customOriginCommission > 0 && <span>{t('th_sender')}: {customOriginCommission} AFN</span>}
+                  <span>{t('stat_submitted_to_hq')}: {customNetToHq} AFN</span>
                 </div>
                 <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full flex overflow-hidden">
                   <div 
@@ -927,7 +927,7 @@ export const RemittanceManager: React.FC = () => {
               <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                    Net Remaining to Send to Main Branch (مبلغ ارسالی به نمایندگی اصلی کابل):
+                    {t('net_remaining_to_send_hq')}:
                   </div>
                   <div className="text-[10px] text-amber-700 dark:text-amber-400 font-mono">
                     {customTotalCollected} - ({customCommission} + {customTransportationFee}) {customOriginCommission > 0 ? `- ${customOriginCommission}` : ''} = {customNetToHq} AFN
@@ -943,7 +943,7 @@ export const RemittanceManager: React.FC = () => {
             <div className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Payment / Transfer Method:
+                  {t('lbl_payment_method')}:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -955,7 +955,7 @@ export const RemittanceManager: React.FC = () => {
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    Sarafi Hawala (حواله صرافی)
+                    {t('method_sarafi_hawala')}
                   </button>
                   <button
                     type="button"
@@ -966,7 +966,7 @@ export const RemittanceManager: React.FC = () => {
                         : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                     }`}
                   >
-                    Bank Transfer (انتقال بانکی)
+                    {t('method_bank_transfer')}
                   </button>
                 </div>
               </div>
@@ -974,7 +974,7 @@ export const RemittanceManager: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Sarafi / Hawala Reference No.:
+                    {t('lbl_sarafi_ref_no')}:
                   </label>
                   <input
                     type="text"
@@ -987,7 +987,7 @@ export const RemittanceManager: React.FC = () => {
 
                 <div>
                   <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Sarafi Agent / Bank Name:
+                    {t('lbl_sarafi_agent_bank')}:
                   </label>
                   <input
                     type="text"
@@ -1001,14 +1001,14 @@ export const RemittanceManager: React.FC = () => {
 
               <div>
                 <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Submission Notes / Explanations:
+                  {t('lbl_submission_notes')}:
                 </label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full p-2.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl resize-none text-xs"
-                  placeholder="Notes for Head Office Finance..."
+                  placeholder={t('placeholder_notes_hq')}
                 />
               </div>
             </div>
@@ -1021,14 +1021,14 @@ export const RemittanceManager: React.FC = () => {
                 className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2 text-xs"
               >
                 <Send className="w-4 h-4" />
-                <span>Submit to Main Branch for Confirmation ({customNetToHq.toLocaleString()} AFN)</span>
+                <span>{t('btn_submit_to_main_branch')} ({customNetToHq.toLocaleString()} AFN)</span>
               </button>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
                 className="px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer text-xs"
               >
-                Cancel
+                {t('btn_cancel')}
               </button>
             </div>
           </div>
@@ -1046,7 +1046,7 @@ export const RemittanceManager: React.FC = () => {
                   <Check className="w-5 h-5" />
                 </div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Confirm Funds Received at HQ
+                  {t('confirm_funds_received_title')}
                 </h3>
               </div>
               <button
@@ -1059,37 +1059,37 @@ export const RemittanceManager: React.FC = () => {
 
             <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
               <div className="flex justify-between font-bold">
-                <span>Batch Number:</span>
+                <span>{t('th_batch_num')}:</span>
                 <span className="font-mono">{confirmModalTransfer.batchNumber}</span>
               </div>
               <div className="flex justify-between">
-                <span>From Branch:</span>
+                <span>{t('th_originator_branch')}:</span>
                 <span className="font-bold">{confirmModalTransfer.fromBranchName}</span>
               </div>
               <div className="flex justify-between">
-                <span>Total Collected:</span>
+                <span>{t('th_remit_collected')}:</span>
                 <span>{confirmModalTransfer.totalCollectedAfn.toLocaleString()} AFN</span>
               </div>
               <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
-                <span>Branch Commission Kept:</span>
+                <span>{t('stat_branch_retained_comm')}:</span>
                 <span>{confirmModalTransfer.totalCommissionKeptAfn.toLocaleString()} AFN</span>
               </div>
               <div className="flex justify-between text-base font-black text-emerald-800 dark:text-emerald-300 pt-2 border-t border-emerald-200 dark:border-emerald-800">
-                <span>Net Funds Received at HQ:</span>
+                <span>{t('net_funds_received_hq')}:</span>
                 <span className="font-mono">{confirmModalTransfer.netRemittanceAmountAfn.toLocaleString()} AFN</span>
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                HQ Confirmation Remark / Receipt Notes:
+                {t('hq_confirmation_remark_lbl')}:
               </label>
               <textarea
                 rows={2}
                 value={confirmationNote}
                 onChange={(e) => setConfirmationNote(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs"
-                placeholder="Verified and deposited to central treasury account..."
+                placeholder={t('placeholder_confirmed_hq')}
               />
             </div>
 
@@ -1100,14 +1100,14 @@ export const RemittanceManager: React.FC = () => {
                 className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2 text-xs"
               >
                 <Check className="w-4 h-4" />
-                <span>Confirm Receipt of {confirmModalTransfer.netRemittanceAmountAfn.toLocaleString()} AFN</span>
+                <span>{t('btn_confirm_receipt_of')} {confirmModalTransfer.netRemittanceAmountAfn.toLocaleString()} AFN</span>
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmModalTransfer(null)}
                 className="px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
               >
-                Cancel
+                {t('btn_cancel')}
               </button>
             </div>
           </div>
@@ -1121,7 +1121,7 @@ export const RemittanceManager: React.FC = () => {
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-base text-red-600 dark:text-red-400">
-                Reject Remittance Transfer
+                {t('reject_remittance_title')}
               </h3>
               <button
                 onClick={() => setRejectModalTransfer(null)}
@@ -1132,19 +1132,19 @@ export const RemittanceManager: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Please enter the reason for rejecting batch <strong>{rejectModalTransfer.batchNumber}</strong>. The branch will be notified to correct and re-submit.
+              {t('reject_remittance_desc')} <strong>{rejectModalTransfer.batchNumber}</strong>.
             </p>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Reason for Rejection:
+                {t('reason_for_rejection_lbl')}:
               </label>
               <textarea
                 rows={3}
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs"
-                placeholder="e.g. Sarafi voucher not found / commission discrepancy..."
+                placeholder={t('placeholder_reject_reason')}
               />
             </div>
 
@@ -1154,14 +1154,14 @@ export const RemittanceManager: React.FC = () => {
                 onClick={handleRejectSubmit}
                 className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors cursor-pointer text-xs"
               >
-                Reject & Send Back to Branch
+                {t('btn_reject_send_back')}
               </button>
               <button
                 type="button"
                 onClick={() => setRejectModalTransfer(null)}
                 className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
               >
-                Cancel
+                {t('btn_cancel')}
               </button>
             </div>
           </div>
@@ -1176,7 +1176,7 @@ export const RemittanceManager: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
                 <Receipt className="w-5 h-5 text-amber-600" />
-                <span>Official Remittance Voucher (سند انتقال وجه و کمیشن)</span>
+                <span>{t('official_remittance_voucher_title')}</span>
               </h3>
               <button
                 onClick={() => setViewDetailTransfer(null)}
@@ -1198,7 +1198,7 @@ export const RemittanceManager: React.FC = () => {
                       Armaghan Sadeq Transfers
                     </h4>
                     <p className="text-[10px] text-slate-600 font-bold">
-                      خدمات انتقالات ارمغان صادق • Inter-Branch Remittance Voucher
+                      {t('voucher_brand_sub')}
                     </p>
                   </div>
                 </div>
@@ -1211,14 +1211,14 @@ export const RemittanceManager: React.FC = () => {
               {/* Route & Parties */}
               <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Originating Branch:</span>
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">{t('originating_branch_lbl')}:</span>
                   <strong className="text-slate-900">{viewDetailTransfer.fromBranchName}</strong>
-                  <div className="text-[10px] text-slate-600">Officer: {viewDetailTransfer.submittedByUserName}</div>
+                  <div className="text-[10px] text-slate-600">{t('by_lbl')}: {viewDetailTransfer.submittedByUserName}</div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Destination HQ:</span>
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">{t('destination_hq_lbl')}:</span>
                   <strong className="text-slate-900">{viewDetailTransfer.toBranchName}</strong>
-                  <div className="text-[10px] text-slate-600">Admin Central Treasury</div>
+                  <div className="text-[10px] text-slate-600">{t('admin_central_treasury_lbl')}</div>
                 </div>
               </div>
 
@@ -1226,27 +1226,27 @@ export const RemittanceManager: React.FC = () => {
               <table className="w-full border-collapse text-xs border border-slate-200">
                 <tbody>
                   <tr className="border-b border-slate-200 bg-slate-50">
-                    <td className="p-2 font-bold text-slate-700">Total Money Collected from Receivers (مجموع پول اخذ شده):</td>
+                    <td className="p-2 font-bold text-slate-700">{t('voucher_total_collected_lbl')}:</td>
                     <td className="p-2 font-mono font-bold text-end">{viewDetailTransfer.totalCollectedAfn.toLocaleString()} AFN</td>
                   </tr>
                   <tr className="border-b border-slate-200">
-                    <td className="p-2 font-bold text-emerald-700">Deducted Receiver Branch Commission (کمیشن نمایندگی تحویل‌دهنده):</td>
+                    <td className="p-2 font-bold text-emerald-700">{t('voucher_deducted_receiver_comm')}:</td>
                     <td className="p-2 font-mono font-bold text-emerald-700 text-end">- {viewDetailTransfer.totalCommissionKeptAfn.toLocaleString()} AFN</td>
                   </tr>
                   {((viewDetailTransfer as any).transportationFeeAfn || 0) > 0 && (
                     <tr className="border-b border-slate-200">
-                      <td className="p-2 font-bold text-teal-700">Deducted Transportation Fee to Receiver (کرایه انتقال نمایندگی):</td>
+                      <td className="p-2 font-bold text-teal-700">{t('voucher_deducted_transport_fee')}:</td>
                       <td className="p-2 font-mono font-bold text-teal-700 text-end">- {((viewDetailTransfer as any).transportationFeeAfn).toLocaleString()} AFN</td>
                     </tr>
                   )}
                   {((viewDetailTransfer as any).originCommissionAfn || 0) > 0 && (
                     <tr className="border-b border-slate-200">
-                      <td className="p-2 font-bold text-blue-700">Sender Branch Commission (کمیشن نمایندگی مبدا):</td>
+                      <td className="p-2 font-bold text-blue-700">{t('voucher_sender_comm')}:</td>
                       <td className="p-2 font-mono font-bold text-blue-700 text-end">- {((viewDetailTransfer as any).originCommissionAfn).toLocaleString()} AFN</td>
                     </tr>
                   )}
                   <tr className="bg-amber-50/60 font-black text-amber-900 text-sm">
-                    <td className="p-2.5">Net Remitted to Main Branch HQ (مبلغ تسلیم شده به مرکز کابل):</td>
+                    <td className="p-2.5">{t('voucher_net_remitted_hq')}:</td>
                     <td className="p-2.5 font-mono text-end text-base text-amber-700">{viewDetailTransfer.netRemittanceAmountAfn.toLocaleString()} AFN</td>
                   </tr>
                 </tbody>
@@ -1255,16 +1255,16 @@ export const RemittanceManager: React.FC = () => {
               {/* Transfer Method Info */}
               <div className="grid grid-cols-2 gap-2 text-[11px] p-2 bg-slate-50 rounded border border-slate-200">
                 <div>
-                  <span className="text-slate-500">Payment Method: </span>
+                  <span className="text-slate-500">{t('lbl_payment_method')}: </span>
                   <strong className="capitalize">{viewDetailTransfer.paymentMethod.replace('_', ' ')}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-500">Ref Code: </span>
+                  <span className="text-slate-500">{t('lbl_sarafi_ref_no')}: </span>
                   <strong className="font-mono">{viewDetailTransfer.referenceNumber || 'N/A'}</strong>
                 </div>
                 {viewDetailTransfer.transferAgentName && (
                   <div className="col-span-2">
-                    <span className="text-slate-500">Agent/Bank: </span>
+                    <span className="text-slate-500">{t('lbl_sarafi_agent_bank')}: </span>
                     <strong>{viewDetailTransfer.transferAgentName}</strong>
                   </div>
                 )}
@@ -1273,13 +1273,13 @@ export const RemittanceManager: React.FC = () => {
               {/* Status and Signatures */}
               <div className="pt-2 border-t border-slate-200 grid grid-cols-2 gap-6 text-[10px] text-center">
                 <div className="border-t border-dashed border-slate-400 pt-2 mt-4">
-                  <div className="font-bold">Branch Officer Signature & Stamp</div>
+                  <div className="font-bold">{t('branch_officer_sign_stamp')}</div>
                   <div className="text-slate-500 mt-1">{viewDetailTransfer.fromBranchName}</div>
                 </div>
                 <div className="border-t border-dashed border-slate-400 pt-2 mt-4">
-                  <div className="font-bold">Head Office Finance Approval</div>
+                  <div className="font-bold">{t('head_office_finance_approval')}</div>
                   <div className="text-slate-500 mt-1">
-                    {viewDetailTransfer.confirmedByUserName ? `Confirmed by ${viewDetailTransfer.confirmedByUserName}` : 'Pending HQ Receipt'}
+                    {viewDetailTransfer.confirmedByUserName ? `${t('status_hq_confirmed')} (${viewDetailTransfer.confirmedByUserName})` : t('status_awaiting_hq')}
                   </div>
                 </div>
               </div>
@@ -1293,14 +1293,14 @@ export const RemittanceManager: React.FC = () => {
                 className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer shadow-sm"
               >
                 <Printer className="w-4 h-4" />
-                <span>Print Official Voucher</span>
+                <span>{t('btn_print_voucher')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewDetailTransfer(null)}
                 className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
               >
-                Close
+                {t('btn_close')}
               </button>
             </div>
           </div>

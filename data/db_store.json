@@ -1,52 +1,6 @@
 {
   "branches": [
     [
-      "br_nan01_0813",
-      {
-        "id": "br_nan01_0813",
-        "name": "Nangarhar Regional Hub",
-        "name_fa": "Nangarhar Cargo",
-        "name_ps": "Nangarhar Cargo",
-        "code": "NAN-01",
-        "province": "Nangarhar",
-        "city": "Nangarhar Cargo",
-        "address": "Nangarhar Main Commercial Cargo Hub",
-        "phone": "07777777777",
-        "email": "nangarhar@armaghansadeq.af",
-        "manager_name": "Noman",
-        "is_head_office": false,
-        "active_shipments_count": 0,
-        "total_parcels_dispatched": 0,
-        "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-09-05T08:46:21.053Z",
-        "tazkira_number": "1111111111111"
-      }
-    ],
-    [
-      "br_far01_8916",
-      {
-        "id": "br_far01_8916",
-        "name": "Faryab Hub",
-        "name_fa": "Faryab Hub",
-        "name_ps": "Faryab Hub",
-        "code": "FAR-01",
-        "province": "Faryab",
-        "city": "Maymana",
-        "address": "Main Bazar",
-        "phone": "+93 79 123 4567",
-        "email": "faryab@armaghansadeq.af",
-        "manager_name": "Basir",
-        "is_head_office": false,
-        "active_shipments_count": 0,
-        "total_parcels_dispatched": 0,
-        "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-09-05T09:49:00.836Z",
-        "tazkira_number": "1401-1234567-8"
-      }
-    ],
-    [
       "br_kbl_01",
       {
         "id": "br_kbl_01",
@@ -64,8 +18,8 @@
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": 350,
-        "created_at": "2026-09-05T09:51:54.756Z",
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1401-8829102-1"
       }
     ],
@@ -85,10 +39,10 @@
         "manager_name": "Noor Mohammad",
         "is_head_office": false,
         "active_shipments_count": 0,
-        "total_parcels_dispatched": 1,
+        "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
-        "created_at": "2026-09-05T09:51:54.829Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1402-4910293-4"
       }
     ],
@@ -111,7 +65,7 @@
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
-        "created_at": "2026-09-05T09:51:54.898Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1401-1928374-2"
       }
     ],
@@ -134,8 +88,31 @@
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
-        "created_at": "2026-09-05T09:51:54.966Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1403-9182736-5"
+      }
+    ],
+    [
+      "br_nan01_0813",
+      {
+        "id": "br_nan01_0813",
+        "name": "Nangarhar Regional Hub",
+        "name_fa": "نمایندگی منطقوی ننگرهار",
+        "name_ps": "د ننګرهار سیمه ییزه څانګه",
+        "code": "NAN-01",
+        "province": "Nangarhar",
+        "city": "Jalalabad",
+        "address": "Nangarhar Main Commercial Cargo Hub",
+        "phone": "+93 77 777 7777",
+        "email": "nangarhar@armaghansadeq.af",
+        "manager_name": "Noman",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "tazkira_number": "1111111111111"
       }
     ],
     [
@@ -143,13 +120,13 @@
       {
         "id": "br_kho06_0281",
         "name": "Khost Regional Hub",
-        "name_fa": "Rayn Khost",
-        "name_ps": "Rayn Khost",
+        "name_fa": "نمایندگی منطقوی خوست",
+        "name_ps": "د خوست سیمه ییزه څانګه",
         "code": "KHO-06",
         "province": "Khost",
-        "city": "Khost city",
-        "address": "Rayn Khost Main Commercial Cargo Hub",
-        "phone": "+93 79 2222222",
+        "city": "Khost City",
+        "address": "Khost Main Commercial Cargo Hub",
+        "phone": "+93 79 222 2222",
         "email": "khost@armaghansadeq.af",
         "manager_name": "Dalil",
         "is_head_office": false,
@@ -157,8 +134,31 @@
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
-        "created_at": "2026-09-05T09:59:50.281Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "5555555555555"
+      }
+    ],
+    [
+      "br_far01_8916",
+      {
+        "id": "br_far01_8916",
+        "name": "Faryab Hub",
+        "name_fa": "نمایندگی فاریاب",
+        "name_ps": "د فاریاب څانګه",
+        "code": "FAR-01",
+        "province": "Faryab",
+        "city": "Maymana",
+        "address": "Main Bazar, Maymana",
+        "phone": "+93 79 123 4567",
+        "email": "faryab@armaghansadeq.af",
+        "manager_name": "Basir",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "tazkira_number": "1401-1234567-8"
       }
     ]
   ],
@@ -177,267 +177,138 @@
         "last_password_change": null,
         "status": "active",
         "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-        "created_at": "2026-09-05T07:00:00.000Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "last_login": "Just now"
       }
-    ]
-  ],
-  "shipments": [
+    ],
     [
-      "shp_pr_491945",
+      "usr_kbl_mgr",
       {
-        "id": "shp_pr_491945",
-        "cn_number": "RYN-PR-491945",
-        "origin_branch_id": "br_kbl_01",
-        "destination_branch_id": "br_kho06_0281",
-        "current_branch_id": "br_kbl_01",
-        "sender": {
-          "city": "Kabul City",
-          "name": "Tariq Zaland",
-          "email": "tariq@gmail.com",
-          "phone": "0774444444",
-          "address": "Karte naw",
-          "province": "Kabul"
-        },
-        "receiver": {
-          "city": "Khost city",
-          "name": "Shakir",
-          "phone": "0733333333",
-          "address": "Gardez",
-          "province": "Khost"
-        },
-        "package_info": {
-          "pieces": 1,
-          "category": "garments",
-          "weightKg": 2,
-          "isFragile": false,
-          "description": "garments - 1 item(s)",
-          "serviceType": "standard",
-          "declaredValueAfn": 3000
-        },
-        "financials": {
-          "tax": 0,
-          "baseRate": 0,
-          "amountDue": 0,
-          "amountPaid": 0,
-          "serviceFee": 0,
-          "weightCost": 0,
-          "totalAmount": 0,
-          "discountType": "fixed",
-          "discountValue": 0,
-          "paymentMethod": "cod",
-          "paymentStatus": "to_pay",
-          "discountAmount": 0,
-          "transportationFee": 0,
-          "originRemittanceDue": 0,
-          "destBranchCommission": 0
-        },
-        "status": "pre_booked",
-        "status_history": [
-          {
-            "id": "st_1788605636237",
-            "note": "Consignment pre-booked online by customer Tariq Zaland. Awaiting physical drop-off at Kabul Central Hub for weighing and price determination.",
-            "status": "pre_booked",
-            "location": "Customer Online Portal",
-            "timestamp": "2026-09-05T10:53:56.237Z",
-            "updatedBy": "Customer Tariq Zaland",
-            "branchName": "Kabul Central Hub"
-          }
-        ],
-        "booked_at": "2026-09-05T10:53:56.237Z",
-        "estimated_delivery": "2026-09-08T10:53:56.237Z",
-        "actual_delivery": null,
-        "pod_signature": null,
-        "receiver_id_proof": null,
-        "delivery_notes": "",
-        "booked_by_user_id": "usr_cust_526366",
-        "booked_by_user_name": "Tariq Zaland",
-        "dest_branch_commission": "100",
-        "remittance_status": "pending",
-        "origin_remittance_due": "0",
-        "created_at": "2026-09-05T10:53:56.237Z"
+        "id": "usr_kbl_mgr",
+        "name": "Ahmadzai Qaderi",
+        "email": "kabul@armaghansadeq.af",
+        "phone": "+93 79 900 1122",
+        "role": "branch_manager",
+        "branch_id": "br_kbl_01",
+        "password": "kbl123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "last_login": "Never"
       }
     ],
     [
-      "shp_pr_649806",
+      "usr_mzk_mgr",
       {
-        "id": "shp_pr_649806",
-        "cn_number": "RYN-PR-649806",
-        "origin_branch_id": "br_mzk_02",
-        "destination_branch_id": "br_hrt_03",
-        "current_branch_id": "br_mzk_02",
-        "sender": {
-          "city": "Mazar-i-Sharif",
-          "name": "Tariq Zaland",
-          "email": "tariq@gmail.com",
-          "phone": "0774444444",
-          "address": "Karte naw",
-          "province": "Balkh"
-        },
-        "receiver": {
-          "city": "Herat City",
-          "name": "Talha",
-          "phone": "0700989763",
-          "address": "Herat ",
-          "province": "Herat",
-          "nationalId": "1234567890876"
-        },
-        "package_info": {
-          "pieces": 1,
-          "category": "machinery",
-          "weightKg": 3,
-          "isFragile": false,
-          "description": "machinery - 1 item(s)",
-          "serviceType": "standard",
-          "declaredValueAfn": 6000
-        },
-        "financials": {
-          "tax": 0,
-          "baseRate": 300,
-          "amountDue": 520,
-          "amountPaid": 0,
-          "serviceFee": 100,
-          "weightCost": 120,
-          "totalAmount": 520,
-          "discountType": "fixed",
-          "discountValue": 0,
-          "paymentMethod": "cod",
-          "paymentStatus": "to_pay",
-          "discountAmount": 0,
-          "transportationFee": 100,
-          "originRemittanceDue": 420,
-          "destBranchCommission": 100
-        },
-        "status": "in_transit",
-        "status_history": [
-          {
-            "id": "st_1788609461463",
-            "note": "Consignment pre-booked online by customer Tariq Zaland. Awaiting physical drop-off at Mazar-i-Sharif Northern Terminal for weighing and price determination.",
-            "status": "pre_booked",
-            "location": "Customer Online Portal",
-            "timestamp": "2026-09-05T11:57:41.463Z",
-            "updatedBy": "Customer Tariq Zaland",
-            "branchName": "Mazar-i-Sharif Northern Terminal"
-          },
-          {
-            "id": "st_1788609537904",
-            "note": "Customer pre-booking verified, weighed & priced by Noor Mohammad. Verified weight: 3 kg, 1 pcs (Base: 300 AFN, Rate: 40 AFN/kg, Service: 100 AFN). Total: 520 AFN (TO_PAY).",
-            "status": "booked",
-            "location": "Mazar-i-Sharif Northern Terminal (Mazar-i-Sharif)",
-            "timestamp": "2026-09-05T11:58:57.904Z",
-            "updatedBy": "Noor Mohammad",
-            "branchName": "Mazar-i-Sharif Northern Terminal"
-          },
-          {
-            "id": "st_1788609545530",
-            "note": "Status updated to in transit by Noor Mohammad (Mazar-i-Sharif Northern Terminal)",
-            "status": "in_transit",
-            "location": "Mazar-i-Sharif Northern Terminal (Mazar-i-Sharif)",
-            "timestamp": "2026-09-05T11:59:05.530Z",
-            "updatedBy": "Noor Mohammad (Mazar-i-Sharif Northern Terminal)",
-            "branchName": "Mazar-i-Sharif Northern Terminal"
-          }
-        ],
-        "booked_at": "2026-09-05T11:57:41.463Z",
-        "estimated_delivery": "2026-09-08T11:57:41.463Z",
-        "actual_delivery": null,
-        "pod_signature": null,
-        "receiver_id_proof": null,
-        "delivery_notes": "",
-        "booked_by_user_id": "usr_cust_526366",
-        "booked_by_user_name": "Tariq Zaland",
-        "dest_branch_commission": "100",
-        "remittance_status": "pending",
-        "origin_remittance_due": "0",
-        "created_at": "2026-09-05T11:57:41.463Z"
+        "id": "usr_mzk_mgr",
+        "name": "Noor Mohammad",
+        "email": "mazar@armaghansadeq.af",
+        "phone": "+93 78 811 2233",
+        "role": "branch_manager",
+        "branch_id": "br_mzk_02",
+        "password": "mzr123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "last_login": "Never"
       }
     ],
     [
-      "shp_pr_542111",
+      "usr_hrt_mgr",
       {
-        "id": "shp_pr_542111",
-        "cn_number": "RYN-PR-542111",
-        "origin_branch_id": "br_kdh_04",
-        "destination_branch_id": "br_hrt_03",
-        "current_branch_id": "br_kdh_04",
-        "sender": {
-          "city": "Kandahar City",
-          "name": "Tariq Zaland",
-          "email": "tariq@gmail.com",
-          "phone": "0774444444",
-          "address": "kart e naw",
-          "province": "Kandahar"
-        },
-        "receiver": {
-          "city": "Herat City",
-          "name": "Talha",
-          "phone": "0700989763",
-          "address": "Herat city",
-          "province": "Herat",
-          "nationalId": "3333333333333"
-        },
-        "package_info": {
-          "pieces": 1,
-          "category": "foodstuff",
-          "weightKg": 0.5,
-          "isFragile": false,
-          "description": "foodstuff - 1 item(s)",
-          "serviceType": "standard",
-          "declaredValueAfn": 3000
-        },
-        "financials": {
-          "tax": 0,
-          "baseRate": 300,
-          "amountDue": 420,
-          "amountPaid": 0,
-          "serviceFee": 100,
-          "weightCost": 20,
-          "totalAmount": 420,
-          "discountType": "fixed",
-          "discountValue": 0,
-          "paymentMethod": "cod",
-          "paymentStatus": "to_pay",
-          "discountAmount": 0,
-          "transportationFee": 100,
-          "originRemittanceDue": 320,
-          "destBranchCommission": 100
-        },
-        "status": "booked",
-        "status_history": [
-          {
-            "id": "st_1788675181840",
-            "note": "Consignment pre-booked online by customer Tariq Zaland. Awaiting physical drop-off at Kandahar Southern Depot for weighing and price determination.",
-            "status": "pre_booked",
-            "location": "Customer Online Portal",
-            "timestamp": "2026-09-06T06:13:01.840Z",
-            "updatedBy": "Customer Tariq Zaland",
-            "branchName": "Kandahar Southern Depot"
-          },
-          {
-            "id": "st_1788678276325",
-            "note": "Customer pre-booking verified, weighed & priced by Abdul Bari Popal. Verified weight: 0.5 kg, 1 pcs (Base: 300 AFN, Rate: 40 AFN/kg, Service: 100 AFN). Total: 420 AFN (TO_PAY).",
-            "status": "booked",
-            "location": "Kandahar Southern Depot (Kandahar City)",
-            "timestamp": "2026-09-06T07:04:36.324Z",
-            "updatedBy": "Abdul Bari Popal",
-            "branchName": "Kandahar Southern Depot"
-          }
-        ],
-        "booked_at": "2026-09-06T06:13:01.840Z",
-        "estimated_delivery": "2026-09-09T06:13:01.840Z",
-        "actual_delivery": null,
-        "pod_signature": null,
-        "receiver_id_proof": null,
-        "delivery_notes": "",
-        "booked_by_user_id": "usr_kdh_mgr",
-        "booked_by_user_name": "Abdul Bari Popal",
-        "dest_branch_commission": "100",
-        "remittance_status": "pending",
-        "origin_remittance_due": "320",
-        "created_at": "2026-09-06T06:13:01.840Z"
+        "id": "usr_hrt_mgr",
+        "name": "Farhad Rahimi",
+        "email": "herat@armaghansadeq.af",
+        "phone": "+93 70 022 3344",
+        "role": "branch_manager",
+        "branch_id": "br_hrt_03",
+        "password": "hrt123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "last_login": "Never"
+      }
+    ],
+    [
+      "usr_kdh_mgr",
+      {
+        "id": "usr_kdh_mgr",
+        "name": "Abdul Bari Popal",
+        "email": "kandahar@armaghansadeq.af",
+        "phone": "+93 77 733 4455",
+        "role": "branch_manager",
+        "branch_id": "br_kdh_04",
+        "password": "kdh123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "last_login": "Never"
+      }
+    ],
+    [
+      "usr_nan_mgr",
+      {
+        "id": "usr_nan_mgr",
+        "name": "Noman",
+        "email": "nangarhar@armaghansadeq.af",
+        "phone": "+93 77 777 7777",
+        "role": "branch_manager",
+        "branch_id": "br_nan01_0813",
+        "password": "nan123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "last_login": "Never"
+      }
+    ],
+    [
+      "usr_kho_mgr",
+      {
+        "id": "usr_kho_mgr",
+        "name": "Dalil",
+        "email": "khost@armaghansadeq.af",
+        "phone": "+93 79 222 2222",
+        "role": "branch_manager",
+        "branch_id": "br_kho06_0281",
+        "password": "kho123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "last_login": "Never"
+      }
+    ],
+    [
+      "usr_far_mgr",
+      {
+        "id": "usr_far_mgr",
+        "name": "Basir",
+        "email": "faryab@armaghansadeq.af",
+        "phone": "+93 79 123 4567",
+        "role": "branch_manager",
+        "branch_id": "br_far01_8916",
+        "password": "far123",
+        "password_changed_by_branch": false,
+        "last_password_change": null,
+        "status": "active",
+        "avatar": null,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "last_login": "Never"
       }
     ]
   ],
+  "shipments": [],
   "branch_expenses": [],
   "branch_settlements": []
 }

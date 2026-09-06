@@ -980,44 +980,76 @@ export async function connectToSupabase(connectionString: string): Promise<{ suc
   }
 }
 
-export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ success: boolean; error?: any }> {
+export async function wipeDatabaseClean(initialBranches: any[] = [], initialUsers: any[] = []): Promise<{ success: boolean; error?: any }> {
   try {
-    memoryStore.branches.clear();
-    memoryStore.users.clear();
     memoryStore.shipments.clear();
     memoryStore.branch_expenses.clear();
     memoryStore.branch_settlements.clear();
 
-    const adminUser = {
-      id: 'usr_admin',
-      name: 'Central System Admin',
-      email: 'armaghansadeq@cargo.af',
-      phone: '+93 79 900 1122',
-      role: 'super_admin',
-      branchId: 'all',
-      password: 'Armaghanrayan123',
-      passwordChangedByBranch: false,
-      status: 'active',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      createdAt: new Date().toISOString(),
-      lastLogin: 'Just now'
-    };
+    // Reset statistics of all existing branches to 0
+    for (const [id, b] of memoryStore.branches.entries()) {
+      b.active_shipments_count = 0;
+      b.total_parcels_dispatched = 0;
+      b.total_parcels_received = 0;
+      b.total_revenue_afn = 0;
+      memoryStore.branches.set(id, b);
+    }
 
-    memoryStore.users.set(adminUser.id, {
-      id: adminUser.id,
-      name: adminUser.name,
-      email: adminUser.email,
-      phone: adminUser.phone,
-      role: adminUser.role,
-      branch_id: adminUser.branchId,
-      password: adminUser.password,
-      password_changed_by_branch: false,
-      last_password_change: null,
-      status: 'active',
-      avatar: adminUser.avatar,
-      created_at: adminUser.createdAt || new Date().toISOString(),
-      last_login: adminUser.lastLogin || 'Just now'
-    });
+    // If branches are empty, populate from initialBranches
+    if (memoryStore.branches.size === 0 && Array.isArray(initialBranches) && initialBranches.length > 0) {
+      for (const b of initialBranches) {
+        memoryStore.branches.set(b.id, {
+          id: b.id,
+          name: b.name,
+          name_fa: b.nameFa || b.name,
+          name_ps: b.namePs || b.name,
+          code: b.code,
+          province: b.province,
+          city: b.city,
+          address: b.address,
+          phone: b.phone,
+          email: b.email,
+          manager_name: b.managerName,
+          tazkira_number: b.tazkiraNumber || '',
+          is_head_office: b.isHeadOffice || false,
+          active_shipments_count: 0,
+          total_parcels_dispatched: 0,
+          total_parcels_received: 0,
+          total_revenue_afn: 0,
+          created_at: b.createdAt || new Date().toISOString()
+        });
+      }
+    }
+
+    // Keep admin and staff users, remove customer test accounts
+    for (const [id, u] of memoryStore.users.entries()) {
+      if (u.role === 'customer' || id.startsWith('usr_cust_')) {
+        memoryStore.users.delete(id);
+      }
+    }
+
+    // Ensure initial users exist
+    if (Array.isArray(initialUsers) && initialUsers.length > 0) {
+      for (const u of initialUsers) {
+        if (!memoryStore.users.has(u.id)) {
+          memoryStore.users.set(u.id, {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            phone: u.phone,
+            role: u.role,
+            branch_id: u.branchId,
+            password: u.password,
+            password_changed_by_branch: u.passwordChangedByBranch || false,
+            last_password_change: null,
+            status: u.status || 'active',
+            avatar: u.avatar || null,
+            created_at: u.createdAt || new Date().toISOString(),
+            last_login: u.lastLogin || 'Never'
+          });
+        }
+      }
+    }
 
     saveStoreToDisk();
 
@@ -1029,28 +1061,13 @@ export async function wipeDatabaseClean(initialUsers: any[] = []): Promise<{ suc
           DELETE FROM shipments;
           DELETE FROM branch_expenses;
           DELETE FROM branch_settlements;
-          DELETE FROM branches;
-          DELETE FROM users WHERE role != 'super_admin';
+          DELETE FROM users WHERE role = 'customer';
+          UPDATE branches SET 
+            active_shipments_count = 0,
+            total_parcels_dispatched = 0,
+            total_parcels_received = 0,
+            total_revenue_afn = 0;
         `);
-
-        await db.query(`
-          INSERT INTO users (
-            id, name, email, phone, role, branch_id, password, password_changed_by_branch, status, created_at, last_login
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, false, 'active', NOW(), 'Just now')
-          ON CONFLICT (id) DO UPDATE SET
-            email = EXCLUDED.email,
-            password = EXCLUDED.password,
-            role = 'super_admin',
-            branch_id = 'all';
-        `, [
-          adminUser.id,
-          adminUser.name,
-          adminUser.email,
-          adminUser.phone,
-          adminUser.role,
-          adminUser.branchId,
-          adminUser.password
-        ]);
       } catch (e) {
         console.warn('Real PG wipe error:', e);
       }

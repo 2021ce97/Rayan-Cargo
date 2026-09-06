@@ -27,7 +27,8 @@ import {
   directSupabaseInsertShipment,
   directSupabaseUpdateShipmentStatus,
   directSupabaseInsertExpense,
-  directSupabaseInsertSettlement
+  directSupabaseInsertSettlement,
+  directSupabaseWipeDummyData
 } from '../lib/supabase';
 
 export interface AddBranchInput {
@@ -430,23 +431,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [syncWithDatabase]);
 
-  // Reset Entire System to Clean Slate (0 Parcels, 0 Branches, 0 Expenses)
+  // Reset Entire System to Clean Slate (0 Parcels, 0 Expenses, Preserved Branches)
   const resetToCleanSlate = useCallback(async () => {
     setIsSyncing(true);
     try {
       // 1. Wipe backend database
       await fetch('/api/system/reset-clean-slate', { method: 'POST' });
 
-      // 2. Wipe client states
-      setBranches([]);
+      // 2. Also wipe direct Supabase tables if direct client configured
+      if (isSupabaseReady()) {
+        try {
+          await directSupabaseWipeDummyData();
+        } catch (sbErr) {
+          console.warn('Direct Supabase wipe notice:', sbErr);
+        }
+      }
+
+      // 3. Reset client states
+      setBranches(INITIAL_BRANCHES);
       setShipments([]);
       setExpenses([]);
       setUsers(INITIAL_USERS);
       setCurrentUser(INITIAL_USERS[0]);
       setActiveBranchIdState('all');
 
-      // 3. Clear all localStorage items
-      localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify([]));
+      // 4. Update localStorage items
+      localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(INITIAL_BRANCHES));
       localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify([]));
       localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
@@ -461,7 +471,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      showToast('System database successfully reset to clean slate (0 branches, 0 parcels, 0 expenses).');
+      showToast('System database reset to clean slate: Branches preserved with 0 parcels and 0 expenses.');
     } catch (err: any) {
       console.error('Clean slate reset error:', err);
       showToast('System reset complete.');

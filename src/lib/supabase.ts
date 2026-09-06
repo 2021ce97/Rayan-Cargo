@@ -284,6 +284,36 @@ export async function directSupabaseInsertSettlement(settlement: any): Promise<{
 }
 
 /**
+ * Wipe all dummy shipments, expenses, settlements from Supabase while preserving branches and staff
+ */
+export async function directSupabaseWipeDummyData(): Promise<{ success: boolean; error?: string }> {
+  const client = getSupabase();
+  if (!client) return { success: false, error: 'Supabase client not configured' };
+
+  try {
+    // 1. Delete all shipments, expenses, settlements
+    await Promise.allSettled([
+      client.from('shipments').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      client.from('branch_expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      client.from('branch_settlements').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
+      client.from('users').delete().eq('role', 'customer')
+    ]);
+
+    // 2. Reset branches counters to 0
+    await client.from('branches').update({
+      active_shipments_count: 0,
+      total_parcels_dispatched: 0,
+      total_parcels_received: 0,
+      total_revenue_afn: 0
+    }).neq('id', '00000000-0000-0000-0000-000000000000');
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+}
+
+/**
  * Fetch all records directly from Supabase tables
  */
 export async function directSupabaseFetchAll(): Promise<{

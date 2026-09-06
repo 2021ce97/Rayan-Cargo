@@ -1,11 +1,154 @@
 import { Branch, User, Shipment, BranchExpense } from '../types';
 
 /**
- * Clean Production Slate for Rayan Cargo DB
- * All dummy branches, fake shipments, and mock revenue have been cleared.
- * Central System Administrator can add new branches and staff accounts.
+ * Production Initial Data for Armaghan Sadeq Transfers
+ * - Branches: Standard registered provincial terminals preserved with 0 initial cargo/revenue counters.
+ * - Users: Central System Administrator and provincial branch manager logins.
+ * - Shipments: 0 (clean slate for client to enter real consignments).
+ * - Expenses: 0 (clean slate for client to record real daily expenses).
  */
-export const INITIAL_BRANCHES: Branch[] = [];
+export const INITIAL_BRANCHES: Branch[] = [
+  {
+    id: 'br_kbl_01',
+    name: 'Kabul Central Hub',
+    nameFa: 'مرکز مرکزی کابل',
+    namePs: 'د کابل مرکزي څانګه',
+    code: 'KBL-01',
+    province: 'Kabul',
+    city: 'Kabul City',
+    address: 'Cinema Pamir, Jade Maywand, Kabul',
+    phone: '+93 79 900 1122',
+    email: 'kabul@armaghansadeq.af',
+    managerName: 'Ahmadzai Qaderi',
+    tazkiraNumber: '1401-8829102-1',
+    isHeadOffice: true,
+    activeShipmentsCount: 0,
+    totalParcelsDispatched: 0,
+    totalParcelsReceived: 0,
+    totalRevenueAfn: 0,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'br_mzk_02',
+    name: 'Mazar-i-Sharif Northern Terminal',
+    nameFa: 'ترمینل شمال مزار شریف',
+    namePs: 'د مزار شریف شمالي څانګه',
+    code: 'MZR-02',
+    province: 'Balkh',
+    city: 'Mazar-i-Sharif',
+    address: 'Kefayat Market, Rawza Square, Mazar',
+    phone: '+93 78 811 2233',
+    email: 'mazar@armaghansadeq.af',
+    managerName: 'Noor Mohammad',
+    tazkiraNumber: '1402-4910293-4',
+    isHeadOffice: false,
+    activeShipmentsCount: 0,
+    totalParcelsDispatched: 0,
+    totalParcelsReceived: 0,
+    totalRevenueAfn: 0,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'br_hrt_03',
+    name: 'Herat Western Gateway',
+    nameFa: 'دروازه غربی هرات',
+    namePs: 'د هرات لویدیځه څانګه',
+    code: 'HRT-03',
+    province: 'Herat',
+    city: 'Herat City',
+    address: 'Darwaza Qandahar, Main Ring Road, Herat',
+    phone: '+93 70 022 3344',
+    email: 'herat@armaghansadeq.af',
+    managerName: 'Farhad Rahimi',
+    tazkiraNumber: '1401-1928374-2',
+    isHeadOffice: false,
+    activeShipmentsCount: 0,
+    totalParcelsDispatched: 0,
+    totalParcelsReceived: 0,
+    totalRevenueAfn: 0,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'br_kdh_04',
+    name: 'Kandahar Southern Depot',
+    nameFa: 'دیپوی جنوبی قندهار',
+    namePs: 'د کندهار سویلي څانګه',
+    code: 'KDH-04',
+    province: 'Kandahar',
+    city: 'Kandahar City',
+    address: 'Shahidano Chawk, Herat Bazar Road, Kandahar',
+    phone: '+93 77 733 4455',
+    email: 'kandahar@armaghansadeq.af',
+    managerName: 'Abdul Bari Popal',
+    tazkiraNumber: '1403-9182736-5',
+    isHeadOffice: false,
+    activeShipmentsCount: 0,
+    totalParcelsDispatched: 0,
+    totalParcelsReceived: 0,
+    totalRevenueAfn: 0,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'br_nan01_0813',
+    name: 'Nangarhar Regional Hub',
+    nameFa: 'نمایندگی منطقوی ننگرهار',
+    namePs: 'د ننګرهار سیمه ییزه څانګه',
+    code: 'NAN-01',
+    province: 'Nangarhar',
+    city: 'Jalalabad',
+    address: 'Nangarhar Main Commercial Cargo Hub',
+    phone: '+93 77 777 7777',
+    email: 'nangarhar@armaghansadeq.af',
+    managerName: 'Noman',
+    tazkiraNumber: '1111111111111',
+    isHeadOffice: false,
+    activeShipmentsCount: 0,
+    totalParcelsDispatched: 0,
+    totalParcelsReceived: 0,
+    totalRevenueAfn: 0,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'br_kho06_0281',
+    name: 'Khost Regional Hub',
+    nameFa: 'نمایندگی منطقوی خوست',
+    namePs: 'د خوست سیمه ییزه څانګه',
+    code: 'KHO-06',
+    province: 'Khost',
+    city: 'Khost City',
+    address: 'Khost Main Commercial Cargo Hub',
+    phone: '+93 79 222 2222',
+    email: 'khost@armaghansadeq.af',
+    managerName: 'Dalil',
+    tazkiraNumber: '5555555555555',
+    isHeadOffice: false,
+    activeShipmentsCount: 0,
+    totalParcelsDispatched: 0,
+    totalParcelsReceived: 0,
+    totalRevenueAfn: 0,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  },
+  {
+    id: 'br_far01_8916',
+    name: 'Faryab Hub',
+    nameFa: 'نمایندگی فاریاب',
+    namePs: 'د فاریاب څانګه',
+    code: 'FAR-01',
+    province: 'Faryab',
+    city: 'Maymana',
+    address: 'Main Bazar, Maymana',
+    phone: '+93 79 123 4567',
+    email: 'faryab@armaghansadeq.af',
+    managerName: 'Basir',
+    tazkiraNumber: '1401-1234567-8',
+    isHeadOffice: false,
+    activeShipmentsCount: 0,
+    totalParcelsDispatched: 0,
+    totalParcelsReceived: 0,
+    totalRevenueAfn: 0,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  }
+];
 
 export const INITIAL_USERS: User[] = [
   {
@@ -19,8 +162,99 @@ export const INITIAL_USERS: User[] = [
     passwordChangedByBranch: false,
     status: 'active',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-01-01T00:00:00.000Z',
     lastLogin: 'Just now'
+  },
+  {
+    id: 'usr_kbl_mgr',
+    name: 'Ahmadzai Qaderi',
+    email: 'kabul@armaghansadeq.af',
+    phone: '+93 79 900 1122',
+    role: 'branch_manager',
+    branchId: 'br_kbl_01',
+    password: 'kbl123',
+    passwordChangedByBranch: false,
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastLogin: 'Never'
+  },
+  {
+    id: 'usr_mzk_mgr',
+    name: 'Noor Mohammad',
+    email: 'mazar@armaghansadeq.af',
+    phone: '+93 78 811 2233',
+    role: 'branch_manager',
+    branchId: 'br_mzk_02',
+    password: 'mzr123',
+    passwordChangedByBranch: false,
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastLogin: 'Never'
+  },
+  {
+    id: 'usr_hrt_mgr',
+    name: 'Farhad Rahimi',
+    email: 'herat@armaghansadeq.af',
+    phone: '+93 70 022 3344',
+    role: 'branch_manager',
+    branchId: 'br_hrt_03',
+    password: 'hrt123',
+    passwordChangedByBranch: false,
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastLogin: 'Never'
+  },
+  {
+    id: 'usr_kdh_mgr',
+    name: 'Abdul Bari Popal',
+    email: 'kandahar@armaghansadeq.af',
+    phone: '+93 77 733 4455',
+    role: 'branch_manager',
+    branchId: 'br_kdh_04',
+    password: 'kdh123',
+    passwordChangedByBranch: false,
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastLogin: 'Never'
+  },
+  {
+    id: 'usr_nan_mgr',
+    name: 'Noman',
+    email: 'nangarhar@armaghansadeq.af',
+    phone: '+93 77 777 7777',
+    role: 'branch_manager',
+    branchId: 'br_nan01_0813',
+    password: 'nan123',
+    passwordChangedByBranch: false,
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastLogin: 'Never'
+  },
+  {
+    id: 'usr_kho_mgr',
+    name: 'Dalil',
+    email: 'khost@armaghansadeq.af',
+    phone: '+93 79 222 2222',
+    role: 'branch_manager',
+    branchId: 'br_kho06_0281',
+    password: 'kho123',
+    passwordChangedByBranch: false,
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastLogin: 'Never'
+  },
+  {
+    id: 'usr_far_mgr',
+    name: 'Basir',
+    email: 'faryab@armaghansadeq.af',
+    phone: '+93 79 123 4567',
+    role: 'branch_manager',
+    branchId: 'br_far01_8916',
+    password: 'far123',
+    passwordChangedByBranch: false,
+    status: 'active',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    lastLogin: 'Never'
   }
 ];
 
