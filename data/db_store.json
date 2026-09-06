@@ -1,29 +1,6 @@
 {
   "branches": [
     [
-      "br_kbl_01",
-      {
-        "id": "br_kbl_01",
-        "name": "Kabul Central Hub",
-        "name_fa": "مرکز مرکزی کابل",
-        "name_ps": "د کابل مرکزي څانګه",
-        "code": "KBL-01",
-        "province": "Kabul",
-        "city": "Kabul City",
-        "address": "Cinema Pamir, Jade Maywand, Kabul",
-        "phone": "+93 79 900 1122",
-        "email": "kabul@armaghansadeq.af",
-        "manager_name": "Ahmadzai Qaderi",
-        "is_head_office": true,
-        "active_shipments_count": 0,
-        "total_parcels_dispatched": 0,
-        "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-01-01T00:00:00.000Z",
-        "tazkira_number": "1401-8829102-1"
-      }
-    ],
-    [
       "br_mzk_02",
       {
         "id": "br_mzk_02",
@@ -41,8 +18,8 @@
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-01-01T00:00:00.000Z",
+        "total_revenue_afn": 0,
+        "created_at": "2026-09-05T09:51:54.829Z",
         "tazkira_number": "1402-4910293-4"
       }
     ],
@@ -64,8 +41,8 @@
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-01-01T00:00:00.000Z",
+        "total_revenue_afn": 0,
+        "created_at": "2026-09-05T09:51:54.898Z",
         "tazkira_number": "1401-1928374-2"
       }
     ],
@@ -87,8 +64,8 @@
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-01-01T00:00:00.000Z",
+        "total_revenue_afn": 0,
+        "created_at": "2026-09-05T09:51:54.966Z",
         "tazkira_number": "1403-9182736-5"
       }
     ],
@@ -110,7 +87,7 @@
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
+        "total_revenue_afn": 0,
         "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1111111111111"
       }
@@ -120,21 +97,21 @@
       {
         "id": "br_kho06_0281",
         "name": "Khost Regional Hub",
-        "name_fa": "نمایندگی منطقوی خوست",
-        "name_ps": "د خوست سیمه ییزه څانګه",
+        "name_fa": "Rayn Khost",
+        "name_ps": "Rayn Khost",
         "code": "KHO-06",
         "province": "Khost",
-        "city": "Khost City",
-        "address": "Khost Main Commercial Cargo Hub",
-        "phone": "+93 79 222 2222",
+        "city": "Khost city",
+        "address": "Rayn Khost Main Commercial Cargo Hub",
+        "phone": "+93 79 2222222",
         "email": "khost@armaghansadeq.af",
         "manager_name": "Dalil",
         "is_head_office": false,
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-01-01T00:00:00.000Z",
+        "total_revenue_afn": 0,
+        "created_at": "2026-09-05T09:59:50.281Z",
         "tazkira_number": "5555555555555"
       }
     ],
@@ -143,12 +120,12 @@
       {
         "id": "br_far01_8916",
         "name": "Faryab Hub",
-        "name_fa": "نمایندگی فاریاب",
-        "name_ps": "د فاریاب څانګه",
+        "name_fa": "Faryab Hub",
+        "name_ps": "Faryab Hub",
         "code": "FAR-01",
         "province": "Faryab",
         "city": "Maymana",
-        "address": "Main Bazar, Maymana",
+        "address": "Main Bazar",
         "phone": "+93 79 123 4567",
         "email": "faryab@armaghansadeq.af",
         "manager_name": "Basir",
@@ -156,9 +133,32 @@
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-01-01T00:00:00.000Z",
+        "total_revenue_afn": 0,
+        "created_at": "2026-09-05T09:49:00.836Z",
         "tazkira_number": "1401-1234567-8"
+      }
+    ],
+    [
+      "br_admin_hq",
+      {
+        "id": "br_admin_hq",
+        "name": "Head Office (Kabul)",
+        "name_fa": "دفتر مرکزی (کابل)",
+        "name_ps": "مرکزي دفتر (کابل)",
+        "code": "KBL-HQ",
+        "province": "Kabul",
+        "city": "Kabul City",
+        "address": "Cinema Pamir, Jade Maywand, Kabul",
+        "phone": "+93 79 900 1122",
+        "email": "armaghansadeq@cargo.af",
+        "manager_name": "Central System Admin",
+        "is_head_office": true,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": 0,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "tazkira_number": "1401-8829102-1"
       }
     ]
   ],
@@ -179,24 +179,6 @@
         "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
         "created_at": "2026-01-01T00:00:00.000Z",
         "last_login": "Just now"
-      }
-    ],
-    [
-      "usr_kbl_mgr",
-      {
-        "id": "usr_kbl_mgr",
-        "name": "Ahmadzai Qaderi",
-        "email": "kabul@armaghansadeq.af",
-        "phone": "+93 79 900 1122",
-        "role": "branch_manager",
-        "branch_id": "br_kbl_01",
-        "password": "kbl123",
-        "password_changed_by_branch": false,
-        "last_password_change": null,
-        "status": "active",
-        "avatar": null,
-        "created_at": "2026-01-01T00:00:00.000Z",
-        "last_login": "Never"
       }
     ],
     [

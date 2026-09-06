@@ -214,7 +214,7 @@ export const ParcelInventory: React.FC = () => {
     const collected = shipment.financials?.totalAmount || 100;
     const comm = shipment.destBranchCommission !== undefined ? shipment.destBranchCommission : (shipment.financials?.destBranchCommission || 30);
     const transportFee = 20;
-    const isProvincialOrigin = shipment.originBranchId && shipment.originBranchId !== 'br_kbl';
+    const isProvincialOrigin = shipment.originBranchId && shipment.originBranchId !== 'br_admin_hq';
     const origComm = isProvincialOrigin ? 20 : 0;
     const destTotalRetained = comm + transportFee;
     const net = Math.max(0, collected - destTotalRetained - origComm);

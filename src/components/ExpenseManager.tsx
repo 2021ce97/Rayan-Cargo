@@ -160,7 +160,7 @@ export const ExpenseManager: React.FC = () => {
               onChange={(e) => setActiveBranchId(e.target.value)}
               className="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800 shadow-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
             >
-              <option value="all">🏢 All Branches (HQ Network)</option>
+              <option value="all">{t('all_branches')}</option>
               {branches.map(b => (
                 <option key={b.id} value={b.id}>
                   {b.name} ({b.city})
@@ -259,7 +259,7 @@ export const ExpenseManager: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search description, recipient, bill #..."
+              placeholder={t('ph_search_expense') || "Search description, recipient, bill #..."}
               className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 bg-slate-50 text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
             />
           </div>
@@ -320,7 +320,7 @@ export const ExpenseManager: React.FC = () => {
                         <button
                           onClick={() => deleteExpense(exp.id)}
                           className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete expense"
+                          title={t('title_delete_expense') || "Delete expense"}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -418,7 +418,7 @@ export const ExpenseManager: React.FC = () => {
                   required
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Monthly warehouse rent for Kabul Central Hub or Lunch for 4 cargo handlers"
+                  placeholder={t('ph_expense_desc') || "e.g. Monthly warehouse rent"}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                 />
               </div>
@@ -432,7 +432,7 @@ export const ExpenseManager: React.FC = () => {
                     type="text"
                     value={paidTo}
                     onChange={(e) => setPaidTo(e.target.value)}
-                    placeholder="e.g. Haji Qader (Landlord) or Ahmad (Worker)"
+                    placeholder={t('ph_expense_recipient') || "e.g. Haji Qader"}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
@@ -445,7 +445,7 @@ export const ExpenseManager: React.FC = () => {
                     type="text"
                     value={receiptNumber}
                     onChange={(e) => setReceiptNumber(e.target.value)}
-                    placeholder="e.g. BL-8492 or Inv-002"
+                    placeholder={t('ph_expense_bill') || "e.g. BL-8492"}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-mono text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>

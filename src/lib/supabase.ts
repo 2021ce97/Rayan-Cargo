@@ -296,7 +296,11 @@ export async function directSupabaseWipeDummyData(): Promise<{ success: boolean;
       client.from('shipments').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       client.from('branch_expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
       client.from('branch_settlements').delete().neq('id', '00000000-0000-0000-0000-000000000000'),
-      client.from('users').delete().eq('role', 'customer')
+      client.from('users').delete().eq('role', 'customer'),
+      client.from('users').delete().eq('id', 'usr_kbl_mgr'),
+      client.from('users').delete().eq('id', 'usr_nan_mgr'),
+      client.from('branches').delete().eq('id', 'br_kbl_01'),
+      client.from('branches').delete().eq('id', 'br_nan01_0813')
     ]);
 
     // 2. Reset branches counters to 0

@@ -62,7 +62,7 @@ export const RemittanceManager: React.FC = () => {
   // Remit submission modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedParcelIds, setSelectedParcelIds] = useState<string[]>([]);
-  const [customOriginBranchId, setCustomOriginBranchId] = useState<string>('br_kbl');
+  const [customOriginBranchId, setCustomOriginBranchId] = useState<string>('br_admin_hq');
   const [customDestBranchId, setCustomDestBranchId] = useState<string>('br_herat');
   const [customTotalCollected, setCustomTotalCollected] = useState<number>(100);
   const [customCommission, setCustomCommission] = useState<number>(30);
@@ -101,12 +101,12 @@ export const RemittanceManager: React.FC = () => {
     
     // Check if any parcel originated from provincial branch (e.g., Faryab)
     const firstParcel = parcels[0];
-    const isProvincialOrigin = firstParcel?.originBranchId && firstParcel.originBranchId !== 'br_kbl';
+    const isProvincialOrigin = firstParcel?.originBranchId && firstParcel.originBranchId !== 'br_admin_hq';
     const origComm = isProvincialOrigin ? 20 : 0;
     const destRetained = totalComm + transportFee;
     const net = Math.max(0, totalColl - destRetained - origComm);
 
-    setCustomOriginBranchId(firstParcel?.originBranchId || 'br_kbl');
+    setCustomOriginBranchId(firstParcel?.originBranchId || 'br_admin_hq');
     setCustomDestBranchId(firstParcel?.destinationBranchId || currentBranchId || 'br_herat');
     setCustomTotalCollected(totalColl);
     setCustomCommission(totalComm);
@@ -144,7 +144,7 @@ export const RemittanceManager: React.FC = () => {
   const handleSubmitRemittance = () => {
     if (selectedParcelIds.length === 0 && !customTotalCollected) return;
 
-    const fromBr = isSuperAdmin ? (selectedBranchFilter !== 'all' ? selectedBranchFilter : branches[1]?.id || 'br_kbl') : (currentUser.branchId || 'br_kbl');
+    const fromBr = isSuperAdmin ? (selectedBranchFilter !== 'all' ? selectedBranchFilter : branches[1]?.id || 'br_admin_hq') : (currentUser.branchId || 'br_admin_hq');
 
     createBatchRemittance(
       selectedParcelIds,
@@ -784,7 +784,7 @@ export const RemittanceManager: React.FC = () => {
                     onChange={(e) => {
                       const orig = e.target.value;
                       setCustomOriginBranchId(orig);
-                      const isProv = orig !== 'br_kbl';
+                      const isProv = orig !== 'br_admin_hq';
                       const origComm = isProv ? 20 : 0;
                       setCustomOriginCommission(origComm);
                       recomputeNetToHq(customTotalCollected, customCommission, customTransportationFee, origComm);
@@ -865,7 +865,7 @@ export const RemittanceManager: React.FC = () => {
               </div>
 
               {/* Inter-branch Origin Commission row if origin is not Kabul */}
-              {customOriginBranchId !== 'br_kbl' && (
+              {customOriginBranchId !== 'br_admin_hq' && (
                 <div className="p-2.5 rounded-lg bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center justify-between text-xs">
                   <div>
                     <span className="font-bold text-blue-900 dark:text-blue-300">
@@ -906,19 +906,19 @@ export const RemittanceManager: React.FC = () => {
                   <div 
                     style={{ width: `${Math.min(100, Math.round(((customCommission + customTransportationFee) / (customTotalCollected || 1)) * 100))}%` }}
                     className="bg-emerald-500 h-full" 
-                    title="Receiver Commission + Transport"
+                    title={t('remit_bar_receiver') || "Receiver Commission + Transport"}
                   />
                   {customOriginCommission > 0 && (
                     <div 
                       style={{ width: `${Math.min(100, Math.round((customOriginCommission / (customTotalCollected || 1)) * 100))}%` }}
                       className="bg-blue-500 h-full" 
-                      title="Sender Branch Commission"
+                      title={t('remit_bar_sender') || "Sender Branch Commission"}
                     />
                   )}
                   <div 
                     style={{ width: `${Math.min(100, Math.round((customNetToHq / (customTotalCollected || 1)) * 100))}%` }}
                     className="bg-amber-500 h-full" 
-                    title="Net to Main Branch HQ"
+                    title={t('remit_bar_net') || "Net to Main Branch HQ"}
                   />
                 </div>
               </div>
@@ -981,7 +981,7 @@ export const RemittanceManager: React.FC = () => {
                     value={refNumber}
                     onChange={(e) => setRefNumber(e.target.value)}
                     className="w-full h-9 px-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg font-mono text-xs"
-                    placeholder="HAW-90412"
+                    placeholder={t('ph_sarafi_hawala') || "HAW-90412"}
                   />
                 </div>
 
@@ -994,7 +994,7 @@ export const RemittanceManager: React.FC = () => {
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
                     className="w-full h-9 px-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
-                    placeholder="Sarafi Shamsi / Azizi Bank"
+                    placeholder={t('ph_sarafi_bank') || "Sarafi Shamsi / Azizi Bank"}
                   />
                 </div>
               </div>

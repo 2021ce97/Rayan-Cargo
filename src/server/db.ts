@@ -143,7 +143,7 @@ const mockDb = {
         const addVal = parseFloat(revenueAdd || '0');
         let updatedAny = false;
         for (const b of memoryStore.branches.values()) {
-          if (b.is_head_office || b.id === 'br_kbl' || (targetBranchId && b.id === targetBranchId)) {
+          if (b.is_head_office || b.id === 'br_admin_hq' || b.id === targetBranchId || (targetBranchId && b.id === targetBranchId)) {
             b.total_revenue_afn = (parseFloat(b.total_revenue_afn || '0') + addVal);
             updatedAny = true;
           }
@@ -1023,9 +1023,19 @@ export async function wipeDatabaseClean(initialBranches: any[] = [], initialUser
 
     // Keep admin and staff users, remove customer test accounts
     for (const [id, u] of memoryStore.users.entries()) {
-      if (u.role === 'customer' || id.startsWith('usr_cust_')) {
+      if (u.role === 'customer' || id.startsWith('usr_cust_') || id === 'usr_kbl_mgr') {
         memoryStore.users.delete(id);
       }
+    }
+
+    if (memoryStore.branches.has('br_kbl_01')) {
+      memoryStore.branches.delete('br_kbl_01');
+    }
+    if (memoryStore.branches.has('br_nan01_0813')) {
+      memoryStore.branches.delete('br_nan01_0813');
+    }
+    if (memoryStore.users.has('usr_nan_mgr')) {
+      memoryStore.users.delete('usr_nan_mgr');
     }
 
     // Ensure initial users exist
@@ -1061,7 +1071,8 @@ export async function wipeDatabaseClean(initialBranches: any[] = [], initialUser
           DELETE FROM shipments;
           DELETE FROM branch_expenses;
           DELETE FROM branch_settlements;
-          DELETE FROM users WHERE role = 'customer';
+          DELETE FROM users WHERE role = 'customer' OR id = 'usr_kbl_mgr' OR id = 'usr_nan_mgr';
+          DELETE FROM branches WHERE id = 'br_kbl_01' OR id = 'br_nan01_0813';
           UPDATE branches SET 
             active_shipments_count = 0,
             total_parcels_dispatched = 0,

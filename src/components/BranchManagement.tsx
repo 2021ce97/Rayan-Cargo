@@ -140,9 +140,9 @@ export const BranchManagement: React.FC = () => {
     
     let message = '';
     if (!value.trim()) {
-      message = t('err_tazkira_required') || 'Manager Tazkira or CNIC number is required.';
+      message = t('err_tazkira_required');
     } else if (!isOnlyValidChars || digitsCount !== 13) {
-      message = t('err_tazkira_format') || 'CNIC / Tazkira number must contain exactly 13 digits (e.g. 1401-1234567-8 or 42101-1234567-1).';
+      message = t('err_tazkira_format');
     }
 
     return { isValid, digitsCount, cleanDigits, isOnlyValidChars, message };
@@ -210,15 +210,15 @@ export const BranchManagement: React.FC = () => {
     setEditingBranch(branch);
     setEditFormData({
       name: branch.name,
-      nameFa: branch.nameFa || '',
-      namePs: branch.namePs || '',
+      nameFa: branch.nameFa,
+      namePs: branch.namePs,
       code: branch.code,
       province: branch.province,
       city: branch.city,
       address: branch.address,
       phone: branch.phone,
-      managerName: branchUser?.name || branch.managerName || '',
-      tazkiraNumber: branch.tazkiraNumber || ''
+      managerName: branchUser?.name || branch.managerName,
+      tazkiraNumber: branch.tazkiraNumber
     });
     setEditTazkiraError('');
   };
@@ -314,8 +314,8 @@ export const BranchManagement: React.FC = () => {
       code: newBranchData.code,
       province: newBranchData.province,
       city: newBranchData.city || `${newBranchData.province} City`,
-      address: newBranchData.address || 'Main Cargo Terminal',
-      phone: newBranchData.phone || '+93 79 000 0000',
+      address: newBranchData.address,
+      phone: newBranchData.phone,
       email: newBranchData.email,
       managerName: newBranchData.managerName || `${newBranchData.province} Branch Officer`,
       tazkiraNumber: newBranchData.tazkiraNumber.trim(),
@@ -360,10 +360,10 @@ export const BranchManagement: React.FC = () => {
             onClick={handleExportCsv}
             disabled={isExporting || branches.length === 0}
             className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all transform active:scale-98 cursor-pointer disabled:opacity-50"
-            title={t('btn_export_csv_desc') || 'Export branch records and 13-digit Tazkira credentials to Excel CSV'}
+            title={t('btn_export_csv_desc')}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>{t('btn_export_csv') || 'Export to Excel / CSV'}</span>
+            <span>{t('btn_export_csv')}</span>
           </button>
 
           {/* Privacy badge */}
@@ -391,7 +391,7 @@ export const BranchManagement: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <CheckCircle2 className="w-5 h-5 text-emerald-200 shrink-0" />
             <div>
-              <div className="text-sm font-extrabold">{t('export_csv_success') || 'Branch directory exported successfully!'}</div>
+              <div className="text-sm font-extrabold">{t('export_csv_success')}</div>
               <p className="text-[11px] font-normal text-emerald-100 mt-0.5">
                 Includes all 13-digit verified Tazkira ID numbers, manager contacts, and terminal coordinates in UTF-8 formatted CSV.
               </p>
@@ -442,10 +442,10 @@ export const BranchManagement: React.FC = () => {
                   ? 'bg-white text-red-600 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
-              title={t('view_mode_table') || 'Detailed List View'}
+              title={t('view_mode_table')}
             >
               <List className="w-3.5 h-3.5" />
-              <span>{t('view_mode_table') || 'List View'}</span>
+              <span>{t('view_mode_table')}</span>
             </button>
             <button
               onClick={() => setViewMode('grid')}
@@ -454,10 +454,10 @@ export const BranchManagement: React.FC = () => {
                   ? 'bg-white text-red-600 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
-              title={t('view_mode_cards') || 'Cards View'}
+              title={t('view_mode_cards')}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>{t('view_mode_cards') || 'Cards View'}</span>
+              <span>{t('view_mode_cards')}</span>
             </button>
           </div>
 
@@ -486,7 +486,7 @@ export const BranchManagement: React.FC = () => {
               className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-600/20 inline-flex items-center gap-2 cursor-pointer transition-colors"
             >
               <Plus className="w-4 h-4" />
-              <span>{t('btn_add_branch') || 'Add Branch'}</span>
+              <span>{t('btn_add_branch')}</span>
             </button>
           )}
         </div>
@@ -497,24 +497,24 @@ export const BranchManagement: React.FC = () => {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-3.5 px-4">{t('col_branch') || 'Branch Terminal'}</th>
-                  <th className="py-3.5 px-4">{t('col_location') || 'Location & Phone'}</th>
-                  <th className="py-3.5 px-4">{t('col_manager') || 'Branch Officer'}</th>
+                  <th className="py-3.5 px-4">{t('col_branch')}</th>
+                  <th className="py-3.5 px-4">{t('col_location')}</th>
+                  <th className="py-3.5 px-4">{t('col_manager')}</th>
                   <th className="py-3.5 px-4 bg-red-50/40 text-red-900 font-extrabold border-x border-red-100">
                     <div className="flex items-center gap-1.5">
                       <CreditCard className="w-3.5 h-3.5 text-red-600" />
-                      <span>{t('col_details_tazkira') || 'Details (CNIC / Tazkira)'}</span>
+                      <span>{t('col_details_tazkira')}</span>
                     </div>
                   </th>
-                  <th className="py-3.5 px-4">{t('col_operations') || 'Shipments & Activity'}</th>
-                  <th className="py-3.5 px-4 text-center">{t('col_actions') || 'Actions'}</th>
+                  <th className="py-3.5 px-4">{t('col_operations')}</th>
+                  <th className="py-3.5 px-4 text-center">{t('col_actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredBranches.map((branch) => {
                   const branchUser = users.find(u => u.branchId === branch.id);
                   const localizedName = getLocalizedBranchName(branch);
-                  const cleanDigits = (branch.tazkiraNumber || '').replace(/[\s-]/g, '');
+                  const cleanDigits = (branch.tazkiraNumber).replace(/[\s-]/g, '');
                   const is13Digits = cleanDigits.length === 13 && /^\d{13}$/.test(cleanDigits);
 
                   return (
@@ -571,7 +571,7 @@ export const BranchManagement: React.FC = () => {
                         <div className="space-y-1">
                           <div className="font-bold text-slate-900 flex items-center gap-1.5">
                             <UserIcon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span>{branchUser?.name || branch.managerName || 'Assigned Manager'}</span>
+                            <span>{branchUser?.name || branch.managerName}</span>
                           </div>
                           <div className="text-[11px] text-slate-500 font-mono flex items-center gap-1.5">
                             <Mail className="w-3 h-3 text-slate-400 shrink-0" />
@@ -605,7 +605,7 @@ export const BranchManagement: React.FC = () => {
                               {is13Digits ? (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
                                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                  <span>{t('tazkira_valid_badge') || '13-Digit Verified'}</span>
+                                  <span>{t('tazkira_valid_badge')}</span>
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
@@ -667,7 +667,7 @@ export const BranchManagement: React.FC = () => {
                             <button
                               onClick={() => handleOpenEditModal(branch)}
                               className="p-1.5 rounded-lg text-blue-700 hover:bg-blue-50 border border-blue-200 transition-colors cursor-pointer"
-                              title={t('btn_edit_branch') || 'Edit Details & Tazkira'}
+                              title={t('btn_edit_branch')}
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
@@ -712,7 +712,7 @@ export const BranchManagement: React.FC = () => {
           {filteredBranches.map((branch) => {
             const branchUser = users.find(u => u.branchId === branch.id);
             const localizedName = getLocalizedBranchName(branch);
-            const cleanDigits = (branch.tazkiraNumber || '').replace(/[\s-]/g, '');
+            const cleanDigits = (branch.tazkiraNumber).replace(/[\s-]/g, '');
             const is13Digits = cleanDigits.length === 13 && /^\d{13}$/.test(cleanDigits);
 
             return (
@@ -773,7 +773,7 @@ export const BranchManagement: React.FC = () => {
                     </div>
 
                     <div className="text-xs font-bold text-slate-900">
-                      {branchUser?.name || branch.managerName || 'Exclusive Branch Manager'}
+                      {branchUser?.name || branch.managerName}
                     </div>
 
                     {/* Prominent CNIC / Tazkira ID */}
@@ -781,7 +781,7 @@ export const BranchManagement: React.FC = () => {
                       <div className="text-[11px] text-slate-600 flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-slate-500 font-sans">
                           <CreditCard className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                          <span>{t('tazkira_cnic_label') || 'CNIC / Tazkira'}:</span>
+                          <span>{t('tazkira_cnic_label')}:</span>
                         </span>
                         {branch.tazkiraNumber && (
                           <button
@@ -849,7 +849,7 @@ export const BranchManagement: React.FC = () => {
                       <button
                         onClick={() => handleOpenEditModal(branch)}
                         className="p-2 rounded-xl text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center transition-colors cursor-pointer"
-                        title={t('btn_edit_branch') || 'Edit Details & Tazkira'}
+                        title={t('btn_edit_branch')}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
@@ -895,10 +895,10 @@ export const BranchManagement: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-slate-900">
-                    {t('modal_edit_branch_title') || 'Edit Branch & Identity Credentials'}
+                    {t('modal_edit_branch_title')}
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    {t('modal_edit_branch_desc') || 'Modify provincial terminal details, Tazkira/CNIC ID, and contact info.'}
+                    {t('modal_edit_branch_desc')}
                   </p>
                 </div>
               </div>
@@ -990,7 +990,7 @@ export const BranchManagement: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <label className="block text-slate-900 font-black text-xs flex items-center gap-1.5">
                     <CreditCard className="w-4 h-4 text-amber-700" />
-                    <span>{t('branch_tazkira_lbl') || 'Manager CNIC / Tazkira Number *'}</span>
+                    <span>{t('branch_tazkira_lbl')}</span>
                   </label>
                   {(() => {
                     const check = validateTazkira(editFormData.tazkiraNumber);
@@ -1014,7 +1014,7 @@ export const BranchManagement: React.FC = () => {
                     setEditFormData(prev => ({ ...prev, tazkiraNumber: e.target.value }));
                     if (editTazkiraError) setEditTazkiraError('');
                   }}
-                  placeholder={t('branch_tazkira_placeholder') || 'e.g. 1401-1234-56789 or 42101-1234567-1'}
+                  placeholder={t('branch_tazkira_placeholder')}
                   className={`w-full h-10 px-3 bg-white border rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:outline-none ${
                     editTazkiraError ? 'border-rose-400 focus:ring-rose-500' : 'border-slate-300 focus:ring-amber-500'
                   }`}
@@ -1028,7 +1028,7 @@ export const BranchManagement: React.FC = () => {
                 )}
 
                 <p className="text-[10px] text-slate-500 leading-tight">
-                  {t('tazkira_format_hint')?.replace('{count}', String(editFormData.tazkiraNumber.replace(/[\s-]/g, '').length)) || 'Standard 13-digit Afghan Electronic Tazkira or National CNIC identity card number.'}
+                  {t('tazkira_format_hint')?.replace('{count}', String(editFormData.tazkiraNumber.replace(/[\s-]/g, '').length))}
                 </p>
               </div>
 
@@ -1103,7 +1103,7 @@ export const BranchManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-md shadow-red-600/20 transition-all cursor-pointer"
                 >
-                  {t('btn_save_branch_changes') || 'Save Changes'}
+                  {t('btn_save_branch_changes')}
                 </button>
               </div>
 
@@ -1156,7 +1156,7 @@ export const BranchManagement: React.FC = () => {
                   <input
                     type="text"
                     disabled
-                    value={bUser?.email || ''}
+                    value={bUser?.email}
                     className="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-mono font-bold"
                   />
                 </div>
@@ -1170,7 +1170,7 @@ export const BranchManagement: React.FC = () => {
                     required
                     value={tempPassword}
                     onChange={(e) => setTempPassword(e.target.value)}
-                    placeholder="Enter temporary password..."
+                    placeholder={t('ph_temp_pass')}
                     className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
@@ -1266,7 +1266,7 @@ export const BranchManagement: React.FC = () => {
                   </div>
                   {createdBranchResult.branch.tazkiraNumber && (
                     <div>
-                      <span className="text-slate-400">{t('tazkira_cnic_label') || 'CNIC / Tazkira'}: </span>
+                      <span className="text-slate-400">{t('tazkira_cnic_label')}: </span>
                       <span className="text-amber-400 font-bold">{createdBranchResult.branch.tazkiraNumber}</span>
                     </div>
                   )}
@@ -1324,7 +1324,7 @@ export const BranchManagement: React.FC = () => {
                       required
                       value={newBranchData.code}
                       onChange={(e) => setNewBranchData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                      placeholder="e.g. GZN-07"
+                      placeholder={t('ph_branch_code')}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -1341,7 +1341,7 @@ export const BranchManagement: React.FC = () => {
                       required
                       value={newBranchData.name}
                       onChange={(e) => setNewBranchData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="e.g. Ghazni Central Cargo Hub"
+                      placeholder={t('ph_branch_name')}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -1356,7 +1356,7 @@ export const BranchManagement: React.FC = () => {
                         dir="rtl"
                         value={newBranchData.nameFa}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, nameFa: e.target.value }))}
-                        placeholder="مثلاً: نمایندگی مرکزی ولایت غزنی"
+                        placeholder={t('ph_branch_name_fa') || "مثلاً: نمایندگی مرکزی ولایت غزنی"}
                         className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>
@@ -1370,7 +1370,7 @@ export const BranchManagement: React.FC = () => {
                         dir="rtl"
                         value={newBranchData.namePs}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, namePs: e.target.value }))}
-                        placeholder="لکه: د غزني ولایت مرکزي څانګه"
+                        placeholder={t('ph_branch_name_ps') || "لکه: د غزني ولایت مرکزي څانګه"}
                         className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>
@@ -1388,7 +1388,7 @@ export const BranchManagement: React.FC = () => {
                       required
                       value={newBranchData.city}
                       onChange={(e) => setNewBranchData(prev => ({ ...prev, city: e.target.value }))}
-                      placeholder="e.g. Ghazni City"
+                      placeholder={t('ph_branch_city')}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -1402,7 +1402,7 @@ export const BranchManagement: React.FC = () => {
                       required
                       value={newBranchData.phone}
                       onChange={(e) => setNewBranchData(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="+93 79 123 4567"
+                      placeholder={t('ph_branch_phone')}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -1417,7 +1417,7 @@ export const BranchManagement: React.FC = () => {
                     required
                     value={newBranchData.address}
                     onChange={(e) => setNewBranchData(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="e.g. Commercial Square, Cargo Center #1"
+                    placeholder={t('ph_branch_address')}
                     className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
@@ -1438,7 +1438,7 @@ export const BranchManagement: React.FC = () => {
                         type="text"
                         value={newBranchData.managerName}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, managerName: e.target.value }))}
-                        placeholder="e.g. Asadullah Niazi"
+                        placeholder={t('ph_branch_manager')}
                         className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>
@@ -1446,7 +1446,7 @@ export const BranchManagement: React.FC = () => {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="block text-slate-700 font-bold text-[11px]">
-                          {t('branch_tazkira_lbl') || 'Manager CNIC / Tazkira Number *'}
+                          {t('branch_tazkira_lbl')}
                         </label>
                         {(() => {
                           const check = validateTazkira(newBranchData.tazkiraNumber);
@@ -1469,7 +1469,7 @@ export const BranchManagement: React.FC = () => {
                           setNewBranchData(prev => ({ ...prev, tazkiraNumber: e.target.value }));
                           if (addTazkiraError) setAddTazkiraError('');
                         }}
-                        placeholder={t('branch_tazkira_placeholder') || 'e.g. 1401-1234-56789 or 42101-1234567-1'}
+                        placeholder={t('branch_tazkira_placeholder')}
                         className={`w-full h-9 px-2.5 bg-white border rounded-lg text-slate-900 font-mono focus:ring-2 focus:outline-none ${
                           addTazkiraError ? 'border-rose-400 focus:ring-rose-500' : 'border-slate-300 focus:ring-red-500'
                         }`}
@@ -1495,7 +1495,7 @@ export const BranchManagement: React.FC = () => {
                         required
                         value={newBranchData.email}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="e.g. ghazni@armaghansadeq.af"
+                        placeholder={t('ph_branch_email')}
                         className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>
@@ -1509,7 +1509,7 @@ export const BranchManagement: React.FC = () => {
                         required
                         value={newBranchData.initialPassword}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, initialPassword: e.target.value }))}
-                        placeholder="e.g. ghazni123"
+                        placeholder={t('ph_branch_pass')}
                         className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>
@@ -1598,7 +1598,7 @@ export const BranchManagement: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px] font-bold">{t('assigned_branch')}</span>
-                    <span className="font-semibold text-slate-800">{branchUser?.name || branchToDelete.managerName || 'Manager'}</span>
+                    <span className="font-semibold text-slate-800">{branchUser?.name || branchToDelete.managerName}</span>
                   </div>
                 </div>
 

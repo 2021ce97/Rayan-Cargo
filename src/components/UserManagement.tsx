@@ -219,7 +219,7 @@ export const UserManagement: React.FC = () => {
             <button
               onClick={() => setIsResetConfirmOpen(true)}
               className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Reset system to clean slate (0 parcels, 0 branches, 0 expenses)"
+              title={t('title_reset_system')}
             >
               <RotateCcw className="w-3.5 h-3.5 text-slate-600" />
               <span className="hidden sm:inline">Clean Slate Reset</span>
@@ -408,7 +408,7 @@ export const UserManagement: React.FC = () => {
                     required
                     value={tempPassword}
                     onChange={(e) => setTempPassword(e.target.value)}
-                    placeholder="Enter temporary password..."
+                    placeholder={t('ph_temp_pass')}
                     className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
@@ -567,7 +567,7 @@ export const UserManagement: React.FC = () => {
                       required
                       value={newBranchData.code}
                       onChange={(e) => setNewBranchData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                      placeholder="e.g. GZN-07"
+                      placeholder={t('ph_branch_code')}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -584,7 +584,7 @@ export const UserManagement: React.FC = () => {
                       required
                       value={newBranchData.name}
                       onChange={(e) => setNewBranchData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="e.g. Ghazni Central Cargo Hub"
+                      placeholder={t('ph_branch_name')}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -631,7 +631,7 @@ export const UserManagement: React.FC = () => {
                       required
                       value={newBranchData.city}
                       onChange={(e) => setNewBranchData(prev => ({ ...prev, city: e.target.value }))}
-                      placeholder="e.g. Ghazni City"
+                      placeholder={t('ph_branch_city')}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -645,7 +645,7 @@ export const UserManagement: React.FC = () => {
                       required
                       value={newBranchData.phone}
                       onChange={(e) => setNewBranchData(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="+93 79 123 4567"
+                      placeholder={t('ph_branch_phone')}
                       className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
                   </div>
@@ -660,7 +660,7 @@ export const UserManagement: React.FC = () => {
                     required
                     value={newBranchData.address}
                     onChange={(e) => setNewBranchData(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="e.g. Commercial Square, Cargo Center #1"
+                    placeholder={t('ph_branch_address')}
                     className="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
@@ -681,7 +681,7 @@ export const UserManagement: React.FC = () => {
                         type="text"
                         value={newBranchData.managerName}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, managerName: e.target.value }))}
-                        placeholder="e.g. Asadullah Niazi"
+                        placeholder={t('ph_branch_manager')}
                         className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>
@@ -712,7 +712,7 @@ export const UserManagement: React.FC = () => {
                         required
                         value={newBranchData.email}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="e.g. ghazni@armaghansadeq.af"
+                        placeholder={t('ph_branch_email')}
                         className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>
@@ -726,7 +726,7 @@ export const UserManagement: React.FC = () => {
                         required
                         value={newBranchData.initialPassword}
                         onChange={(e) => setNewBranchData(prev => ({ ...prev, initialPassword: e.target.value }))}
-                        placeholder="e.g. ghazni123"
+                        placeholder={t('ph_branch_pass')}
                         className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>

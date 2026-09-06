@@ -579,7 +579,7 @@ api.get('/remittances', async (req: Request, res: Response) => {
       batchNumber: r.sarafi_reference_no ? `REM-${r.sarafi_reference_no}` : `REM-${r.id.slice(-5)}`,
       fromBranchId: r.destination_branch_id || r.branch_id,
       fromBranchName: 'Branch',
-      toBranchId: 'br_kbl',
+      toBranchId: 'br_admin_hq',
       toBranchName: 'Main Branch (Kabul HQ)',
       parcelIds: r.shipment_id ? [r.shipment_id] : [],
       parcelCount: 1,
@@ -622,7 +622,7 @@ api.post('/remittances', async (req: Request, res: Response) => {
         notes = EXCLUDED.notes`,
       [
         id, r.parcelIds?.[0] || null, r.batchNumber || `REM-${Date.now().toString().slice(-4)}`,
-        r.originBranchId || 'br_kbl', r.fromBranchId || 'br_hrt',
+        r.originBranchId || 'br_admin_hq', r.fromBranchId || 'br_hrt',
         r.totalCollectedAfn || 0, r.destCommissionAfn || r.totalCommissionKeptAfn || 0,
         r.netRemittanceAmountAfn || 0, r.paymentMethod || 'hawala',
         r.referenceNumber || r.batchNumber || null,
@@ -657,7 +657,7 @@ api.patch('/remittances/:id/confirm', async (req: Request, res: Response) => {
     if (body.netRemittanceAmountAfn) {
       await db.query(
         `UPDATE branches SET total_revenue_afn = total_revenue_afn + $1 WHERE is_head_office = TRUE OR id = $2`,
-        [parseFloat(body.netRemittanceAmountAfn), 'br_kbl']
+        [parseFloat(body.netRemittanceAmountAfn), 'br_admin_hq']
       );
     }
 

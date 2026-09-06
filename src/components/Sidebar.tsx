@@ -130,7 +130,7 @@ export const Sidebar: React.FC = () => {
       id: 'users' as const,
       label: t('nav_users'),
       icon: Users,
-      badge: `${branches.length} Hubs`,
+      badge: `${branches.length}`,
       visible: isSuperAdmin
     },
     {
@@ -247,7 +247,7 @@ export const Sidebar: React.FC = () => {
                   {t('branch_exchange_title')}
                 </span>
                 <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-red-400 border border-slate-700">
-                  {branches.length} Hubs
+                  {branches.length}
                 </span>
               </div>
               

@@ -49,7 +49,7 @@ export const NewBookingModal: React.FC = () => {
   const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
   const defaultOrigin = isBranchUser 
     ? currentUser.branchId 
-    : (activeBranchId && activeBranchId !== 'all' ? activeBranchId : (mainBranch?.id || 'br_kbl_01'));
+    : (activeBranchId && activeBranchId !== 'all' ? activeBranchId : (mainBranch?.id || 'br_admin_hq'));
 
   // Origin Branch is defaulted & locked to current branch
   const [originBranchId, setOriginBranchId] = useState<string>(defaultOrigin);
