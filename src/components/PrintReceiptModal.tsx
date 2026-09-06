@@ -512,12 +512,41 @@ export const PrintReceiptModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Trilingual Terms Notice */}
-            <div className="p-2.5 bg-slate-100 rounded text-[10px] text-slate-600 leading-tight space-y-1">
-              <div className="font-bold text-slate-700">TERMS & CONDITIONS (شرایط و مقررات):</div>
-              <p><strong>EN:</strong> The carrier is not responsible for undeclared valuables or perishables. Claims must be submitted within 48 hours with original consignment receipt.</p>
-              <p className="font-sans" dir="rtl"><strong>دری:</strong> شرکت در قبال اجناس فاسدشدنی یا بدون اظهارنامه مسئولیتی ندارد. هرگونه ادعا باید ظرف ۴۸ ساعت با ارائه اصل این بارنامه ثبت گردد.</p>
-              <p className="font-sans" dir="rtl"><strong>پښتو:</strong> شرکت د غیر راجسټر شویو خرابیدونکو توکو مسؤلیت نه لري. شکایت باید تر ۴۸ ساعتونو پورې د اصلي رسید سره وشي.</p>
+            {/* Official 5 Cargo Rules & Conditions Notice */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[9.5px] text-slate-700 leading-relaxed space-y-1.5">
+              <div className="font-bold text-slate-900 uppercase tracking-wider text-[10px] flex items-center justify-between border-b border-slate-200 pb-1">
+                <span>OFFICIAL CARGO RULES & LEGAL CONDITIONS</span>
+                <span className="font-sans" dir="rtl">شرایط، قوانین و مقررات بارنامه و انتقال امانات</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
+                <div>
+                  <strong>1. Cargo Liability (مسئولیت امانات):</strong> Carrier holds no liability for undeclared cash, jewelry, gold, legal documents, or perishables without prior declaration and cargo insurance.
+                </div>
+                <div className="font-sans text-slate-600" dir="rtl">
+                  <strong>۱. مسئولیت امانات:</strong> شرکت در قبال پول نقد، طلا، اسناد بهادار و اجناس فاسدشدنی بدون اظهار و ثبت رسمی قبلی هیچ مسئولیتی ندارد.
+                </div>
+                <div>
+                  <strong>2. Claim Period (مهلت ادعا):</strong> Any claim regarding shortage, damage, or discrepancy must be lodged within 48 hours with this original Consignment Note.
+                </div>
+                <div className="font-sans text-slate-600" dir="rtl">
+                  <strong>۲. مهلت شکایت:</strong> هرگونه ادعا، کسر یا خسارت باید حداکثر ظرف ۴۸ ساعت با ارائه اصل این بارنامه ثبت گردد.
+                </div>
+                <div>
+                  <strong>3. Prohibited Goods (اقلام ممنوعه):</strong> Transport of explosives, arms, ammunition, inflammable chemicals, or illicit substances is strictly forbidden. Shipper holds 100% legal liability.
+                </div>
+                <div className="font-sans text-slate-600" dir="rtl">
+                  <strong>۳. اقلام ممنوعه:</strong> انتقال مواد انفجاری، اسلحه، مواد کیمیاوی و مواد مخدر اکیداً ممنوع بوده و مسئولیت آن متوجه فرستنده است.
+                </div>
+                <div>
+                  <strong>4. ID Verification (تثبیت هویت):</strong> Consignments are released strictly upon presentation of valid Tazkira/National ID, recipient signature, and official fingerprint.
+                </div>
+                <div className="font-sans text-slate-600" dir="rtl">
+                  <strong>۴. تحویل با تذکره:</strong> تسلیمی بار تنها با حضور گیرنده، ارائه اصل تذکره/سند هویت معتبر و نشان انگشت صورت می‌پذیرد.
+                </div>
+                <div className="md:col-span-2">
+                  <strong>5. Storage & Demurrage (انبارداری):</strong> Consignments unclaimed after 30 days are subject to daily warehouse storage fees and company retention disposal regulations (امانات بعد از ۳۰ روز شامل مصارف انبارداری می‌گردد).
+                </div>
+              </div>
             </div>
 
             {/* Signatures */}

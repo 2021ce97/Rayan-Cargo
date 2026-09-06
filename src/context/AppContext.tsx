@@ -1240,6 +1240,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newShipment;
   };
 
+  // Helper to verify if the current user represents or has authority over the origin branch
+  const isUserOriginBranch = (originBranchId: string): boolean => {
+    if (currentUser.role === 'super_admin') return true;
+    if (!currentUser.branchId) return true;
+    if (originBranchId === currentUser.branchId) return true;
+
+    const userBranch = branches.find(b => b.id === currentUser.branchId);
+    const targetBranch = branches.find(b => b.id === originBranchId);
+
+    if (userBranch && targetBranch) {
+      if (userBranch.id === targetBranch.id) return true;
+      if (userBranch.code && targetBranch.code && userBranch.code.toLowerCase() === targetBranch.code.toLowerCase()) return true;
+      if (userBranch.city && targetBranch.city && userBranch.city.toLowerCase() === targetBranch.city.toLowerCase()) return true;
+      if (userBranch.name && targetBranch.name && userBranch.name.toLowerCase() === targetBranch.name.toLowerCase()) return true;
+    }
+
+    if (userBranch) {
+      const uCode = (userBranch.code || '').toLowerCase();
+      const uCity = (userBranch.city || '').toLowerCase();
+      const origLower = (originBranchId || '').toLowerCase();
+      if (uCode && origLower.includes(uCode)) return true;
+      if (uCity && origLower.includes(uCity)) return true;
+    }
+
+    return false;
+  };
+
+  // Helper to verify if the current user represents or has authority over the destination branch
+  const isUserDestBranch = (destBranchId: string): boolean => {
+    if (currentUser.role === 'super_admin') return true;
+    if (!currentUser.branchId) return true;
+    if (destBranchId === currentUser.branchId) return true;
+
+    const userBranch = branches.find(b => b.id === currentUser.branchId);
+    const targetBranch = branches.find(b => b.id === destBranchId);
+
+    if (userBranch && targetBranch) {
+      if (userBranch.id === targetBranch.id) return true;
+      if (userBranch.code && targetBranch.code && userBranch.code.toLowerCase() === targetBranch.code.toLowerCase()) return true;
+      if (userBranch.city && targetBranch.city && userBranch.city.toLowerCase() === targetBranch.city.toLowerCase()) return true;
+      if (userBranch.name && targetBranch.name && userBranch.name.toLowerCase() === targetBranch.name.toLowerCase()) return true;
+    }
+
+    if (userBranch) {
+      const uCode = (userBranch.code || '').toLowerCase();
+      const uCity = (userBranch.city || '').toLowerCase();
+      const destLower = (destBranchId || '').toLowerCase();
+      if (uCode && destLower.includes(uCode)) return true;
+      if (uCity && destLower.includes(uCity)) return true;
+    }
+
+    return false;
+  };
+
   // Branch Manager modifies and confirms customer pre-booked order
   const confirmCustomerPreBooking = (
     shipmentId: string, 
@@ -1259,14 +1313,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     arg5?: number, 
     arg6?: 'paid' | 'to_pay'
   ): boolean => {
-    const target = shipments.find(s => s.id === shipmentId);
-    if (!target) return false;
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) {
+      console.warn('confirmCustomerPreBooking: Shipment not found for ID/CN:', shipmentId);
+      return false;
+    }
 
-    // Strict check: Only the designated origin branch (or super_admin) can verify and process booking-stage information
-    const userBranch = currentUser.role === 'super_admin' ? (activeBranchId !== 'all' ? activeBranchId : target.originBranchId) : currentUser.branchId;
-    const isOriginBranch = target.originBranchId === userBranch || currentUser.role === 'super_admin';
-
-    if (!isOriginBranch) {
+    // Check authority: origin branch manager or super_admin
+    const isOrigin = isUserOriginBranch(target.originBranchId);
+    if (!isOrigin) {
       const origObj = branches.find(b => b.id === target.originBranchId);
       showToast(`⚠️ Unauthorized: Only the designated Origin Branch (${origObj?.name || 'Sender Hub'}) can verify, weigh, and set pricing for this pre-booking.`);
       return false;
@@ -1346,17 +1401,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       destBranchCommission,
       originRemittanceDue,
       financials: updatedFinancials,
-      statusHistory: [...target.statusHistory, newHistoryItem],
+      statusHistory: [...(target.statusHistory || []), newHistoryItem],
       bookedByUserId: currentUser.id,
       bookedByUserName: currentUser.name
     };
 
-    setShipments(prev => prev.map(s => s.id === shipmentId ? updatedShipment : s));
+    setShipments(prev => prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s));
 
-    // Direct Supabase status update
-    directSupabaseUpdateShipmentStatus(shipmentId, 'booked', updatedShipment.statusHistory);
+    // Update branch dispatch totals
+    setBranches(prev => prev.map(b => {
+      if (b.id === target.originBranchId) {
+        return {
+          ...b,
+          totalParcelsDispatched: (b.totalParcelsDispatched || 0) + 1,
+          totalRevenueAfn: (b.totalRevenueAfn || 0) + totalAmount
+        };
+      }
+      return b;
+    }));
 
-    fetch(`/api/shipments/${shipmentId}/status`, {
+    // Direct Supabase status and shipment update
+    directSupabaseInsertShipment(updatedShipment);
+    directSupabaseUpdateShipmentStatus(target.id, 'booked', updatedShipment.statusHistory);
+
+    fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1367,7 +1435,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     }).catch(err => console.error('Error confirming order:', err));
 
-    showToast(`Pre-booking ${target.cnNumber} verified, weighed (${actualWeightKg}kg), priced (${totalAmount} AFN) and booked successfully!`);
+    showToast(`✓ Pre-booking ${target.cnNumber} verified, weighed (${actualWeightKg}kg), priced (${totalAmount} AFN) and booked successfully!`);
     return true;
   };
 
@@ -1437,8 +1505,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Super Admin acts as Kabul Hub when activeBranchId is 'br_kabul' or has full master oversight when 'all'
-    if (currentUser.role === 'super_admin' && activeBranchId === 'all') {
+    // Super Admin has master authority across all cargo branches and statuses
+    if (currentUser.role === 'super_admin') {
       return {
         allowed: true,
         canUpdate: true,
@@ -1448,9 +1516,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    const currentBranch = currentUser.role === 'super_admin' ? (activeBranchId !== 'all' ? activeBranchId : 'br_kabul') : currentUser.branchId;
-    const isOrigin = shipment.originBranchId === currentBranch;
-    const isDestination = shipment.destinationBranchId === currentBranch;
+    const isOrigin = isUserOriginBranch(shipment.originBranchId);
+    const isDestination = isUserDestBranch(shipment.destinationBranchId);
 
     if (!isOrigin && !isDestination) {
       return {
@@ -1462,7 +1529,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Origin Branch: Can ONLY perform dispatching stages (pre_booked -> booked, booked -> in_transit)
+    // Origin Branch: Can perform dispatching stages (pre_booked -> booked, booked -> in_transit)
     if (isOrigin) {
       if (shipment.status === 'pre_booked') {
         return {
@@ -1479,6 +1546,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           roleType: 'sender_branch',
           allowedStatuses: ['in_transit', 'cancelled']
         };
+      }
+      if (isDestination) {
+        // Same branch is both origin and destination (intra-city/local delivery)
+        if (shipment.status === 'in_transit') {
+          return {
+            allowed: true,
+            canUpdate: true,
+            roleType: 'receiver_branch',
+            allowedStatuses: ['received_at_branch', 'out_for_delivery', 'delivered']
+          };
+        }
+        if (shipment.status === 'received_at_branch') {
+          return {
+            allowed: true,
+            canUpdate: true,
+            roleType: 'receiver_branch',
+            allowedStatuses: ['out_for_delivery', 'delivered', 'returned']
+          };
+        }
+        if (shipment.status === 'out_for_delivery') {
+          return {
+            allowed: true,
+            canUpdate: true,
+            roleType: 'receiver_branch',
+            allowedStatuses: ['delivered', 'returned']
+          };
+        }
       }
       return {
         allowed: false,
@@ -1611,8 +1705,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     driverName?: string,
     driverPhone?: string
   ): boolean => {
-    const target = shipments.find(s => s.id === shipmentId);
-    if (!target) return false;
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) {
+      console.warn('updateShipmentStatus: Shipment not found for ID/CN:', shipmentId);
+      return false;
+    }
 
     const perm = canUserUpdateStatus(target);
     if (!perm.allowed || !perm.allowedStatuses.includes(newStatus)) {
@@ -1638,19 +1735,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       driverPhone
     };
 
-    const newHistory = [...target.statusHistory, newHistoryItem];
+    const newHistory = [...(target.statusHistory || []), newHistoryItem];
     const actualDelivery = newStatus === 'delivered' ? now : target.actualDelivery;
     const newFinancials = {
       ...target.financials,
-      amountPaid: newStatus === 'delivered' && target.financials.paymentStatus === 'to_pay' 
+      amountPaid: newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay' 
         ? target.financials.totalAmount 
-        : target.financials.amountPaid,
-      amountDue: newStatus === 'delivered' && target.financials.paymentStatus === 'to_pay'
+        : target.financials?.amountPaid || 0,
+      amountDue: newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay'
         ? 0
-        : target.financials.amountDue,
-      paymentStatus: (newStatus === 'delivered' && target.financials.paymentStatus === 'to_pay' 
+        : target.financials?.amountDue || 0,
+      paymentStatus: (newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay' 
         ? 'paid' 
-        : target.financials.paymentStatus) as any
+        : target.financials?.paymentStatus || 'paid') as any
     };
 
     const currentBranchId = newStatus === 'received_at_branch' || newStatus === 'out_for_delivery' || newStatus === 'delivered' 
@@ -1666,16 +1763,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       financials: newFinancials
     };
 
-    setShipments(prev => prev.map(s => s.id === shipmentId ? updatedShipment : s));
+    setShipments(prev => prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s));
 
-    if (trackedShipment?.id === shipmentId) {
+    if (trackedShipment && (trackedShipment.id === target.id || trackedShipment.cnNumber === target.cnNumber)) {
       setTrackedShipment(updatedShipment);
     }
 
     // Persist to Supabase Database (direct client & backend API)
-    directSupabaseUpdateShipmentStatus(shipmentId, newStatus, newHistory);
+    directSupabaseUpdateShipmentStatus(target.id, newStatus, newHistory);
 
-    fetch(`/api/shipments/${shipmentId}/status`, {
+    fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

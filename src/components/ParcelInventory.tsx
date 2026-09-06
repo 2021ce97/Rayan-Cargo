@@ -230,7 +230,7 @@ export const ParcelInventory: React.FC = () => {
   // Confirm pre-booking
   const handleConfirmPreBookingSubmit = () => {
     if (!confirmModalShipment) return;
-    confirmCustomerPreBooking(confirmModalShipment.id, {
+    const ok = confirmCustomerPreBooking(confirmModalShipment.id, {
       weightKg: weighedWeight,
       pieces: weighedPieces,
       baseRate: modalBaseRate,
@@ -240,7 +240,9 @@ export const ParcelInventory: React.FC = () => {
       destBranchCommission: customDestCommission,
       paymentStatus: confirmedPaymentStatus
     });
-    setConfirmModalShipment(null);
+    if (ok) {
+      setConfirmModalShipment(null);
+    }
   };
 
   // Handle Inter-Branch Settlement
@@ -672,8 +674,11 @@ export const ParcelInventory: React.FC = () => {
                   const updatePerm = canUserUpdateStatus(s);
                   const isPrebooked = s.status === 'pre_booked';
                   const isPendingSettlement = s.remittanceStatus === 'pending';
-                  const userBranchId = currentUser.role === 'super_admin' ? (activeBranchId !== 'all' ? activeBranchId : 'br_kabul') : currentUser.branchId;
-                  const isOriginBranch = s.originBranchId === userBranchId || (currentUser.role === 'super_admin' && activeBranchId === 'all');
+                  const isOriginBranch = currentUser.role === 'super_admin' || 
+                    s.originBranchId === currentUser.branchId || 
+                    (activeBranchId === 'all') ||
+                    (activeBranchId === s.originBranchId) ||
+                    (branches.find(b => b.id === currentUser.branchId)?.city?.toLowerCase() === orig?.city?.toLowerCase());
 
                   return (
                     <tr 

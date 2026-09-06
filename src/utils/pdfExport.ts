@@ -164,7 +164,7 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
 
     // SENDER (SHIPPER) & RECEIVER (CONSIGNEE) TWO-COLUMN BOXES
     const colWidth = (contentWidth - 6) / 2; // 90mm each
-    const boxHeight = 44;
+    const boxHeight = 36;
 
     // Sender Box
     doc.setFillColor(255, 255, 255);
@@ -173,244 +173,308 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
     doc.rect(margin, y, colWidth, boxHeight);
 
     doc.setFillColor(15, 23, 42);
-    doc.rect(margin, y, colWidth, 7, 'F');
+    doc.rect(margin, y, colWidth, 6, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('1. SENDER / SHIPPER (FROM)', margin + 3, y + 5);
+    doc.setFontSize(8.5);
+    doc.text('1. SENDER / SHIPPER (FROM)', margin + 3, y + 4.5);
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(shipment.sender.name, margin + 3, y + 13);
+    doc.setFontSize(9);
+    doc.text(shipment.sender.name, margin + 3, y + 11.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 19);
+    doc.setFontSize(8);
+    doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 17);
     if (shipment.sender.nationalId) {
-      doc.text(`Tazkira / National ID: ${shipment.sender.nationalId}`, margin + 3, y + 25);
+      doc.text(`Tazkira / ID: ${shipment.sender.nationalId}`, margin + 3, y + 22.5);
     }
-    doc.text(`Origin City: ${originBranch?.city || shipment.sender.city} (${shipment.sender.province || 'AFG'})`, margin + 3, y + 31);
-    doc.text(`Address: ${shipment.sender.address.substring(0, 38)}`, margin + 3, y + 37);
+    doc.text(`Origin: ${originBranch?.city || shipment.sender.city} (${originBranch?.name || shipment.sender.province || 'AFG'})`, margin + 3, y + 28);
+    doc.text(`Address: ${shipment.sender.address.substring(0, 36)}`, margin + 3, y + 33.5);
 
     // Receiver Box
     const rxX = margin + colWidth + 6;
     doc.rect(rxX, y, colWidth, boxHeight);
     doc.setFillColor(225, 29, 72);
-    doc.rect(rxX, y, colWidth, 7, 'F');
+    doc.rect(rxX, y, colWidth, 6, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('2. RECEIVER / CONSIGNEE (TO)', rxX + 3, y + 5);
+    doc.setFontSize(8.5);
+    doc.text('2. RECEIVER / CONSIGNEE (TO)', rxX + 3, y + 4.5);
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(shipment.receiver.name, rxX + 3, y + 13);
+    doc.setFontSize(9);
+    doc.text(shipment.receiver.name, rxX + 3, y + 11.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     const rxPhoneLine = shipment.receiver.altPhone 
       ? `Phone: ${shipment.receiver.phone} / ${shipment.receiver.altPhone}`
       : `Phone: ${shipment.receiver.phone}`;
-    doc.text(rxPhoneLine, rxX + 3, y + 19);
+    doc.text(rxPhoneLine, rxX + 3, y + 17);
 
     const receiverTazkiraNumber = shipment.receiver.nationalId || shipment.sender.receiverTazkira;
     if (receiverTazkiraNumber) {
       doc.setFont('helvetica', 'bold');
-      doc.text(`Receiver Tazkira: ${receiverTazkiraNumber}`, rxX + 3, y + 25);
+      doc.text(`Receiver Tazkira: ${receiverTazkiraNumber}`, rxX + 3, y + 22.5);
       doc.setFont('helvetica', 'normal');
     }
-    doc.text(`Destination City: ${destBranch?.city || shipment.receiver.city} (${shipment.receiver.province || 'AFG'})`, rxX + 3, y + 31);
-    doc.text(`Address: ${shipment.receiver.address.substring(0, 38)}`, rxX + 3, y + 37);
+    doc.text(`Destination: ${destBranch?.city || shipment.receiver.city} (${destBranch?.name || shipment.receiver.province || 'AFG'})`, rxX + 3, y + 28);
+    doc.text(`Address: ${shipment.receiver.address.substring(0, 36)}`, rxX + 3, y + 33.5);
 
-    y += boxHeight + 6;
+    y += boxHeight + 4;
 
     // PARCEL INFORMATION TABLE
     doc.setFillColor(15, 23, 42);
-    doc.rect(margin, y, contentWidth, 7, 'F');
+    doc.rect(margin, y, contentWidth, 6, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('3. CONSIGNMENT & FREIGHT SPECIFICATIONS', margin + 4, y + 5);
+    doc.setFontSize(8.5);
+    doc.text('3. CONSIGNMENT & FREIGHT SPECIFICATIONS', margin + 4, y + 4.2);
 
-    y += 7;
+    y += 6;
 
     // Table Header
     doc.setFillColor(241, 245, 249);
-    doc.rect(margin, y, contentWidth, 7, 'F');
+    doc.rect(margin, y, contentWidth, 6, 'F');
     doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, y, contentWidth, 7, 'S');
+    doc.rect(margin, y, contentWidth, 6, 'S');
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('Category', margin + 3, y + 4.8);
-    doc.text('Description', margin + 42, y + 4.8);
-    doc.text('Pieces', margin + 105, y + 4.8);
-    doc.text('Weight (KG)', margin + 125, y + 4.8);
-    doc.text('Declared Value', margin + 152, y + 4.8);
+    doc.setFontSize(7.5);
+    doc.text('Category', margin + 3, y + 4.2);
+    doc.text('Description', margin + 42, y + 4.2);
+    doc.text('Pieces', margin + 105, y + 4.2);
+    doc.text('Weight (KG)', margin + 125, y + 4.2);
+    doc.text('Declared Value', margin + 152, y + 4.2);
 
-    y += 7;
+    y += 6;
 
     // Table Row
-    doc.rect(margin, y, contentWidth, 9, 'S');
+    doc.rect(margin, y, contentWidth, 7.5, 'S');
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.text(shipment.packageInfo.category.toUpperCase(), margin + 3, y + 6);
-    doc.text(shipment.packageInfo.description.substring(0, 32), margin + 42, y + 6);
-    doc.text(`${shipment.packageInfo.pieces} pcs`, margin + 105, y + 6);
-    doc.text(`${shipment.packageInfo.weightKg} KG`, margin + 125, y + 6);
-    doc.text(`${(shipment.packageInfo.declaredValueAfn || 0).toLocaleString()} AFN`, margin + 152, y + 6);
+    doc.setFontSize(8);
+    doc.text(shipment.packageInfo.category.toUpperCase(), margin + 3, y + 5.2);
+    doc.text(shipment.packageInfo.description.substring(0, 32), margin + 42, y + 5.2);
+    doc.text(`${shipment.packageInfo.pieces} pcs`, margin + 105, y + 5.2);
+    doc.text(`${shipment.packageInfo.weightKg} KG`, margin + 125, y + 5.2);
+    doc.text(`${(shipment.packageInfo.declaredValueAfn || 0).toLocaleString()} AFN`, margin + 152, y + 5.2);
 
-    y += 14;
+    y += 10.5;
 
     // FINANCIAL SUMMARY & PAYMENT SECTION
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, y, contentWidth, 38, 2, 2, 'FD');
+    doc.roundedRect(margin, y, contentWidth, 32, 2, 2, 'FD');
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text('4. CHARGES & FINANCIAL SETTLEMENT', margin + 4, y + 6);
+    doc.setFontSize(8.5);
+    doc.text('4. CHARGES & FINANCIAL SETTLEMENT', margin + 4, y + 5.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     const baseAndWeight = (shipment.financials.baseRate || 0) + (shipment.financials.weightCost || 0);
-    doc.text(`Base & Weight Freight: ${baseAndWeight.toLocaleString()} AFN`, margin + 4, y + 14);
-    doc.text(`Service Fee: ${(shipment.financials.serviceFee || 0).toLocaleString()} AFN`, margin + 4, y + 20);
-    doc.text(`Tax / Surcharge: ${(shipment.financials.tax || 0).toLocaleString()} AFN`, margin + 4, y + 26);
-    doc.text(`Discount / Promo: ${(shipment.financials.discountAmount || 0).toLocaleString()} AFN`, margin + 4, y + 32);
+    doc.text(`Base & Weight Freight: ${baseAndWeight.toLocaleString()} AFN`, margin + 4, y + 12.5);
+    doc.text(`Service Fee: ${(shipment.financials.serviceFee || 0).toLocaleString()} AFN`, margin + 4, y + 17.5);
+    doc.text(`Tax / Surcharge: ${(shipment.financials.tax || 0).toLocaleString()} AFN`, margin + 4, y + 22.5);
+    doc.text(`Discount / Promo: ${(shipment.financials.discountAmount || 0).toLocaleString()} AFN`, margin + 4, y + 27.5);
 
     // Total and Payment Status Banner Box
     const totalBoxX = margin + 90;
     const isPaid = shipment.financials.paymentStatus === 'paid';
     doc.setFillColor(isPaid ? 236 : 254, isPaid ? 253 : 243, isPaid ? 245 : 199);
     doc.setDrawColor(isPaid ? 16 : 217, isPaid ? 185 : 119, isPaid ? 129 : 6);
-    doc.roundedRect(totalBoxX, y + 4, contentWidth - 94, 28, 2, 2, 'FD');
+    doc.roundedRect(totalBoxX, y + 3.5, contentWidth - 94, 25, 2, 2, 'FD');
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text('TOTAL AMOUNT:', totalBoxX + 4, y + 12);
-    doc.setFontSize(14);
-    doc.setTextColor(225, 29, 72);
-    doc.text(`${shipment.financials.totalAmount.toLocaleString()} AFN`, totalBoxX + 4, y + 20);
-
     doc.setFontSize(9);
-    doc.setTextColor(isPaid ? 22 : 180, isPaid ? 101 : 83, isPaid ? 52 : 9);
-    doc.text(`PAYMENT STATUS: ${shipment.financials.paymentStatus.toUpperCase()}`, totalBoxX + 4, y + 27);
+    doc.text('TOTAL AMOUNT:', totalBoxX + 4, y + 10.5);
+    doc.setFontSize(13);
+    doc.setTextColor(225, 29, 72);
+    doc.text(`${shipment.financials.totalAmount.toLocaleString()} AFN`, totalBoxX + 4, y + 17.5);
 
-    y += 44;
+    doc.setFontSize(8.5);
+    doc.setTextColor(isPaid ? 22 : 180, isPaid ? 101 : 83, isPaid ? 52 : 9);
+    doc.text(`PAYMENT STATUS: ${shipment.financials.paymentStatus.toUpperCase()}`, totalBoxX + 4, y + 24);
+
+    y += 35.5;
 
     // BARCODE VISUAL RECTANGLE & TRACKING TEXT
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.3);
-    doc.rect(margin, y, contentWidth, 18);
+    doc.rect(margin, y, contentWidth, 14);
     
     // Draw simulated barcode lines
     doc.setFillColor(15, 23, 42);
-    let barX = margin + 12;
+    let barX = margin + 8;
     const barsPattern = [2, 1, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 3, 1, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2];
     for (let i = 0; i < barsPattern.length; i++) {
-      const w = barsPattern[i] * 0.7;
-      doc.rect(barX, y + 2, w, 10, 'F');
-      barX += w + 1.2;
+      const w = barsPattern[i] * 0.6;
+      doc.rect(barX, y + 1.5, w, 8, 'F');
+      barX += w + 1.1;
     }
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
-    doc.text(`* ${shipment.cnNumber} *`, margin + 35, y + 15.5);
+    doc.text(`* ${shipment.cnNumber} *`, margin + 28, y + 12.5);
 
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
-    doc.text('Scan barcode or enter CN on Armaghan Sadeq Transfers Portal to track live status in real time.', margin + 95, y + 7);
+    doc.text('Scan barcode or enter CN on Armaghan Sadeq Transfers Portal to track live status in real time.', margin + 88, y + 5.5);
     const senderHubPhone = originBranch?.phone ? originBranch.phone : 'Hub Contact';
-    doc.text(`Helplines: Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 95, y + 13);
+    doc.text(`Sender Hub: ${senderHubPhone} | Complaints Hotline: 0711299680 | Main HQ: 0774144004`, margin + 88, y + 10.5);
 
-    y += 24;
+    y += 17;
 
     // SIGNATURE & STAMP BOXES
-    const sigColWidth = (contentWidth - 8) / 3;
-    const sigHeight = 24;
+    const sigColWidth = (contentWidth - 6) / 3;
+    const sigHeight = 18;
 
     // 1. Shipper Signature
     doc.rect(margin, y, sigColWidth, sigHeight);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('Sender Signature & Verification', margin + 3, y + 4.5);
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.text('I confirm package contents comply with cargo laws.', margin + 3, y + 8.5);
-    doc.text('Signature: ____________________', margin + 3, y + 20.5);
+    doc.text('Sender Signature & Verification', margin + 2.5, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('I confirm contents comply with cargo laws.', margin + 2.5, y + 7.5);
+    doc.text('Signature: ____________________', margin + 2.5, y + 15);
 
     // 2. Consignee Signature
-    const sig2X = margin + sigColWidth + 4;
+    const sig2X = margin + sigColWidth + 3;
     doc.rect(sig2X, y, sigColWidth, sigHeight);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('Receiver Signature / Fingerprint', sig2X + 3, y + 4.5);
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.text('Received package in sealed & good condition.', sig2X + 3, y + 8.5);
-    doc.text('Sign / Thumb: _________________', sig2X + 3, y + 20.5);
+    doc.text('Receiver Signature / Fingerprint', sig2X + 2.5, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('Received package in sealed condition.', sig2X + 2.5, y + 7.5);
+    doc.text('Sign / Thumb: _________________', sig2X + 2.5, y + 15);
 
     // 3. Authorized Stamp
-    const sig3X = sig2X + sigColWidth + 4;
+    const sig3X = sig2X + sigColWidth + 3;
     doc.rect(sig3X, y, sigColWidth, sigHeight);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('Branch Authorized Stamp', sig3X + 3, y + 4.5);
-    doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    doc.text(`Origin: ${originBranch?.name || shipment.originBranchId}`, sig3X + 3, y + 8.5);
-    doc.text('Official Seal: [ VERIFIED ]', sig3X + 3, y + 20.5);
+    doc.text('Branch Authorized Stamp', sig3X + 2.5, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text(`Origin: ${originBranch?.name || shipment.originBranchId}`, sig3X + 2.5, y + 7.5);
+    doc.text('Official Seal: [ VERIFIED ]', sig3X + 2.5, y + 15);
+
+    y += sigHeight + 3;
+
+    // OFFICIAL RULES & LEGAL CONDITIONS BOX (شرایط، قوانین و مقررات بارنامه و انتقال امانات)
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, y, contentWidth, 44, 2, 2, 'FD');
+
+    // Header strip for Rules
+    doc.setFillColor(15, 23, 42); // Slate-900
+    doc.roundedRect(margin, y, contentWidth, 5.5, 1.5, 1.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('5. OFFICIAL CARGO RULES & LEGAL CONDITIONS (شرایط و مقررات بارنامه و انتقال امانات)', margin + 3, y + 4);
+
+    let ruleY = y + 9.5;
+    doc.setFontSize(6.5);
+    
+    // Rule 1: Cargo Liability
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Cargo Liability (مسئولیت امانات):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Carrier is not liable for undeclared cash, jewelry, gold, valuable documents, or perishables without prior declaration & insurance.', margin + 44, ruleY);
+    ruleY += 6.5;
+
+    // Rule 2: Claims Window
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Claim Window (مهلت ادعا و کسر):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Any claim regarding shortage, damage, or discrepancy must be lodged within 48 hours accompanied by this original Consignment Note.', margin + 44, ruleY);
+    ruleY += 6.5;
+
+    // Rule 3: Prohibited Goods
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('3. Prohibited Goods (اقلام ممنوعه):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Transport of explosives, arms, ammunition, inflammable chemicals, or illicit substances is strictly forbidden; shipper bears 100% legal liability.', margin + 44, ruleY);
+    ruleY += 6.5;
+
+    // Rule 4: ID Verification
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('4. ID & Handover (تثبیت هویت):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Cargo is released strictly upon presentation of valid Tazkira / National ID, recipient signature, and official fingerprint recording.', margin + 44, ruleY);
+    ruleY += 6.5;
+
+    // Rule 5: Storage Demurrage
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('5. Storage Policy (شرایط انبارداری):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Consignments unclaimed after 30 days are subject to daily warehouse storage/demurrage fees and company retention policies.', margin + 44, ruleY);
+
+    y += 47;
 
     // OFFICIAL 3 MANDATORY CONTACT NUMBERS STRIP AT BOTTOM OF PDF
-    y += sigHeight + 3;
     doc.setFillColor(248, 250, 252); // Slate-50
     doc.setDrawColor(203, 213, 225); // Slate-300
     doc.setLineWidth(0.3);
-    doc.roundedRect(margin, y, contentWidth, 12, 1.5, 1.5, 'FD');
+    doc.roundedRect(margin, y, contentWidth, 11, 1.5, 1.5, 'FD');
 
     const colContactW = contentWidth / 3;
 
     // Contact 1: Sender Branch Phone (Added by Admin when creating the branch)
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(225, 29, 72); // Red-600
-    doc.text('1. SENDER BRANCH PHONE:', margin + 3, y + 4.2);
+    doc.text('1. SENDER BRANCH PHONE:', margin + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
     const originContactStr = originBranch?.phone ? `${originBranch.phone} (${originBranch.city})` : 'Registered at Origin Hub';
-    doc.text(originContactStr, margin + 3, y + 9);
+    doc.text(originContactStr, margin + 3, y + 8.2);
 
     // Contact 2: Complaints Hotline (0711299680 - Global across all PDFs)
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(180, 83, 9); // Amber-700
-    doc.text('2. COMPLAINTS / SHIKAYAT:', margin + colContactW + 3, y + 4.2);
+    doc.text('2. COMPLAINTS / SHIKAYAT:', margin + colContactW + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
-    doc.text('0711299680', margin + colContactW + 3, y + 9);
+    doc.text('0711299680', margin + colContactW + 3, y + 8.2);
 
     // Contact 3: Main Office Contact (0774144004 - Global across all PDFs)
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(30, 58, 138); // Blue-800
-    doc.text('3. MAIN OFFICE (KABUL HQ):', margin + colContactW * 2 + 3, y + 4.2);
+    doc.text('3. MAIN OFFICE (KABUL HQ):', margin + colContactW * 2 + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
-    doc.text('0774144004', margin + colContactW * 2 + 3, y + 9);
+    doc.text('0774144004', margin + colContactW * 2 + 3, y + 8.2);
 
     // Footer with Rayan Tech Solutions Attribution
-    y += 15;
-    doc.setFontSize(7);
+    y += 14;
+    doc.setFontSize(6.5);
     doc.setTextColor(100, 116, 139);
     doc.text('Armaghan Sadeq Transfers | Official Afghanistan Freight Consignment Document', margin, y);
     doc.setFont('helvetica', 'bold');
