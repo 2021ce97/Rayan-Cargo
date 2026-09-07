@@ -721,11 +721,10 @@ export const ParcelInventory: React.FC = () => {
                   const updatePerm = canUserUpdateStatus(s);
                   const isPrebooked = s.status === 'pre_booked';
                   const isPendingSettlement = s.remittanceStatus === 'pending';
-                  const isOriginBranch = currentUser.role === 'super_admin' || 
+                  const canVerifyPreBooking = currentUser.role !== 'super_admin' && (
                     s.originBranchId === currentUser.branchId || 
-                    (activeBranchId === 'all') ||
-                    (activeBranchId === s.originBranchId) ||
-                    (branches.find(b => b.id === currentUser.branchId)?.city?.toLowerCase() === orig?.city?.toLowerCase());
+                    (branches.find(b => b.id === currentUser.branchId)?.city?.toLowerCase() === orig?.city?.toLowerCase())
+                  );
 
                   return (
                     <tr 
@@ -819,7 +818,7 @@ export const ParcelInventory: React.FC = () => {
                       {/* Status / Pre-booked / Settlement Action */}
                       <td className="p-3.5 text-center">
                         {isPrebooked ? (
-                          isOriginBranch ? (
+                          canVerifyPreBooking ? (
                             <button
                               onClick={() => handleOpenConfirmPreBooking(s)}
                               className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer"
