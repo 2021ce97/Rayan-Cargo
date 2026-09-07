@@ -103,7 +103,7 @@ interface AppContextType {
   addShipment: (shipmentData: Omit<Shipment, 'id' | 'cnNumber' | 'statusHistory' | 'bookedAt'>) => Shipment;
   createCustomerPreBooking: (input: CustomerPreBookingInput) => Shipment;
   confirmCustomerPreBooking: (shipmentId: string, actualWeightKg: number, pieces: number, transportationFee: number, destBranchCommission: number, paymentStatus: 'paid' | 'to_pay') => boolean;
-  settleInterBranchRemittance: (shipmentId: string) => boolean;
+  settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
@@ -319,6 +319,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Sync with Supabase PostgreSQL
   const syncWithDatabase = useCallback(async () => {
     setIsSyncing(true);
+
+    const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T, storageKey: string) => {
+      setter(prev => {
+        const prevStr = JSON.stringify(prev);
+        const newStr = JSON.stringify(newData);
+        if (prevStr !== newStr) {
+          localStorage.setItem(storageKey, newStr);
+          return newData;
+        }
+        return prev;
+      });
+    };
+
     try {
       // 0. Direct Supabase Query (if client configured with Anon Key)
       if (isSupabaseReady()) {
@@ -326,21 +339,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const directData = await directSupabaseFetchAll();
           if (directData.success) {
             if (directData.branches && Array.isArray(directData.branches) && directData.branches.length > 0) {
-              setBranches(directData.branches);
-              localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(directData.branches));
+              safeSetState(setBranches, directData.branches, STORAGE_KEYS.BRANCHES);
             }
             if (directData.users && Array.isArray(directData.users) && directData.users.length > 0) {
-              const uList = directData.users;
-              setUsers(uList);
-              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(uList));
+              safeSetState(setUsers, directData.users, STORAGE_KEYS.USERS);
             }
             if (directData.shipments && Array.isArray(directData.shipments)) {
-              setShipments(directData.shipments);
-              localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(directData.shipments));
+              safeSetState(setShipments, directData.shipments, STORAGE_KEYS.SHIPMENTS);
             }
             if (directData.expenses && Array.isArray(directData.expenses)) {
-              setExpenses(directData.expenses);
-              localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(directData.expenses));
+              safeSetState(setExpenses, directData.expenses, STORAGE_KEYS.EXPENSES);
             }
           }
         } catch (supErr) {
@@ -352,11 +360,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const healthRes = await fetch('/api/health');
       if (healthRes.ok) {
         const healthData = await healthRes.json();
-        setDbStatus({
-          connected: healthData.connected,
-          database: healthData.database || 'Supabase PostgreSQL',
-          serverTime: healthData.serverTime,
-          stats: healthData.stats
+        setDbStatus(prev => {
+          const newStatus = {
+            connected: healthData.connected,
+            database: healthData.database || 'Supabase PostgreSQL',
+            serverTime: healthData.serverTime,
+            stats: healthData.stats
+          };
+          if (JSON.stringify(prev) !== JSON.stringify(newStatus)) return newStatus;
+          return prev;
         });
       }
 
@@ -365,8 +377,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (branchRes.ok) {
         const branchData = await branchRes.json();
         if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
-          setBranches(branchData.branches);
-          localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(branchData.branches));
+          safeSetState(setBranches, branchData.branches, STORAGE_KEYS.BRANCHES);
         }
       }
 
@@ -375,9 +386,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (userRes.ok) {
         const userData = await userRes.json();
         if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
-          const uList = userData.users;
-          setUsers(uList);
-          localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(uList));
+          safeSetState(setUsers, userData.users, STORAGE_KEYS.USERS);
         }
       }
 
@@ -386,8 +395,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (shipRes.ok) {
         const shipData = await shipRes.json();
         if (shipData.success && Array.isArray(shipData.shipments)) {
-          setShipments(shipData.shipments);
-          localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(shipData.shipments));
+          safeSetState(setShipments, shipData.shipments, STORAGE_KEYS.SHIPMENTS);
         }
       }
 
@@ -396,8 +404,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (expRes.ok) {
         const expData = await expRes.json();
         if (expData.success && Array.isArray(expData.expenses)) {
-          setExpenses(expData.expenses);
-          localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expData.expenses));
+          safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
         }
       }
     } catch (err) {
@@ -1824,7 +1831,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Inter-branch settlement (Destination branch remits money to Origin branch)
-  const settleInterBranchRemittance = (shipmentId: string): boolean => {
+  const settleInterBranchRemittance = (shipmentId: string, note?: string): boolean => {
     const target = shipments.find(s => s.id === shipmentId);
     if (!target) return false;
 
@@ -1843,7 +1850,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           location: `${destBranch?.name} → ${origBranch?.name}`,
           branchName: destBranch?.name || 'Destination Branch',
           timestamp: now,
-          note: `Inter-branch COD settlement completed: ${destBranch?.name} deducted ${target.destBranchCommission || target.financials.destBranchCommission || 100} AFN commission and remitted ${target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount} AFN back to ${origBranch?.name}.`,
+          note: note || `Inter-branch COD settlement completed: ${destBranch?.name} deducted ${target.destBranchCommission || target.financials.destBranchCommission || 100} AFN commission and remitted ${target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount} AFN back to ${origBranch?.name}.`,
           updatedBy: currentUser.name
         }
       ]
@@ -1861,6 +1868,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       remittedAmount: target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount,
       settledByName: currentUser.name
     });
+
     directSupabaseUpdateShipmentStatus(shipmentId, target.status, updatedShipment.statusHistory);
 
     fetch(`/api/shipments/${shipmentId}/status`, {
@@ -1872,6 +1880,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         financials: target.financials
       })
     }).catch(err => console.error('Error settling remittance:', err));
+
+    // Persist settlement to the database so it doesn't get reverted on sync
+    fetch('/api/settlements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        shipmentId: target.id,
+        cnNumber: target.cnNumber,
+        originBranchId: target.originBranchId,
+        destinationBranchId: target.destinationBranchId,
+        grossCollectedAmount: target.financials.totalAmount,
+        destBranchCommission: target.destBranchCommission || target.financials.destBranchCommission || 100,
+        netRemittedAmount: target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount,
+        settlementChannel: 'treasury',
+        sarafiReferenceNo: `DIRECT-SETTLE-${Date.now().toString().slice(-4)}`,
+        settlementStatus: 'settled',
+        settledByUserName: currentUser.name,
+        settledAt: now,
+        notes: note
+      })
+    }).catch(err => console.error('Error in API settlement:', err));
 
     showToast(t('remittance_settled_toast') || 'Inter-branch remittance settled successfully!');
     return true;

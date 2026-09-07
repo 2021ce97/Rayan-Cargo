@@ -1396,7 +1396,7 @@ export const ParcelInventory: React.FC = () => {
                 </span>
               </div>
 
-              {/* Action Form or Switch Account Helper */}
+              {/* Action Form */}
               {updatePerm.canUpdate ? (
                 <div className="space-y-3 text-xs pt-1">
                   <div>
@@ -1560,50 +1560,6 @@ export const ParcelInventory: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* 1-Click Role Switch Helpers for Testing/Management */}
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
-                      Quick Switch Account to Test/Update:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {origUser && (
-                        <button
-                          onClick={() => {
-                            setCurrentUser(origUser);
-                            setActiveBranchId(origUser.branchId);
-                          }}
-                          className="p-2 text-start rounded-lg border border-slate-200 dark:border-slate-700 hover:border-red-500 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
-                        >
-                          <div className="text-[10px] text-red-600 font-bold">Origin Branch:</div>
-                          <div className="truncate">{origBranch?.name} ({origUser.name})</div>
-                        </button>
-                      )}
-                      {destUser && (
-                        <button
-                          onClick={() => {
-                            setCurrentUser(destUser);
-                            setActiveBranchId(destUser.branchId);
-                          }}
-                          className="p-2 text-start rounded-lg border border-slate-200 dark:border-slate-700 hover:border-red-500 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
-                        >
-                          <div className="text-[10px] text-blue-600 font-bold">Destination Branch:</div>
-                          <div className="truncate">{destBranch?.name} ({destUser.name})</div>
-                        </button>
-                      )}
-                      {adminUser && (
-                        <button
-                          onClick={() => {
-                            setCurrentUser(adminUser);
-                            setActiveBranchId('all');
-                          }}
-                          className="sm:col-span-2 p-2 text-start rounded-lg border border-amber-300 dark:border-amber-800 hover:border-amber-500 bg-amber-50/50 dark:bg-amber-950/30 text-xs font-semibold text-amber-900 dark:text-amber-200 transition-colors cursor-pointer"
-                        >
-                          <div className="text-[10px] text-amber-700 dark:text-amber-400 font-bold">⭐ Super Admin Override:</div>
-                          <div className="truncate">Central HQ ({adminUser.name}) - Can update any parcel</div>
-                        </button>
-                      )}
-                    </div>
-                  </div>
 
                   <button
                     onClick={() => setStatusModalShipment(null)}

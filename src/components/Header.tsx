@@ -6,7 +6,6 @@ import {
   Building2, 
   ShieldCheck, 
   Wifi, 
-  UserCheck, 
   ChevronDown,
   Sparkles,
   LogOut,
@@ -45,7 +44,6 @@ export const Header: React.FC = () => {
   } = useApp();
 
   const [searchCn, setSearchCn] = useState('');
-  const [showRoleModal, setShowRoleModal] = useState(false);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -301,11 +299,9 @@ export const Header: React.FC = () => {
                 </button>
               )}
 
-              {/* User Account / Role Switcher Modal Trigger */}
-              <button
-                onClick={() => setShowRoleModal(true)}
-                className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors text-start cursor-pointer"
-                title={t('switch_account_modal_title')}
+              {/* User Account Info */}
+              <div
+                className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors text-start"
               >
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-slate-800 to-slate-950 text-white flex items-center justify-center font-bold text-xs shrink-0">
                   {currentUser.name.charAt(0)}
@@ -318,7 +314,7 @@ export const Header: React.FC = () => {
                     {getRoleLabel(currentUser.role)}
                   </div>
                 </div>
-              </button>
+              </div>
 
               {/* Dedicated Logout Button */}
               <button
@@ -359,109 +355,7 @@ export const Header: React.FC = () => {
           )}
         </div>
 
-        {/* Switch Branch Account Modal */}
-        {showRoleModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <UserCheck className="w-5 h-5 text-red-600" />
-                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                    {t('switch_account_modal_title')}
-                  </h3>
-                </div>
-                <button 
-                  onClick={() => setShowRoleModal(false)}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
 
-              <div className="mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
-                <p className="font-semibold text-slate-800 dark:text-slate-200 mb-1">
-                  🏢 {t('single_role_architecture')}:
-                </p>
-                <p>
-                  {t('switch_account_desc')}
-                </p>
-              </div>
-
-              <div className="space-y-2 max-h-84 overflow-y-auto pr-1">
-                {users.map(u => {
-                  const branchObj = branches.find(b => b.id === u.branchId);
-                  const isSelected = currentUser.id === u.id;
-                  const isSuper = u.role === 'super_admin';
-                  const locBranchName = getLocalizedBranchName(branchObj);
-
-                  return (
-                    <button
-                      key={u.id}
-                      onClick={() => {
-                        setCurrentUser(u);
-                        if (u.role === 'super_admin') {
-                          setActiveBranchId('all');
-                        } else {
-                          setActiveBranchId(u.branchId);
-                        }
-                        setShowRoleModal(false);
-                      }}
-                      className={`w-full text-start p-3 rounded-xl border transition-all flex items-center justify-between cursor-pointer ${
-                        isSelected 
-                          ? 'border-red-500 bg-red-50/60 dark:bg-red-950/40 ring-1 ring-red-500' 
-                          : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm ${
-                          isSuper 
-                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300' 
-                            : 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300'
-                        }`}>
-                          {branchObj?.code || 'HQ'}
-                        </div>
-                        <div>
-                          <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
-                            <span>{u.name}</span>
-                            {u.passwordChangedByBranch && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                                {t('private_password_badge')}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{u.email}</div>
-                          <div className="text-[10px] font-semibold text-red-600 dark:text-red-400">
-                            {isSuper ? t('role_super_admin') : `${locBranchName} (${branchObj?.province})`}
-                          </div>
-                        </div>
-                      </div>
-                      {isSelected ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white">
-                          {t('active_account_badge')}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                          {t('sign_in_arrow')}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-                <span className="flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                  {t('data_isolation_badge')}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Wifi className="w-3.5 h-3.5 text-blue-500" />
-                  {branches.length} {t('active_terminals_status')}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Change Password Modal */}
