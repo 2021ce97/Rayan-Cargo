@@ -308,6 +308,17 @@ const mockDb = {
       return { rows: [], rowCount: 1 };
     }
 
+    if (upper.includes('UPDATE SHIPMENTS SET REMITTANCE_STATUS = $1')) {
+      const [status, batchId, id] = params;
+      const s = memoryStore.shipments.get(id);
+      if (s) {
+        s.remittance_status = status;
+        if (batchId) s.remittance_batch_id = batchId;
+        saveStoreToDisk();
+      }
+      return { rows: [], rowCount: 1 };
+    }
+
     if (upper.includes('SELECT * FROM SHIPMENTS WHERE') && (upper.includes('UPPER(CN_NUMBER)') || upper.includes('LIKE'))) {
       const cleaned = (params[0] || '').trim().toUpperCase();
       const list = Array.from(memoryStore.shipments.values());
@@ -383,7 +394,8 @@ const mockDb = {
         settled_by_user_name: settled_by_user_name || existing.settled_by_user_name || 'Branch Cashier',
         settled_at: settled_at || existing.settled_at || new Date().toISOString(),
         notes: notes || existing.notes || null,
-        created_at: created_at || existing.created_at || new Date().toISOString()
+        created_at: created_at || existing.created_at || new Date().toISOString(),
+        parcel_ids: params.length > 15 ? params[15] : existing.parcel_ids || '[]'
       };
       memoryStore.branch_settlements.set(id, record);
       saveStoreToDisk();

@@ -407,6 +407,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
         }
       }
+
+      // 6. Fetch Remittances
+      const remRes = await fetch('/api/remittances');
+      if (remRes.ok) {
+        const remData = await remRes.json();
+        if (remData.success && Array.isArray(remData.remittances)) {
+          safeSetState(setRemittanceTransfers, remData.remittances, STORAGE_KEYS.REMITTANCES);
+        }
+      }
     } catch (err) {
       console.warn('Database sync encountered a network hiccup, fallback cached data active:', err);
     } finally {
@@ -1480,6 +1489,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return s;
     }));
+
+    fetch(`/api/remittances/${transferId}/reject`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rejectionReason, parcelIds: target.parcelIds })
+    }).catch(err => console.warn('Remittance reject sync error:', err));
 
     showToast(`Remittance ${target.batchNumber} rejected. Reason: ${rejectionReason}`);
     return true;

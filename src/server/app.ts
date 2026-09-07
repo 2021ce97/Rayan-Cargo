@@ -581,8 +581,8 @@ api.get('/remittances', async (req: Request, res: Response) => {
       fromBranchName: 'Branch',
       toBranchId: 'br_admin_hq',
       toBranchName: 'Main Branch (Kabul HQ)',
-      parcelIds: r.shipment_id ? [r.shipment_id] : [],
-      parcelCount: 1,
+      parcelIds: Array.isArray(r.parcel_ids) ? r.parcel_ids : (typeof r.parcel_ids === 'string' ? JSON.parse(r.parcel_ids) : (r.shipment_id ? [r.shipment_id] : [])),
+      parcelCount: Array.isArray(r.parcel_ids) ? r.parcel_ids.length : (typeof r.parcel_ids === 'string' ? JSON.parse(r.parcel_ids).length : 1),
       totalCollectedAfn: parseFloat(r.gross_collected_amount || '0'),
       destCommissionAfn: parseFloat(r.dest_branch_commission || '0'),
       transportationFeeAfn: 0,
@@ -615,8 +615,8 @@ api.post('/remittances', async (req: Request, res: Response) => {
         id, shipment_id, cn_number, origin_branch_id, destination_branch_id,
         gross_collected_amount, dest_branch_commission, net_remitted_amount,
         settlement_channel, sarafi_reference_no, settlement_status,
-        settled_by_user_name, settled_at, notes, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        settled_by_user_name, settled_at, notes, created_at, parcel_ids
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       ON CONFLICT (id) DO UPDATE SET
         settlement_status = EXCLUDED.settlement_status,
         notes = EXCLUDED.notes`,
@@ -628,9 +628,18 @@ api.post('/remittances', async (req: Request, res: Response) => {
         r.referenceNumber || r.batchNumber || null,
         r.status === 'confirmed_by_headoffice' ? 'settled' : 'pending_confirmation',
         r.submittedByUserName || 'Branch Cashier',
-        r.submittedAt || now, r.notes || null, now
+        r.submittedAt || now, r.notes || null, now, JSON.stringify(r.parcelIds || [])
       ]
     );
+
+    if (r.parcelIds && Array.isArray(r.parcelIds) && r.parcelIds.length > 0) {
+      for (const parcelId of r.parcelIds) {
+        await db.query(
+          `UPDATE shipments SET remittance_status = $1 WHERE id = $3`,
+          ['submitted_to_headoffice', id, parcelId]
+        );
+      }
+    }
 
     res.json({ success: true, remittance: { ...r, id, createdAt: now } });
   } catch (err: any) {
@@ -661,6 +670,15 @@ api.patch('/remittances/:id/confirm', async (req: Request, res: Response) => {
       );
     }
 
+    if (body.parcelIds && Array.isArray(body.parcelIds)) {
+      for (const parcelId of body.parcelIds) {
+        await db.query(
+          `UPDATE shipments SET remittance_status = $1 WHERE id = $3`,
+          ['settled', id, parcelId]
+        );
+      }
+    }
+
     res.json({ success: true, confirmedAt: now });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -680,6 +698,16 @@ api.patch('/remittances/:id/reject', async (req: Request, res: Response) => {
       WHERE id = $2`,
       [`Rejected by HQ: ${rejectionReason || 'Voucher mismatch'}`, id]
     );
+
+    const body = req.body;
+    if (body.parcelIds && Array.isArray(body.parcelIds)) {
+      for (const parcelId of body.parcelIds) {
+        await db.query(
+          `UPDATE shipments SET remittance_status = $1 WHERE id = $3`,
+          ['pending', id, parcelId]
+        );
+      }
+    }
 
     res.json({ success: true });
   } catch (err: any) {
