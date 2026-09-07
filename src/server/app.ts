@@ -400,9 +400,9 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
     await db.query(
       `UPDATE shipments SET 
         status = $1,
-        status_history = $2,
+        status_history = $2::jsonb,
         actual_delivery = COALESCE($3, actual_delivery),
-        financials = COALESCE($4, financials),
+        financials = COALESCE($4::jsonb, financials),
         current_branch_id = COALESCE($5, current_branch_id)
       WHERE id = $6`,
       [

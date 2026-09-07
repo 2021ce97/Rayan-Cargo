@@ -202,8 +202,7 @@ export async function directSupabaseUpdateShipmentStatus(
       .from('shipments')
       .update({
         status,
-        status_history: history,
-        updated_at: new Date().toISOString()
+        status_history: history
       })
       .eq('id', shipmentId);
 

@@ -19,7 +19,7 @@
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": 0,
-        "created_at": "2026-09-05T09:51:54.829Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1402-4910293-4"
       }
     ],
@@ -42,7 +42,7 @@
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": 0,
-        "created_at": "2026-09-05T09:51:54.898Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1401-1928374-2"
       }
     ],
@@ -65,7 +65,7 @@
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": 0,
-        "created_at": "2026-09-05T09:51:54.966Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1403-9182736-5"
       }
     ],
@@ -87,7 +87,7 @@
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
-        "total_revenue_afn": 0,
+        "total_revenue_afn": "0.00",
         "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1111111111111"
       }
@@ -97,13 +97,13 @@
       {
         "id": "br_kho06_0281",
         "name": "Khost Regional Hub",
-        "name_fa": "Rayn Khost",
-        "name_ps": "Rayn Khost",
+        "name_fa": "نمایندگی منطقوی خوست",
+        "name_ps": "د خوست سیمه ییزه څانګه",
         "code": "KHO-06",
         "province": "Khost",
-        "city": "Khost city",
-        "address": "Rayn Khost Main Commercial Cargo Hub",
-        "phone": "+93 79 2222222",
+        "city": "Khost City",
+        "address": "Khost Main Commercial Cargo Hub",
+        "phone": "+93 79 222 2222",
         "email": "khost@armaghansadeq.af",
         "manager_name": "Dalil",
         "is_head_office": false,
@@ -111,7 +111,7 @@
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": 0,
-        "created_at": "2026-09-05T09:59:50.281Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "5555555555555"
       }
     ],
@@ -120,12 +120,12 @@
       {
         "id": "br_far01_8916",
         "name": "Faryab Hub",
-        "name_fa": "Faryab Hub",
-        "name_ps": "Faryab Hub",
+        "name_fa": "نمایندگی فاریاب",
+        "name_ps": "د فاریاب څانګه",
         "code": "FAR-01",
         "province": "Faryab",
         "city": "Maymana",
-        "address": "Main Bazar",
+        "address": "Main Bazar, Maymana",
         "phone": "+93 79 123 4567",
         "email": "faryab@armaghansadeq.af",
         "manager_name": "Basir",
@@ -134,7 +134,7 @@
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": 0,
-        "created_at": "2026-09-05T09:49:00.836Z",
+        "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1401-1234567-8"
       }
     ],
@@ -160,6 +160,52 @@
         "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1401-8829102-1"
       }
+    ],
+    [
+      "br_jaw08_6896",
+      {
+        "id": "br_jaw08_6896",
+        "name": "Jawzjan Regional Hub",
+        "name_fa": "نمایندگی جوزجان",
+        "name_ps": "Jawzjan Regional Hub",
+        "code": "JAW-08",
+        "province": "Jawzjan",
+        "city": "شبرغان",
+        "address": "مارکیت مجتبی شریفی منزل دوم دوکان 158",
+        "phone": "0789545944",
+        "email": "zabiullahmuhammadi944@gmail.com",
+        "manager_name": "Zabiullah Muhammad Oglu",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-06T12:38:36.896Z",
+        "tazkira_number": "1400-0500-56950"
+      }
+    ],
+    [
+      "br_kbl_01",
+      {
+        "id": "br_kbl_01",
+        "name": "Kabul Central Hub",
+        "name_fa": "مرکز مرکزی کابل",
+        "name_ps": "د کابل مرکزي څانګه",
+        "code": "KBL-01",
+        "province": "Kabul",
+        "city": "Kabul City",
+        "address": "Cinema Pamir, Jade Maywand, Kabul",
+        "phone": "+93 79 900 1122",
+        "email": "kabul@armaghansadeq.af",
+        "manager_name": "Ahmadzai Qaderi",
+        "is_head_office": true,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "tazkira_number": "1401-8829102-1"
+      }
     ]
   ],
   "users": [
@@ -176,9 +222,9 @@
         "password_changed_by_branch": false,
         "last_password_change": null,
         "status": "active",
-        "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        "avatar": null,
         "created_at": "2026-01-01T00:00:00.000Z",
-        "last_login": "Just now"
+        "last_login": "Never"
       }
     ],
     [
@@ -290,7 +336,176 @@
       }
     ]
   ],
-  "shipments": [],
+  "shipments": [
+    [
+      "shp_pr_446156",
+      {
+        "id": "shp_pr_446156",
+        "cn_number": "RYN-PR-446156",
+        "origin_branch_id": "br_far01_8916",
+        "destination_branch_id": "br_hrt_03",
+        "current_branch_id": "br_far01_8916",
+        "sender": {
+          "city": "Kabul",
+          "name": "Khoshal",
+          "email": "khoshal@gmail.com",
+          "phone": "07900002",
+          "address": "Kabul ",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "Herat",
+          "name": "Ali",
+          "phone": "07800002",
+          "address": "Check ",
+          "province": "Herat"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 5,
+          "isFragile": true,
+          "description": "Something ",
+          "serviceType": "standard",
+          "declaredValueAfn": 3000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 300,
+          "amountDue": 750,
+          "amountPaid": 0,
+          "serviceFee": 250,
+          "weightCost": 200,
+          "totalAmount": 750,
+          "discountType": "fixed",
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 0,
+          "transportationFee": 100,
+          "originRemittanceDue": 650,
+          "destBranchCommission": 100
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1788693648633",
+            "note": "Consignment pre-booked online by customer Khoshal. Awaiting physical drop-off at Faryab Hub for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-06T11:20:48.633Z",
+            "updatedBy": "Customer Khoshal",
+            "branchName": "Faryab Hub"
+          },
+          {
+            "id": "st_1788693874680",
+            "note": "Customer pre-booking verified, weighed & priced by Basir. Verified weight: 5 kg, 1 pcs (Base: 300 AFN, Rate: 40 AFN/kg, Service: 100 AFN). Total: 750 AFN (TO_PAY).",
+            "status": "booked",
+            "location": "Faryab Hub (Maymana)",
+            "timestamp": "2026-09-06T11:24:34.679Z",
+            "updatedBy": "Basir",
+            "branchName": "Faryab Hub"
+          }
+        ],
+        "booked_at": "2026-09-06T11:20:48.633Z",
+        "estimated_delivery": "2026-09-09T11:20:48.633Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_br_far01_8916",
+        "booked_by_user_name": "Basir",
+        "dest_branch_commission": "100",
+        "remittance_status": "pending",
+        "origin_remittance_due": "650",
+        "created_at": "2026-09-06T11:20:48.633Z"
+      }
+    ],
+    [
+      "shp_pr_328325",
+      {
+        "id": "shp_pr_328325",
+        "cn_number": "RYN-PR-328325",
+        "origin_branch_id": "br_admin_hq",
+        "destination_branch_id": "br_jaw08_6896",
+        "current_branch_id": "br_admin_hq",
+        "sender": {
+          "city": "Kabul City",
+          "name": "احمد",
+          "email": "0775216326@customer.armaghansadeq.af",
+          "phone": "0775216326",
+          "address": "Kabul City Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "شبرغان",
+          "name": "محمود",
+          "phone": "0775253358",
+          "address": "مرکز شهر",
+          "province": "Jawzjan"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "foodstuff",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "foodstuff - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 1000,
+          "amountDue": 1140,
+          "amountPaid": 0,
+          "serviceFee": 150,
+          "weightCost": 0,
+          "totalAmount": 1140,
+          "discountType": "fixed",
+          "discountValue": 10,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "transportationFee": 150,
+          "originRemittanceDue": 1070,
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1788755683300",
+            "note": "Consignment pre-booked online by customer احمد. Awaiting physical drop-off at Head Office (Kabul) for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-07T04:34:43.289Z",
+            "updatedBy": "Customer احمد",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1788755956612",
+            "note": "Customer pre-booking verified, weighed & priced by Central System Admin. Verified weight: 1 kg, 1 pcs (Base: 1000 AFN, Rate: 0 AFN/kg, Service: 150 AFN). Total: 1140 AFN (TO_PAY).",
+            "status": "booked",
+            "location": "Head Office (Kabul) (Kabul City)",
+            "timestamp": "2026-09-07T04:39:16.612Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Head Office (Kabul)"
+          }
+        ],
+        "booked_at": "2026-09-07T04:34:43.289Z",
+        "estimated_delivery": "2026-09-10T04:34:43.301Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "1070",
+        "created_at": "2026-09-07T04:34:43.289Z"
+      }
+    ]
+  ],
   "branch_expenses": [],
   "branch_settlements": []
 }
