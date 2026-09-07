@@ -10,7 +10,8 @@ import {
   Search, 
   ArrowRight,
   ShieldCheck,
-  Boxes
+  Boxes,
+  Activity
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -35,6 +36,7 @@ export const Dashboard: React.FC = () => {
     branches, 
     users,
     shipments,
+    expenses,
     activeBranchId, 
     setActiveBranchId,
     currentUser,
@@ -45,23 +47,6 @@ export const Dashboard: React.FC = () => {
   const isSuperAdmin = currentUser.role === 'super_admin';
   const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
   const currentBranchObj = branches.find(b => b.id === (isSuperAdmin ? activeBranchId : currentUser.branchId));
-
-  // Branch revenue & operations matrix for Admin
-  const branchMatrix = useMemo(() => {
-    return branches.map(b => {
-      const bOriginShipments = shipments.filter(s => s.originBranchId === b.id);
-      const bDestShipments = shipments.filter(s => s.destinationBranchId === b.id);
-      const grossRevenue = bOriginShipments.reduce((sum, s) => sum + s.financials.totalAmount, 0);
-      const dispatched = bOriginShipments.length;
-      const received = bDestShipments.length;
-      return {
-        ...b,
-        grossRevenue,
-        dispatched,
-        received
-      };
-    });
-  }, [branches, shipments]);
 
   const getLocalizedBranchName = (b: Branch | undefined) => {
     if (!b) return t('all_branches');
@@ -82,6 +67,83 @@ export const Dashboard: React.FC = () => {
       default: return status;
     }
   };
+
+  // Generate recent activity feed
+  const recentActivity = useMemo(() => {
+    const events: Array<{
+      id: string;
+      type: 'booking' | 'status' | 'expense';
+      date: string;
+      title: string;
+      subtitle: string;
+      user: string;
+      iconType: 'package' | 'truck' | 'dollar';
+    }> = [];
+
+    shipments.forEach(s => {
+      // Allow visibility filtering based on branch
+      if (!isSuperAdmin && s.originBranchId !== currentUser.branchId && s.destinationBranchId !== currentUser.branchId && s.currentBranchId !== currentUser.branchId) return;
+
+      events.push({
+        id: `book-${s.id}`,
+        type: 'booking',
+        date: s.bookedAt,
+        title: `New Booking: ${s.cnNumber}`,
+        subtitle: `${s.sender.city} to ${s.receiver.city} (${s.packageInfo.weightKg}kg)`,
+        user: s.bookedByUserName || 'System',
+        iconType: 'package'
+      });
+
+      if (s.statusHistory && Array.isArray(s.statusHistory)) {
+        s.statusHistory.forEach((h, idx) => {
+          if (h.status === 'booked' && new Date(h.date).getTime() === new Date(s.bookedAt).getTime()) return;
+          events.push({
+            id: `hist-${s.id}-${idx}`,
+            type: 'status',
+            date: h.date,
+            title: `Status Updated: ${s.cnNumber}`,
+            subtitle: `Changed to ${getLocalizedStatusName(h.status)} ${h.location ? `at ${h.location}` : ''}`,
+            user: h.updatedByUserName || 'System',
+            iconType: 'truck'
+          });
+        });
+      }
+    });
+
+    if (expenses && Array.isArray(expenses)) {
+      expenses.forEach(e => {
+        if (!isSuperAdmin && e.branchId !== currentUser.branchId) return;
+        events.push({
+          id: `exp-${e.id}`,
+          type: 'expense',
+          date: e.createdAt || e.expenseDate,
+          title: `Expense Logged: ${e.category}`,
+          subtitle: `Amount: ${e.amount.toLocaleString()} AFN - ${e.description || 'No description'}`,
+          user: e.submittedByName || 'System',
+          iconType: 'dollar'
+        });
+      });
+    }
+
+    return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+  }, [shipments, expenses, isSuperAdmin, currentUser.branchId]);
+
+  // Branch revenue & operations matrix for Admin
+  const branchMatrix = useMemo(() => {
+    return branches.map(b => {
+      const bOriginShipments = shipments.filter(s => s.originBranchId === b.id);
+      const bDestShipments = shipments.filter(s => s.destinationBranchId === b.id);
+      const grossRevenue = bOriginShipments.reduce((sum, s) => sum + s.financials.totalAmount, 0);
+      const dispatched = bOriginShipments.length;
+      const received = bDestShipments.length;
+      return {
+        ...b,
+        grossRevenue,
+        dispatched,
+        received
+      };
+    });
+  }, [branches, shipments]);
 
   // Status Distribution Pie Data
   const statusPieData = [
@@ -440,89 +502,129 @@ export const Dashboard: React.FC = () => {
 
       </div>
 
-      {/* Recent Cargo Consignments Table */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900">
-              {t('recent_shipments')}
-            </h2>
-            <p className="text-xs text-slate-500">
-              {t('afghan_highway_fleet')}
-            </p>
+      {/* Activity & Recent Consignments Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Recent Activity Feed (1 Col) */}
+        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Recent Activity</h2>
+              <p className="text-xs text-slate-500">Live system updates</p>
+            </div>
+            <Activity className="w-4 h-4 text-slate-400" />
           </div>
-          <button
-            onClick={() => setActiveView('parcels')}
-            className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1 cursor-pointer"
-          >
-            <span>{t('view_all')} ({filteredShipments.length})</span>
-            <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
-          </button>
+          <div className="space-y-4 overflow-y-auto max-h-[400px] pe-2">
+            {recentActivity.map(activity => (
+              <div key={activity.id} className="flex gap-3 relative">
+                <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                  {activity.iconType === 'package' && <Package className="w-4 h-4 text-blue-600" />}
+                  {activity.iconType === 'truck' && <Truck className="w-4 h-4 text-amber-600" />}
+                  {activity.iconType === 'dollar' && <DollarSign className="w-4 h-4 text-emerald-600" />}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <p className="text-xs font-bold text-slate-900">{activity.title}</p>
+                  <p className="text-[11px] text-slate-500">{activity.subtitle}</p>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                    <span>{activity.user}</span>
+                    <span>{new Date(activity.date).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {recentActivity.length === 0 && (
+              <div className="text-center py-8 text-slate-400">
+                <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-xs">No recent activity</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-start text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50">
-                <th className="p-3 text-start">{t('col_cn_number')}</th>
-                <th className="p-3 text-start">{t('col_route')}</th>
-                <th className="p-3 text-start">{t('col_sender')}</th>
-                <th className="p-3 text-start">{t('col_receiver')}</th>
-                <th className="p-3 text-center">{t('weight_kg')}</th>
-                <th className="p-3 text-center">{t('col_status')}</th>
-                <th className="p-3 text-end">{t('col_actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredShipments.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
-                    <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p className="text-xs text-slate-500">{t('no_shipments_registered')}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{t('system_ready_booking')}</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredShipments.slice(0, 5).map((s) => {
-                  const orig = branches.find(b => b.id === s.originBranchId);
-                  const dest = branches.find(b => b.id === s.destinationBranchId);
+        {/* Recent Cargo Consignments Table (2 Cols) */}
+        <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                {t('recent_shipments')}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {t('afghan_highway_fleet')}
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveView('parcels')}
+              className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>{t('view_all')} ({filteredShipments.length})</span>
+              <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+            </button>
+          </div>
 
-                  return (
-                    <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-3 font-mono font-bold text-red-600">
-                        {s.cnNumber}
-                      </td>
-                      <td className="p-3 font-medium text-slate-900">
-                        {getLocalizedBranchName(orig) || s.sender.city} ➔ {getLocalizedBranchName(dest) || s.receiver.city}
-                      </td>
-                      <td className="p-3 text-slate-800 font-medium">
-                        {s.sender.name}
-                      </td>
-                      <td className="p-3 text-slate-800 font-medium">
-                        {s.receiver.name}
-                      </td>
-                      <td className="p-3 text-center font-mono font-bold text-slate-800">
-                        {s.packageInfo.weightKg} KG
-                      </td>
-                      <td className="p-3 text-center">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                          {getLocalizedStatusName(s.status)}
-                        </span>
-                      </td>
-                      <td className="p-3 text-end">
-                        <button
-                          onClick={() => setSelectedShipmentForReceipt(s)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-                        >
-                          {t('btn_print_receipt')}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-start text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50">
+                  <th className="p-3 text-start">{t('col_cn_number')}</th>
+                  <th className="p-3 text-start">{t('col_route')}</th>
+                  <th className="p-3 text-start">{t('col_sender')}</th>
+                  <th className="p-3 text-start">{t('col_receiver')}</th>
+                  <th className="p-3 text-center">{t('weight_kg')}</th>
+                  <th className="p-3 text-center">{t('col_status')}</th>
+                  <th className="p-3 text-end">{t('col_actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredShipments.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
+                      <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                      <p className="text-xs text-slate-500">{t('no_shipments_registered')}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{t('system_ready_booking')}</p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredShipments.slice(0, 5).map((s) => {
+                    const orig = branches.find(b => b.id === s.originBranchId);
+                    const dest = branches.find(b => b.id === s.destinationBranchId);
+
+                    return (
+                      <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-mono font-bold text-red-600">
+                          {s.cnNumber}
+                        </td>
+                        <td className="p-3 font-medium text-slate-900">
+                          {getLocalizedBranchName(orig) || s.sender.city} ➔ {getLocalizedBranchName(dest) || s.receiver.city}
+                        </td>
+                        <td className="p-3 text-slate-800 font-medium">
+                          {s.sender.name}
+                        </td>
+                        <td className="p-3 text-slate-800 font-medium">
+                          {s.receiver.name}
+                        </td>
+                        <td className="p-3 text-center font-mono font-bold text-slate-800">
+                          {s.packageInfo.weightKg} KG
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                            {getLocalizedStatusName(s.status)}
+                          </span>
+                        </td>
+                        <td className="p-3 text-end">
+                          <button
+                            onClick={() => setSelectedShipmentForReceipt(s)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            {t('btn_print_receipt')}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
