@@ -241,6 +241,7 @@ export interface Shipment {
   status: ShipmentStatus;
   statusHistory: StatusHistoryItem[];
   isCustomerPrebooked?: boolean;
+  isPreBooking?: boolean;
   customerUserId?: string;
   transportationFee?: number;
   destBranchCommission?: number;

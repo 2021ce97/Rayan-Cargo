@@ -255,7 +255,7 @@ const mockDb = {
     }
 
     if (upper.startsWith('INSERT INTO SHIPMENTS')) {
-      const [id, cn_number, origin_branch_id, destination_branch_id, current_branch_id, sender, receiver, package_info, financials, status, status_history, booked_at, estimated_delivery, booked_by_user_id, booked_by_user_name] = params;
+      const [id, cn_number, origin_branch_id, destination_branch_id, current_branch_id, sender, receiver, package_info, financials, status, status_history, booked_at, estimated_delivery, booked_by_user_id, booked_by_user_name, is_pre_booking] = params;
       const parseJson = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
       const record = {
         id,
@@ -277,6 +277,7 @@ const mockDb = {
         delivery_notes: null,
         booked_by_user_id: booked_by_user_id || null,
         booked_by_user_name: booked_by_user_name || null,
+        is_pre_booking: is_pre_booking || false,
         created_at: new Date().toISOString()
       };
       memoryStore.shipments.set(id, record);
@@ -560,6 +561,7 @@ CREATE TABLE IF NOT EXISTS shipments (
   dest_branch_commission NUMERIC DEFAULT 100,
   remittance_status TEXT DEFAULT 'unsettled',
   origin_remittance_due NUMERIC DEFAULT 0,
+  is_pre_booking BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -642,6 +644,7 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS delivery_notes TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS booked_by_user_id TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS booked_by_user_name TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS is_pre_booking BOOLEAN DEFAULT false;`,
 
       // Branch Expenses table columns
       `ALTER TABLE branch_expenses ADD COLUMN IF NOT EXISTS branch_id TEXT;`,
@@ -854,8 +857,8 @@ export async function connectToSupabase(connectionString: string): Promise<{ suc
           sender, receiver, package_info, financials, status, status_history,
           booked_at, estimated_delivery, actual_delivery, pod_signature, receiver_id_proof,
           delivery_notes, booked_by_user_id, booked_by_user_name, dest_branch_commission,
-          remittance_status, origin_remittance_due, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+          remittance_status, origin_remittance_due, is_pre_booking, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
         ON CONFLICT (id) DO NOTHING;
       `, [
         s.id, s.cn_number, s.origin_branch_id, s.destination_branch_id, s.current_branch_id,
@@ -863,7 +866,7 @@ export async function connectToSupabase(connectionString: string): Promise<{ suc
         JSON.stringify(s.financials), s.status, JSON.stringify(s.status_history || []),
         s.booked_at, s.estimated_delivery, s.actual_delivery, s.pod_signature, s.receiver_id_proof,
         s.delivery_notes, s.booked_by_user_id, s.booked_by_user_name, s.dest_branch_commission || 100,
-        s.remittance_status || 'unsettled', s.origin_remittance_due || 0, s.created_at || new Date().toISOString()
+        s.remittance_status || 'unsettled', s.origin_remittance_due || 0, s.is_pre_booking || false, s.created_at || new Date().toISOString()
       ]);
     }
 
@@ -1275,6 +1278,7 @@ export async function initDatabase(
               dest_branch_commission: s.dest_branch_commission,
               remittance_status: s.remittance_status,
               origin_remittance_due: s.origin_remittance_due,
+              is_pre_booking: s.is_pre_booking,
               created_at: s.created_at
             });
           }

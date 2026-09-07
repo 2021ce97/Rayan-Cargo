@@ -1603,6 +1603,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       status: 'pre_booked',
       isCustomerPrebooked: true,
+      isPreBooking: true,
       customerUserId: currentUser.id,
       transportationFee: 0,
       destBranchCommission: 0,
@@ -1837,7 +1838,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status: 'booked',
         statusHistory: updatedShipment.statusHistory,
         financials: updatedFinancials,
-        currentBranchId: target.originBranchId
+        currentBranchId: target.originBranchId,
+        userRole: currentUser.role,
+        userBranchId: currentUser.branchId
       })
     }).catch(err => console.error('Error confirming order:', err));
 
@@ -1892,7 +1895,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       body: JSON.stringify({
         status: target.status,
         statusHistory: updatedShipment.statusHistory,
-        financials: target.financials
+        financials: target.financials,
+        userRole: currentUser.role,
+        userBranchId: currentUser.branchId
       })
     }).catch(err => console.error('Error settling remittance:', err));
 
@@ -2211,7 +2216,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         statusHistory: newHistory,
         actualDelivery,
         financials: newFinancials,
-        currentBranchId
+        currentBranchId,
+        userRole: currentUser.role,
+        userBranchId: currentUser.branchId
       })
     }).catch(err => console.error('Error updating status in Supabase:', err));
 

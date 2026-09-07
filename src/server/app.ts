@@ -335,7 +335,8 @@ api.get('/shipments', async (req: Request, res: Response) => {
       receiverIdProof: r.receiver_id_proof,
       deliveryNotes: r.delivery_notes,
       bookedByUserId: r.booked_by_user_id,
-      bookedByUserName: r.booked_by_user_name
+      bookedByUserName: r.booked_by_user_name,
+      isPreBooking: r.is_pre_booking
     }));
     res.json({ success: true, shipments: formatted });
   } catch (err: any) {
@@ -356,14 +357,14 @@ api.post('/shipments', async (req: Request, res: Response) => {
       `INSERT INTO shipments (
         id, cn_number, origin_branch_id, destination_branch_id, current_branch_id,
         sender, receiver, package_info, financials, status, status_history, booked_at,
-        estimated_delivery, booked_by_user_id, booked_by_user_name
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        estimated_delivery, booked_by_user_id, booked_by_user_name, is_pre_booking
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       ON CONFLICT (id) DO NOTHING`,
       [
         id, cn, s.originBranchId, s.destinationBranchId, s.originBranchId,
         JSON.stringify(s.sender), JSON.stringify(s.receiver), JSON.stringify(s.packageInfo),
         JSON.stringify(s.financials), s.status || 'booked', JSON.stringify(s.statusHistory || []),
-        s.bookedAt || now, s.estimatedDelivery, s.bookedByUserId, s.bookedByUserName
+        s.bookedAt || now, s.estimatedDelivery, s.bookedByUserId, s.bookedByUserName, s.isPreBooking || false
       ]
     );
 
@@ -395,7 +396,23 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { id } = req.params;
-    const { status, statusHistory, actualDelivery, financials, currentBranchId } = req.body;
+    const { status, statusHistory, actualDelivery, financials, currentBranchId, originBranchId, userBranchId, userRole } = req.body;
+
+    // Fetch existing shipment to check origin
+    const { rows: existing } = await db.query('SELECT status, origin_branch_id FROM shipments WHERE id = $1', [id]);
+    
+    if (existing.length > 0) {
+      const shipment = existing[0];
+      // Prevent super_admin from changing pre_booked to verified
+      if (shipment.status === 'pre_booked' && status !== 'pre_booked') {
+        if (userRole === 'super_admin') {
+          return res.status(403).json({ success: false, error: 'Super Admins cannot verify pre-bookings. Only the origin branch can perform this action.' });
+        }
+        if (userBranchId && userBranchId !== shipment.origin_branch_id) {
+          return res.status(403).json({ success: false, error: 'Only the origin branch can verify a pre-booking.' });
+        }
+      }
+    }
 
     await db.query(
       `UPDATE shipments SET 

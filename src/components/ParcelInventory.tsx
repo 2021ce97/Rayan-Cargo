@@ -742,11 +742,16 @@ export const ParcelInventory: React.FC = () => {
                         <div className="text-[10px] text-slate-400 font-normal">
                           {new Date(s.bookedAt).toLocaleDateString()}
                         </div>
-                        {isPrebooked && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-sans font-bold text-[9px]">
+                        {isPrebooked ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-sans font-bold text-[9px] mt-0.5">
                             Online Pre-Book
                           </span>
-                        )}
+                        ) : s.isPreBooking ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-sans font-bold text-[9px] mt-0.5">
+                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            Verified Pre-Book
+                          </span>
+                        ) : null}
                       </td>
 
                       {/* Sender */}
