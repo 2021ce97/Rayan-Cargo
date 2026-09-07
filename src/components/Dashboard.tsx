@@ -222,6 +222,49 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Pre-Booking Overview Component */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/40 dark:to-slate-900 border border-purple-100 dark:border-purple-900 shadow-xs flex items-center justify-between transition-colors">
+          <div className="space-y-1">
+            <div className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Clock className="w-4 h-4" />
+              <span>Pending Pre-Bookings</span>
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+              {isSuperAdmin 
+                ? shipments.filter(s => s.status === 'pre_booked').length 
+                : shipments.filter(s => s.status === 'pre_booked' && s.originBranchId === currentUser.branchId).length}
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Awaiting verification at origin branch
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
+            <Package className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          </div>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-slate-900 border border-emerald-100 dark:border-emerald-900 shadow-xs flex items-center justify-between transition-colors">
+          <div className="space-y-1">
+            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Verified Pre-Bookings</span>
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+              {isSuperAdmin 
+                ? shipments.filter(s => s.isPreBooking && s.status !== 'pre_booked').length 
+                : shipments.filter(s => s.isPreBooking && s.status !== 'pre_booked' && s.originBranchId === currentUser.branchId).length}
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Processed and integrated into active fleet
+            </p>
+          </div>
+          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          </div>
+        </div>
+      </div>
+
       {/* Core Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         

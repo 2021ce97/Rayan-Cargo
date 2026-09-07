@@ -747,7 +747,7 @@ export const ParcelInventory: React.FC = () => {
                             Online Pre-Book
                           </span>
                         ) : s.isPreBooking ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-sans font-bold text-[9px] mt-0.5">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-sans font-bold text-[9px] mt-0.5 animate-in fade-in zoom-in slide-in-from-bottom-1 duration-500">
                             <CheckCircle2 className="w-2.5 h-2.5" />
                             Verified Pre-Book
                           </span>
