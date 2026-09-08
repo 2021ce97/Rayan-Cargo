@@ -981,3 +981,167 @@ export function generateExecutiveReportPdf(
     return false;
   }
 }
+
+/**
+ * Generates a thermal-printer friendly PDF shipping label (100x150mm) with barcode and complete consignment details.
+ */
+export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
+  try {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [100, 150], // Standard 4x6 inch thermal shipping label format
+      compress: true,
+    });
+
+    const pageWidth = 100;
+    const margin = 6;
+    const contentWidth = pageWidth - margin * 2; // 88mm
+
+    let y = margin;
+
+    // Header Badge
+    doc.setFillColor(15, 23, 42); // Slate-900
+    doc.rect(margin, y, contentWidth, 14, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('ARMAGHAN SADEQ EXPRESS', margin + 4, y + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text('AFGHANISTAN NATIONWIDE LOGISTICS NETWORK', margin + 4, y + 11);
+
+    y += 16;
+
+    // CN Number & Barcode Area
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.5);
+    doc.rect(margin, y, contentWidth, 22);
+
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('CONSIGNMENT NOTE (CN #)', margin + 4, y + 5);
+
+    doc.setTextColor(225, 29, 72);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(shipment.cnNumber, margin + 4, y + 13);
+
+    // Simulated vector barcode lines on the right side of CN box
+    const barcodeX = margin + 50;
+    const barcodeY = y + 4;
+    doc.setFillColor(15, 23, 42);
+    const barPattern = [2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 3, 2, 1, 1, 3, 1, 2, 1, 4, 1];
+    let bx = barcodeX;
+    barPattern.forEach((w, i) => {
+      if (i % 2 === 0) {
+        doc.rect(bx, barcodeY, w * 1.2, 12, 'F');
+      }
+      bx += w * 1.2 + 1;
+    });
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`*${shipment.cnNumber}*`, barcodeX + 2, barcodeY + 16);
+
+    y += 24;
+
+    // ROUTE BOX (ORIGIN -> DESTINATION)
+    doc.setFillColor(225, 29, 72);
+    doc.rect(margin, y, contentWidth, 14, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('ROUTE / HUB DESTINATION', margin + 4, y + 4.5);
+    doc.setFontSize(11);
+    const originName = originBranch?.city || shipment.sender.city;
+    const destName = destBranch?.city || shipment.receiver.city;
+    doc.text(`${originName.toUpperCase()} ➔ ${destName.toUpperCase()}`, margin + 4, y + 11.5);
+
+    y += 16;
+
+    // SENDER & RECEIVER BOXES
+    const boxH = 34;
+    doc.setDrawColor(15, 23, 42);
+    doc.rect(margin, y, contentWidth, boxH);
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, contentWidth, 5, 'F');
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('SENDER (FROM)', margin + 3, y + 3.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(shipment.sender.name, margin + 3, y + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 15);
+    doc.text(`Address: ${shipment.sender.address.substring(0, 42)}`, margin + 3, y + 20);
+    doc.text(`Province/City: ${shipment.sender.province} / ${shipment.sender.city}`, margin + 3, y + 25);
+    doc.text(`Branch: ${originBranch?.name || 'Head Office'}`, margin + 3, y + 30);
+
+    y += boxH + 3;
+
+    doc.rect(margin, y, contentWidth, boxH);
+    doc.setFillColor(225, 29, 72);
+    doc.rect(margin, y, contentWidth, 5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('RECEIVER / CONSIGNEE (TO)', margin + 3, y + 3.5);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(shipment.receiver.name, margin + 3, y + 10);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`Phone: ${shipment.receiver.phone} ${shipment.receiver.altPhone ? `/ ${shipment.receiver.altPhone}` : ''}`, margin + 3, y + 15);
+    doc.text(`Address: ${shipment.receiver.address.substring(0, 42)}`, margin + 3, y + 20);
+    doc.text(`Province/City: ${shipment.receiver.province} / ${shipment.receiver.city}`, margin + 3, y + 25);
+    doc.text(`Branch: ${destBranch?.name || 'Destination Hub'}`, margin + 3, y + 30);
+
+    y += boxH + 3;
+
+    // PACKAGE SPECIFICATIONS TABLE
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin, y, contentWidth, 5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('PARCEL SPECIFICATIONS & FINANCIALS', margin + 3, y + 3.5);
+
+    y += 5;
+    const specH = 20;
+    doc.setDrawColor(15, 23, 42);
+    doc.rect(margin, y, contentWidth, specH);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`Weight: ${shipment.packageInfo.weightKg} KG`, margin + 3, y + 5);
+    doc.text(`Pieces: ${shipment.packageInfo.pieces || 1} Pcs`, margin + 45, y + 5);
+    doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase()}`, margin + 3, y + 10);
+    doc.text(`Payment: ${shipment.financials.paymentStatus.toUpperCase()} (${shipment.financials.totalAmount.toLocaleString()} AFN)`, margin + 3, y + 15);
+
+    y += specH + 3;
+
+    // Footer info
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Booked: ${new Date(shipment.bookedAt).toLocaleString()} | By: ${shipment.bookedByUserName || 'Staff'}`, margin, y);
+    doc.text('Armaghan Sadeq Transfers • Thermal Shipping Label', margin, y + 4);
+
+    const filename = `Thermal_Label_${shipment.cnNumber}.pdf`;
+    doc.save(filename);
+    return true;
+  } catch (err) {
+    console.error('Error generating thermal shipping label PDF:', err);
+    return false;
+  }
+}
+

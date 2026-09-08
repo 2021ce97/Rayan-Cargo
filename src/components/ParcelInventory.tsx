@@ -32,11 +32,12 @@ import {
   UserCheck,
   AlertCircle,
   ShieldCheck,
-  Users
+  Users,
+  QrCode
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
-import { generateDispatchManifestPdf, printElementUsingIframe } from '../utils/pdfExport';
+import { generateDispatchManifestPdf, printElementUsingIframe, generateThermalLabelPdf } from '../utils/pdfExport';
 import { BarcodeGenerator } from './BarcodeGenerator';
 import { CombinedCustomerReceiptModal } from './CombinedCustomerReceiptModal';
 
@@ -394,6 +395,12 @@ export const ParcelInventory: React.FC = () => {
     } else {
       window.print();
     }
+  };
+
+  const handlePrintThermalLabel = (s: Shipment) => {
+    const originB = branches.find(b => b.id === s.originBranchId);
+    const destB = branches.find(b => b.id === s.destinationBranchId);
+    generateThermalLabelPdf(s, originB, destB);
   };
 
   const currentBranchName = currentUser.role === 'super_admin' 
@@ -876,6 +883,14 @@ export const ParcelInventory: React.FC = () => {
                       {/* Actions */}
                       <td className="p-3.5 text-end">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handlePrintThermalLabel(s)}
+                            className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs font-bold text-xs"
+                            title="Print Thermal Shipping Label (4x6 PDF with Barcode)"
+                          >
+                            <QrCode className="w-3.5 h-3.5" />
+                            <span>Print Label</span>
+                          </button>
                           <button
                             onClick={() => setSelectedShipmentForReceipt(s)}
                             className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
