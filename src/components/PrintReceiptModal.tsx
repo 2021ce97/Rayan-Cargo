@@ -563,53 +563,50 @@ export const PrintReceiptModal: React.FC = () => {
 
             {/* Removed Signatures section per user request to fit on one page */}
 
-            {/* Official 3 Mandatory Helpline Contacts Strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-              <div className="flex items-start gap-2.5">
-                <div className="p-1.5 bg-red-100 text-red-700 rounded-lg shrink-0 mt-0.5">
-                  <Phone className="w-4 h-4" />
+            {/* Official 3 Mandatory Helpline Contacts Strip & Attribution Footer */}
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <div className="p-1.5 bg-red-100 text-red-700 rounded-lg shrink-0 mt-0.5">
+                    <Phone className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500 font-bold uppercase">1. Sender Branch Phone</div>
+                    <div className="font-mono font-bold text-slate-900 text-xs" dir="ltr">{originBranch?.phone || 'Origin Branch Hub'}</div>
+                    <div className="text-[9.5px] text-slate-500">{originBranch?.name || 'Origin Hub'}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[10px] text-slate-500 font-bold uppercase">1. Sender Branch Phone</div>
-                  <div className="font-mono font-bold text-slate-900 text-xs" dir="ltr">{originBranch?.phone || 'Origin Branch Hub'}</div>
-                  <div className="text-[9.5px] text-slate-500">{originBranch?.name || 'Origin Hub'}</div>
+
+                <div className="flex items-start gap-2.5">
+                  <div className="p-1.5 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500 font-bold uppercase">2. Complaints Hotline (شکایات)</div>
+                    <div className="font-mono font-bold text-amber-800 text-sm" dir="ltr">0711299680</div>
+                    <div className="text-[9.5px] text-amber-700 font-medium">Nationwide Complaint Centre</div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <div className="p-1.5 bg-blue-100 text-blue-800 rounded-lg shrink-0 mt-0.5">
+                    <Building2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-500 font-bold uppercase">3. Main Office Contact (دفتر مرکزی)</div>
+                    <div className="font-mono font-bold text-blue-900 text-sm" dir="ltr">0774144004</div>
+                    <div className="text-[9.5px] text-blue-700 font-medium">Kabul Central HQ Office</div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2.5">
-                <div className="p-1.5 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
-                  <AlertCircle className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500 font-bold uppercase">2. Complaints Hotline (شکایات)</div>
-                  <div className="font-mono font-bold text-amber-800 text-sm" dir="ltr">0711299680</div>
-                  <div className="text-[9.5px] text-amber-700 font-medium">Nationwide Complaint Centre</div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5">
-                <div className="p-1.5 bg-blue-100 text-blue-800 rounded-lg shrink-0 mt-0.5">
-                  <Building2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500 font-bold uppercase">3. Main Office Contact (دفتر مرکزی)</div>
-                  <div className="font-mono font-bold text-blue-900 text-sm" dir="ltr">0774144004</div>
-                  <div className="text-[9.5px] text-blue-700 font-medium">Kabul Central HQ Office</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Attribution Footer */}
-            <div className="pt-3 border-t border-dashed border-slate-200 flex flex-col sm:flex-row justify-between items-center text-[10px] text-slate-400 gap-1">
-              <span>Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق</span>
-              <span className="font-medium text-slate-500">
+              {/* Attribution Footer Centered */}
+              <div className="text-center text-[9px] text-slate-400 font-medium pb-1">
                 Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)
-              </span>
+              </div>
             </div>
-
           </div>
         )}
-
       </div>
     </div>
   );
