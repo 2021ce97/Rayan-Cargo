@@ -187,12 +187,12 @@ export const PrintReceiptModal: React.FC = () => {
               </div>
               <div className="text-[10px]">
                 <div><span className="font-bold">FROM:</span> {shipment.sender.name}</div>
-                <div><span className="font-bold">TEL:</span> {shipment.sender.phone}</div>
+                <div><span className="font-bold">TEL:</span> <span dir="ltr">{shipment.sender.phone}</span></div>
                 <div><span className="font-bold">CITY:</span> {shipment.sender.city}</div>
               </div>
               <div className="text-[10px] pt-1">
                 <div><span className="font-bold">TO:</span> {shipment.receiver.name}</div>
-                <div><span className="font-bold">TEL:</span> {shipment.receiver.phone}</div>
+                <div><span className="font-bold">TEL:</span> <span dir="ltr">{shipment.receiver.phone}</span></div>
                 {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
                   <div><span className="font-bold">TAZKIRA:</span> {shipment.receiver.nationalId || shipment.sender.receiverTazkira}</div>
                 )}
@@ -293,7 +293,7 @@ export const PrintReceiptModal: React.FC = () => {
               <div className="font-bold text-center uppercase tracking-wider text-[8.5px]">Official Helpline Contacts</div>
               <div className="flex justify-between">
                 <span>1. Sender Hub:</span>
-                <span className="font-bold font-mono">{originBranch?.phone || 'Origin Hub'}</span>
+                <span className="font-bold font-mono" dir="ltr">{originBranch?.phone || 'Origin Hub'}</span>
               </div>
               <div className="flex justify-between text-amber-900">
                 <span className="font-bold">2. Complaints (شکایات):</span>
@@ -413,7 +413,7 @@ export const PrintReceiptModal: React.FC = () => {
                 </div>
                 <div className="font-bold text-sm text-slate-900">{shipment.sender.name}</div>
                 <div className="text-xs font-mono text-slate-700 flex items-center gap-1.5">
-                  <span>{shipment.sender.phone}</span>
+                  <span dir="ltr">{shipment.sender.phone}</span>
                 </div>
                 <div className="text-xs text-slate-600">
                   {shipment.sender.address}, {shipment.sender.city}, {shipment.sender.province}
@@ -443,7 +443,7 @@ export const PrintReceiptModal: React.FC = () => {
                 </div>
                 <div className="font-bold text-sm text-slate-900">{shipment.receiver.name}</div>
                 <div className="text-xs font-mono text-slate-700 flex items-center gap-1.5">
-                  <span>{shipment.receiver.phone}</span>
+                  <span dir="ltr">{shipment.receiver.phone}</span>
                 </div>
                 <div className="text-xs text-slate-600">
                   {shipment.receiver.address}, {shipment.receiver.city}, {shipment.receiver.province}
@@ -455,7 +455,7 @@ export const PrintReceiptModal: React.FC = () => {
                 )}
                 {shipment.receiver.altPhone && (
                   <div className="text-[11px] font-mono text-slate-500">
-                    Alt Tel: {shipment.receiver.altPhone}
+                    Alt Tel: <span dir="ltr">{shipment.receiver.altPhone}</span>
                   </div>
                 )}
               </div>
@@ -590,7 +590,7 @@ export const PrintReceiptModal: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-[10px] text-slate-500 font-bold uppercase">1. Sender Branch Phone</div>
-                  <div className="font-mono font-bold text-slate-900 text-xs">{originBranch?.phone || 'Origin Branch Hub'}</div>
+                  <div className="font-mono font-bold text-slate-900 text-xs" dir="ltr">{originBranch?.phone || 'Origin Branch Hub'}</div>
                   <div className="text-[9.5px] text-slate-500">{originBranch?.name || 'Origin Hub'}</div>
                 </div>
               </div>
@@ -601,7 +601,7 @@ export const PrintReceiptModal: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-[10px] text-slate-500 font-bold uppercase">2. Complaints Hotline (شکایات)</div>
-                  <div className="font-mono font-bold text-amber-800 text-sm">0711299680</div>
+                  <div className="font-mono font-bold text-amber-800 text-sm" dir="ltr">0711299680</div>
                   <div className="text-[9.5px] text-amber-700 font-medium">Nationwide Complaint Centre</div>
                 </div>
               </div>
@@ -612,7 +612,7 @@ export const PrintReceiptModal: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-[10px] text-slate-500 font-bold uppercase">3. Main Office Contact (دفتر مرکزی)</div>
-                  <div className="font-mono font-bold text-blue-900 text-sm">0774144004</div>
+                  <div className="font-mono font-bold text-blue-900 text-sm" dir="ltr">0774144004</div>
                   <div className="text-[9.5px] text-blue-700 font-medium">Kabul Central HQ Office</div>
                 </div>
               </div>

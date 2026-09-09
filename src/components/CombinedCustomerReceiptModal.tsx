@@ -341,7 +341,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
 
                       <div className="text-[11px] font-mono text-slate-600 dark:text-slate-400 flex items-center gap-1">
                         <Phone className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span>{grp.receiverPhone}</span>
+                        <span dir="ltr">{grp.receiverPhone}</span>
                       </div>
 
                       <div className="text-[10px] text-slate-500 dark:text-slate-500 truncate mt-0.5">
@@ -376,7 +376,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                       <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-300 mt-1">
                         <span className="flex items-center gap-1 font-mono">
                           <Phone className="w-3.5 h-3.5 text-slate-400" />
-                          {currentSelectedGroup.receiverPhone}
+                          <span dir="ltr">{currentSelectedGroup.receiverPhone}</span>
                         </span>
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -616,7 +616,7 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
             <div className="p-3 bg-slate-50 border border-slate-300 rounded-lg text-xs space-y-1">
               <div className="font-bold text-slate-900 flex justify-between">
                 <span>CONSIGNEE (PERSON A): {currentSelectedGroup.receiverName}</span>
-                <span>Tel: {currentSelectedGroup.receiverPhone}</span>
+                <span>Tel: <span dir="ltr">{currentSelectedGroup.receiverPhone}</span></span>
               </div>
               <div className="text-slate-600 flex justify-between text-[11px]">
                 <span>Destination: {destBranch?.name || currentSelectedGroup.receiverCity} ({currentSelectedGroup.receiverAddress})</span>
