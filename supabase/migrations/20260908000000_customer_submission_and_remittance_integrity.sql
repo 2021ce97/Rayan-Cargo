@@ -11,8 +11,13 @@ ALTER TABLE public.shipments
   ADD CONSTRAINT shipments_remittance_status_check
   CHECK (remittance_status IN ('pending', 'submitted_to_headoffice', 'settled', 'not_applicable'));
 
-ALTER TABLE public.branch_settlements
-  ADD COLUMN IF NOT EXISTS transportation_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
-  ADD COLUMN IF NOT EXISTS origin_branch_commission NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
-  ADD COLUMN IF NOT EXISTS total_commission_kept NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
-  ADD COLUMN IF NOT EXISTS parcel_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
+DO $$
+BEGIN
+  IF to_regclass('public.branch_settlements') IS NOT NULL THEN
+    ALTER TABLE public.branch_settlements
+      ADD COLUMN IF NOT EXISTS transportation_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+      ADD COLUMN IF NOT EXISTS origin_branch_commission NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+      ADD COLUMN IF NOT EXISTS total_commission_kept NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+      ADD COLUMN IF NOT EXISTS parcel_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
+  END IF;
+END $$;
