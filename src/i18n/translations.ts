@@ -141,6 +141,7 @@ export const translations: Record<Language, Record<string, string>> = {
     
     // Statuses
     status_pre_booked: 'Pre-Booked (Online Customer)',
+    status_verified: 'Verified & Weighed (Ready)',
     status_booked: 'Booked / Registered',
     status_in_transit: 'In Transit / On the Way',
     status_received_at_branch: 'Received at Destination Branch',
@@ -1037,6 +1038,7 @@ export const translations: Record<Language, Record<string, string>> = {
     
     // Statuses
     status_pre_booked: 'پیش‌ثبت شده (توسط مشتری آنلاین)',
+    status_verified: 'تأیید و وزن شده (آماده ارسال)',
     status_booked: 'ثبت شده / در گدام مبدأ',
     status_in_transit: 'در حال انتقال بین‌ولایتی',
     status_received_at_branch: 'رسیده به نمایندگی مقصد',
@@ -1933,6 +1935,7 @@ export const translations: Record<Language, Record<string, string>> = {
     
     // Statuses
     status_pre_booked: 'مخکې ثبت شوی (د انلاین پیرودونکي لخوا)',
+    status_verified: 'تایید او وزن شوی (لېږلو ته چمتو)',
     status_booked: 'ثبت شوی / په مبدأ ګودام کې',
     status_in_transit: 'د ولایتونو ترمنځ په لاره کې',
     status_received_at_branch: 'مقصد څانګې ته ورسېد',

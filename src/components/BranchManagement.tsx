@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Building2, 
   Plus, 
@@ -59,6 +59,15 @@ export const BranchManagement: React.FC = () => {
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 200);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   
   // Password Provision Modal for Admin
@@ -154,17 +163,20 @@ export const BranchManagement: React.FC = () => {
     return b.name;
   };
 
-  const filteredBranches = branches.filter(b => {
-    const q = searchTerm.toLowerCase();
-    return b.name.toLowerCase().includes(q) ||
-      (b.nameFa && b.nameFa.toLowerCase().includes(q)) ||
-      (b.namePs && b.namePs.toLowerCase().includes(q)) ||
-      b.province.toLowerCase().includes(q) ||
-      b.city.toLowerCase().includes(q) ||
-      b.code.toLowerCase().includes(q) ||
-      (b.tazkiraNumber && b.tazkiraNumber.toLowerCase().includes(q)) ||
-      (b.managerName && b.managerName.toLowerCase().includes(q));
-  });
+  const filteredBranches = useMemo(() => {
+    const q = debouncedSearchTerm.toLowerCase().trim();
+    if (!q) return branches;
+    return branches.filter(b => {
+      return b.name.toLowerCase().includes(q) ||
+        (b.nameFa && b.nameFa.toLowerCase().includes(q)) ||
+        (b.namePs && b.namePs.toLowerCase().includes(q)) ||
+        b.province.toLowerCase().includes(q) ||
+        b.city.toLowerCase().includes(q) ||
+        b.code.toLowerCase().includes(q) ||
+        (b.tazkiraNumber && b.tazkiraNumber.toLowerCase().includes(q)) ||
+        (b.managerName && b.managerName.toLowerCase().includes(q));
+    });
+  }, [branches, debouncedSearchTerm]);
 
   const handleCopyTazkira = (id: string, text: string) => {
     navigator.clipboard.writeText(text);

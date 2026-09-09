@@ -101,6 +101,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!status) return '';
     switch (status) {
       case 'pre_booked': return t('status_pre_booked', 'Pre-Booked');
+      case 'verified': return t('status_verified', 'Verified / Ready');
       case 'booked': return t('status_booked', 'Booked / Registered');
       case 'in_transit': return t('status_in_transit', 'In Transit');
       case 'received_at_branch': return t('status_received_at_branch', 'Received at Destination');

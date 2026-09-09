@@ -23,6 +23,7 @@ export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'cod' | 'hawala'
 
 export type ShipmentStatus = 
   | 'pre_booked'
+  | 'verified'
   | 'booked' 
   | 'in_transit' 
   | 'received_at_branch' 

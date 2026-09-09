@@ -11,10 +11,8 @@ import {
 } from './db.ts';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from '../data/initialData.ts';
 
-// Ensure DATABASE_URL is set and sanitized
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = DEFAULT_SUPABASE_DATABASE_URL;
-} else {
+// Sanitize DATABASE_URL if provided
+if (process.env.DATABASE_URL) {
   process.env.DATABASE_URL = sanitizeConnectionString(process.env.DATABASE_URL);
 }
 
@@ -328,16 +326,16 @@ api.get('/shipments', async (req: Request, res: Response) => {
       financials: typeof r.financials === 'string' ? JSON.parse(r.financials) : r.financials,
       status: r.status,
       statusHistory: typeof r.status_history === 'string' ? JSON.parse(r.status_history || '[]') : (r.status_history || []),
-      bookedAt: r.booked_at,
-      estimatedDelivery: r.estimated_delivery,
-      actualDelivery: r.actual_delivery,
+      bookedAt: r.booked_at instanceof Date ? r.booked_at.toISOString() : r.booked_at,
+      estimatedDelivery: r.estimated_delivery instanceof Date ? r.estimated_delivery.toISOString() : r.estimated_delivery,
+      actualDelivery: r.actual_delivery instanceof Date ? r.actual_delivery.toISOString() : r.actual_delivery,
       podSignature: r.pod_signature,
       receiverIdProof: r.receiver_id_proof,
       deliveryNotes: r.delivery_notes,
       bookedByUserId: r.booked_by_user_id,
       bookedByUserName: r.booked_by_user_name,
-      isCustomerPrebooked: r.is_customer_prebooked || r.is_pre_booking || false,
-      isPreBooking: r.is_customer_prebooked || r.is_pre_booking || false,
+      isCustomerPrebooked: r.is_customer_prebooked === true || r.is_pre_booking === true || r.status === 'pre_booked' || r.status === 'verified',
+      isPreBooking: r.is_customer_prebooked === true || r.is_pre_booking === true || r.status === 'pre_booked' || r.status === 'verified',
       customerUserId: r.customer_user_id || undefined,
       customerSubmissionAt: r.customer_submission_at || undefined,
       customerSubmissionReference: r.customer_submission_reference || undefined,
@@ -357,20 +355,28 @@ api.post('/shipments', async (req: Request, res: Response) => {
     const cn = s.cnNumber || `RYN-${randomSuffix}`;
     const id = s.id || `shp_${randomSuffix}`;
     const now = new Date().toISOString();
+    const isPre = s.isCustomerPrebooked || s.isPreBooking || s.status === 'pre_booked' || s.status === 'verified' || false;
 
     await db.query(
       `INSERT INTO shipments (
         id, cn_number, origin_branch_id, destination_branch_id, current_branch_id,
         sender, receiver, package_info, financials, status, status_history, booked_at,
-        estimated_delivery, booked_by_user_id, booked_by_user_name, is_customer_prebooked, customer_user_id
+        estimated_delivery, booked_by_user_id, booked_by_user_name, is_customer_prebooked, is_pre_booking, customer_user_id
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-      ON CONFLICT (id) DO NOTHING`,
+      ON CONFLICT (id) DO UPDATE SET
+        status = EXCLUDED.status,
+        financials = EXCLUDED.financials,
+        package_info = EXCLUDED.package_info,
+        status_history = EXCLUDED.status_history,
+        is_customer_prebooked = EXCLUDED.is_customer_prebooked,
+        is_pre_booking = EXCLUDED.is_pre_booking,
+        customer_user_id = EXCLUDED.customer_user_id`,
       [
         id, cn, s.originBranchId, s.destinationBranchId, s.originBranchId,
         JSON.stringify(s.sender), JSON.stringify(s.receiver), JSON.stringify(s.packageInfo),
-        JSON.stringify(s.financials), s.status || 'booked', JSON.stringify(s.statusHistory || []),
+        JSON.stringify(s.financials), s.status || (isPre ? 'pre_booked' : 'booked'), JSON.stringify(s.statusHistory || []),
         s.bookedAt || now, s.estimatedDelivery, s.bookedByUserId, s.bookedByUserName,
-        s.isCustomerPrebooked || s.isPreBooking || false, s.customerUserId || null
+        isPre, isPre, s.customerUserId || null
       ]
     );
 
@@ -402,24 +408,81 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { id } = req.params;
-    const { status, statusHistory, actualDelivery, financials, sender, receiver, packageInfo, customerSubmissionAt, customerSubmissionReference, customerSubmissionBy, currentBranchId, userBranchId, userRole } = req.body;
+    const { 
+      status, 
+      statusHistory, 
+      actualDelivery, 
+      financials, 
+      sender, 
+      receiver, 
+      packageInfo, 
+      customerSubmissionAt, 
+      customerSubmissionReference, 
+      customerSubmissionBy, 
+      currentBranchId, 
+      originBranchId,
+      destinationBranchId,
+      destBranchCommission,
+      originRemittanceDue,
+      isPreBooking,
+      isCustomerPrebooked,
+      weightKg,
+      pieces,
+      price,
+      totalAmount,
+      userBranchId, 
+      userRole 
+    } = req.body;
 
-    // Fetch existing shipment to check origin
-    const { rows: existing } = await db.query('SELECT status, origin_branch_id FROM shipments WHERE id = $1', [id]);
+    // Fetch existing shipment to check origin and current state
+    const { rows: existing } = await db.query('SELECT status, origin_branch_id, package_info, financials, sender, receiver FROM shipments WHERE id = $1', [id]);
     
     if (existing.length > 0) {
       const shipment = existing[0];
-      if (shipment.status === 'pre_booked' && status !== 'pre_booked') {
-        if (userRole !== 'super_admin' && userBranchId && userBranchId !== shipment.origin_branch_id) {
-          return res.status(403).json({ success: false, error: 'Only the origin branch can verify a pre-booking.' });
+      const isSuperAdmin = userRole === 'super_admin';
+      const isOriginBranch = userBranchId && userBranchId === shipment.origin_branch_id;
+
+      // When modifying or verifying a pre-booked shipment:
+      if (shipment.status === 'pre_booked') {
+        // Both super_admin and origin branch are authorized to verify, weigh, price, or modify content
+        if (!isSuperAdmin && !isOriginBranch) {
+          return res.status(403).json({ 
+            success: false, 
+            error: 'Only the origin branch or central super admin can verify and update this pre-booking.' 
+          });
         }
       }
     }
 
+    // Merge package_info if weightKg or pieces supplied directly
+    let finalPackageInfo = packageInfo ? (typeof packageInfo === 'string' ? JSON.parse(packageInfo) : { ...packageInfo }) : null;
+    if (weightKg !== undefined || pieces !== undefined) {
+      if (!finalPackageInfo && existing.length > 0 && existing[0].package_info) {
+        finalPackageInfo = typeof existing[0].package_info === 'string' ? JSON.parse(existing[0].package_info) : { ...existing[0].package_info };
+      }
+      finalPackageInfo = finalPackageInfo || {};
+      if (weightKg !== undefined) finalPackageInfo.weightKg = Number(weightKg);
+      if (pieces !== undefined) finalPackageInfo.pieces = Number(pieces);
+    }
+
+    // Merge financials if price or totalAmount supplied directly
+    let finalFinancials = financials ? (typeof financials === 'string' ? JSON.parse(financials) : { ...financials }) : null;
+    if (price !== undefined || totalAmount !== undefined) {
+      if (!finalFinancials && existing.length > 0 && existing[0].financials) {
+        finalFinancials = typeof existing[0].financials === 'string' ? JSON.parse(existing[0].financials) : { ...existing[0].financials };
+      }
+      finalFinancials = finalFinancials || {};
+      const newAmt = Number(price !== undefined ? price : totalAmount);
+      finalFinancials.totalAmount = newAmt;
+      if (finalFinancials.baseRate === undefined) finalFinancials.baseRate = newAmt;
+    }
+
+    const finalIsPreBooking = isPreBooking !== undefined ? isPreBooking : (isCustomerPrebooked !== undefined ? isCustomerPrebooked : (status === 'verified' || status === 'booked' ? false : null));
+
     await db.query(
       `UPDATE shipments SET 
-        status = $1,
-        status_history = $2::jsonb,
+        status = COALESCE($1, status),
+        status_history = COALESCE($2::jsonb, status_history),
         actual_delivery = COALESCE($3, actual_delivery),
         financials = COALESCE($4::jsonb, financials),
         sender = COALESCE($5::jsonb, sender),
@@ -428,20 +491,30 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
         customer_submission_at = COALESCE($8, customer_submission_at),
         customer_submission_reference = COALESCE($9, customer_submission_reference),
         customer_submission_by = COALESCE($10, customer_submission_by),
-        current_branch_id = COALESCE($11, current_branch_id)
-      WHERE id = $12`,
+        current_branch_id = COALESCE($11, current_branch_id),
+        origin_branch_id = COALESCE($12, origin_branch_id),
+        destination_branch_id = COALESCE($13, destination_branch_id),
+        dest_branch_commission = COALESCE($14, dest_branch_commission),
+        origin_remittance_due = COALESCE($15, origin_remittance_due),
+        is_pre_booking = COALESCE($16, is_pre_booking)
+      WHERE id = $17`,
       [
-        status,
-        JSON.stringify(statusHistory),
+        status || null,
+        statusHistory ? JSON.stringify(statusHistory) : null,
         actualDelivery || null,
-        financials ? JSON.stringify(financials) : null,
+        finalFinancials ? JSON.stringify(finalFinancials) : null,
         sender ? JSON.stringify(sender) : null,
         receiver ? JSON.stringify(receiver) : null,
-        packageInfo ? JSON.stringify(packageInfo) : null,
+        finalPackageInfo ? JSON.stringify(finalPackageInfo) : null,
         customerSubmissionAt || null,
         customerSubmissionReference || null,
         customerSubmissionBy || null,
         currentBranchId || null,
+        originBranchId || null,
+        destinationBranchId || null,
+        destBranchCommission !== undefined ? destBranchCommission : null,
+        originRemittanceDue !== undefined ? originRemittanceDue : null,
+        finalIsPreBooking,
         id
       ]
     );

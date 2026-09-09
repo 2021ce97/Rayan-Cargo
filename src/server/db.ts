@@ -62,14 +62,9 @@ export function loadStoreFromDisk(): boolean {
 // Attempt immediate load from disk on module import
 loadStoreFromDisk();
 
-// Supabase AWS South Asia (ap-south-1) Pooler Connection URL
-export const DEFAULT_SUPABASE_DATABASE_URL = 'postgresql://postgres.wgdmwuhkuanxykwqvpyp:Cargorayan%40123@aws-0-ap-south-1.pooler.supabase.com:5432/postgres';
+export const DEFAULT_SUPABASE_DATABASE_URL = '';
 
-if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = DEFAULT_SUPABASE_DATABASE_URL;
-}
-
-let useMock = process.env.USE_MOCK_DB === 'true';
+let useMock = process.env.USE_MOCK_DB === 'true' || !process.env.DATABASE_URL;
 let realPool: pg.Pool | null = null;
 
 // In-Memory Database Handler for instant offline/container support
@@ -102,7 +97,7 @@ const mockDb = {
       const branchesList = Array.from(memoryStore.branches.values()).sort((a, b) => {
         if (a.is_head_office && !b.is_head_office) return -1;
         if (!a.is_head_office && b.is_head_office) return 1;
-        return (a.name || '').localeCompare(b.name || '');
+        return String(a.name || '').localeCompare(String(b.name || ''));
       });
       return { rows: branchesList, rowCount: branchesList.length };
     }
@@ -178,7 +173,9 @@ const mockDb = {
     // 4. Users queries
     if (upper.startsWith('SELECT * FROM USERS')) {
       const usersList = Array.from(memoryStore.users.values()).sort((a, b) => {
-        return (a.created_at || '').localeCompare(b.created_at || '');
+        const aCreated = a.created_at instanceof Date ? a.created_at.toISOString() : String(a.created_at || '');
+        const bCreated = b.created_at instanceof Date ? b.created_at.toISOString() : String(b.created_at || '');
+        return aCreated.localeCompare(bCreated);
       });
       return { rows: usersList, rowCount: usersList.length };
     }
@@ -249,7 +246,9 @@ const mockDb = {
     // 5. Shipments queries
     if (upper.startsWith('SELECT * FROM SHIPMENTS ORDER BY BOOKED_AT DESC')) {
       const list = Array.from(memoryStore.shipments.values()).sort((a, b) => {
-        return (b.booked_at || '').localeCompare(a.booked_at || '');
+        const bTime = b.booked_at instanceof Date ? b.booked_at.toISOString() : String(b.booked_at || '');
+        const aTime = a.booked_at instanceof Date ? a.booked_at.toISOString() : String(a.booked_at || '');
+        return bTime.localeCompare(aTime);
       });
       return { rows: list, rowCount: list.length };
     }
@@ -263,7 +262,22 @@ const mockDb = {
     }
 
     if (upper.startsWith('INSERT INTO SHIPMENTS')) {
-      const [id, cn_number, origin_branch_id, destination_branch_id, current_branch_id, sender, receiver, package_info, financials, status, status_history, booked_at, estimated_delivery, booked_by_user_id, booked_by_user_name, is_customer_prebooked, customer_user_id] = params;
+      const [
+        id, cn_number, origin_branch_id, destination_branch_id, current_branch_id,
+        sender, receiver, package_info, financials, status, status_history,
+        booked_at, estimated_delivery, booked_by_user_id, booked_by_user_name
+      ] = params;
+
+      let is_customer_prebooked = false;
+      let customer_user_id: string | null = null;
+      if (params.length >= 18) {
+        is_customer_prebooked = !!params[15] || !!params[16];
+        customer_user_id = params[17] || null;
+      } else if (params.length >= 17) {
+        is_customer_prebooked = !!params[15];
+        customer_user_id = params[16] || null;
+      }
+
       const parseJson = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
       const record = {
         id,
@@ -277,7 +291,7 @@ const mockDb = {
         financials: parseJson(financials),
         status: status || 'booked',
         status_history: parseJson(status_history || '[]'),
-        booked_at: booked_at || new Date().toISOString(),
+        booked_at: booked_at instanceof Date ? booked_at.toISOString() : (booked_at || new Date().toISOString()),
         estimated_delivery: estimated_delivery || null,
         actual_delivery: null,
         pod_signature: null,
@@ -285,9 +299,12 @@ const mockDb = {
         delivery_notes: null,
         booked_by_user_id: booked_by_user_id || null,
         booked_by_user_name: booked_by_user_name || null,
-        is_customer_prebooked: is_customer_prebooked || false,
-        is_pre_booking: is_customer_prebooked || false,
+        is_customer_prebooked: is_customer_prebooked || status === 'pre_booked',
+        is_pre_booking: is_customer_prebooked || status === 'pre_booked',
         customer_user_id: customer_user_id || null,
+        dest_branch_commission: 100,
+        remittance_status: 'pending',
+        origin_remittance_due: 0,
         created_at: new Date().toISOString()
       };
       memoryStore.shipments.set(id, record);
@@ -295,11 +312,57 @@ const mockDb = {
       return { rows: [record], rowCount: 1 };
     }
 
+    if (upper.startsWith('UPDATE SHIPMENTS SET') && upper.includes('STATUS = COALESCE($1')) {
+      const [
+        status, 
+        statusHistory, 
+        actualDelivery, 
+        financials, 
+        sender, 
+        receiver, 
+        packageInfo, 
+        submissionAt, 
+        submissionReference, 
+        submissionBy, 
+        currentBranchId, 
+        originBranchId, 
+        destinationBranchId, 
+        destBranchCommission, 
+        originRemittanceDue, 
+        isPreBooking, 
+        id
+      ] = params;
+      const s = memoryStore.shipments.get(id);
+      if (s) {
+        if (status) s.status = status;
+        if (statusHistory) s.status_history = typeof statusHistory === 'string' ? JSON.parse(statusHistory) : statusHistory;
+        if (actualDelivery) s.actual_delivery = actualDelivery;
+        if (financials) s.financials = typeof financials === 'string' ? JSON.parse(financials) : financials;
+        if (sender) s.sender = typeof sender === 'string' ? JSON.parse(sender) : sender;
+        if (receiver) s.receiver = typeof receiver === 'string' ? JSON.parse(receiver) : receiver;
+        if (packageInfo) s.package_info = typeof packageInfo === 'string' ? JSON.parse(packageInfo) : packageInfo;
+        if (submissionAt) s.customer_submission_at = submissionAt;
+        if (submissionReference) s.customer_submission_reference = submissionReference;
+        if (submissionBy) s.customer_submission_by = submissionBy;
+        if (currentBranchId) s.current_branch_id = currentBranchId;
+        if (originBranchId) s.origin_branch_id = originBranchId;
+        if (destinationBranchId) s.destination_branch_id = destinationBranchId;
+        if (destBranchCommission !== null && destBranchCommission !== undefined) s.dest_branch_commission = destBranchCommission;
+        if (originRemittanceDue !== null && originRemittanceDue !== undefined) s.origin_remittance_due = originRemittanceDue;
+        if (isPreBooking !== null && isPreBooking !== undefined) {
+          s.is_pre_booking = isPreBooking;
+          s.is_customer_prebooked = isPreBooking;
+        }
+        saveStoreToDisk();
+      }
+      return { rows: [], rowCount: 1 };
+    }
+
     if (upper.startsWith('UPDATE SHIPMENTS SET') && upper.includes('STATUS = $1')) {
       const [status, statusHistory, actualDelivery, financials, sender, receiver, packageInfo, submissionAt, submissionReference, submissionBy, currentBranchId, id] = params;
       const s = memoryStore.shipments.get(id);
       if (s) {
-        s.status = status;
+        if (status) s.status = status;
         if (statusHistory) s.status_history = typeof statusHistory === 'string' ? JSON.parse(statusHistory) : statusHistory;
         if (actualDelivery) s.actual_delivery = actualDelivery;
         if (financials) s.financials = typeof financials === 'string' ? JSON.parse(financials) : financials;
@@ -354,7 +417,11 @@ const mockDb = {
       if (params.length > 0 && params[0]) {
         list = list.filter(e => e.branch_id === params[0]);
       }
-      list.sort((a, b) => (b.expense_date || '').localeCompare(a.expense_date || ''));
+      list.sort((a, b) => {
+        const bExp = b.expense_date instanceof Date ? b.expense_date.toISOString() : String(b.expense_date || '');
+        const aExp = a.expense_date instanceof Date ? a.expense_date.toISOString() : String(a.expense_date || '');
+        return bExp.localeCompare(aExp);
+      });
       return { rows: list, rowCount: list.length };
     }
 
@@ -387,7 +454,9 @@ const mockDb = {
     // 7. Settlements queries
     if (upper.startsWith('SELECT * FROM BRANCH_SETTLEMENTS')) {
       const list = Array.from(memoryStore.branch_settlements.values()).sort((a, b) => {
-        return (b.settled_at || '').localeCompare(a.settled_at || '');
+        const bSet = b.settled_at instanceof Date ? b.settled_at.toISOString() : String(b.settled_at || '');
+        const aSet = a.settled_at instanceof Date ? a.settled_at.toISOString() : String(a.settled_at || '');
+        return bSet.localeCompare(aSet);
       });
       return { rows: list.slice(0, 100), rowCount: list.length };
     }
@@ -656,7 +725,7 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS destination_branch_id TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS current_branch_id TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_branch_commission NUMERIC DEFAULT 100;`,
-      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS remittance_status TEXT DEFAULT 'unsettled';`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS remittance_status TEXT DEFAULT 'pending';`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_remittance_due NUMERIC DEFAULT 0;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS pod_signature TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS receiver_id_proof TEXT;`,
@@ -664,6 +733,8 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS booked_by_user_id TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS booked_by_user_name TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS is_pre_booking BOOLEAN DEFAULT false;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS is_customer_prebooked BOOLEAN DEFAULT false;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_user_id TEXT;`,
 
       // Branch Expenses table columns
       `ALTER TABLE branch_expenses ADD COLUMN IF NOT EXISTS branch_id TEXT;`,
@@ -791,7 +862,7 @@ export function getDbPool(): any {
         try {
           return await realPool!.query(queryText, params);
         } catch (err: any) {
-          console.warn('Database query falling back to in-memory engine:', err?.message);
+          console.warn('Database query falling back to in-memory engine for query:', err?.message);
           return await mockDb.query(queryText, params);
         }
       }
@@ -1322,19 +1393,21 @@ export async function initDatabase(
               financials: parseJson(s.financials),
               status: s.status,
               status_history: parseJson(s.status_history || '[]'),
-              booked_at: s.booked_at,
-              estimated_delivery: s.estimated_delivery,
-              actual_delivery: s.actual_delivery,
+              booked_at: s.booked_at instanceof Date ? s.booked_at.toISOString() : (s.booked_at || new Date().toISOString()),
+              estimated_delivery: s.estimated_delivery instanceof Date ? s.estimated_delivery.toISOString() : s.estimated_delivery,
+              actual_delivery: s.actual_delivery instanceof Date ? s.actual_delivery.toISOString() : s.actual_delivery,
               pod_signature: s.pod_signature,
               receiver_id_proof: s.receiver_id_proof,
               delivery_notes: s.delivery_notes,
               booked_by_user_id: s.booked_by_user_id,
               booked_by_user_name: s.booked_by_user_name,
-              dest_branch_commission: s.dest_branch_commission,
-              remittance_status: s.remittance_status,
-              origin_remittance_due: s.origin_remittance_due,
-              is_pre_booking: s.is_pre_booking,
-              created_at: s.created_at
+              dest_branch_commission: s.dest_branch_commission || 100,
+              remittance_status: s.remittance_status || 'pending',
+              origin_remittance_due: s.origin_remittance_due || 0,
+              is_customer_prebooked: s.is_customer_prebooked === true || s.is_pre_booking === true || s.status === 'pre_booked' || s.status === 'verified',
+              is_pre_booking: s.is_customer_prebooked === true || s.is_pre_booking === true || s.status === 'pre_booked' || s.status === 'verified',
+              customer_user_id: s.customer_user_id || null,
+              created_at: s.created_at instanceof Date ? s.created_at.toISOString() : s.created_at
             });
           }
 

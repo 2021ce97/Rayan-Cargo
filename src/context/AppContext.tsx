@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Language, 
   User, 
@@ -221,6 +221,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     database: 'Supabase PostgreSQL (AWS South Asia)',
   });
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const isSyncingRef = useRef<boolean>(false);
+  const lastSyncTimeRef = useRef<number>(0);
   const [realtimeStatus, setRealtimeStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'SUBSCRIBED' | 'TIMED_OUT'>('DISCONNECTED');
 
   // Branches - Ensure initial branches are always loaded if empty
@@ -333,15 +335,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Sync with Supabase PostgreSQL
-  const syncWithDatabase = useCallback(async () => {
+  const syncWithDatabase = useCallback(async (force = false) => {
+    const now = Date.now();
+    if (isSyncingRef.current) return;
+    if (!force && now - lastSyncTimeRef.current < 4000) {
+      return; // Debounce rapid sync invocations
+    }
+    isSyncingRef.current = true;
+    lastSyncTimeRef.current = now;
     setIsSyncing(true);
 
     const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T, storageKey: string) => {
       setter(prev => {
+        if (Array.isArray(prev) && Array.isArray(newData)) {
+          if (prev.length === newData.length) {
+            let identical = true;
+            for (let i = 0; i < prev.length; i++) {
+              const p = prev[i] as any;
+              const n = newData[i] as any;
+              if (
+                !p || !n || 
+                p.id !== n.id || 
+                p.status !== n.status || 
+                p.updatedAt !== n.updatedAt ||
+                (p.statusHistory && n.statusHistory && p.statusHistory.length !== n.statusHistory.length)
+              ) {
+                identical = false;
+                break;
+              }
+            }
+            if (identical) {
+              return prev;
+            }
+          }
+        }
         const prevStr = JSON.stringify(prev);
         const newStr = JSON.stringify(newData);
         if (prevStr !== newStr) {
-          localStorage.setItem(storageKey, newStr);
+          try {
+            localStorage.setItem(storageKey, newStr);
+          } catch (e) {
+            // ignore quota error
+          }
           return newData;
         }
         return prev;
@@ -392,42 +427,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // The direct Supabase result is authoritative when available. The API remains a fallback.
       if (!directDatabaseSyncSucceeded) {
-      // 2. Fetch Branches
-      const branchRes = await fetch('/api/branches');
-      if (branchRes.ok) {
-        const branchData = await branchRes.json();
-        if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
-          safeSetState(setBranches, branchData.branches, STORAGE_KEYS.BRANCHES);
+        // 2. Fetch Branches
+        const branchRes = await fetch('/api/branches');
+        if (branchRes.ok) {
+          const branchData = await branchRes.json();
+          if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
+            safeSetState(setBranches, branchData.branches, STORAGE_KEYS.BRANCHES);
+          }
         }
-      }
 
-      // 3. Fetch Users
-      const userRes = await fetch('/api/users');
-      if (userRes.ok) {
-        const userData = await userRes.json();
-        if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
-          safeSetState(setUsers, userData.users, STORAGE_KEYS.USERS);
+        // 3. Fetch Users
+        const userRes = await fetch('/api/users');
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
+            safeSetState(setUsers, userData.users, STORAGE_KEYS.USERS);
+          }
         }
-      }
 
-      // 4. Fetch Shipments
-      const shipRes = await fetch('/api/shipments');
-      if (shipRes.ok) {
-        const shipData = await shipRes.json();
-        if (shipData.success && Array.isArray(shipData.shipments)) {
-          safeSetState(setShipments, shipData.shipments, STORAGE_KEYS.SHIPMENTS);
+        // 4. Fetch Shipments
+        const shipRes = await fetch('/api/shipments');
+        if (shipRes.ok) {
+          const shipData = await shipRes.json();
+          if (shipData.success && Array.isArray(shipData.shipments)) {
+            safeSetState(setShipments, shipData.shipments, STORAGE_KEYS.SHIPMENTS);
+          }
         }
-      }
 
-      // 5. Fetch Expenses
-      const expRes = await fetch('/api/expenses');
-      if (expRes.ok) {
-        const expData = await expRes.json();
-        if (expData.success && Array.isArray(expData.expenses)) {
-          safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
+        // 5. Fetch Expenses
+        const expRes = await fetch('/api/expenses');
+        if (expRes.ok) {
+          const expData = await expRes.json();
+          if (expData.success && Array.isArray(expData.expenses)) {
+            safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
+          }
         }
-      }
-
       }
 
       // 6. Fetch Remittances
@@ -441,6 +475,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       console.warn('Database sync encountered a network hiccup, fallback cached data active:', err);
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
     }
   }, []);
@@ -449,7 +484,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!isSupabaseReady()) return;
 
-    console.log('⚡ Initializing Supabase Real-time websocket subscriptions...');
+    let realtimeTimer: any = null;
     const cleanup = subscribeToSupabaseRealtime({
       onStatusChange: (status) => {
         setRealtimeStatus(status as any);
@@ -459,12 +494,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       onDataChanged: (table, eventType, newRow, oldRow) => {
         console.log(`📡 Supabase postgres_changes on ${table} [${eventType}]:`, newRow || oldRow);
-        // Instantly refresh and synchronize across all tabs/devices
-        syncWithDatabase();
+        // Debounce real-time updates to prevent multiple rapid re-renders
+        if (realtimeTimer) clearTimeout(realtimeTimer);
+        realtimeTimer = setTimeout(() => {
+          syncWithDatabase(true);
+        }, 400);
       }
     });
 
     return () => {
+      if (realtimeTimer) clearTimeout(realtimeTimer);
       cleanup();
     };
   }, [syncWithDatabase]);
@@ -534,15 +573,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('LocalStorage cleanup warning:', e);
     }
 
-    syncWithDatabase();
-    const interval = setInterval(syncWithDatabase, 30000);
+    syncWithDatabase(true);
+    const interval = setInterval(() => syncWithDatabase(false), 30000);
 
     const handleFocus = () => {
-      syncWithDatabase();
+      syncWithDatabase(false);
     };
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        syncWithDatabase();
+        syncWithDatabase(false);
       }
     };
 
@@ -1094,13 +1133,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const partnerShipments = React.useMemo(() => {
     const currentBr = currentUser.role === 'super_admin' ? activeBranchId : currentUser.branchId;
     if (activeBranchPartnerId === 'all' || !activeBranchPartnerId) {
-      return filteredShipments;
+      if (currentUser.role === 'super_admin' && activeBranchId === 'all') {
+        return shipments;
+      }
+      return shipments.filter(s => 
+        s.originBranchId === currentBr || 
+        s.destinationBranchId === currentBr ||
+        s.currentBranchId === currentBr
+      );
     }
     return shipments.filter(s => 
       (s.originBranchId === currentBr && s.destinationBranchId === activeBranchPartnerId) ||
       (s.originBranchId === activeBranchPartnerId && s.destinationBranchId === currentBr)
     );
-  }, [shipments, activeBranchId, activeBranchPartnerId, currentUser, filteredShipments]);
+  }, [shipments, activeBranchId, activeBranchPartnerId, currentUser]);
 
   // Branch specific expenses
   const branchExpenses = React.useMemo(() => {
@@ -1773,7 +1819,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       discountAmount?: number;
       transportationFee?: number; 
       destBranchCommission?: number; 
-      paymentStatus?: 'paid' | 'to_pay' 
+      paymentStatus?: 'paid' | 'to_pay';
+      status?: ShipmentStatus;
+      originBranchId?: string;
+      destinationBranchId?: string;
+      note?: string;
     }, 
     arg3?: number, 
     arg4?: number, 
@@ -1786,11 +1836,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    // Check authority: origin branch manager or super_admin
+    // Check authority: super_admin or origin branch manager
+    const isSuperAdmin = currentUser.role === 'super_admin';
     const isOrigin = isUserOriginBranch(target.originBranchId);
-    if (!isOrigin) {
+    if (!isSuperAdmin && !isOrigin) {
       const origObj = branches.find(b => b.id === target.originBranchId);
-      showToast(`⚠️ Unauthorized: Only the designated Origin Branch (${origObj?.name || 'Sender Hub'}) can verify, weigh, and set pricing for this pre-booking.`);
+      showToast(`⚠️ Unauthorized: Only the designated Origin Branch (${origObj?.name || 'Sender Hub'}) or Central Super Admin can verify, weigh, and set pricing for this pre-booking.`);
       return false;
     }
 
@@ -1820,13 +1871,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentStatus = arg6 || 'paid';
     }
 
+    const targetStatus: ShipmentStatus = (typeof arg2 === 'object' && arg2?.status) ? arg2.status : 'verified';
+    const finalOriginBranchId = (isSuperAdmin && typeof arg2 === 'object' && arg2?.originBranchId) ? arg2.originBranchId : target.originBranchId;
+    const finalDestBranchId = (isSuperAdmin && typeof arg2 === 'object' && arg2?.destinationBranchId) ? arg2.destinationBranchId : target.destinationBranchId;
+
     const weightCost = Math.round(actualWeightKg * ratePerKg);
     const fragileFee = target.packageInfo?.isFragile ? 150 : 0;
     const subtotal = baseRate + weightCost + serviceFee + fragileFee;
     const totalAmount = Math.max(0, subtotal - discountAmount);
     const originRemittanceDue = Math.max(0, totalAmount - destBranchCommission);
     const now = new Date().toISOString();
-    const branchInfo = branches.find(b => b.id === currentUser.branchId) || branches.find(b => b.id === target.originBranchId);
+    const branchInfo = branches.find(b => b.id === currentUser.branchId) || branches.find(b => b.id === finalOriginBranchId);
 
     const updatedFinancials: BillingFinancials = {
       ...target.financials,
@@ -1845,20 +1900,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentMethod: (paymentStatus === 'paid' ? 'cash' : 'cod') as any
     };
 
+    const actorRoleName = isSuperAdmin ? 'Central HQ Super Admin' : 'Origin Branch Manager';
+    const customNote = (typeof arg2 === 'object' && arg2?.note) ? arg2.note : 
+      `Customer pre-booking verified, weighed & priced by ${currentUser.name} (${actorRoleName}). Verified weight: ${actualWeightKg} kg, ${pieces} pcs (Base: ${baseRate} AFN, Rate: ${ratePerKg} AFN/kg, Service: ${serviceFee} AFN). Total: ${totalAmount} AFN (${paymentStatus.toUpperCase()}). Status: ${targetStatus.toUpperCase()}`;
+
     const newHistoryItem = {
       id: `st_${Date.now()}`,
-      status: 'booked' as ShipmentStatus,
+      status: targetStatus,
       location: branchInfo ? `${branchInfo.name} (${branchInfo.city})` : 'Origin Branch',
       branchName: branchInfo ? branchInfo.name : 'Origin Hub',
       timestamp: now,
-      note: `Customer pre-booking verified, weighed & priced by ${currentUser.name}. Verified weight: ${actualWeightKg} kg, ${pieces} pcs (Base: ${baseRate} AFN, Rate: ${ratePerKg} AFN/kg, Service: ${serviceFee} AFN). Total: ${totalAmount} AFN (${paymentStatus.toUpperCase()}).`,
+      note: customNote,
       updatedBy: currentUser.name
     };
 
     const updatedShipment: Shipment = {
       ...target,
-      status: 'booked',
-      currentBranchId: target.originBranchId,
+      status: targetStatus,
+      originBranchId: finalOriginBranchId,
+      destinationBranchId: finalDestBranchId,
+      currentBranchId: finalOriginBranchId,
+      isPreBooking: targetStatus === 'pre_booked',
+      isCustomerPrebooked: targetStatus === 'pre_booked',
       packageInfo: {
         ...target.packageInfo,
         weightKg: actualWeightKg,
@@ -1886,7 +1949,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Update branch dispatch totals
     setBranches(prev => prev.map(b => {
-      if (b.id === target.originBranchId) {
+      if (b.id === finalOriginBranchId) {
         return {
           ...b,
           totalParcelsDispatched: (b.totalParcelsDispatched || 0) + 1,
@@ -1898,25 +1961,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Direct Supabase status and shipment update
     directSupabaseInsertShipment(updatedShipment);
-    directSupabaseUpdateShipmentStatus(target.id, 'booked', updatedShipment.statusHistory);
+    directSupabaseUpdateShipmentStatus(target.id, targetStatus, updatedShipment.statusHistory);
 
     fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        status: 'booked',
+        status: targetStatus,
         statusHistory: updatedShipment.statusHistory,
         financials: updatedFinancials,
         sender: updatedShipment.sender,
         receiver: updatedShipment.receiver,
         packageInfo: updatedShipment.packageInfo,
-        currentBranchId: target.originBranchId,
+        originBranchId: finalOriginBranchId,
+        destinationBranchId: finalDestBranchId,
+        currentBranchId: finalOriginBranchId,
+        destBranchCommission,
+        originRemittanceDue,
+        isPreBooking: targetStatus === 'pre_booked',
         userRole: currentUser.role,
         userBranchId: currentUser.branchId
       })
     }).catch(err => console.error('Error confirming order:', err));
 
-    showToast(`✓ Pre-booking ${target.cnNumber} verified, weighed (${actualWeightKg}kg), priced (${totalAmount} AFN) and booked successfully!`);
+    showToast(`✓ Pre-booking ${target.cnNumber} verified (${targetStatus === 'verified' ? 'Verified / Ready' : 'Booked'}), weighed (${actualWeightKg}kg), priced (${totalAmount} AFN) successfully!`);
     return true;
   };
 
@@ -2020,7 +2088,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         canUpdate: true,
         roleType: 'admin',
         reason: t('perm_super_admin_all') || 'Super Admin (Kabul Central HQ): Full master access across all cargo branches.',
-        allowedStatuses: ['booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled']
+        allowedStatuses: ['verified', 'booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled']
       };
     }
 
@@ -2038,14 +2106,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Origin Branch or Current Handling Hub: Can perform dispatching stages (pre_booked -> booked, booked -> in_transit)
+    // Origin Branch or Current Handling Hub: Can perform dispatching stages (pre_booked -> verified/booked, booked -> in_transit)
     if (isOrigin || isCurrent) {
       if (shipment.status === 'pre_booked') {
         return {
           allowed: true,
           canUpdate: true,
           roleType: 'sender_branch',
-          allowedStatuses: ['booked', 'in_transit']
+          allowedStatuses: ['verified', 'booked', 'in_transit']
+        };
+      }
+      if (shipment.status === 'verified') {
+        return {
+          allowed: true,
+          canUpdate: true,
+          roleType: 'sender_branch',
+          allowedStatuses: ['booked', 'in_transit', 'cancelled']
         };
       }
       if (shipment.status === 'booked') {
@@ -2096,7 +2172,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Destination Branch: Can ONLY perform delivery stages (in_transit -> received_at_branch -> out_for_delivery -> delivered)
     if (isDestination) {
-      if (shipment.status === 'pre_booked' || shipment.status === 'booked') {
+      if (shipment.status === 'pre_booked' || shipment.status === 'verified' || shipment.status === 'booked') {
         return {
           allowed: false,
           canUpdate: false,

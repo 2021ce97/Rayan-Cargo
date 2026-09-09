@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Boxes, 
   Search, 
@@ -71,6 +71,16 @@ export const ParcelInventory: React.FC = () => {
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+
+  // Debounce search input to prevent re-render loops and input lag
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 200);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedPayment, setSelectedPayment] = useState<string>('all');
@@ -110,6 +120,10 @@ export const ParcelInventory: React.FC = () => {
   const [editedReceiverName, setEditedReceiverName] = useState('');
   const [editedReceiverPhone, setEditedReceiverPhone] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
+  const [modalTargetStatus, setModalTargetStatus] = useState<ShipmentStatus>('verified');
+  const [modalOriginBranchId, setModalOriginBranchId] = useState('');
+  const [modalDestBranchId, setModalDestBranchId] = useState('');
+  const [modalNote, setModalNote] = useState('');
 
   // Inter-branch settlement modal state
   const [settlementModalShipment, setSettlementModalShipment] = useState<Shipment | null>(null);
@@ -145,7 +159,7 @@ export const ParcelInventory: React.FC = () => {
   // Filter and sort parcels
   const processedParcels = useMemo(() => {
     let result = baseShipmentList.filter(s => {
-      const query = searchTerm.toLowerCase().trim();
+      const query = debouncedSearchTerm.toLowerCase().trim();
       const matchesSearch = !query || 
         s.cnNumber.toLowerCase().includes(query) ||
         s.sender.name.toLowerCase().includes(query) ||
@@ -165,7 +179,7 @@ export const ParcelInventory: React.FC = () => {
       const userBranch = currentUser.role !== 'super_admin' ? currentUser.branchId : (activeBranchId !== 'all' ? activeBranchId : null);
 
       if (activeTab === 'prebooked') {
-        matchesTab = (s.status === 'pre_booked' || s.isCustomerPrebooked === true) &&
+        matchesTab = (s.status === 'pre_booked' || s.status === 'verified' || s.isCustomerPrebooked === true) &&
           (currentUser.role === 'super_admin'
             ? (activeBranchId === 'all' || s.originBranchId === activeBranchId)
             : s.originBranchId === currentUser.branchId);
@@ -217,7 +231,7 @@ export const ParcelInventory: React.FC = () => {
     });
 
     return result;
-  }, [baseShipmentList, searchTerm, selectedStatus, selectedCategory, selectedPayment, activeTab, sortField, sortOrder, currentUser, activeBranchId]);
+  }, [baseShipmentList, debouncedSearchTerm, selectedStatus, selectedCategory, selectedPayment, activeTab, sortField, sortOrder, currentUser, activeBranchId]);
 
   // Open status modal
   const handleOpenStatusModal = (shipment: Shipment) => {
@@ -291,6 +305,10 @@ export const ParcelInventory: React.FC = () => {
     setEditedReceiverName(shipment.receiver.name);
     setEditedReceiverPhone(shipment.receiver.phone);
     setEditedDescription(shipment.packageInfo.description);
+    setModalTargetStatus(shipment.status === 'verified' ? 'booked' : 'verified');
+    setModalOriginBranchId(shipment.originBranchId);
+    setModalDestBranchId(shipment.destinationBranchId);
+    setModalNote('');
   };
 
   // Confirm pre-booking
@@ -309,7 +327,11 @@ export const ParcelInventory: React.FC = () => {
       serviceFee: modalServiceFee,
       discountAmount: modalDiscountAmount,
       destBranchCommission: customDestCommission,
-      paymentStatus: confirmedPaymentStatus
+      paymentStatus: confirmedPaymentStatus,
+      status: modalTargetStatus,
+      originBranchId: modalOriginBranchId,
+      destinationBranchId: modalDestBranchId,
+      note: modalNote.trim() || undefined
     });
     if (ok) {
       setConfirmModalShipment(null);
@@ -672,6 +694,7 @@ export const ParcelInventory: React.FC = () => {
             >
               <option value="all">{t('filter_by_status')}: {t('filter_all')}</option>
               <option value="pre_booked">Pre-Booked (Online Customer)</option>
+              <option value="verified">{t('status_verified') || 'Verified / Ready'}</option>
               <option value="booked">{t('status_booked')}</option>
               <option value="in_transit">{t('status_in_transit')}</option>
               <option value="received_at_branch">{t('status_received')}</option>
@@ -871,23 +894,27 @@ export const ParcelInventory: React.FC = () => {
 
                       {/* Status / Pre-booked / Settlement Action */}
                       <td className="p-3.5 text-center">
-                        {isPrebooked ? (
+                        {isPrebooked || s.status === 'verified' ? (
                           canVerifyPreBooking ? (
                             <button
                               onClick={() => handleOpenConfirmPreBooking(s)}
-                              className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer"
-                              title="Verify, weigh, set pricing and book this customer pre-booking"
+                              className={`px-3 py-1.5 rounded-full text-[10px] font-bold text-white shadow-xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer ${
+                                s.status === 'verified'
+                                  ? 'bg-teal-600 hover:bg-teal-700'
+                                  : 'bg-amber-600 hover:bg-amber-700'
+                              }`}
+                              title={s.status === 'verified' ? "Verified & priced pre-booking. Click to edit or book official waybill." : "Verify, weigh, set pricing and book this customer pre-booking"}
                             >
                               <Scale className="w-3.5 h-3.5" />
-                              <span>Weigh & Set Price</span>
+                              <span>{s.status === 'verified' ? 'Verified / Book' : 'Weigh & Set Price'}</span>
                             </button>
                           ) : (
                             <div 
                               className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1 mx-auto cursor-not-allowed"
-                              title={`Only the designated Origin Branch (${orig?.name || 'Sender Hub'}) can process and verify this customer pre-booking.`}
+                              title={`Only the designated Origin Branch (${orig?.name || 'Sender Hub'}) or Central Super Admin can process and verify this customer pre-booking.`}
                             >
                               <Lock className="w-3 h-3 text-slate-400" />
-                              <span>Origin ({orig?.city || 'Sender'}) Only</span>
+                              <span>{s.status === 'verified' ? 'Verified (Origin/Admin Only)' : `Origin (${orig?.city || 'Sender'}) Only`}</span>
                             </div>
                           )
                         ) : (
@@ -898,6 +925,7 @@ export const ParcelInventory: React.FC = () => {
                               s.status === 'out_for_delivery' ? 'bg-amber-600 text-white hover:bg-amber-700' :
                               s.status === 'received_at_branch' ? 'bg-blue-600 text-white hover:bg-blue-700' :
                               s.status === 'in_transit' ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
+                              s.status === 'verified' ? 'bg-teal-600 text-white hover:bg-teal-700' :
                               'bg-slate-600 text-white hover:bg-slate-700'
                             }`}
                           >
@@ -1033,6 +1061,51 @@ export const ParcelInventory: React.FC = () => {
                   <textarea value={editedDescription} onChange={(e) => setEditedDescription(e.target.value)} rows={2} className="w-full p-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg resize-none" />
                 </label>
               </div>
+
+              {/* Super Admin Hub and Routing Override */}
+              {currentUser.role === 'super_admin' && (
+                <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 space-y-2.5">
+                  <div className="flex items-center justify-between text-purple-900 dark:text-purple-300 font-bold text-xs">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Admin Hub & Routing Override</span>
+                    </span>
+                    <span className="text-[10px] bg-purple-200 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 px-2 py-0.5 rounded font-bold">
+                      Super Admin Mode
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Origin Branch (Receiving Hub)
+                      </label>
+                      <select
+                        value={modalOriginBranchId}
+                        onChange={(e) => setModalOriginBranchId(e.target.value)}
+                        className="w-full h-9 px-2 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium"
+                      >
+                        {branches.map(b => (
+                          <option key={b.id} value={b.id}>{b.name} ({b.city})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Destination Branch (Delivery Hub)
+                      </label>
+                      <select
+                        value={modalDestBranchId}
+                        onChange={(e) => setModalDestBranchId(e.target.value)}
+                        className="w-full h-9 px-2 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium"
+                      >
+                        {branches.map(b => (
+                          <option key={b.id} value={b.id}>{b.name} ({b.city})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Physical Cargo Verification */}
               <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
@@ -1243,6 +1316,65 @@ export const ParcelInventory: React.FC = () => {
                 </div>
               </div>
 
+              {/* Target Status Choice */}
+              <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-500/30 space-y-2">
+                <div className="flex items-center justify-between text-teal-900 dark:text-teal-300 font-bold text-xs">
+                  <span>4. Target Verification Status</span>
+                  <span className="text-[10px] text-teal-700 dark:text-teal-400 font-medium">Select outcome workflow</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalTargetStatus('verified')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-start transition-all cursor-pointer ${
+                      modalTargetStatus === 'verified'
+                        ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Mark as Verified</span>
+                    </div>
+                    <div className={`text-[10px] font-normal mt-0.5 ${modalTargetStatus === 'verified' ? 'text-teal-100' : 'text-slate-400'}`}>
+                      Price & weight confirmed; ready for intake
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalTargetStatus('booked')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold text-start transition-all cursor-pointer ${
+                      modalTargetStatus === 'booked'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Confirm & Book Official</span>
+                    </div>
+                    <div className={`text-[10px] font-normal mt-0.5 ${modalTargetStatus === 'booked' ? 'text-blue-100' : 'text-slate-400'}`}>
+                      Issue formal booked waybill for dispatch
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Verification Notes */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Verification Remarks / Notes (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={modalNote}
+                  onChange={(e) => setModalNote(e.target.value)}
+                  placeholder="e.g. Inspected at counter, verified original packaging..."
+                  className="w-full h-9 px-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                />
+              </div>
+
               {/* Live Calculation Preview Box */}
               {(() => {
                 const weightCharge = Math.round(weighedWeight * modalRatePerKg);
@@ -1291,10 +1423,16 @@ export const ParcelInventory: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleConfirmPreBookingSubmit}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-lg shadow-red-600/25 transition-colors cursor-pointer text-xs flex items-center justify-center gap-2"
+                  className={`flex-1 py-3 font-black rounded-xl shadow-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-2 text-white ${
+                    modalTargetStatus === 'verified'
+                      ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/25'
+                      : 'bg-red-600 hover:bg-red-700 shadow-red-600/25'
+                  }`}
                 >
                   <Check className="w-4 h-4" />
-                  <span>{t('btn_confirm_waybill')}</span>
+                  <span>
+                    {modalTargetStatus === 'verified' ? 'Save as Verified Pre-Booking' : (t('btn_confirm_waybill') || 'Confirm & Issue Official Waybill')}
+                  </span>
                 </button>
                 <button
                   type="button"
