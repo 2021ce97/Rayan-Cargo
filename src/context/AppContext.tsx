@@ -398,7 +398,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               safeSetState(setUsers, directData.users, STORAGE_KEYS.USERS);
             }
             if (directData.shipments && Array.isArray(directData.shipments)) {
-              safeSetState(setShipments, directData.shipments, STORAGE_KEYS.SHIPMENTS);
+              setShipments(prev => {
+                const map = new Map(prev.map(s => [s.id, s]));
+                directData.shipments.forEach((inc: Shipment) => {
+                  map.set(inc.id, inc);
+                });
+                const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
+                try {
+                  localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(merged));
+                } catch (e) {}
+                return merged;
+              });
             }
             if (directData.expenses && Array.isArray(directData.expenses)) {
               safeSetState(setExpenses, directData.expenses, STORAGE_KEYS.EXPENSES);
@@ -450,7 +460,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (shipRes.ok) {
           const shipData = await shipRes.json();
           if (shipData.success && Array.isArray(shipData.shipments)) {
-            safeSetState(setShipments, shipData.shipments, STORAGE_KEYS.SHIPMENTS);
+            setShipments(prev => {
+              const map = new Map(prev.map(s => [s.id, s]));
+              shipData.shipments.forEach((inc: Shipment) => {
+                map.set(inc.id, inc);
+              });
+              const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
+              try {
+                localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(merged));
+              } catch (e) {}
+              return merged;
+            });
           }
         }
 

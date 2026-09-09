@@ -580,6 +580,68 @@ export const CustomerPortal: React.FC = () => {
             </div>
           </div>
 
+          {/* Customer Pre-Booking Live Status Tracker */}
+          {(() => {
+            const prebookList = customerShipments.filter(s => s.isPreBooking || s.isCustomerPrebooked || s.status === 'pre_booked' || s.status === 'verified');
+            if (prebookList.length === 0) return null;
+
+            return (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-white border border-purple-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-xs text-purple-950 uppercase tracking-wider">
+                        My Pre-Bookings Status Tracker
+                      </h3>
+                      <p className="text-[11px] text-purple-700">
+                        Live status of your submitted pre-bookings ('pending' ➔ 'verified' ➔ 'booked')
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full bg-purple-200 text-purple-900 font-black text-xs font-mono">
+                    {prebookList.length} Active
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {prebookList.map(pb => {
+                    const originBr = branches.find(b => b.id === pb.originBranchId);
+                    const statusText = pb.status === 'pre_booked' ? 'Pending (Awaiting Branch Drop-off & Weighing)' : pb.status === 'verified' ? 'Verified & Priced' : 'Booked & Dispatched';
+                    const statusColor = pb.status === 'pre_booked' ? 'bg-amber-100 text-amber-800 border-amber-300' : pb.status === 'verified' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-blue-100 text-blue-800 border-blue-300';
+                    
+                    return (
+                      <div key={pb.id} className="p-3.5 rounded-xl bg-white border border-purple-100 shadow-xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-black text-slate-900 text-xs">
+                            {pb.cnNumber}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor}`}>
+                            {pb.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-600 space-y-0.5">
+                          <div><strong>To:</strong> {pb.receiver.name} ({pb.receiver.city})</div>
+                          <div><strong>Branch:</strong> {originBr?.name || 'Origin Hub'}</div>
+                          {pb.financials.totalAmount > 0 && (
+                            <div className="text-emerald-700 font-bold font-mono">
+                              Price: {pb.financials.totalAmount.toLocaleString()} AFN
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-purple-600 font-semibold italic">
+                          ℹ️ {statusText}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {filteredHistory.length === 0 ? (
             <div className="p-12 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">

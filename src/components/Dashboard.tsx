@@ -11,7 +11,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Boxes,
-  Activity
+  Activity,
+  UserCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -326,6 +327,87 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Verification Required Section for Branch Staff & Super Admins */}
+      {(() => {
+        const pendingPreBookings = shipments.filter(s => 
+          s.status === 'pre_booked' && 
+          (isSuperAdmin ? (activeBranchId === 'all' || s.originBranchId === activeBranchId) : s.originBranchId === currentUser.branchId)
+        );
+
+        if (pendingPreBookings.length === 0) return null;
+
+        return (
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white shadow-xl space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-purple-500/30 border border-purple-400/40 flex items-center justify-center text-purple-300 font-bold">
+                  <UserCheck className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-white flex items-center gap-2">
+                    <span>Verification Required: Online Pre-Bookings</span>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500 text-white text-xs font-mono">
+                      {pendingPreBookings.length} Pending
+                    </span>
+                  </h2>
+                  <p className="text-xs text-purple-200">
+                    Customer-submitted pre-bookings waiting at origin branch for weighing, physical inspection & official pricing
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveView('parcels')}
+                className="px-4 py-2 rounded-xl bg-white text-purple-950 font-bold text-xs hover:bg-purple-100 transition-colors shadow-sm cursor-pointer"
+              >
+                View All in Inventory ➔
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pendingPreBookings.map(s => {
+                const originBr = branches.find(b => b.id === s.originBranchId);
+                const destBr = branches.find(b => b.id === s.destinationBranchId);
+                return (
+                  <div key={s.id} className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-black text-amber-300 text-sm">
+                        {s.cnNumber}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-purple-500/30 text-purple-200 text-[10px] font-bold">
+                        {s.packageInfo.category}
+                      </span>
+                    </div>
+
+                    <div className="text-xs space-y-1 text-slate-200">
+                      <div><strong>Sender:</strong> {s.sender.name} ({s.sender.phone})</div>
+                      <div><strong>Receiver:</strong> {s.receiver.name} ({s.receiver.phone})</div>
+                      <div className="text-purple-300">
+                        <strong>Route:</strong> {originBr?.city || 'Origin'} ➔ {destBr?.city || 'Dest'}
+                      </div>
+                      <div className="text-amber-200">
+                        <strong>Est. Weight:</strong> {s.packageInfo.weightKg} KG ({s.packageInfo.pieces} pcs)
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                      <span className="text-[10px] text-purple-300 font-mono">
+                        {new Date(s.bookedAt).toLocaleString()}
+                      </span>
+                      <button
+                        onClick={() => setActiveView('parcels')}
+                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs shadow-md hover:from-amber-400 hover:to-yellow-400 transition-all cursor-pointer"
+                      >
+                        Verify & Price ➔
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Core Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
