@@ -222,6 +222,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const isSyncingRef = useRef<boolean>(false);
+  const syncQueuedRef = useRef<boolean>(false);
   const lastSyncTimeRef = useRef<number>(0);
   const [realtimeStatus, setRealtimeStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'SUBSCRIBED' | 'TIMED_OUT'>('DISCONNECTED');
 
@@ -337,7 +338,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Sync with Supabase PostgreSQL
   const syncWithDatabase = useCallback(async (force = false) => {
     const now = Date.now();
-    if (isSyncingRef.current) return;
+    if (isSyncingRef.current) {
+      if (force) {
+        syncQueuedRef.current = true;
+      }
+      return;
+    }
     if (!force && now - lastSyncTimeRef.current < 4000) {
       return; // Debounce rapid sync invocations
     }
@@ -345,62 +351,125 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     lastSyncTimeRef.current = now;
     setIsSyncing(true);
 
-    const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T, storageKey: string) => {
-      setter(prev => {
-        if (Array.isArray(prev) && Array.isArray(newData)) {
-          if (prev.length === newData.length) {
-            let identical = true;
-            for (let i = 0; i < prev.length; i++) {
-              const p = prev[i] as any;
-              const n = newData[i] as any;
-              if (
-                !p || !n || 
-                p.id !== n.id || 
-                p.status !== n.status || 
-                p.updatedAt !== n.updatedAt ||
-                (p.statusHistory && n.statusHistory && p.statusHistory.length !== n.statusHistory.length)
-              ) {
-                identical = false;
-                break;
+    const performSync = async () => {
+      const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T, storageKey: string) => {
+        setter(prev => {
+          if (Array.isArray(prev) && Array.isArray(newData)) {
+            if (prev.length === newData.length) {
+              let identical = true;
+              for (let i = 0; i < prev.length; i++) {
+                const p = prev[i] as any;
+                const n = newData[i] as any;
+                if (
+                  !p || !n || 
+                  p.id !== n.id || 
+                  p.status !== n.status || 
+                  p.updatedAt !== n.updatedAt ||
+                  (p.statusHistory && n.statusHistory && p.statusHistory.length !== n.statusHistory.length)
+                ) {
+                  identical = false;
+                  break;
+                }
+              }
+              if (identical) {
+                return prev;
               }
             }
-            if (identical) {
-              return prev;
+          }
+          const prevStr = JSON.stringify(prev);
+          const newStr = JSON.stringify(newData);
+          if (prevStr !== newStr) {
+            try {
+              localStorage.setItem(storageKey, newStr);
+            } catch (e) {
+              // ignore quota error
             }
+            return newData;
           }
-        }
-        const prevStr = JSON.stringify(prev);
-        const newStr = JSON.stringify(newData);
-        if (prevStr !== newStr) {
-          try {
-            localStorage.setItem(storageKey, newStr);
-          } catch (e) {
-            // ignore quota error
-          }
-          return newData;
-        }
-        return prev;
-      });
-    };
+          return prev;
+        });
+      };
 
-    try {
-      let directDatabaseSyncSucceeded = false;
-      // 0. Direct Supabase Query (if client configured with Anon Key)
-      if (isSupabaseReady()) {
-        try {
-          const directData = await directSupabaseFetchAll();
-          if (directData.success) {
-            directDatabaseSyncSucceeded = true;
-            if (directData.branches && Array.isArray(directData.branches) && directData.branches.length > 0) {
-              safeSetState(setBranches, directData.branches, STORAGE_KEYS.BRANCHES);
+      try {
+        let directDatabaseSyncSucceeded = false;
+        // 0. Direct Supabase Query (if client configured with Anon Key)
+        if (isSupabaseReady()) {
+          try {
+            const directData = await directSupabaseFetchAll();
+            if (directData.success) {
+              directDatabaseSyncSucceeded = true;
+              if (directData.branches && Array.isArray(directData.branches) && directData.branches.length > 0) {
+                safeSetState(setBranches, directData.branches, STORAGE_KEYS.BRANCHES);
+              }
+              if (directData.users && Array.isArray(directData.users) && directData.users.length > 0) {
+                safeSetState(setUsers, directData.users, STORAGE_KEYS.USERS);
+              }
+              if (directData.shipments && Array.isArray(directData.shipments)) {
+                setShipments(prev => {
+                  const map = new Map(prev.map(s => [s.id, s]));
+                  directData.shipments!.forEach((inc: Shipment) => {
+                    map.set(inc.id, inc);
+                  });
+                  const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
+                  try {
+                    localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(merged));
+                  } catch (e) {}
+                  return merged;
+                });
+              }
+              if (directData.expenses && Array.isArray(directData.expenses)) {
+                safeSetState(setExpenses, directData.expenses, STORAGE_KEYS.EXPENSES);
+              }
             }
-            if (directData.users && Array.isArray(directData.users) && directData.users.length > 0) {
-              safeSetState(setUsers, directData.users, STORAGE_KEYS.USERS);
+          } catch (supErr) {
+            console.warn('Direct Supabase fetch query notice:', supErr);
+          }
+        }
+
+        // 1. Health check
+        const healthRes = await fetch('/api/health');
+        if (healthRes.ok) {
+          const healthData = await healthRes.json();
+          setDbStatus(prev => {
+            const newStatus = {
+              connected: healthData.connected,
+              database: healthData.database || 'Supabase PostgreSQL',
+              serverTime: healthData.serverTime,
+              stats: healthData.stats
+            };
+            if (JSON.stringify(prev) !== JSON.stringify(newStatus)) return newStatus;
+            return prev;
+          });
+        }
+
+        // The direct Supabase result is authoritative when available. The API remains a fallback.
+        if (!directDatabaseSyncSucceeded) {
+          // 2. Fetch Branches
+          const branchRes = await fetch('/api/branches');
+          if (branchRes.ok) {
+            const branchData = await branchRes.json();
+            if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
+              safeSetState(setBranches, branchData.branches, STORAGE_KEYS.BRANCHES);
             }
-            if (directData.shipments && Array.isArray(directData.shipments)) {
+          }
+
+          // 3. Fetch Users
+          const userRes = await fetch('/api/users');
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
+              safeSetState(setUsers, userData.users, STORAGE_KEYS.USERS);
+            }
+          }
+
+          // 4. Fetch Shipments
+          const shipRes = await fetch('/api/shipments');
+          if (shipRes.ok) {
+            const shipData = await shipRes.json();
+            if (shipData.success && Array.isArray(shipData.shipments)) {
               setShipments(prev => {
                 const map = new Map(prev.map(s => [s.id, s]));
-                directData.shipments.forEach((inc: Shipment) => {
+                shipData.shipments.forEach((inc: Shipment) => {
                   map.set(inc.id, inc);
                 });
                 const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
@@ -410,94 +479,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 return merged;
               });
             }
-            if (directData.expenses && Array.isArray(directData.expenses)) {
-              safeSetState(setExpenses, directData.expenses, STORAGE_KEYS.EXPENSES);
+          }
+
+          // 5. Fetch Expenses
+          const expRes = await fetch('/api/expenses');
+          if (expRes.ok) {
+            const expData = await expRes.json();
+            if (expData.success && Array.isArray(expData.expenses)) {
+              safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
             }
           }
-        } catch (supErr) {
-          console.warn('Direct Supabase fetch query notice:', supErr);
         }
-      }
 
-      // 1. Health check
-      const healthRes = await fetch('/api/health');
-      if (healthRes.ok) {
-        const healthData = await healthRes.json();
-        setDbStatus(prev => {
-          const newStatus = {
-            connected: healthData.connected,
-            database: healthData.database || 'Supabase PostgreSQL',
-            serverTime: healthData.serverTime,
-            stats: healthData.stats
-          };
-          if (JSON.stringify(prev) !== JSON.stringify(newStatus)) return newStatus;
-          return prev;
-        });
-      }
-
-      // The direct Supabase result is authoritative when available. The API remains a fallback.
-      if (!directDatabaseSyncSucceeded) {
-        // 2. Fetch Branches
-        const branchRes = await fetch('/api/branches');
-        if (branchRes.ok) {
-          const branchData = await branchRes.json();
-          if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
-            safeSetState(setBranches, branchData.branches, STORAGE_KEYS.BRANCHES);
+        // 6. Fetch Remittances
+        const remRes = await fetch('/api/remittances');
+        if (remRes.ok) {
+          const remData = await remRes.json();
+          if (remData.success && Array.isArray(remData.remittances)) {
+            safeSetState(setRemittanceTransfers, remData.remittances, STORAGE_KEYS.REMITTANCES);
           }
         }
-
-        // 3. Fetch Users
-        const userRes = await fetch('/api/users');
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
-            safeSetState(setUsers, userData.users, STORAGE_KEYS.USERS);
-          }
-        }
-
-        // 4. Fetch Shipments
-        const shipRes = await fetch('/api/shipments');
-        if (shipRes.ok) {
-          const shipData = await shipRes.json();
-          if (shipData.success && Array.isArray(shipData.shipments)) {
-            setShipments(prev => {
-              const map = new Map(prev.map(s => [s.id, s]));
-              shipData.shipments.forEach((inc: Shipment) => {
-                map.set(inc.id, inc);
-              });
-              const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
-              try {
-                localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(merged));
-              } catch (e) {}
-              return merged;
-            });
-          }
-        }
-
-        // 5. Fetch Expenses
-        const expRes = await fetch('/api/expenses');
-        if (expRes.ok) {
-          const expData = await expRes.json();
-          if (expData.success && Array.isArray(expData.expenses)) {
-            safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
-          }
-        }
+      } catch (err) {
+        console.warn('Database sync encountered a network hiccup, fallback cached data active:', err);
       }
+    };
 
-      // 6. Fetch Remittances
-      const remRes = await fetch('/api/remittances');
-      if (remRes.ok) {
-        const remData = await remRes.json();
-        if (remData.success && Array.isArray(remData.remittances)) {
-          safeSetState(setRemittanceTransfers, remData.remittances, STORAGE_KEYS.REMITTANCES);
-        }
-      }
-    } catch (err) {
-      console.warn('Database sync encountered a network hiccup, fallback cached data active:', err);
-    } finally {
-      isSyncingRef.current = false;
-      setIsSyncing(false);
+    await performSync();
+
+    while (syncQueuedRef.current) {
+      syncQueuedRef.current = false;
+      await performSync();
     }
+
+    isSyncingRef.current = false;
+    setIsSyncing(false);
   }, []);
 
   // Supabase Real-time Channel Subscription (Instantly propagates database changes to all connected devices)

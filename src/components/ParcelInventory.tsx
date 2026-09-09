@@ -179,7 +179,7 @@ export const ParcelInventory: React.FC = () => {
       const userBranch = currentUser.role !== 'super_admin' ? currentUser.branchId : (activeBranchId !== 'all' ? activeBranchId : null);
 
       if (activeTab === 'prebooked') {
-        matchesTab = (s.status === 'pre_booked' || s.status === 'verified' || s.isCustomerPrebooked === true) &&
+        matchesTab = (s.status === 'pre_booked' || s.status === 'verified') &&
           (currentUser.role === 'super_admin'
             ? (activeBranchId === 'all' || s.originBranchId === activeBranchId)
             : s.originBranchId === currentUser.branchId);
@@ -630,7 +630,7 @@ export const ParcelInventory: React.FC = () => {
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'prebooked' ? 'bg-purple-600 text-white shadow-xs' : 'text-purple-600 dark:text-purple-400 hover:text-purple-700'}`}
             >
               <UserCheck className="w-3.5 h-3.5" />
-              <span>Online Pre-Bookings</span>
+              <span>Pending Pre-bookings</span>
               {prebookedCount > 0 && (
                 <span className="px-1.5 py-0.2 bg-white text-purple-700 rounded-full text-[10px] font-black">
                   {prebookedCount}
