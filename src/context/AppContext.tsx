@@ -349,11 +349,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     try {
+      let directDatabaseSyncSucceeded = false;
       // 0. Direct Supabase Query (if client configured with Anon Key)
       if (isSupabaseReady()) {
         try {
           const directData = await directSupabaseFetchAll();
           if (directData.success) {
+            directDatabaseSyncSucceeded = true;
             if (directData.branches && Array.isArray(directData.branches) && directData.branches.length > 0) {
               safeSetState(setBranches, directData.branches, STORAGE_KEYS.BRANCHES);
             }
@@ -388,6 +390,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
 
+      // The direct Supabase result is authoritative when available. The API remains a fallback.
+      if (!directDatabaseSyncSucceeded) {
       // 2. Fetch Branches
       const branchRes = await fetch('/api/branches');
       if (branchRes.ok) {
@@ -422,6 +426,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (expData.success && Array.isArray(expData.expenses)) {
           safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
         }
+      }
+
       }
 
       // 6. Fetch Remittances
