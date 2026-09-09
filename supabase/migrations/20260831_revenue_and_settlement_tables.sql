@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS public.branch_settlements (
     destination_branch_id VARCHAR(64) NOT NULL REFERENCES public.branches(id) ON DELETE RESTRICT,
     gross_collected_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
     dest_branch_commission NUMERIC(12, 2) NOT NULL DEFAULT 100.0,
+    transportation_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+    origin_branch_commission NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
+    total_commission_kept NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
     net_remitted_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.0,
     settlement_channel VARCHAR(64) NOT NULL DEFAULT 'sarafi_hawala' CHECK (settlement_channel IN ('sarafi_hawala', 'bank_transfer', 'cash_courier', 'internal_offset')),
     sarafi_reference_no VARCHAR(128),
@@ -20,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public.branch_settlements (
     settled_by_user_name VARCHAR(128) NOT NULL DEFAULT 'Branch Cashier',
     settled_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     notes TEXT,
+    parcel_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -49,6 +53,11 @@ CREATE INDEX IF NOT EXISTS idx_settlements_cn ON public.branch_settlements(cn_nu
 CREATE INDEX IF NOT EXISTS idx_settlements_origin ON public.branch_settlements(origin_branch_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_dest ON public.branch_settlements(destination_branch_id);
 CREATE INDEX IF NOT EXISTS idx_settlements_status ON public.branch_settlements(settlement_status);
+
+ALTER TABLE public.branch_settlements ADD COLUMN IF NOT EXISTS transportation_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.0;
+ALTER TABLE public.branch_settlements ADD COLUMN IF NOT EXISTS origin_branch_commission NUMERIC(12, 2) NOT NULL DEFAULT 0.0;
+ALTER TABLE public.branch_settlements ADD COLUMN IF NOT EXISTS total_commission_kept NUMERIC(12, 2) NOT NULL DEFAULT 0.0;
+ALTER TABLE public.branch_settlements ADD COLUMN IF NOT EXISTS parcel_ids JSONB NOT NULL DEFAULT '[]'::jsonb;
 CREATE INDEX IF NOT EXISTS idx_revenue_snapshots_branch ON public.branch_revenue_snapshots(branch_id);
 CREATE INDEX IF NOT EXISTS idx_revenue_snapshots_period ON public.branch_revenue_snapshots(period_start, period_end);
 

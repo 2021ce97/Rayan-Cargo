@@ -52,6 +52,27 @@ export const RemittanceManager: React.FC = () => {
   const currentBranchId = isSuperAdmin ? (activeBranchId === 'all' ? 'all' : activeBranchId) : currentUser.branchId;
   const currentBranch = branches.find(b => b.id === currentBranchId);
   const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
+  const branchShipments = useMemo(() => {
+    if (isSuperAdmin && currentBranchId === 'all') return shipments;
+    return shipments.filter(s => s.originBranchId === currentBranchId || s.destinationBranchId === currentBranchId);
+  }, [shipments, isSuperAdmin, currentBranchId]);
+  const branchCustomerCount = useMemo(() => {
+    const keys = new Set(branchShipments.map(s => s.sender.phone.replace(/\D/g, '') || s.sender.name.trim().toLowerCase()));
+    return keys.size;
+  }, [branchShipments]);
+  const branchCustomers = useMemo(() => {
+    const grouped = new Map<string, { name: string; phone: string; parcels: number }>();
+    branchShipments.forEach(s => {
+      const key = s.sender.phone.replace(/\D/g, '') || s.sender.name.trim().toLowerCase();
+      const existing = grouped.get(key);
+      grouped.set(key, {
+        name: existing?.name || s.sender.name,
+        phone: existing?.phone || s.sender.phone,
+        parcels: (existing?.parcels || 0) + 1
+      });
+    });
+    return Array.from(grouped.values()).sort((a, b) => b.parcels - a.parcels);
+  }, [branchShipments]);
 
   const [activeTab, setActiveTab] = useState<RemittanceTab>(
     isSuperAdmin ? 'transfers_submitted' : 'pending_deliveries'
@@ -146,7 +167,7 @@ export const RemittanceManager: React.FC = () => {
 
     const fromBr = isSuperAdmin ? (selectedBranchFilter !== 'all' ? selectedBranchFilter : branches[1]?.id || 'br_admin_hq') : (currentUser.branchId || 'br_admin_hq');
 
-    createBatchRemittance(
+    const accepted = createBatchRemittance(
       selectedParcelIds,
       fromBr,
       customTotalCollected,
@@ -161,9 +182,11 @@ export const RemittanceManager: React.FC = () => {
       customOriginBranchId
     );
 
-    setIsCreateModalOpen(false);
-    setSelectedParcelIds([]);
-    setActiveTab('transfers_submitted');
+    if (accepted) {
+      setIsCreateModalOpen(false);
+      setSelectedParcelIds([]);
+      setActiveTab('transfers_submitted');
+    }
   };
   const [confirmModalTransfer, setConfirmModalTransfer] = useState<BranchRemittanceTransfer | null>(null);
   const [confirmationNote, setConfirmationNote] = useState('');
@@ -184,7 +207,7 @@ export const RemittanceManager: React.FC = () => {
         : (s.destinationBranchId === currentBranchId);
       
       const isDelivered = s.status === 'delivered';
-      const isPendingRemittance = s.remittanceStatus === 'pending' || !s.remittanceStatus;
+      const isPendingRemittance = !s.remittanceStatus || s.remittanceStatus === 'pending' || (s.remittanceStatus as string) === 'unsettled';
 
       return isTargetDest && isDelivered && isPendingRemittance;
     });
@@ -358,6 +381,23 @@ export const RemittanceManager: React.FC = () => {
           </>
         ) : (
           <>
+            {/* Branch operational visibility */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span>{t('stat_branch_parcels')}</span>
+                <Boxes className="w-4 h-4 text-red-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white">{branchShipments.length}</div>
+              <p className="text-[11px] text-slate-500">{t('stat_branch_parcels_desc')}</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <span>{t('stat_branch_customers')}</span>
+                <Building2 className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white">{branchCustomerCount}</div>
+              <p className="text-[11px] text-slate-500">{t('stat_branch_customers_desc')}</p>
+            </div>
             {/* Branch Stat 1: Ready to Remit to HQ */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-400">
@@ -416,6 +456,30 @@ export const RemittanceManager: React.FC = () => {
           </>
         )}
       </div>
+
+      {!isSuperAdmin && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-sm font-black text-slate-900 dark:text-white">{t('branch_customer_list_title')}</h2>
+            <p className="text-xs text-slate-500">{t('branch_customer_list_desc')}</p>
+          </div>
+          {branchCustomers.length === 0 ? (
+            <p className="p-6 text-xs text-slate-500">{t('branch_customer_list_empty')}</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 sm:gap-px bg-slate-100 dark:bg-slate-800">
+              {branchCustomers.map(customer => (
+                <div key={`${customer.phone}-${customer.name}`} className="p-3 bg-white dark:bg-slate-900 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">{customer.name}</div>
+                    <div className="text-[11px] text-slate-500 font-mono">{customer.phone}</div>
+                  </div>
+                  <span className="shrink-0 text-[10px] font-bold text-slate-500">{customer.parcels} {t('branch_customer_parcels')}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* TABS & SEARCH BAR */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
@@ -531,7 +595,9 @@ export const RemittanceManager: React.FC = () => {
                     const destBranch = branches.find(b => b.id === s.destinationBranchId);
                     const collected = s.financials.totalAmount;
                     const commission = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
-                    const netDue = s.originRemittanceDue !== undefined ? s.originRemittanceDue : Math.max(0, collected - commission);
+                    const transport = s.transportationFee ?? s.financials.transportationFee ?? 0;
+                    const originCommission = s.originBranchId !== s.destinationBranchId && s.originBranchId !== mainBranch?.id ? 20 : 0;
+                    const netDue = Math.max(0, collected - commission - transport - originCommission);
 
                     return (
                       <tr key={s.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
@@ -549,7 +615,7 @@ export const RemittanceManager: React.FC = () => {
                           {collected.toLocaleString()} AFN
                         </td>
                         <td className="p-3 text-end font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          + {commission.toLocaleString()} AFN
+                          + {(commission + transport + originCommission).toLocaleString()} AFN
                         </td>
                         <td className="p-3 text-end font-mono font-black text-amber-600 dark:text-amber-400">
                           {netDue.toLocaleString()} AFN
@@ -891,7 +957,7 @@ export const RemittanceManager: React.FC = () => {
                   {t('total_retained_by_receiver_lbl')}:
                 </span>
                 <span className="font-mono font-black text-emerald-700 dark:text-emerald-400 text-sm">
-                  {customCommission + customTransportationFee} AFN
+                  {customCommission + customTransportationFee + customOriginCommission} AFN
                 </span>
               </div>
 

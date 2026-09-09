@@ -336,7 +336,12 @@ api.get('/shipments', async (req: Request, res: Response) => {
       deliveryNotes: r.delivery_notes,
       bookedByUserId: r.booked_by_user_id,
       bookedByUserName: r.booked_by_user_name,
-      isPreBooking: r.is_pre_booking
+      isCustomerPrebooked: r.is_customer_prebooked || r.is_pre_booking || false,
+      isPreBooking: r.is_customer_prebooked || r.is_pre_booking || false,
+      customerUserId: r.customer_user_id || undefined,
+      customerSubmissionAt: r.customer_submission_at || undefined,
+      customerSubmissionReference: r.customer_submission_reference || undefined,
+      customerSubmissionBy: r.customer_submission_by || undefined
     }));
     res.json({ success: true, shipments: formatted });
   } catch (err: any) {
@@ -357,14 +362,15 @@ api.post('/shipments', async (req: Request, res: Response) => {
       `INSERT INTO shipments (
         id, cn_number, origin_branch_id, destination_branch_id, current_branch_id,
         sender, receiver, package_info, financials, status, status_history, booked_at,
-        estimated_delivery, booked_by_user_id, booked_by_user_name, is_pre_booking
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        estimated_delivery, booked_by_user_id, booked_by_user_name, is_customer_prebooked, customer_user_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       ON CONFLICT (id) DO NOTHING`,
       [
         id, cn, s.originBranchId, s.destinationBranchId, s.originBranchId,
         JSON.stringify(s.sender), JSON.stringify(s.receiver), JSON.stringify(s.packageInfo),
         JSON.stringify(s.financials), s.status || 'booked', JSON.stringify(s.statusHistory || []),
-        s.bookedAt || now, s.estimatedDelivery, s.bookedByUserId, s.bookedByUserName, s.isPreBooking || false
+        s.bookedAt || now, s.estimatedDelivery, s.bookedByUserId, s.bookedByUserName,
+        s.isCustomerPrebooked || s.isPreBooking || false, s.customerUserId || null
       ]
     );
 
@@ -396,19 +402,15 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { id } = req.params;
-    const { status, statusHistory, actualDelivery, financials, currentBranchId, originBranchId, userBranchId, userRole } = req.body;
+    const { status, statusHistory, actualDelivery, financials, sender, receiver, packageInfo, customerSubmissionAt, customerSubmissionReference, customerSubmissionBy, currentBranchId, userBranchId, userRole } = req.body;
 
     // Fetch existing shipment to check origin
     const { rows: existing } = await db.query('SELECT status, origin_branch_id FROM shipments WHERE id = $1', [id]);
     
     if (existing.length > 0) {
       const shipment = existing[0];
-      // Prevent super_admin from changing pre_booked to verified
       if (shipment.status === 'pre_booked' && status !== 'pre_booked') {
-        if (userRole === 'super_admin') {
-          return res.status(403).json({ success: false, error: 'Super Admins cannot verify pre-bookings. Only the origin branch can perform this action.' });
-        }
-        if (userBranchId && userBranchId !== shipment.origin_branch_id) {
+        if (userRole !== 'super_admin' && userBranchId && userBranchId !== shipment.origin_branch_id) {
           return res.status(403).json({ success: false, error: 'Only the origin branch can verify a pre-booking.' });
         }
       }
@@ -420,13 +422,25 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
         status_history = $2::jsonb,
         actual_delivery = COALESCE($3, actual_delivery),
         financials = COALESCE($4::jsonb, financials),
-        current_branch_id = COALESCE($5, current_branch_id)
-      WHERE id = $6`,
+        sender = COALESCE($5::jsonb, sender),
+        receiver = COALESCE($6::jsonb, receiver),
+        package_info = COALESCE($7::jsonb, package_info),
+        customer_submission_at = COALESCE($8, customer_submission_at),
+        customer_submission_reference = COALESCE($9, customer_submission_reference),
+        customer_submission_by = COALESCE($10, customer_submission_by),
+        current_branch_id = COALESCE($11, current_branch_id)
+      WHERE id = $12`,
       [
         status,
         JSON.stringify(statusHistory),
         actualDelivery || null,
         financials ? JSON.stringify(financials) : null,
+        sender ? JSON.stringify(sender) : null,
+        receiver ? JSON.stringify(receiver) : null,
+        packageInfo ? JSON.stringify(packageInfo) : null,
+        customerSubmissionAt || null,
+        customerSubmissionReference || null,
+        customerSubmissionBy || null,
         currentBranchId || null,
         id
       ]
@@ -595,20 +609,21 @@ api.get('/remittances', async (req: Request, res: Response) => {
       id: r.id,
       batchNumber: r.sarafi_reference_no ? `REM-${r.sarafi_reference_no}` : `REM-${r.id.slice(-5)}`,
       fromBranchId: r.destination_branch_id || r.branch_id,
-      fromBranchName: 'Branch',
+      fromBranchName: r.destination_branch_name || r.destination_branch_id || 'Branch',
       toBranchId: 'br_admin_hq',
       toBranchName: 'Main Branch (Kabul HQ)',
       parcelIds: Array.isArray(r.parcel_ids) ? r.parcel_ids : (typeof r.parcel_ids === 'string' ? JSON.parse(r.parcel_ids) : (r.shipment_id ? [r.shipment_id] : [])),
       parcelCount: Array.isArray(r.parcel_ids) ? r.parcel_ids.length : (typeof r.parcel_ids === 'string' ? JSON.parse(r.parcel_ids).length : 1),
       totalCollectedAfn: parseFloat(r.gross_collected_amount || '0'),
       destCommissionAfn: parseFloat(r.dest_branch_commission || '0'),
-      transportationFeeAfn: 0,
-      destTotalRetainedAfn: parseFloat(r.dest_branch_commission || '0'),
-      totalCommissionKeptAfn: parseFloat(r.dest_branch_commission || '0'),
+      transportationFeeAfn: parseFloat(r.transportation_fee || '0'),
+      destTotalRetainedAfn: parseFloat(r.dest_branch_commission || '0') + parseFloat(r.transportation_fee || '0'),
+      originCommissionAfn: parseFloat(r.origin_branch_commission || '0'),
+      totalCommissionKeptAfn: parseFloat(r.total_commission_kept || r.dest_branch_commission || '0'),
       netRemittanceAmountAfn: parseFloat(r.net_remitted_amount || '0'),
       paymentMethod: (r.settlement_channel || 'hawala') as any,
       referenceNumber: r.sarafi_reference_no,
-      status: r.settlement_status === 'settled' ? 'confirmed_by_headoffice' : 'submitted_to_headoffice',
+      status: r.settlement_status === 'settled' ? 'confirmed_by_headoffice' : r.settlement_status === 'disputed' ? 'rejected' : 'submitted_to_headoffice',
       submittedByUserId: 'usr_manager',
       submittedByUserName: r.settled_by_user_name || 'Branch Manager',
       submittedAt: r.settled_at || r.created_at,
@@ -626,31 +641,50 @@ api.post('/remittances', async (req: Request, res: Response) => {
     const r = req.body;
     const id = r.id || `rem_${Date.now().toString().slice(-6)}`;
     const now = new Date().toISOString();
+    const settlementChannel = r.paymentMethod === 'hawala' ? 'sarafi_hawala'
+      : r.paymentMethod === 'cash_handover' ? 'cash_courier'
+      : r.paymentMethod === 'treasury' ? 'internal_offset'
+      : r.paymentMethod || 'bank_transfer';
+
+    const parcelIds = Array.isArray(r.parcelIds) ? Array.from(new Set(r.parcelIds)) : [];
+    if (parcelIds.length > 0) {
+      const { rows: parcelRows } = await db.query(
+        'SELECT id, remittance_status FROM shipments WHERE id = ANY($1::varchar[])',
+        [parcelIds]
+      );
+      const isDuplicate = parcelRows.length !== parcelIds.length || parcelRows.some((p: any) =>
+        p.remittance_status && p.remittance_status !== 'pending' && p.remittance_status !== 'unsettled'
+      );
+      if (isDuplicate) {
+        return res.status(409).json({ success: false, error: 'One or more parcels already have a remittance in progress.' });
+      }
+    }
 
     await db.query(
       `INSERT INTO branch_settlements (
         id, shipment_id, cn_number, origin_branch_id, destination_branch_id,
-        gross_collected_amount, dest_branch_commission, net_remitted_amount,
+        gross_collected_amount, dest_branch_commission, transportation_fee, origin_branch_commission, total_commission_kept, net_remitted_amount,
         settlement_channel, sarafi_reference_no, settlement_status,
         settled_by_user_name, settled_at, notes, created_at, parcel_ids
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       ON CONFLICT (id) DO UPDATE SET
         settlement_status = EXCLUDED.settlement_status,
         notes = EXCLUDED.notes`,
       [
-        id, r.parcelIds?.[0] || null, r.batchNumber || `REM-${Date.now().toString().slice(-4)}`,
+        id, parcelIds[0] || null, r.batchNumber || `REM-${Date.now().toString().slice(-4)}`,
         r.originBranchId || 'br_admin_hq', r.fromBranchId || 'br_hrt',
-        r.totalCollectedAfn || 0, r.destCommissionAfn || r.totalCommissionKeptAfn || 0,
-        r.netRemittanceAmountAfn || 0, r.paymentMethod || 'hawala',
+        r.totalCollectedAfn || 0, r.destCommissionAfn || 0, r.transportationFeeAfn || 0,
+        r.originCommissionAfn || 0, r.totalCommissionKeptAfn || 0, r.netRemittanceAmountAfn || 0,
+        settlementChannel,
         r.referenceNumber || r.batchNumber || null,
-        r.status === 'confirmed_by_headoffice' ? 'settled' : 'pending_confirmation',
-        r.submittedByUserName || 'Branch Cashier',
-        r.submittedAt || now, r.notes || null, now, JSON.stringify(r.parcelIds || [])
+        r.status === 'confirmed_by_headoffice' ? 'settled' : 'pending',
+        r.submittedByUserName || 'Branch Cashier', r.submittedAt || now,
+        r.notes || null, now, JSON.stringify(parcelIds)
       ]
     );
 
-    if (r.parcelIds && Array.isArray(r.parcelIds) && r.parcelIds.length > 0) {
-      for (const parcelId of r.parcelIds) {
+    if (parcelIds.length > 0) {
+      for (const parcelId of parcelIds) {
         await db.query(
           `UPDATE shipments SET remittance_status = $1 WHERE id = $3`,
           ['submitted_to_headoffice', id, parcelId]
@@ -710,7 +744,7 @@ api.patch('/remittances/:id/reject', async (req: Request, res: Response) => {
 
     await db.query(
       `UPDATE branch_settlements SET 
-        settlement_status = 'rejected',
+        settlement_status = 'disputed',
         notes = $1
       WHERE id = $2`,
       [`Rejected by HQ: ${rejectionReason || 'Voucher mismatch'}`, id]

@@ -161,6 +161,8 @@ export async function directSupabaseInsertShipment(shipment: Shipment): Promise<
       financials: shipment.financials,
       status: shipment.status,
       status_history: shipment.statusHistory || [],
+      is_customer_prebooked: shipment.isCustomerPrebooked || false,
+      customer_user_id: shipment.customerUserId || null,
       booked_at: shipment.bookedAt,
       estimated_delivery: shipment.estimatedDelivery,
       actual_delivery: shipment.actualDelivery || null,
@@ -170,7 +172,7 @@ export async function directSupabaseInsertShipment(shipment: Shipment): Promise<
       booked_by_user_id: shipment.bookedByUserId,
       booked_by_user_name: shipment.bookedByUserName,
       dest_branch_commission: shipment.destBranchCommission || 100,
-      remittance_status: shipment.remittanceStatus || 'unsettled',
+      remittance_status: shipment.remittanceStatus || 'pending',
       origin_remittance_due: shipment.originRemittanceDue || 0,
       created_at: (shipment as any).createdAt || shipment.bookedAt || new Date().toISOString()
     };
@@ -192,7 +194,8 @@ export async function directSupabaseInsertShipment(shipment: Shipment): Promise<
 export async function directSupabaseUpdateShipmentStatus(
   shipmentId: string, 
   status: string, 
-  history: any[]
+  history: any[],
+  extraFields?: Record<string, any>
 ): Promise<{ success: boolean; error?: any }> {
   const client = getSupabase();
   if (!client) return { success: false, error: 'Supabase client not initialized' };
@@ -202,7 +205,8 @@ export async function directSupabaseUpdateShipmentStatus(
       .from('shipments')
       .update({
         status,
-        status_history: history
+        status_history: history,
+        ...extraFields
       })
       .eq('id', shipmentId);
 
@@ -264,7 +268,10 @@ export async function directSupabaseInsertSettlement(settlement: any): Promise<{
       settled_by_user_id: settlement.settledByUserId,
       settled_by_user_name: settlement.settledByUserName,
       reference_number: settlement.referenceNumber || '',
-      payment_method: settlement.paymentMethod || 'cash',
+      payment_method: settlement.paymentMethod === 'hawala' ? 'sarafi_hawala'
+        : settlement.paymentMethod === 'cash_handover' ? 'cash_courier'
+        : settlement.paymentMethod === 'treasury' ? 'internal_offset'
+        : settlement.paymentMethod || 'cash',
       status: settlement.status || 'completed',
       created_at: settlement.createdAt || new Date().toISOString()
     };
@@ -397,9 +404,15 @@ export async function directSupabaseFetchAll(): Promise<{
       deliveryNotes: s.delivery_notes,
       bookedByUserId: s.booked_by_user_id,
       bookedByUserName: s.booked_by_user_name,
+      isCustomerPrebooked: s.is_customer_prebooked || false,
+      isPreBooking: s.is_customer_prebooked || false,
+      customerUserId: s.customer_user_id || undefined,
       destBranchCommission: s.dest_branch_commission,
       remittanceStatus: s.remittance_status,
-      originRemittanceDue: s.origin_remittance_due
+      originRemittanceDue: s.origin_remittance_due,
+      customerSubmissionAt: s.customer_submission_at || undefined,
+      customerSubmissionReference: s.customer_submission_reference || undefined,
+      customerSubmissionBy: s.customer_submission_by || undefined
     }));
 
     const expenses: BranchExpense[] = (eRes.data || []).map((e: any) => ({

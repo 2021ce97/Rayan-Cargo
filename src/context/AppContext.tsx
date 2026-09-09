@@ -102,8 +102,24 @@ interface AppContextType {
   trackByCnNumber: (cn: string) => Shipment | null;
   addShipment: (shipmentData: Omit<Shipment, 'id' | 'cnNumber' | 'statusHistory' | 'bookedAt'>) => Shipment;
   createCustomerPreBooking: (input: CustomerPreBookingInput) => Shipment;
-  confirmCustomerPreBooking: (shipmentId: string, actualWeightKg: number, pieces: number, transportationFee: number, destBranchCommission: number, paymentStatus: 'paid' | 'to_pay') => boolean;
+  confirmCustomerPreBooking: (shipmentId: string, details: {
+    weightKg?: number;
+    pieces?: number;
+    senderName?: string;
+    senderPhone?: string;
+    receiverName?: string;
+    receiverPhone?: string;
+    description?: string;
+    baseRate?: number;
+    ratePerKg?: number;
+    serviceFee?: number;
+    discountAmount?: number;
+    transportationFee?: number;
+    destBranchCommission?: number;
+    paymentStatus?: 'paid' | 'to_pay';
+  }) => boolean;
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
+  submitParcelForCollection: (shipmentId: string, reference?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
@@ -513,7 +529,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     syncWithDatabase();
-    const interval = setInterval(syncWithDatabase, 5000);
+    const interval = setInterval(syncWithDatabase, 30000);
 
     const handleFocus = () => {
       syncWithDatabase();
@@ -1168,7 +1184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetBr = isSuperAdmin ? activeBranchId : currentUser.branchId;
     const branchOwedList = shipments.filter(s => {
       const isTargetDest = targetBr === 'all' ? true : (s.destinationBranchId === targetBr);
-      return isTargetDest && s.status === 'delivered' && (s.remittanceStatus === 'pending' || !s.remittanceStatus);
+      return isTargetDest && s.status === 'delivered' && (!s.remittanceStatus || s.remittanceStatus === 'pending' || (s.remittanceStatus as string) === 'unsettled');
     });
     const totalOwedToHeadOffice = branchOwedList.reduce((sum, s) => {
       const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
@@ -1210,7 +1226,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return shipments
       .filter(s => {
         const isTargetDest = currentTargetBranch === 'all' ? true : (s.destinationBranchId === currentTargetBranch);
-        return isTargetDest && s.status === 'delivered' && (s.remittanceStatus === 'pending' || !s.remittanceStatus);
+        return isTargetDest && s.status === 'delivered' && (!s.remittanceStatus || s.remittanceStatus === 'pending' || (s.remittanceStatus as string) === 'unsettled');
       })
       .reduce((sum, s) => {
         const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
@@ -1257,6 +1273,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     originCommission: number = 0,
     originBranchId?: string
   ): boolean => {
+    const normalizedParcelIds = Array.from(new Set(parcelIds));
+    const selectedParcels = shipments.filter(s =>
+      normalizedParcelIds.includes(s.id) || normalizedParcelIds.includes(s.cnNumber)
+    );
+
+    if (normalizedParcelIds.length > 0) {
+      if (selectedParcels.length !== normalizedParcelIds.length) {
+        showToast(t('remittance_parcel_not_found') || 'One or more parcels could not be found.');
+        return false;
+      }
+      if (selectedParcels.some(s => s.status !== 'delivered')) {
+        showToast(t('remittance_only_delivered') || 'Only delivered parcels can be remitted.');
+        return false;
+      }
+      if (selectedParcels.some(s => {
+        const status = s.remittanceStatus as string | undefined;
+        return status && status !== 'pending' && status !== 'unsettled';
+      })) {
+        showToast(t('remittance_already_submitted') || 'One or more parcels already have a remittance in progress.');
+        return false;
+      }
+    }
+
+    const calculatedCollected = selectedParcels.length > 0
+      ? selectedParcels.reduce((sum, s) => sum + (s.financials?.totalAmount || 0), 0)
+      : Math.max(0, totalCollected);
+    const calculatedCommission = Math.max(0, totalCommissionKept);
+    const calculatedTransport = Math.max(0, transportationFee);
+    const calculatedOriginCommission = Math.max(0, originCommission);
+    const calculatedNet = Math.max(0, calculatedCollected - calculatedCommission - calculatedTransport - calculatedOriginCommission);
+
     const fromBranch = branches.find(b => b.id === fromBranchId);
     const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
     const now = new Date().toISOString();
@@ -1264,7 +1311,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const batchNumber = `REM-${fromBranch?.code || 'BR'}-${randomCode}`;
 
-    const destTotalRetained = totalCommissionKept + transportationFee;
+    const destTotalRetained = calculatedCommission + calculatedTransport;
 
     const newTransfer: BranchRemittanceTransfer = {
       id: batchId,
@@ -1276,15 +1323,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       destinationBranchName: fromBranch?.name,
       toBranchId: mainBranch?.id || 'br_admin_hq',
       toBranchName: mainBranch?.name || 'Main Branch (Head Office Admin HQ)',
-      parcelIds,
-      parcelCount: parcelIds.length,
-      totalCollectedAfn: totalCollected,
-      destCommissionAfn: totalCommissionKept,
-      transportationFeeAfn: transportationFee,
+      parcelIds: normalizedParcelIds,
+      parcelCount: normalizedParcelIds.length,
+      totalCollectedAfn: calculatedCollected,
+      destCommissionAfn: calculatedCommission,
+      transportationFeeAfn: calculatedTransport,
       destTotalRetainedAfn: destTotalRetained,
-      originCommissionAfn: originCommission,
-      totalCommissionKeptAfn: destTotalRetained,
-      netRemittanceAmountAfn: netToHq,
+      originCommissionAfn: calculatedOriginCommission,
+      totalCommissionKeptAfn: destTotalRetained + calculatedOriginCommission,
+      netRemittanceAmountAfn: calculatedNet,
       paymentMethod,
       referenceNumber: referenceNumber || `REF-${randomCode}`,
       transferAgentName: transferAgentName || 'Sarafi Central',
@@ -1304,7 +1351,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           location: `${fromBranch?.name || 'Branch'} → ${mainBranch?.name || 'Head Office'}`,
           branchName: fromBranch?.name || 'Branch',
           timestamp: now,
-          note: `Financial Settlement & Remittance ${batchNumber}: Collected ${totalCollected} AFN from receiver. Retained dest commission (${totalCommissionKept} AFN) + transport fee (${transportationFee} AFN) = ${destTotalRetained} AFN. Origin commission: ${originCommission} AFN. Net Remitted to Main Branch HQ: ${netToHq} AFN (${paymentMethod.toUpperCase()}: ${referenceNumber || 'N/A'}). Awaiting HQ confirmation.`,
+          note: `Financial Settlement & Remittance ${batchNumber}: Collected ${calculatedCollected} AFN. Destination commission (${calculatedCommission} AFN) + transport (${calculatedTransport} AFN) + origin commission (${calculatedOriginCommission} AFN) retained/credited. Net to Main Branch HQ: ${calculatedNet} AFN (${paymentMethod.toUpperCase()}: ${referenceNumber || 'N/A'}). Awaiting HQ confirmation.`,
           updatedBy: currentUser.name
         };
         return {
@@ -1336,19 +1383,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cnNumber: batchNumber,
         originBranchId: originBranchId || 'br_admin_hq',
         destinationBranchId: fromBranchId,
-        grossCollectedAmount: totalCollected,
-        destBranchCommission: totalCommissionKept,
-        netRemittedAmount: netToHq,
+        grossCollectedAmount: calculatedCollected,
+        destBranchCommission: calculatedCommission,
+        netRemittedAmount: calculatedNet,
         settlementChannel: paymentMethod,
         sarafiReferenceNo: referenceNumber,
         settlementStatus: 'pending_confirmation',
         settledByUserName: currentUser.name,
         settledAt: now,
-        notes: notes || `Settlement for ${parcelIds.length} parcel(s)`
+        notes: notes || `Settlement for ${normalizedParcelIds.length} parcel(s)`
       })
     }).catch(err => console.warn('Settlement sync error:', err));
 
-    showToast(`✓ Settlement & Remittance ${batchNumber} (${netToHq.toLocaleString()} AFN) submitted to Main Branch for verification!`);
+    showToast(`✓ Settlement & Remittance ${batchNumber} (${calculatedNet.toLocaleString()} AFN) submitted to Main Branch for verification!`);
     return true;
   };
 
@@ -1369,6 +1416,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const fromBranchId = target.destinationBranchId || currentUser.branchId;
     const totalCollected = target.financials.totalAmount;
+    const calculatedNet = Math.max(0, totalCollected - customCommission - transportationFee - originCommission);
 
     // Update target parcel with adjusted commission and net due if changed
     setShipments(prev => prev.map(s => {
@@ -1376,7 +1424,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return {
           ...s,
           destBranchCommission: customCommission,
-          originRemittanceDue: netToHq
+          transportationFee,
+          originRemittanceDue: calculatedNet
         };
       }
       return s;
@@ -1387,7 +1436,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fromBranchId,
       totalCollected,
       customCommission,
-      netToHq,
+      calculatedNet,
       paymentMethod,
       referenceNumber,
       transferAgentName,
@@ -1707,6 +1756,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     arg2?: number | { 
       weightKg?: number; 
       pieces?: number; 
+      senderName?: string;
+      senderPhone?: string;
+      receiverName?: string;
+      receiverPhone?: string;
+      description?: string;
       baseRate?: number;
       ratePerKg?: number;
       serviceFee?: number;
@@ -1802,8 +1856,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       packageInfo: {
         ...target.packageInfo,
         weightKg: actualWeightKg,
-        pieces: pieces
+        pieces,
+        description: typeof arg2 === 'object' && arg2.description !== undefined
+          ? arg2.description.trim() || target.packageInfo.description
+          : target.packageInfo.description
       },
+      sender: typeof arg2 === 'object'
+        ? { ...target.sender, name: arg2.senderName?.trim() || target.sender.name, phone: arg2.senderPhone?.trim() || target.sender.phone }
+        : target.sender,
+      receiver: typeof arg2 === 'object'
+        ? { ...target.receiver, name: arg2.receiverName?.trim() || target.receiver.name, phone: arg2.receiverPhone?.trim() || target.receiver.phone }
+        : target.receiver,
       transportationFee: serviceFee,
       destBranchCommission,
       originRemittanceDue,
@@ -1838,6 +1901,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status: 'booked',
         statusHistory: updatedShipment.statusHistory,
         financials: updatedFinancials,
+        sender: updatedShipment.sender,
+        receiver: updatedShipment.receiver,
+        packageInfo: updatedShipment.packageInfo,
         currentBranchId: target.originBranchId,
         userRole: currentUser.role,
         userBranchId: currentUser.branchId
@@ -1850,79 +1916,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Inter-branch settlement (Destination branch remits money to Origin branch)
   const settleInterBranchRemittance = (shipmentId: string, note?: string): boolean => {
-    const target = shipments.find(s => s.id === shipmentId);
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) return false;
 
-    const now = new Date().toISOString();
-    const destBranch = branches.find(b => b.id === target.destinationBranchId);
-    const origBranch = branches.find(b => b.id === target.originBranchId);
+    const commission = target.destBranchCommission ?? target.financials.destBranchCommission ?? 0;
+    const transport = target.transportationFee ?? target.financials.transportationFee ?? 0;
+    const originCommission = target.originBranchId !== target.destinationBranchId && target.originBranchId !== 'br_admin_hq' ? 20 : 0;
+    const net = Math.max(0, target.financials.totalAmount - commission - transport - originCommission);
 
+    return createBatchRemittance(
+      [target.id],
+      target.destinationBranchId,
+      target.financials.totalAmount,
+      commission,
+      net,
+      'treasury',
+      `DIRECT-${Date.now().toString().slice(-6)}`,
+      currentUser.name,
+      note,
+      transport,
+      originCommission,
+      target.originBranchId
+    );
+  };
+
+  const submitParcelForCollection = (shipmentId: string, reference?: string): boolean => {
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) return false;
+    if (target.customerSubmissionAt) {
+      showToast(t('parcel_already_submitted') || 'This parcel has already been submitted to the customer.');
+      return false;
+    }
+    if (target.status !== 'out_for_delivery' && target.status !== 'delivered') {
+      showToast(t('parcel_not_ready_for_submission') || 'Only parcels ready for delivery can be submitted.');
+      return false;
+    }
+
+    const now = new Date().toISOString();
     const updatedShipment: Shipment = {
       ...target,
-      remittanceStatus: 'settled',
+      customerSubmissionAt: now,
+      customerSubmissionReference: reference?.trim() || `SUB-${target.cnNumber}-${Date.now().toString().slice(-4)}`,
+      customerSubmissionBy: currentUser.name,
       statusHistory: [
-        ...target.statusHistory,
+        ...(target.statusHistory || []),
         {
-          id: `st_settle_${Date.now()}`,
+          id: `st_submit_${Date.now()}`,
           status: target.status,
-          location: `${destBranch?.name} → ${origBranch?.name}`,
-          branchName: destBranch?.name || 'Destination Branch',
+          location: branches.find(b => b.id === target.destinationBranchId)?.name || 'Destination Branch',
+          branchName: branches.find(b => b.id === target.destinationBranchId)?.name || 'Destination Branch',
           timestamp: now,
-          note: note || `Inter-branch COD settlement completed: ${destBranch?.name} deducted ${target.destBranchCommission || target.financials.destBranchCommission || 100} AFN commission and remitted ${target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount} AFN back to ${origBranch?.name}.`,
+          note: `Parcel bill submitted once for customer collection. Reference: ${reference?.trim() || 'System generated'}.`,
           updatedBy: currentUser.name
         }
       ]
     };
 
-    setShipments(prev => prev.map(s => s.id === shipmentId ? updatedShipment : s));
-
-    // Direct Supabase settlement & status update
-    directSupabaseInsertSettlement({
-      shipmentId,
-      originBranchId: target.originBranchId,
-      destinationBranchId: target.destinationBranchId,
-      amountSettled: target.financials.totalAmount,
-      commissionDeducted: target.destBranchCommission || target.financials.destBranchCommission || 100,
-      remittedAmount: target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount,
-      settledByName: currentUser.name
+    setShipments(prev => prev.map(s => s.id === target.id ? updatedShipment : s));
+    directSupabaseUpdateShipmentStatus(target.id, target.status, updatedShipment.statusHistory, {
+      customer_submission_at: now,
+      customer_submission_reference: updatedShipment.customerSubmissionReference,
+      customer_submission_by: currentUser.name
     });
-
-    directSupabaseUpdateShipmentStatus(shipmentId, target.status, updatedShipment.statusHistory);
-
-    fetch(`/api/shipments/${shipmentId}/status`, {
+    fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         status: target.status,
         statusHistory: updatedShipment.statusHistory,
-        financials: target.financials,
+        customerSubmissionAt: now,
+        customerSubmissionReference: updatedShipment.customerSubmissionReference,
+        customerSubmissionBy: currentUser.name,
         userRole: currentUser.role,
         userBranchId: currentUser.branchId
       })
-    }).catch(err => console.error('Error settling remittance:', err));
-
-    // Persist settlement to the database so it doesn't get reverted on sync
-    fetch('/api/settlements', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        shipmentId: target.id,
-        cnNumber: target.cnNumber,
-        originBranchId: target.originBranchId,
-        destinationBranchId: target.destinationBranchId,
-        grossCollectedAmount: target.financials.totalAmount,
-        destBranchCommission: target.destBranchCommission || target.financials.destBranchCommission || 100,
-        netRemittedAmount: target.originRemittanceDue || target.financials.originRemittanceDue || target.financials.totalAmount,
-        settlementChannel: 'treasury',
-        sarafiReferenceNo: `DIRECT-SETTLE-${Date.now().toString().slice(-4)}`,
-        settlementStatus: 'settled',
-        settledByUserName: currentUser.name,
-        settledAt: now,
-        notes: note
-      })
-    }).catch(err => console.error('Error in API settlement:', err));
-
-    showToast(t('remittance_settled_toast') || 'Inter-branch remittance settled successfully!');
+    }).catch(err => console.error('Error saving customer submission:', err));
+    showToast(t('parcel_submitted_success') || 'Parcel submitted to the customer once.');
     return true;
   };
 
@@ -2264,6 +2333,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createCustomerPreBooking,
         confirmCustomerPreBooking,
         settleInterBranchRemittance,
+        submitParcelForCollection,
         updateShipmentStatus,
         canUserUpdateStatus,
         changePassword,

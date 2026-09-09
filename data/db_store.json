@@ -183,29 +183,6 @@
         "created_at": "2026-09-06T12:38:36.896Z",
         "tazkira_number": "1400-0500-56950"
       }
-    ],
-    [
-      "br_kbl_01",
-      {
-        "id": "br_kbl_01",
-        "name": "Kabul Central Hub",
-        "name_fa": "مرکز مرکزی کابل",
-        "name_ps": "د کابل مرکزي څانګه",
-        "code": "KBL-01",
-        "province": "Kabul",
-        "city": "Kabul City",
-        "address": "Cinema Pamir, Jade Maywand, Kabul",
-        "phone": "+93 79 900 1122",
-        "email": "kabul@armaghansadeq.af",
-        "manager_name": "Ahmadzai Qaderi",
-        "is_head_office": true,
-        "active_shipments_count": 0,
-        "total_parcels_dispatched": 0,
-        "total_parcels_received": 0,
-        "total_revenue_afn": "0.00",
-        "created_at": "2026-01-01T00:00:00.000Z",
-        "tazkira_number": "1401-8829102-1"
-      }
     ]
   ],
   "users": [
@@ -222,7 +199,7 @@
         "password_changed_by_branch": false,
         "last_password_change": null,
         "status": "active",
-        "avatar": null,
+        "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
         "created_at": "2026-01-01T00:00:00.000Z",
         "last_login": "Never"
       }

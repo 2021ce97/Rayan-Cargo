@@ -69,7 +69,7 @@ if (!process.env.DATABASE_URL) {
   process.env.DATABASE_URL = DEFAULT_SUPABASE_DATABASE_URL;
 }
 
-let useMock = false;
+let useMock = process.env.USE_MOCK_DB === 'true';
 let realPool: pg.Pool | null = null;
 
 // In-Memory Database Handler for instant offline/container support
@@ -254,8 +254,16 @@ const mockDb = {
       return { rows: list, rowCount: list.length };
     }
 
+    if (upper.includes('SELECT ID, REMITTANCE_STATUS FROM SHIPMENTS')) {
+      const ids = params[0] || [];
+      const rows = Array.from(memoryStore.shipments.values())
+        .filter(s => ids.includes(s.id))
+        .map(s => ({ id: s.id, remittance_status: s.remittance_status || 'pending' }));
+      return { rows, rowCount: rows.length };
+    }
+
     if (upper.startsWith('INSERT INTO SHIPMENTS')) {
-      const [id, cn_number, origin_branch_id, destination_branch_id, current_branch_id, sender, receiver, package_info, financials, status, status_history, booked_at, estimated_delivery, booked_by_user_id, booked_by_user_name, is_pre_booking] = params;
+      const [id, cn_number, origin_branch_id, destination_branch_id, current_branch_id, sender, receiver, package_info, financials, status, status_history, booked_at, estimated_delivery, booked_by_user_id, booked_by_user_name, is_customer_prebooked, customer_user_id] = params;
       const parseJson = (val: any) => typeof val === 'string' ? JSON.parse(val) : val;
       const record = {
         id,
@@ -277,7 +285,9 @@ const mockDb = {
         delivery_notes: null,
         booked_by_user_id: booked_by_user_id || null,
         booked_by_user_name: booked_by_user_name || null,
-        is_pre_booking: is_pre_booking || false,
+        is_customer_prebooked: is_customer_prebooked || false,
+        is_pre_booking: is_customer_prebooked || false,
+        customer_user_id: customer_user_id || null,
         created_at: new Date().toISOString()
       };
       memoryStore.shipments.set(id, record);
@@ -286,13 +296,19 @@ const mockDb = {
     }
 
     if (upper.startsWith('UPDATE SHIPMENTS SET') && upper.includes('STATUS = $1')) {
-      const [status, statusHistory, actualDelivery, financials, currentBranchId, id] = params;
+      const [status, statusHistory, actualDelivery, financials, sender, receiver, packageInfo, submissionAt, submissionReference, submissionBy, currentBranchId, id] = params;
       const s = memoryStore.shipments.get(id);
       if (s) {
         s.status = status;
         if (statusHistory) s.status_history = typeof statusHistory === 'string' ? JSON.parse(statusHistory) : statusHistory;
         if (actualDelivery) s.actual_delivery = actualDelivery;
         if (financials) s.financials = typeof financials === 'string' ? JSON.parse(financials) : financials;
+        if (sender) s.sender = typeof sender === 'string' ? JSON.parse(sender) : sender;
+        if (receiver) s.receiver = typeof receiver === 'string' ? JSON.parse(receiver) : receiver;
+        if (packageInfo) s.package_info = typeof packageInfo === 'string' ? JSON.parse(packageInfo) : packageInfo;
+        if (submissionAt) s.customer_submission_at = submissionAt;
+        if (submissionReference) s.customer_submission_reference = submissionReference;
+        if (submissionBy) s.customer_submission_by = submissionBy;
         if (currentBranchId) s.current_branch_id = currentBranchId;
         saveStoreToDisk();
       }
@@ -413,7 +429,7 @@ const mockDb = {
           target.settled_at = new Date().toISOString();
           saveStoreToDisk();
         }
-      } else if (upper.includes('SETTLEMENT_STATUS = \'REJECTED\'')) {
+      } else if (upper.includes('SETTLEMENT_STATUS = \'REJECTED\'') || upper.includes('SETTLEMENT_STATUS = \'DISPUTED\'')) {
         const [notes, id] = params;
         const target = memoryStore.branch_settlements.get(id);
         if (target) {
@@ -559,9 +575,12 @@ CREATE TABLE IF NOT EXISTS shipments (
   booked_by_user_id TEXT,
   booked_by_user_name TEXT,
   dest_branch_commission NUMERIC DEFAULT 100,
-  remittance_status TEXT DEFAULT 'unsettled',
+  remittance_status TEXT DEFAULT 'pending',
   origin_remittance_due NUMERIC DEFAULT 0,
   is_pre_booking BOOLEAN DEFAULT false,
+  customer_submission_at TIMESTAMPTZ,
+  customer_submission_reference TEXT,
+  customer_submission_by TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -671,7 +690,22 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
       `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS settlement_status TEXT DEFAULT 'settled';`,
       `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS settled_by_user_name TEXT;`,
       `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS settled_at TIMESTAMPTZ DEFAULT NOW();`,
-      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS notes TEXT;`
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS notes TEXT;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS shipment_id TEXT;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS cn_number TEXT;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS origin_branch_id TEXT;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS destination_branch_id TEXT;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS gross_collected_amount NUMERIC DEFAULT 0;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS dest_branch_commission NUMERIC DEFAULT 0;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS transportation_fee NUMERIC DEFAULT 0;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS origin_branch_commission NUMERIC DEFAULT 0;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS total_commission_kept NUMERIC DEFAULT 0;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS parcel_ids JSONB DEFAULT '[]'::jsonb;`,
+      `ALTER TABLE branch_settlements ALTER COLUMN branch_id SET DEFAULT 'br_admin_hq';`,
+      `ALTER TABLE shipments ALTER COLUMN remittance_status SET DEFAULT 'pending';`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_submission_at TIMESTAMPTZ;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_submission_reference TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_submission_by TEXT;`
     ];
 
     for (const sql of columnMigrations) {
@@ -1114,6 +1148,27 @@ export async function initDatabase(
     console.log('🔄 Initializing Database Store...');
     // 1. Load any persisted store from disk
     loadStoreFromDisk();
+
+    // Kabul is represented only by the Admin HQ branch. Migrate legacy KBL-01 data.
+    const legacyKabulId = 'br_kbl_01';
+    let legacyDataChanged = false;
+    for (const shipment of memoryStore.shipments.values()) {
+      if (shipment.origin_branch_id === legacyKabulId) { shipment.origin_branch_id = 'br_admin_hq'; legacyDataChanged = true; }
+      if (shipment.destination_branch_id === legacyKabulId) { shipment.destination_branch_id = 'br_admin_hq'; legacyDataChanged = true; }
+      if (shipment.current_branch_id === legacyKabulId) { shipment.current_branch_id = 'br_admin_hq'; legacyDataChanged = true; }
+    }
+    for (const expense of memoryStore.branch_expenses.values()) {
+      if (expense.branch_id === legacyKabulId) { expense.branch_id = 'br_admin_hq'; legacyDataChanged = true; }
+    }
+    for (const settlement of memoryStore.branch_settlements.values()) {
+      if (settlement.origin_branch_id === legacyKabulId) { settlement.origin_branch_id = 'br_admin_hq'; legacyDataChanged = true; }
+      if (settlement.destination_branch_id === legacyKabulId) { settlement.destination_branch_id = 'br_admin_hq'; legacyDataChanged = true; }
+      if (settlement.branch_id === legacyKabulId) { settlement.branch_id = 'br_admin_hq'; legacyDataChanged = true; }
+    }
+    memoryStore.branches.delete(legacyKabulId);
+    memoryStore.users.delete('usr_kbl_01');
+    memoryStore.users.delete('usr_kbl_mgr');
+    if (legacyDataChanged) saveStoreToDisk();
 
     const adminUser = {
       id: 'usr_admin',

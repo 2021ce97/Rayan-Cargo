@@ -73,10 +73,13 @@ CREATE TABLE IF NOT EXISTS public.shipments (
     status_history JSONB NOT NULL DEFAULT '[]'::jsonb,
     is_customer_prebooked BOOLEAN DEFAULT FALSE,
     customer_user_id VARCHAR(64),
+    customer_submission_at TIMESTAMPTZ,
+    customer_submission_reference VARCHAR(128),
+    customer_submission_by VARCHAR(128),
     transportation_fee NUMERIC(12,2) DEFAULT 0,
     dest_branch_commission NUMERIC(12,2) DEFAULT 0,
     origin_remittance_due NUMERIC(12,2) DEFAULT 0,
-    remittance_status VARCHAR(32) DEFAULT 'pending' CHECK (remittance_status IN ('pending', 'settled', 'not_applicable')),
+    remittance_status VARCHAR(32) DEFAULT 'pending' CHECK (remittance_status IN ('pending', 'submitted_to_headoffice', 'settled', 'not_applicable')),
     booked_at TIMESTAMPTZ DEFAULT NOW(),
     estimated_delivery TIMESTAMPTZ,
     actual_delivery TIMESTAMPTZ,
@@ -177,7 +180,6 @@ INSERT INTO public.branches (
     manager_name, is_head_office, active_shipments_count, total_parcels_dispatched,
     total_parcels_received, total_revenue_afn
 ) VALUES 
-('br_kbl_01', 'Kabul Central Hub', 'نمایندگی مرکزی کابل', 'د کابل مرکزي څانګه', 'KBL-01', 'Kabul', 'Kabul City (Shahr-e-Naw)', 'Ansari Square, Shahr-e-Naw, Cargo Center #4', '+93 79 123 4567', 'kabul@rayancargo.af', 'Ahmad Rashid Safi', TRUE, 142, 1890, 1420, 984500),
 ('br_hrt_02', 'Herat Western Terminal', 'نمایندگی ولایت هرات', 'د هرات ولایت څانګه', 'HRT-02', 'Herat', 'Herat City', 'Velayat Road, Near Minarets Cargo Terminal', '+93 70 882 1144', 'herat@rayancargo.af', 'Mohammad Farhad Nazari', FALSE, 88, 920, 850, 485000),
 ('br_mzr_03', 'Mazar-i-Sharif Northern Hub', 'نمایندگی مزارشریف و بلخ', 'د مزارشریف څانګه (بلخ)', 'MZR-03', 'Balkh', 'Mazar-i-Sharif', 'Kefayat Market Road, Near Rawza Square', '+93 78 554 9900', 'mazar@rayancargo.af', 'Zabihullah Balkhi', FALSE, 64, 780, 710, 395000),
 ('br_kdh_04', 'Kandahar Southern Terminal', 'نمایندگی ولایت قندهار', 'د کندهار ولایت څانګه', 'KDH-04', 'Kandahar', 'Kandahar City', 'Shahidano Chawk, Commercial Cargo Terminal', '+93 77 441 2233', 'kandahar@rayancargo.af', 'Noor Ahmad Popalzai', FALSE, 52, 640, 620, 340000),
@@ -190,7 +192,6 @@ INSERT INTO public.users (
     id, name, email, phone, role, branch_id, password, status
 ) VALUES 
 ('usr_admin', 'Eng. Sayed Mustafa Hashemi', 'admin@rayancargo.af', '+93 79 900 1122', 'super_admin', 'all', 'admin123', 'active'),
-('usr_kbl_01', 'Ahmad Rashid Safi', 'kabul@rayancargo.af', '+93 79 123 4567', 'branch_manager', 'br_kbl_01', 'kabul123', 'active'),
 ('usr_hrt_02', 'Mohammad Farhad Nazari', 'herat@rayancargo.af', '+93 70 882 1144', 'branch_manager', 'br_hrt_02', 'herat123', 'active'),
 ('usr_mzr_03', 'Zabihullah Balkhi', 'mazar@rayancargo.af', '+93 78 554 9900', 'branch_manager', 'br_mzr_03', 'mazar123', 'active'),
 ('usr_kdh_04', 'Noor Ahmad Popalzai', 'kandahar@rayancargo.af', '+93 77 441 2233', 'branch_manager', 'br_kdh_04', 'kandahar123', 'active'),
@@ -203,10 +204,6 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.branch_expenses (
     id, branch_id, category, amount, description, expense_date, paid_to, receipt_number, created_by_name
 ) VALUES
-('exp_01', 'br_kbl_01', 'rent', 35000, 'Monthly Terminal Warehouse Rent (Month of Hamal)', CURRENT_DATE - INTERVAL '10 days', 'Kabul Plaza Management', 'RC-RENT-401', 'Ahmad Rashid Safi'),
-('exp_02', 'br_kbl_01', 'salary', 45000, 'Branch Loading & Dispatch Staff Salary', CURRENT_DATE - INTERVAL '5 days', 'Branch Staff (3 Persons)', 'SAL-KBL-01', 'Ahmad Rashid Safi'),
-('exp_03', 'br_kbl_01', 'food', 8500, 'Daily Staff Lunch & Tea Refreshments', CURRENT_DATE - INTERVAL '2 days', 'Madina Restaurant', 'FOOD-102', 'Ahmad Rashid Safi'),
-('exp_04', 'br_kbl_01', 'fuel_transport', 16000, 'Cargo Van Diesel & Highway Transit Tolls', CURRENT_DATE - INTERVAL '1 day', 'Kabul-Kandahar Express Fuel', 'FUEL-883', 'Ahmad Rashid Safi'),
 ('exp_05', 'br_hrt_02', 'rent', 22000, 'Herat Minarets Terminal Rent', CURRENT_DATE - INTERVAL '12 days', 'Herat Real Estate', 'HRT-RENT-02', 'Mohammad Farhad Nazari'),
 ('exp_06', 'br_hrt_02', 'salary', 32000, 'Herat Branch Warehouse Workers Salary', CURRENT_DATE - INTERVAL '4 days', 'Branch Staff (2 Persons)', 'SAL-HRT-02', 'Mohammad Farhad Nazari'),
 ('exp_07', 'br_mzr_03', 'rent', 20000, 'Mazar Rawza Commercial Hub Rent', CURRENT_DATE - INTERVAL '8 days', 'Kefayat Market', 'MZR-RENT-03', 'Zabihullah Balkhi')

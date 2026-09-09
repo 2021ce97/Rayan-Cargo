@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS public.shipments (
     -- Inter-Branch Financial Settlement & Commission
     dest_branch_commission NUMERIC(10, 2) DEFAULT 100.0,
     origin_remittance_due NUMERIC(10, 2),
-    remittance_status VARCHAR(50) DEFAULT 'not_applicable' CHECK (remittance_status IN ('not_applicable', 'pending', 'settled')),
+    remittance_status VARCHAR(50) DEFAULT 'not_applicable' CHECK (remittance_status IN ('not_applicable', 'pending', 'submitted_to_headoffice', 'settled')),
     settled_at TIMESTAMPTZ,
     settlement_note TEXT,
     
@@ -93,6 +93,9 @@ CREATE TABLE IF NOT EXISTS public.shipments (
     status VARCHAR(50) NOT NULL DEFAULT 'booked' CHECK (status IN ('pre_booked', 'booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled')),
     is_customer_prebooked BOOLEAN DEFAULT FALSE NOT NULL,
     customer_user_id VARCHAR(64) REFERENCES public.users(id) ON DELETE SET NULL,
+    customer_submission_at TIMESTAMPTZ,
+    customer_submission_reference VARCHAR(128),
+    customer_submission_by VARCHAR(128),
     
     -- Tracking & Timestamps
     booked_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,

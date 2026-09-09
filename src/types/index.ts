@@ -249,6 +249,9 @@ export interface Shipment {
   remittanceStatus?: 'pending' | 'submitted_to_headoffice' | 'settled' | 'not_applicable';
   remittanceBatchId?: string;
   remittanceSettledAt?: string;
+  customerSubmissionAt?: string;
+  customerSubmissionReference?: string;
+  customerSubmissionBy?: string;
   bookedAt: string;
   estimatedDelivery: string;
   actualDelivery?: string;
