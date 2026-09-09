@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { BarcodeGenerator, QRCodeVisual } from './BarcodeGenerator';
-import { generateWaybillPdf, printElementUsingIframe } from '../utils/pdfExport';
+import { generateWaybillPdf, generateThermalLabelPdf, printElementUsingIframe } from '../utils/pdfExport';
 
 export const PrintReceiptModal: React.FC = () => {
   const { 
@@ -50,7 +50,9 @@ export const PrintReceiptModal: React.FC = () => {
     setDownloadSuccess(false);
 
     try {
-      const ok = generateWaybillPdf(shipment, originBranch, destBranch);
+      const ok = printFormat === 'thermal' 
+        ? generateThermalLabelPdf(shipment, originBranch, destBranch)
+        : generateWaybillPdf(shipment, originBranch, destBranch);
       if (ok) {
         setDownloadSuccess(true);
         setTimeout(() => setDownloadSuccess(false), 4000);
@@ -101,15 +103,14 @@ export const PrintReceiptModal: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Download PDF button (For Standard A4) */}
-            {printFormat === 'standard' && (
-              <button
-                onClick={handleDownloadPdf}
-                disabled={isGeneratingPdf}
-                id="btn-modal-download-pdf"
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                title="Download PDF to computer/phone"
-              >
+            {/* Download PDF button */}
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              id="btn-modal-download-pdf"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Download PDF to computer/phone"
+            >
                 {isGeneratingPdf ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -127,7 +128,6 @@ export const PrintReceiptModal: React.FC = () => {
                   </>
                 )}
               </button>
-            )}
 
             {/* Print button */}
             <button

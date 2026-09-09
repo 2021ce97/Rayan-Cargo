@@ -954,14 +954,6 @@ export const ParcelInventory: React.FC = () => {
                       <td className="p-3.5 text-end">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => handlePrintThermalLabel(s)}
-                            className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs font-bold text-xs"
-                            title="Print Thermal Shipping Label (4x6 PDF with Barcode)"
-                          >
-                            <QrCode className="w-3.5 h-3.5" />
-                            <span>Print Label</span>
-                          </button>
-                          <button
                             onClick={() => setSelectedShipmentForReceipt(s)}
                             className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
                             title="Print / Download Receipt (A4 or Thermal)"
