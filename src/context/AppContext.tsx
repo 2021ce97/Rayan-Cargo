@@ -1912,8 +1912,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const weightCost = Math.round(actualWeightKg * ratePerKg);
     const fragileFee = target.packageInfo?.isFragile ? 150 : 0;
-    const subtotal = baseRate + weightCost + serviceFee + fragileFee;
-    const totalAmount = Math.max(0, subtotal - discountAmount);
+    const cappedDiscount = Math.min(discountAmount, baseRate);
+    const discountedBaseRate = Math.max(0, baseRate - cappedDiscount);
+    const totalAmount = discountedBaseRate + weightCost + serviceFee + fragileFee;
     const originRemittanceDue = Math.max(0, totalAmount - destBranchCommission);
     const now = new Date().toISOString();
     const branchInfo = branches.find(b => b.id === currentUser.branchId) || branches.find(b => b.id === finalOriginBranchId);

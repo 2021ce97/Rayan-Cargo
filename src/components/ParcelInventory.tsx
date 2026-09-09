@@ -1371,8 +1371,9 @@ export const ParcelInventory: React.FC = () => {
               {(() => {
                 const weightCharge = Math.round(weighedWeight * modalRatePerKg);
                 const fragileCharge = confirmModalShipment.packageInfo?.isFragile ? 150 : 0;
-                const calcSubtotal = modalBaseRate + weightCharge + modalServiceFee + fragileCharge;
-                const calcTotal = Math.max(0, calcSubtotal - modalDiscountAmount);
+                const cappedDiscount = Math.min(modalDiscountAmount, modalBaseRate);
+                const discountedBaseRate = Math.max(0, modalBaseRate - cappedDiscount);
+                const calcTotal = discountedBaseRate + weightCharge + modalServiceFee + fragileCharge;
                 return (
                   <div className="p-3.5 rounded-2xl bg-slate-900 text-white space-y-1.5 shadow-inner">
                     <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] font-mono text-slate-400">

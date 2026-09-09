@@ -670,11 +670,6 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
               <p className="text-slate-600">
                 I, {currentSelectedGroup.receiverName}, confirm that I have inspected and received all the above listed {activeSelectedShipments.length} consignments in sealed, good condition from Armaghan Sadeq Transfers.
               </p>
-              <div className="pt-6 grid grid-cols-3 gap-4 text-center">
-                <div className="border-t border-slate-400 pt-1 font-bold">Receiver Signature & Date</div>
-                <div className="border-t border-slate-400 pt-1 font-bold">Tazkira / ID Verified</div>
-                <div className="border-t border-slate-400 pt-1 font-bold">Branch Delivery Officer Stamp</div>
-              </div>
             </div>
 
             {/* Footer */}

@@ -41,7 +41,7 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
 
     const pageStyle = format === 'thermal'
       ? `@page { size: 80mm auto; margin: 0; }`
-      : `@page { size: A4; margin: 10mm; }`;
+      : `@page { size: A4; margin: 5mm; }`;
 
     doc.open();
     doc.write(`
@@ -326,43 +326,7 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
 
     y += 17;
 
-    // SIGNATURE & STAMP BOXES
-    const sigColWidth = (contentWidth - 6) / 3;
-    const sigHeight = 18;
-
-    // 1. Shipper Signature
-    doc.rect(margin, y, sigColWidth, sigHeight);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text('Sender Signature & Verification', margin + 2.5, y + 4);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.text('I confirm contents comply with cargo laws.', margin + 2.5, y + 7.5);
-    doc.text('Signature: ____________________', margin + 2.5, y + 15);
-
-    // 2. Consignee Signature
-    const sig2X = margin + sigColWidth + 3;
-    doc.rect(sig2X, y, sigColWidth, sigHeight);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text('Receiver Signature / Fingerprint', sig2X + 2.5, y + 4);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.text('Received package in sealed condition.', sig2X + 2.5, y + 7.5);
-    doc.text('Sign / Thumb: _________________', sig2X + 2.5, y + 15);
-
-    // 3. Authorized Stamp
-    const sig3X = sig2X + sigColWidth + 3;
-    doc.rect(sig3X, y, sigColWidth, sigHeight);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text('Branch Authorized Stamp', sig3X + 2.5, y + 4);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.text(`Origin: ${originBranch?.name || shipment.originBranchId}`, sig3X + 2.5, y + 7.5);
-    doc.text('Official Seal: [ VERIFIED ]', sig3X + 2.5, y + 15);
-
-    y += sigHeight + 3;
+    // Removed SIGNATURE & STAMP BOXES per user request to fit on one page
 
     // OFFICIAL RULES & LEGAL CONDITIONS BOX (شرایط، قوانین و مقررات بارنامه و انتقال امانات)
     doc.setFillColor(248, 250, 252);
@@ -812,27 +776,7 @@ export function generateCombinedCustomerPdf(
     doc.text(`I, ${customer.name}, hereby confirm that I have inspected and received the ${shipments.length} consignments listed above in good, sealed,`, margin + 4, y + 10);
     doc.text('and undamaged condition from Armaghan Sadeq Transfers. All freight charges / COD payments have been settled as recorded.', margin + 4, y + 14);
 
-    // Signatures row
-    const sigY = y + 26;
-    doc.setDrawColor(148, 163, 184);
-    doc.setLineWidth(0.3);
-    doc.line(margin + 4, sigY, margin + 54, sigY);
-    doc.line(margin + 66, sigY, margin + 116, sigY);
-    doc.line(margin + 128, sigY, margin + 180, sigY);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text('Receiver (Person A) Signature', margin + 4, sigY + 4);
-    doc.text('Verified Tazkira / ID #', margin + 66, sigY + 4);
-    doc.text('Branch Delivery Officer Stamp', margin + 128, sigY + 4);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, margin + 4, sigY + 8);
-    doc.text(`${tazkiraVal || 'Checked & Stamped'}`, margin + 66, sigY + 8);
-    doc.text(`${destBranch?.name || 'Destination Hub'}`, margin + 128, sigY + 8);
+    // Removed signatures row per user request
 
     // Footer Credits
     y = 268;

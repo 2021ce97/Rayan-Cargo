@@ -133,16 +133,16 @@ export const NewBookingModal: React.FC = () => {
   // Calculations
   const weightCost = Math.round(weightKg * ratePerKg);
   const fragileFee = isFragile ? 150 : 0;
-  const subtotal = baseRate + weightCost + serviceFee + fragileFee;
-
   let calculatedDiscount = 0;
   if (discountType === 'percentage') {
-    calculatedDiscount = Math.round((subtotal * Math.min(discountValue, 100)) / 100);
+    calculatedDiscount = Math.round((baseRate * Math.min(discountValue, 100)) / 100);
   } else {
-    calculatedDiscount = Math.min(discountValue, subtotal);
+    calculatedDiscount = Math.min(discountValue, baseRate);
   }
 
-  const grandTotal = Math.max(0, subtotal - calculatedDiscount);
+  const discountedBaseRate = Math.max(0, baseRate - calculatedDiscount);
+  const subtotal = discountedBaseRate + weightCost + serviceFee + fragileFee;
+  const grandTotal = subtotal;
   const amountPaid = paymentStatus === 'paid' ? grandTotal : (paymentStatus === 'partial' ? Math.round(grandTotal / 2) : 0);
   const amountDue = grandTotal - amountPaid;
 

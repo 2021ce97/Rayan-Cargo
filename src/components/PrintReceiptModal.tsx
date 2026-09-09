@@ -561,26 +561,7 @@ export const PrintReceiptModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Signatures */}
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-slate-300 text-xs">
-              <div className="text-center space-y-4">
-                <div className="font-bold text-slate-800">Sender Signature</div>
-                <div className="border-b border-slate-400 w-3/4 mx-auto pb-1" />
-                <div className="text-[10px] text-slate-500">Shipper Acknowledgment</div>
-              </div>
-
-              <div className="text-center space-y-4">
-                <div className="font-bold text-slate-800">Branch Officer Signature</div>
-                <div className="border-b border-slate-400 w-3/4 mx-auto pb-1" />
-                <div className="text-[10px] text-slate-500">{shipment.bookedByUserName || originBranch?.name || 'Officer Stamp'}</div>
-              </div>
-
-              <div className="text-center space-y-4">
-                <div className="font-bold text-slate-800">Receiver Signature (POD)</div>
-                <div className="border-b border-slate-400 w-3/4 mx-auto pb-1" />
-                <div className="text-[10px] text-slate-500">(Sign upon handover)</div>
-              </div>
-            </div>
+            {/* Removed Signatures section per user request to fit on one page */}
 
             {/* Official 3 Mandatory Helpline Contacts Strip */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
