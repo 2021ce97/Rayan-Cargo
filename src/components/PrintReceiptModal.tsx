@@ -39,7 +39,7 @@ export const PrintReceiptModal: React.FC = () => {
   const handlePrint = () => {
     const targetRef = printFormat === 'thermal' ? thermalRef.current : receiptRef.current;
     if (targetRef) {
-      printElementUsingIframe(targetRef, `Receipt_${shipment.cnNumber}`);
+      printElementUsingIframe(targetRef, `Receipt_${shipment.cnNumber}`, printFormat);
     } else {
       window.print();
     }

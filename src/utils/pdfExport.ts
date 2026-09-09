@@ -5,7 +5,7 @@ import { Shipment, Branch } from '../types';
  * Universal safe print utility that uses an isolated hidden iframe.
  * This completely avoids parent document clipping, sandbox issues, and prints ONLY the targeted element.
  */
-export function printElementUsingIframe(element: HTMLElement, title: string = 'Print Document'): boolean {
+export function printElementUsingIframe(element: HTMLElement, title: string = 'Print Document', format: 'standard' | 'thermal' = 'standard'): boolean {
   try {
     // Remove any existing print iframes
     const oldIframe = document.getElementById('rayan_print_iframe');
@@ -33,6 +33,15 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
 
     // Extract HTML content
     const htmlContent = element.outerHTML;
+    
+    // Grab all styles from the current document so Tailwind works inside the iframe
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(node => node.outerHTML)
+      .join('\n');
+
+    const pageStyle = format === 'thermal'
+      ? `@page { size: 80mm auto; margin: 0; }`
+      : `@page { size: A4; margin: 10mm; }`;
 
     doc.open();
     doc.write(`
@@ -41,11 +50,9 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
         <head>
           <title>${title}</title>
           <meta charset="utf-8" />
+          ${styles}
           <style>
-            @page {
-              size: A4;
-              margin: 10mm;
-            }
+            ${pageStyle}
             * {
               box-sizing: border-box;
               -webkit-print-color-adjust: exact !important;
@@ -56,24 +63,10 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
               background: #ffffff !important;
               color: #0f172a !important;
               margin: 0;
-              padding: 10px;
+              padding: ${format === 'thermal' ? '0' : '10px'};
             }
             .no-print {
               display: none !important;
-            }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-            }
-            th, td {
-              border: 1px solid #cbd5e1;
-              padding: 6px 8px;
-              text-align: left;
-            }
-            th {
-              background-color: #f1f5f9 !important;
-              color: #0f172a !important;
-              font-weight: bold;
             }
           </style>
         </head>
@@ -85,6 +78,7 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
     doc.close();
 
     // Trigger printing once content is ready
+    // Using a slightly longer timeout to ensure external stylesheets (if any) load
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -93,7 +87,7 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
         console.error('Iframe print error:', err);
         window.print();
       }
-    }, 350);
+    }, 450);
 
     return true;
   } catch (err) {
