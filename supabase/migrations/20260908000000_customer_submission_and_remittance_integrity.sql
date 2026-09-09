@@ -7,6 +7,10 @@ ALTER TABLE public.shipments
 ALTER TABLE public.shipments
   DROP CONSTRAINT IF EXISTS shipments_remittance_status_check;
 
+UPDATE public.shipments
+SET remittance_status = 'pending'
+WHERE remittance_status IS NULL OR remittance_status = 'unsettled';
+
 ALTER TABLE public.shipments
   ADD CONSTRAINT shipments_remittance_status_check
   CHECK (remittance_status IN ('pending', 'submitted_to_headoffice', 'settled', 'not_applicable'));
