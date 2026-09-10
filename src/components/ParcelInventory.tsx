@@ -123,6 +123,7 @@ export const ParcelInventory: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedPayment, setSelectedPayment] = useState<string>('all');
+  const [selectedDestinationBranch, setSelectedDestinationBranch] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<InventoryTab>('all');
 
   // Sorting state
@@ -213,6 +214,7 @@ export const ParcelInventory: React.FC = () => {
       const matchesStatus = selectedStatus === 'all' || s.status === selectedStatus;
       const matchesCategory = selectedCategory === 'all' || s.packageInfo.category === selectedCategory;
       const matchesPayment = selectedPayment === 'all' || s.financials.paymentStatus === selectedPayment;
+      const matchesDestinationBranch = selectedDestinationBranch === 'all' || s.destinationBranchId === selectedDestinationBranch;
 
       let matchesTab = true;
       const userBranch = currentUser.role !== 'super_admin' ? currentUser.branchId : (activeBranchId !== 'all' ? activeBranchId : null);
@@ -244,7 +246,7 @@ export const ParcelInventory: React.FC = () => {
         }
       }
 
-      return matchesSearch && matchesStatus && matchesCategory && matchesPayment && matchesTab;
+      return matchesSearch && matchesStatus && matchesCategory && matchesPayment && matchesDestinationBranch && matchesTab;
     });
 
     result.sort((a, b) => {
@@ -718,7 +720,7 @@ export const ParcelInventory: React.FC = () => {
         </div>
 
         {/* Search and Secondary Select Filters */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           
           <div className="relative">
             <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -784,6 +786,19 @@ export const ParcelInventory: React.FC = () => {
               <option value="paid">{t('payment_paid')} (Cash at Origin)</option>
               <option value="to_pay">{t('payment_to_pay')} (COD at Destination)</option>
               <option value="pending">{t('payment_pending')}</option>
+            </select>
+          </div>
+
+          <div>
+            <select
+              value={selectedDestinationBranch}
+              onChange={(e) => setSelectedDestinationBranch(e.target.value)}
+              className="w-full h-10 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer font-medium"
+            >
+              <option value="all">Destination Branch: All</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>{b.name} ({b.city})</option>
+              ))}
             </select>
           </div>
 

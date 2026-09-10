@@ -21,7 +21,8 @@ export const PrintReceiptModal: React.FC = () => {
     selectedShipmentForReceipt, 
     setSelectedShipmentForReceipt, 
     branches, 
-    t 
+    t,
+    showToast
   } = useApp();
 
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -43,6 +44,7 @@ export const PrintReceiptModal: React.FC = () => {
     } else {
       window.print();
     }
+    showToast(`✓ Print job sent to printer for CN #${shipment.cnNumber}!`);
   };
 
   const handleDownloadPdf = () => {
