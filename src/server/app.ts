@@ -351,9 +351,22 @@ api.post('/shipments', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const s = req.body;
-    const randomSuffix = Math.floor(1500 + Math.random() * 8500);
-    const cn = s.cnNumber || `ARM-${randomSuffix}`;
-    const id = s.id || `shp_${randomSuffix}`;
+    let cn = s.cnNumber;
+    if (!cn) {
+      const { rows } = await db.query('SELECT cn_number FROM shipments');
+      let maxNum = 1499;
+      rows.forEach((r: any) => {
+        const m = (r.cn_number || '').match(/(?:ARM|RYN)?(?:-PR)?-?(\d+)/i);
+        if (m) {
+          const v = parseInt(m[1], 10);
+          if (!isNaN(v) && v >= 1500 && v < 100000 && v > maxNum) {
+            maxNum = v;
+          }
+        }
+      });
+      cn = `ARM-${maxNum + 1}`;
+    }
+    const id = s.id || `shp_${cn.replace(/[^0-9a-zA-Z]/g, '_').toLowerCase()}`;
     const now = new Date().toISOString();
     const isPre = s.isCustomerPrebooked || s.isPreBooking || s.status === 'pre_booked' || s.status === 'verified' || false;
 

@@ -29,8 +29,8 @@ export const LoginPage: React.FC = () => {
     setSelectedShipmentForReceipt
   } = useApp();
 
-  // Active Tab - default to branch/admin login
-  const [activeTab, setActiveTab] = useState<'track' | 'customer' | 'branch'>('branch');
+  // Active Tab - default to public consignment tracking
+  const [activeTab, setActiveTab] = useState<'track' | 'customer' | 'branch'>('track');
 
   // Public Tracking State
   const [searchCn, setSearchCn] = useState('');

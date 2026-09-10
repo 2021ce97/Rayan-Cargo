@@ -33,7 +33,8 @@ import {
   AlertCircle,
   ShieldCheck,
   Users,
-  QrCode
+  QrCode,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
@@ -65,9 +66,47 @@ export const ParcelInventory: React.FC = () => {
     updateShipmentStatus,
     confirmCustomerPreBooking,
     settleInterBranchRemittance,
-    createSingleParcelRemittance
-    ,submitParcelForCollection
+    createSingleParcelRemittance,
+    submitParcelForCollection,
+    syncWithDatabase,
+    isSyncing
   } = useApp();
+
+  // Auto-sync parcels immediately on mount and poll periodically so new parcels from any branch/customer appear automatically
+  useEffect(() => {
+    // 1. Immediate sync on entering parcel inventory
+    syncWithDatabase();
+
+    // 2. Fast auto-polling every 4 seconds so all new parcels appear in real time without refreshing
+    const pollInterval = setInterval(() => {
+      syncWithDatabase();
+    }, 4000);
+
+    // 3. Cross-tab storage synchronization
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'armaghan_shipments' || e.key === 'armaghan_sync_signal') {
+        syncWithDatabase();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // 4. Instant cross-tab broadcast synchronization
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('armaghan_cargo_sync');
+      bc.onmessage = () => {
+        syncWithDatabase();
+      };
+    } catch (e) {
+      // BroadcastChannel unsupported fallback
+    }
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('storage', handleStorage);
+      if (bc) bc.close();
+    };
+  }, [syncWithDatabase, activeBranchId]);
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -495,8 +534,22 @@ export const ParcelInventory: React.FC = () => {
           </div>
         </div>
 
-        {/* Top actions: New Booking, Export Manifest, Combined Customer PDF, Export CSV */}
+        {/* Top actions: Auto-Sync, New Booking, Export Manifest, Combined Customer PDF, Export CSV */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => syncWithDatabase()}
+            disabled={isSyncing}
+            className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer shadow-2xs"
+            title="Live Cloud/Database Synchronized. Auto-fetches new bookings continuously."
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
+            <span className="text-[11px] font-mono">{isSyncing ? 'Syncing...' : 'Live Synced'}</span>
+          </button>
+
           <button
             onClick={() => setActiveView('booking')}
             className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer"

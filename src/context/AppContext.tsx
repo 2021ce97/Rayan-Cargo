@@ -257,35 +257,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_USERS;
   });
 
+  // Helper to normalize and sanitize CN numbers to start from 1500 sequentially
+  const sanitizeCnList = (list: Shipment[]): Shipment[] => {
+    let nextAvailable = 1500;
+    return list.map(s => {
+      let cn = s.cnNumber || '';
+      const match = cn.match(/(?:ARM|RYN)?(?:-PR)?-?(\d+)/i);
+      if (match) {
+        const val = parseInt(match[1], 10);
+        // If it's a valid sequential number from 1500 to 99999, use ARM-<num>
+        if (val >= 1500 && val < 100000) {
+          if (val >= nextAvailable) {
+            nextAvailable = val + 1;
+          }
+          cn = `ARM-${val}`;
+        } else {
+          // Old random or 6-digit legacy number (e.g. 988809, 969214), assign next sequential number
+          cn = `ARM-${nextAvailable++}`;
+        }
+      } else {
+        cn = `ARM-${nextAvailable++}`;
+      }
+      return {
+        ...s,
+        cnNumber: cn
+      };
+    });
+  };
+
   // Shipments
   const [shipments, setShipments] = useState<Shipment[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.SHIPMENTS);
     if (saved) {
       try {
         const parsed: Shipment[] = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.map(s => ({
-            ...s,
-            cnNumber: s.cnNumber ? s.cnNumber.replace(/^RYN-/i, 'ARM-') : s.cnNumber
-          }));
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return sanitizeCnList(parsed);
         }
       } catch (e) { console.error(e); }
     }
-    return INITIAL_SHIPMENTS.map(s => ({
-      ...s,
-      cnNumber: s.cnNumber ? s.cnNumber.replace(/^RYN-/i, 'ARM-') : s.cnNumber
-    }));
+    return sanitizeCnList(INITIAL_SHIPMENTS);
   });
 
   // Helper to generate the next sequential CN / Barcode number starting from 1500 with prefix ARM-
-  const getNextSequentialCn = (currentList: Shipment[], isPreBooking: boolean = false): string => {
+  const getNextSequentialCn = (currentList: Shipment[], _isPreBooking: boolean = false): string => {
     let maxSequentialNum = 1499; // Base so the first consignment starts from 1500
     currentList.forEach(s => {
       if (!s.cnNumber) return;
-      const match = s.cnNumber.match(/(?:ARM|RYN)(?:-PR)?-(\d+)/i);
+      const match = s.cnNumber.match(/(?:ARM|RYN)?(?:-PR)?-?(\d+)/i);
       if (match) {
         const val = parseInt(match[1], 10);
-        if (!isNaN(val) && val >= 1500 && val < 1000000) {
+        // Strictly scan within the 1500..99999 sequence, ignoring legacy 6-digit numbers
+        if (!isNaN(val) && val >= 1500 && val < 100000) {
           if (val > maxSequentialNum) {
             maxSequentialNum = val;
           }
@@ -294,8 +317,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     const nextNum = maxSequentialNum + 1;
-    const prefix = isPreBooking ? 'ARM-PR-' : 'ARM-';
-    return `${prefix}${nextNum}`;
+    return `ARM-${nextNum}`;
   };
 
   // Branch Expenses
@@ -641,16 +663,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     syncWithDatabase(true);
-    const interval = setInterval(() => syncWithDatabase(false), 30000);
+    const interval = setInterval(() => syncWithDatabase(true), 5000);
 
     const handleFocus = () => {
-      syncWithDatabase(false);
+      syncWithDatabase(true);
     };
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        syncWithDatabase(false);
+        syncWithDatabase(true);
       }
     };
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      bc = new BroadcastChannel('armaghan_cargo_sync');
+      bc.onmessage = () => {
+        syncWithDatabase(true);
+      };
+    } catch (e) {}
 
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibility);
@@ -659,6 +689,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibility);
+      if (bc) bc.close();
     };
   }, [syncWithDatabase]);
 

@@ -737,6 +737,8 @@ export const translations: Record<Language, Record<string, string>> = {
     breakdown_cargo_category: 'Breakdown by cargo category',
     
     // Receipt Print Modal
+    receipt_title: 'Official Consignment Waybill',
+    btn_print_pdf: 'Print Waybill (A4)',
     print_format_a4: 'Standard A4 Document',
     print_format_thermal: 'Thermal POS (58/80mm)',
     receipt_cn_num: 'CN NUMBER',
@@ -1660,6 +1662,8 @@ export const translations: Record<Language, Record<string, string>> = {
     breakdown_cargo_category: 'تفکیک بر اساس نوعیت کالا',
     
     // Receipt Print Modal (Dari)
+    receipt_title: 'بارنامه و رسید رسمی انتقال',
+    btn_print_pdf: 'چاپ بارنامه (A4)',
     print_format_a4: 'ورق استاندارد A4',
     print_format_thermal: 'چاپگر حرارتی POS (۵۸/۸۰ میلی‌متر)',
     receipt_cn_num: 'شماره بارنامه',
@@ -2583,6 +2587,8 @@ export const translations: Record<Language, Record<string, string>> = {
     breakdown_cargo_category: 'د توکو د ډول له مخې ویش',
     
     // Receipt Print Modal (Pashto)
+    receipt_title: 'رسمي بارنامه او د لېږد رسید',
+    btn_print_pdf: 'د بارنامې چاپ (A4)',
     print_format_a4: 'معیاري A4 پاڼه',
     print_format_thermal: 'حرارتي چاپګر POS (۵۸/۸۰ ملي متر)',
     receipt_cn_num: 'د بارنامې شمېره',

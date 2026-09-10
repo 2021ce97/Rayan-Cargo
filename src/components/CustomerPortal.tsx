@@ -262,75 +262,107 @@ export const CustomerPortal: React.FC = () => {
         const activeCount = customerShipments.filter(s => s.status !== 'delivered' && s.status !== 'cancelled').length;
 
         return (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-0">
-            <div className="bg-slate-900 text-white px-5 py-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Scale className="w-4 h-4 text-amber-400" />
-                <span className="font-extrabold text-xs uppercase tracking-wider">
-                  {t('customer_stats_table_title')}
-                </span>
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden space-y-0 transition-all hover:shadow-lg">
+            {/* Attractive Colored Top Header Bar */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-indigo-900/50">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-amber-400/20 text-amber-400 border border-amber-400/30">
+                  <Scale className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-black text-xs uppercase tracking-wider text-amber-300 block">
+                    {t('customer_stats_table_title')}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block -mt-0.5">
+                    خلاصه وضعیت مالی، تعداد بسته‌ها و ارزش اظهاری محموله‌ها
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono text-[11px]">
-                  {currentUser.name} ({currentUser.phone || 'Customer'})
+                <span className="px-3 py-1 rounded-full bg-slate-800/90 text-slate-200 font-mono text-[11px] border border-slate-700 flex items-center gap-1.5">
+                  <User className="w-3 h-3 text-red-400" />
+                  <span>{currentUser.name} ({currentUser.phone || 'Customer'})</span>
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 font-bold text-[10px]">
-                  {activeCount} {t('customer_stats_active_count')} • {deliveredCount} {t('customer_stats_delivered_count')}
+                <span className="px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-300 font-bold text-[10.5px] border border-emerald-800 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>{activeCount} {t('customer_stats_active_count')} • {deliveredCount} {t('customer_stats_delivered_count')}</span>
                 </span>
               </div>
             </div>
 
+            {/* The 3 Attractive Colored Rectangular Metric Cells */}
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase font-bold text-[10.5px]">
-                    <th className="py-3 px-5 border-r border-slate-200 w-1/3">
-                      {t('customer_stats_total_spent')}
+                  <tr className="uppercase font-bold text-[11px]">
+                    <th className="py-3 px-6 bg-gradient-to-r from-emerald-100/90 to-teal-50 border-b border-emerald-200 text-emerald-950 border-r border-emerald-200/80 w-1/3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>{t('customer_stats_total_spent')}</span>
+                      </div>
                     </th>
-                    <th className="py-3 px-5 border-r border-slate-200 text-center w-1/3">
-                      {t('customer_stats_total_parcels')}
+                    <th className="py-3 px-6 bg-gradient-to-r from-indigo-100/90 to-blue-50 border-b border-indigo-200 text-indigo-950 border-r border-indigo-200/80 text-center w-1/3">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                        <span>{t('customer_stats_total_parcels')}</span>
+                      </div>
                     </th>
-                    <th className="py-3 px-5 text-end w-1/3">
-                      {t('customer_stats_total_declared_val')}
+                    <th className="py-3 px-6 bg-gradient-to-r from-amber-100/90 to-orange-50 border-b border-amber-200 text-amber-950 text-end w-1/3">
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span>{t('customer_stats_total_declared_val')}</span>
+                      </div>
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <tr className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-4 px-5 border-r border-slate-200">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-                          <DollarSign className="w-5 h-5" />
+                <tbody>
+                  <tr>
+                    {/* 1. Emerald Cell: Total Money Spent */}
+                    <td className="py-5 px-6 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white border-r border-emerald-200/70">
+                      <div className="flex items-center gap-3.5">
+                        <div className="p-3 rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20 shrink-0">
+                          <DollarSign className="w-6 h-6" />
                         </div>
                         <div>
-                          <div className="text-xl font-black text-emerald-700 font-mono">
-                            {totalMoneySpent.toLocaleString()} <span className="text-xs font-bold text-emerald-900">AFN</span>
+                          <div className="text-2xl font-black text-emerald-800 font-mono tracking-tight flex items-baseline gap-1.5">
+                            <span>{totalMoneySpent.toLocaleString()}</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-200">AFN</span>
                           </div>
-                          <div className="text-[10.5px] text-slate-500 mt-0.5">
-                            {language === 'fa' ? 'مجموع مبالغ کرایه پرداخت‌شده یا در انتظار وصول' : language === 'ps' ? 'ټول لګښت شوي پیسې د باربري لپاره' : 'Total freight expenditure across all bookings'}
+                          <div className="text-[11px] font-medium text-emerald-900/80 mt-1">
+                            {language === 'fa' ? 'مجموع مبالغ کرایه پرداخت‌شده و در انتظار وصول' : language === 'ps' ? 'ټول لګښت شوي پیسې د باربري لپاره' : 'Total freight expenditure across all bookings'}
                           </div>
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-4 px-5 border-r border-slate-200 text-center">
+                    {/* 2. Indigo Cell: Total Parcels Count */}
+                    <td className="py-5 px-6 bg-gradient-to-br from-indigo-50/70 via-blue-50/30 to-white border-r border-indigo-200/70 text-center">
                       <div className="inline-flex flex-col items-center">
-                        <div className="text-xl font-black text-slate-900 font-mono">
-                          {totalParcelsCount} <span className="text-xs font-bold text-slate-500">{t('pcs_unit') || 'Parcels'}</span>
+                        <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20 mb-1.5">
+                          <Package className="w-5 h-5" />
                         </div>
-                        <div className="text-[10.5px] text-slate-500 mt-0.5">
-                          {language === 'fa' ? `${deliveredCount} تسلیم‌شده • ${activeCount} در جریان` : language === 'ps' ? `${deliveredCount} سپارل شوی • ${activeCount} په لاره` : `${deliveredCount} Delivered • ${activeCount} In-transit`}
+                        <div className="text-2xl font-black text-indigo-950 font-mono tracking-tight flex items-baseline justify-center gap-1.5">
+                          <span>{totalParcelsCount}</span>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 border border-indigo-200">{t('pcs_unit') || 'Parcels'}</span>
+                        </div>
+                        <div className="text-[11px] font-medium text-indigo-900/80 mt-1">
+                          {language === 'fa' ? `${deliveredCount} تسلیم‌شده • ${activeCount} در جریان انتقال` : language === 'ps' ? `${deliveredCount} سپارل شوی • ${activeCount} په لاره` : `${deliveredCount} Delivered • ${activeCount} In-transit`}
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-4 px-5 text-end">
+                    {/* 3. Amber Cell: Declared Cargo Value */}
+                    <td className="py-5 px-6 bg-gradient-to-br from-amber-50/70 via-orange-50/30 to-white text-end">
                       <div className="flex flex-col items-end">
-                        <div className="text-xl font-black text-amber-600 font-mono">
-                          {totalParcelsValue.toLocaleString()} <span className="text-xs font-bold text-amber-800">AFN</span>
+                        <div className="p-2.5 rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20 mb-1.5">
+                          <ShieldCheck className="w-5 h-5" />
                         </div>
-                        <div className="text-[10.5px] text-slate-500 mt-0.5">
-                          {language === 'fa' ? 'مجموع ارزش اظهاری اجناس اماناتی' : language === 'ps' ? 'د لیږل شویو توکو ټول ټاکل شوی ارزښت' : 'Total declared cargo insurance value'}
+                        <div className="text-2xl font-black text-amber-800 font-mono tracking-tight flex items-baseline justify-end gap-1.5">
+                          <span>{totalParcelsValue.toLocaleString()}</span>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">AFN</span>
+                        </div>
+                        <div className="text-[11px] font-medium text-amber-900/80 mt-1">
+                          {language === 'fa' ? 'مجموع ارزش اظهاری اجناس و بیمه امانات' : language === 'ps' ? 'د لیږل شویو توکو ټول ټاکل شوی ارزښت' : 'Total declared cargo insurance value'}
                         </div>
                       </div>
                     </td>
@@ -339,32 +371,46 @@ export const CustomerPortal: React.FC = () => {
               </table>
             </div>
 
-            {/* Official 3 Legal Roles Strip inside Customer Portal (شرایط، قوانین و مقررات بارنامه و انتقال امانات) */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2 text-right" dir="rtl">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+            {/* Official 3 Legal Roles Strip inside Customer Portal with Attractive Colorful Cards */}
+            <div className="p-4 sm:p-5 bg-gradient-to-b from-slate-50 to-slate-100/80 border-t border-slate-200 space-y-3 text-right" dir="rtl">
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-red-600" />
+                  <div className="p-1 rounded-md bg-red-100 text-red-600">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
                   <span className="font-black text-xs text-slate-900">
                     {t('official_rules_title')}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-mono" dir="ltr">
+                <span className="text-[10px] font-bold text-slate-500 font-mono bg-white px-2.5 py-0.5 rounded-md border border-slate-200" dir="ltr">
                   ARMAGHAN SADEQ TRANSFERS • 34 PROVINCES
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs leading-relaxed text-slate-700">
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-                  <strong className="text-slate-950 block font-black text-[11px] mb-1">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/70 via-white to-blue-50/30 border border-blue-200/80 shadow-xs hover:border-blue-300 transition-colors">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center">۱</span>
+                    <span className="text-blue-950 font-black text-[11px]">ماده اول (مدت اعتبار و صحت معلومات)</span>
+                  </div>
+                  <strong className="text-slate-900 block font-normal text-[11px] leading-relaxed">
                     {t('official_rule_1')}
                   </strong>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-                  <strong className="text-slate-950 block font-black text-[11px] mb-1">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30 border border-amber-200/80 shadow-xs hover:border-amber-300 transition-colors">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-black text-[10px] flex items-center justify-center">۲</span>
+                    <span className="text-amber-950 font-black text-[11px]">ماده دوم (ممنوعیت و حوادث طبیعی)</span>
+                  </div>
+                  <strong className="text-slate-900 block font-normal text-[11px] leading-relaxed">
                     {t('official_rule_2')}
                   </strong>
                 </div>
-                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
-                  <strong className="text-slate-950 block font-black text-[11px] mb-1">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/30 border border-emerald-200/80 shadow-xs hover:border-emerald-300 transition-colors">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center">۳</span>
+                    <span className="text-emerald-950 font-black text-[11px]">ماده سوم (نگهداری و تسلیمی اصل بل)</span>
+                  </div>
+                  <strong className="text-slate-900 block font-normal text-[11px] leading-relaxed">
                     {t('official_rule_3')}
                   </strong>
                 </div>

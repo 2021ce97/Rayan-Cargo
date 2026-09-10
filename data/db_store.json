@@ -318,7 +318,7 @@
       "shp_pr_446156",
       {
         "id": "shp_pr_446156",
-        "cn_number": "ARM-PR-446156",
+        "cn_number": "ARM-1500",
         "origin_branch_id": "br_far01_8916",
         "destination_branch_id": "br_hrt_03",
         "current_branch_id": "br_far01_8916",
@@ -468,7 +468,7 @@
       "shp_pr_328325",
       {
         "id": "shp_pr_328325",
-        "cn_number": "ARM-PR-328325",
+        "cn_number": "ARM-1501",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -582,7 +582,7 @@
       "shp_pr_681800",
       {
         "id": "shp_pr_681800",
-        "cn_number": "ARM-PR-681800",
+        "cn_number": "ARM-1502",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -660,7 +660,7 @@
       "shp_pr_613059",
       {
         "id": "shp_pr_613059",
-        "cn_number": "ARM-PR-613059",
+        "cn_number": "ARM-1503",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -738,7 +738,7 @@
       "shp_pr_822627",
       {
         "id": "shp_pr_822627",
-        "cn_number": "ARM-PR-822627",
+        "cn_number": "ARM-1504",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -816,7 +816,7 @@
       "shp_pr_988809",
       {
         "id": "shp_pr_988809",
-        "cn_number": "ARM-PR-988809",
+        "cn_number": "ARM-1505",
         "origin_branch_id": "br_kdh_04",
         "destination_branch_id": "br_mzk_02",
         "current_branch_id": "br_kdh_04",
@@ -913,7 +913,7 @@
       "shp_pr_128938",
       {
         "id": "shp_pr_128938",
-        "cn_number": "ARM-PR-128938",
+        "cn_number": "ARM-1506",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -991,7 +991,7 @@
       "shp_pr_174899",
       {
         "id": "shp_pr_174899",
-        "cn_number": "ARM-PR-174899",
+        "cn_number": "ARM-1507",
         "origin_branch_id": "br_kdh_04",
         "destination_branch_id": "br_mzk_02",
         "current_branch_id": "br_kdh_04",
@@ -1115,7 +1115,7 @@
       "shp_pr_969214",
       {
         "id": "shp_pr_969214",
-        "cn_number": "ARM-PR-969214",
+        "cn_number": "ARM-1508",
         "origin_branch_id": "br_kdh_04",
         "destination_branch_id": "br_kho06_0281",
         "current_branch_id": "br_kdh_04",
@@ -1194,7 +1194,7 @@
       "shp_pr_370879",
       {
         "id": "shp_pr_370879",
-        "cn_number": "ARM-PR-370879",
+        "cn_number": "ARM-1509",
         "origin_branch_id": "br_mzk_02",
         "destination_branch_id": "br_hrt_03",
         "current_branch_id": "br_mzk_02",
@@ -1291,7 +1291,7 @@
       "test_1",
       {
         "id": "test_1",
-        "cn_number": "ARM-TEST-1",
+        "cn_number": "ARM-1510",
         "origin_branch_id": "br_kabul",
         "destination_branch_id": "br_herat",
         "current_branch_id": "br_kabul",
@@ -1332,7 +1332,7 @@
       "shp_pr_286520",
       {
         "id": "shp_pr_286520",
-        "cn_number": "ARM-PR-286520",
+        "cn_number": "ARM-1511",
         "origin_branch_id": "br_mzk_02",
         "destination_branch_id": "br_hrt_03",
         "current_branch_id": "br_hrt_03",
@@ -1456,7 +1456,7 @@
       "shp_pr_429649",
       {
         "id": "shp_pr_429649",
-        "cn_number": "ARM-PR-429649",
+        "cn_number": "ARM-1512",
         "origin_branch_id": "br_kho06_0281",
         "destination_branch_id": "br_nan01_0813",
         "current_branch_id": "br_kho06_0281",
@@ -1544,7 +1544,7 @@
       "shp_pr_580347",
       {
         "id": "shp_pr_580347",
-        "cn_number": "ARM-PR-580347",
+        "cn_number": "ARM-1513",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
