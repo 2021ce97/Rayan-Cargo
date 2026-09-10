@@ -34,7 +34,9 @@ import {
   ShieldCheck,
   Users,
   QrCode,
-  RefreshCw
+  RefreshCw,
+  PhoneOff,
+  MessageSquareWarning
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
@@ -64,6 +66,7 @@ export const ParcelInventory: React.FC = () => {
     setSelectedShipmentForReceipt, 
     setActiveView,
     updateShipmentStatus,
+    reportDeliveryIssue,
     confirmCustomerPreBooking,
     settleInterBranchRemittance,
     createSingleParcelRemittance,
@@ -172,6 +175,11 @@ export const ParcelInventory: React.FC = () => {
   const [isSettling, setIsSettling] = useState(false);
   const [submissionModalShipment, setSubmissionModalShipment] = useState<Shipment | null>(null);
   const [submissionReference, setSubmissionReference] = useState('');
+
+  // Delivery Issue Reporting Modal
+  const [issueModalShipment, setIssueModalShipment] = useState<Shipment | null>(null);
+  const [issueType, setIssueType] = useState<string>('no_answer');
+  const [issueCustomNote, setIssueCustomNote] = useState<string>('');
 
   // Manifest modal state
   const [isManifestOpen, setIsManifestOpen] = useState(false);
@@ -399,6 +407,19 @@ export const ParcelInventory: React.FC = () => {
     if (ok) {
       setConfirmModalShipment(null);
     }
+  };
+
+  // Handle Delivery Issue
+  const handleOpenIssueModal = (shipment: Shipment) => {
+    setIssueModalShipment(shipment);
+    setIssueType('no_answer');
+    setIssueCustomNote('');
+  };
+
+  const handleConfirmIssue = () => {
+    if (!issueModalShipment) return;
+    reportDeliveryIssue(issueModalShipment.id, issueType, issueCustomNote);
+    setIssueModalShipment(null);
   };
 
   // Handle Inter-Branch Settlement
@@ -1089,6 +1110,15 @@ export const ParcelInventory: React.FC = () => {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
+                          {(s.status === 'in_transit' || s.status === 'received_at_branch' || s.status === 'out_for_delivery') && (currentUser.branchId === s.destinationBranchId || currentUser.role === 'super_admin') && (
+                            <button
+                              onClick={() => handleOpenIssueModal(s)}
+                              className="p-1.5 rounded-lg bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 transition-colors cursor-pointer"
+                              title={t('report_delivery_issue') || 'Report Delivery Issue / تماس ناموفق'}
+                            >
+                              <PhoneOff className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           {(s.status === 'out_for_delivery' || s.status === 'delivered') && !isSubmitted && (
                             <button
                               onClick={() => { setSubmissionModalShipment(s); setSubmissionReference(''); }}
@@ -2253,6 +2283,79 @@ export const ParcelInventory: React.FC = () => {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: DELIVERY ISSUE REPORTING */}
+      {issueModalShipment && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-5 animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500 mb-1">
+                  <MessageSquareWarning className="w-5 h-5" />
+                  <h3 className="font-black text-base">{t('report_delivery_issue') || 'Report Contact / Delivery Issue'}</h3>
+                </div>
+                <p className="text-xs text-slate-500">
+                  {issueModalShipment.cnNumber} · {issueModalShipment.receiver.name} ({issueModalShipment.receiver.phone})
+                </p>
+              </div>
+              <button onClick={() => setIssueModalShipment(null)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/60 rounded-xl text-xs text-orange-900 dark:text-orange-200">
+              {t('issue_modal_desc') || 'Log a failed contact attempt. This will be visible to the origin branch and the customer tracking portal.'}
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('issue_type') || 'Reason / Issue Type'}
+                </label>
+                <select 
+                  value={issueType} 
+                  onChange={(e) => setIssueType(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  <option value="no_answer">{t('issue_no_answer') || "Didn't Answer (جواب نداد)"}</option>
+                  <option value="incorrect_number">{t('issue_wrong_number') || "Incorrect Number (شماره اشتباه)"}</option>
+                  <option value="not_available">{t('issue_not_available') || "Consignee Not Available (گیرنده در دسترس نیست)"}</option>
+                  <option value="other">{t('issue_other') || "Other (دیگر)"}</option>
+                </select>
+              </div>
+
+              {issueType === 'other' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {t('issue_custom_note') || 'Custom Note'}
+                  </label>
+                  <textarea 
+                    value={issueCustomNote} 
+                    onChange={(e) => setIssueCustomNote(e.target.value)}
+                    placeholder={t('issue_custom_placeholder') || 'Enter specifics...'}
+                    className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 outline-none resize-none h-24"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <button
+                onClick={() => setIssueModalShipment(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+              >
+                {t('btn_cancel') || 'Cancel'}
+              </button>
+              <button
+                onClick={handleConfirmIssue}
+                disabled={issueType === 'other' && !issueCustomNote.trim()}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors flex items-center gap-1.5"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{t('btn_submit_issue') || 'Submit Report'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

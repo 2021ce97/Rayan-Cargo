@@ -440,48 +440,56 @@ export const TrackingPortal: React.FC = () => {
 
               {/* Timeline Items */}
               <div className="relative ps-6 space-y-6 before:absolute before:inset-0 before:left-2.5 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-                {trackedShipment.statusHistory.slice().reverse().map((item, idx) => (
+                {trackedShipment.statusHistory.slice().reverse().map((item, idx) => {
+                  const isIssue = item.note?.startsWith('Delivery Issue:');
+                  return (
                   <div key={item.id || idx} className="relative group">
                     
                     {/* Milestone Pin */}
                     <div className={`absolute -left-6 top-1 w-5 h-5 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center ${
-                      idx === 0 ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
+                      isIssue ? 'bg-orange-500 text-white' : idx === 0 ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
                     }`}>
-                      <Check className="w-3 h-3" />
+                      {isIssue ? <AlertCircle className="w-3 h-3" /> : <Check className="w-3 h-3" />}
                     </div>
 
-                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-1.5">
+                    <div className={`p-4 rounded-xl border space-y-1.5 ${
+                      isIssue 
+                        ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/60' 
+                        : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800'
+                    }`}>
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-bold text-xs text-slate-900 dark:text-slate-100">
-                          {t(`status_${item.status}`)}
+                        <span className={`font-bold text-xs ${isIssue ? 'text-orange-900 dark:text-orange-100' : 'text-slate-900 dark:text-slate-100'}`}>
+                          {isIssue ? (t('delivery_attempt_failed') || 'Delivery Attempt Failed') : t(`status_${item.status}`)}
                         </span>
-                        <span className="text-[11px] text-slate-400 font-mono">
+                        <span className={`text-[11px] font-mono ${isIssue ? 'text-orange-700 dark:text-orange-400' : 'text-slate-400'}`}>
                           {new Date(item.timestamp).toLocaleString()}
                         </span>
                       </div>
 
-                      <div className="text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1">
+                      <div className={`text-xs font-medium flex items-center gap-1 ${isIssue ? 'text-orange-800 dark:text-orange-300' : 'text-red-600 dark:text-red-400'}`}>
                         <MapPin className="w-3 h-3" />
                         <span>{item.location} ({item.branchName})</span>
                       </div>
 
-                      <p className="text-xs text-slate-600 dark:text-slate-300">
-                        {item.note}
+                      <p className={`text-xs ${isIssue ? 'text-orange-800 dark:text-orange-200 font-medium' : 'text-slate-600 dark:text-slate-300'}`}>
+                        {isIssue ? item.note.replace('Delivery Issue:', '').trim() : item.note}
                       </p>
 
                       {item.driverName && (
-                        <div className="pt-2 mt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px] text-slate-500">
+                        <div className={`pt-2 mt-2 border-t flex items-center justify-between text-[11px] ${
+                          isIssue ? 'border-orange-200/60 dark:border-orange-800/60 text-orange-700 dark:text-orange-400' : 'border-slate-200/60 dark:border-slate-700/60 text-slate-500'
+                        }`}>
                           <span>{t('driver_assigned')}: <strong>{item.driverName}</strong></span>
                           {item.driverPhone && <span>{t('phone')}: {item.driverPhone}</span>}
                         </div>
                       )}
 
-                      <div className="text-[10px] text-slate-400 pt-1">
+                      <div className={`text-[10px] pt-1 ${isIssue ? 'text-orange-600/70 dark:text-orange-400/70' : 'text-slate-400'}`}>
                         {t('booked_by_officer')}: {item.updatedBy}
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
 
               {/* Proof of Delivery (if delivered) */}

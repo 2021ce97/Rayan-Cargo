@@ -121,6 +121,7 @@ interface AppContextType {
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
   submitParcelForCollection: (shipmentId: string, reference?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
+  reportDeliveryIssue: (shipmentId: string, issueType: string, customNote?: string) => boolean;
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
   resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string) => boolean;
@@ -2382,6 +2383,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newShipment;
   };
 
+  // Report a Delivery Issue / Contact Attempt
+  const reportDeliveryIssue = (shipmentId: string, issueType: string, customNote?: string): boolean => {
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) return false;
+
+    // Typically only the destination branch or super admin can report delivery issues
+    const isDestination = target.destinationBranchId === currentUser.branchId;
+    if (!isDestination && currentUser.role !== 'super_admin') {
+      showToast(t('perm_unauthorized') || 'Unauthorized branch operation.');
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    const userBranch = branches.find(b => b.id === currentUser.branchId);
+
+    const issueText = issueType === 'other' && customNote 
+      ? `Delivery Issue: ${customNote}` 
+      : `Delivery Issue: ${issueType}`;
+
+    const newHistoryItem = {
+      id: `issue_${Date.now()}`,
+      status: target.status, // Keep current status
+      location: userBranch ? `${userBranch.name} (${userBranch.city})` : 'Destination Branch',
+      branchName: userBranch?.name || 'Cargo Hub',
+      timestamp: now,
+      note: issueText,
+      updatedBy: `${currentUser.name} (${userBranch?.name || 'Branch'})`
+    };
+
+    const newHistory = [...(target.statusHistory || []), newHistoryItem];
+    const updatedShipment = { ...target, statusHistory: newHistory };
+
+    setShipments(prev => prev.map(s => s.id === target.id ? updatedShipment : s));
+    if (trackedShipment && (trackedShipment.id === target.id || trackedShipment.cnNumber === target.cnNumber)) {
+      setTrackedShipment(updatedShipment);
+    }
+
+    directSupabaseUpdateShipmentStatus(target.id, target.status, newHistory);
+    
+    fetch(`/api/shipments/${target.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: target.status,
+        statusHistory: newHistory,
+        userRole: currentUser.role,
+        userBranchId: currentUser.branchId
+      })
+    }).catch(err => console.error('Error reporting issue in Supabase:', err));
+
+    showToast(t('issue_reported_successfully') || 'Delivery issue reported and logged to tracking history.');
+
+    return true;
+  };
+
   // Update Shipment Status
   const updateShipmentStatus = (
     shipmentId: string, 
@@ -2516,6 +2572,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         settleInterBranchRemittance,
         submitParcelForCollection,
         updateShipmentStatus,
+        reportDeliveryIssue,
         canUserUpdateStatus,
         changePassword,
         resetBranchUserCredentials,
