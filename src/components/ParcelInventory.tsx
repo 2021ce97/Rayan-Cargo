@@ -1926,6 +1926,31 @@ export const ParcelInventory: React.FC = () => {
                     </div>
                   )}
 
+                  <div className="mb-3">
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      Reason for Exception (Optional)
+                    </label>
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setStatusNote(e.target.value);
+                        }
+                      }}
+                      className="w-full h-10 px-3 font-medium bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
+                    >
+                      <option value="">Select common issue...</option>
+                      <option value="Customer not answering phone">Customer not answering phone</option>
+                      <option value="Phone number is incorrect/switched off">Phone number is incorrect/switched off</option>
+                      <option value="Customer requested later delivery date">Customer requested later delivery date</option>
+                      <option value="Address not found / Incomplete">Address not found / Incomplete</option>
+                      <option value="Consignee refused to accept parcel">Consignee refused to accept parcel</option>
+                      <option value="Consignee refused to pay charges">Consignee refused to pay charges</option>
+                      <option value="Package damaged in transit">Package damaged in transit</option>
+                      <option value="Vehicle breakdown / delayed in transit">Vehicle breakdown / delayed in transit</option>
+                      <option value="Customs or checkpoint delay">Customs or checkpoint delay</option>
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
                       {t('status_note_lbl') || 'Milestone Note / Tracking Remark'}
