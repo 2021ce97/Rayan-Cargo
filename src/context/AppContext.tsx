@@ -2206,111 +2206,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Origin Branch or Current Handling Hub: Can perform dispatching stages (pre_booked -> verified/booked, booked -> in_transit)
+    // Permission logic for Origin and Destination branches
+    let allowedStatuses: ShipmentStatus[] = [];
+    
     if (isOrigin || isCurrent) {
-      if (shipment.status === 'pre_booked') {
-        return {
-          allowed: true,
-          canUpdate: true,
-          roleType: 'sender_branch',
-          allowedStatuses: ['verified', 'booked', 'in_transit']
-        };
-      }
-      if (shipment.status === 'verified') {
-        return {
-          allowed: true,
-          canUpdate: true,
-          roleType: 'sender_branch',
-          allowedStatuses: ['booked', 'in_transit', 'cancelled']
-        };
-      }
-      if (shipment.status === 'booked') {
-        return {
-          allowed: true,
-          canUpdate: true,
-          roleType: 'sender_branch',
-          allowedStatuses: ['in_transit', 'cancelled']
-        };
-      }
-      if (isDestination) {
-        // Same branch is both origin and destination (intra-city/local delivery)
-        if (shipment.status === 'in_transit') {
-          return {
-            allowed: true,
-            canUpdate: true,
-            roleType: 'receiver_branch',
-            allowedStatuses: ['received_at_branch', 'out_for_delivery', 'delivered']
-          };
-        }
-        if (shipment.status === 'received_at_branch') {
-          return {
-            allowed: true,
-            canUpdate: true,
-            roleType: 'receiver_branch',
-            allowedStatuses: ['out_for_delivery', 'delivered', 'returned']
-          };
-        }
-        if (shipment.status === 'out_for_delivery') {
-          return {
-            allowed: true,
-            canUpdate: true,
-            roleType: 'receiver_branch',
-            allowedStatuses: ['delivered', 'returned']
-          };
-        }
-      }
-      if (shipment.status === 'in_transit' || shipment.status === 'received_at_branch' || shipment.status === 'out_for_delivery' || shipment.status === 'delivered') {
-        return {
-          allowed: false,
-          canUpdate: false,
-          roleType: 'sender_branch',
-          reason: t('perm_origin_cannot_deliver') || 'This parcel has been dispatched from Origin. Only the Destination (Receiver) branch can update arrival at hub and delivery stages.',
-          allowedStatuses: []
-        };
-      }
+      allowedStatuses.push('booked', 'in_transit');
+    }
+    
+    if (isDestination) {
+      allowedStatuses.push('received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled');
     }
 
-    // Destination Branch: Can ONLY perform delivery stages (in_transit -> received_at_branch -> out_for_delivery -> delivered)
-    if (isDestination) {
-      if (shipment.status === 'pre_booked' || shipment.status === 'verified' || shipment.status === 'booked') {
-        return {
-          allowed: false,
-          canUpdate: false,
-          roleType: 'receiver_branch',
-          reason: t('perm_dest_not_dispatched') || 'This parcel is at the Origin branch for booking & dispatch. Destination branch will receive it once it is In Transit.',
-          allowedStatuses: []
-        };
-      }
-      if (shipment.status === 'in_transit') {
-        return {
-          allowed: true,
-          canUpdate: true,
-          roleType: 'receiver_branch',
-          allowedStatuses: ['received_at_branch']
-        };
-      }
-      if (shipment.status === 'received_at_branch') {
-        return {
-          allowed: true,
-          canUpdate: true,
-          roleType: 'receiver_branch',
-          allowedStatuses: ['out_for_delivery', 'delivered', 'returned']
-        };
-      }
-      if (shipment.status === 'out_for_delivery') {
-        return {
-          allowed: true,
-          canUpdate: true,
-          roleType: 'receiver_branch',
-          allowedStatuses: ['delivered', 'returned']
-        };
-      }
+    if (allowedStatuses.length > 0) {
       return {
-        allowed: false,
-        canUpdate: false,
-        roleType: 'receiver_branch',
-        reason: 'Consignment delivery lifecycle already completed.',
-        allowedStatuses: []
+        allowed: true,
+        canUpdate: true,
+        roleType: isOrigin && isDestination ? 'admin' : (isOrigin ? 'sender_branch' : 'receiver_branch'),
+        allowedStatuses: Array.from(new Set(allowedStatuses))
       };
     }
 

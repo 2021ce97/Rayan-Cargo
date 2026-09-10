@@ -286,7 +286,7 @@ export const PrintReceiptModal: React.FC = () => {
 
             {/* Official 3 Helpline Contacts */}
             <div className="border-t border-b border-dashed border-slate-900 py-1.5 my-1 text-[9px] space-y-0.5">
-              <div className="font-bold text-center uppercase tracking-wider text-[8.5px]">Official Helpline Contacts</div>
+              <div className="font-bold text-center uppercase tracking-wider text-[8.5px]">{t('contact_sender_branch') || 'Official Helpline Contacts'}</div>
               <div className="flex justify-between">
                 <span>1. Sender Hub:</span>
                 <span className="font-bold font-mono" dir="ltr">{originBranch?.phone || 'Origin Hub'}</span>
@@ -480,11 +480,11 @@ export const PrintReceiptModal: React.FC = () => {
               <table className="w-full text-xs">
                 <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
                   <tr>
-                    <th className="p-2.5 text-start">Cargo Description</th>
-                    <th className="p-2.5 text-center">Category</th>
-                    <th className="p-2.5 text-center">Weight</th>
-                    <th className="p-2.5 text-center">Pieces</th>
-                    <th className="p-2.5 text-end">Declared Value</th>
+                    <th className="p-2.5 text-start">{t('description') || 'Cargo Description'}</th>
+                    <th className="p-2.5 text-center">{t('category_lbl') || 'Category'}</th>
+                    <th className="p-2.5 text-center">{t('weight_lbl') || 'Weight'}</th>
+                    <th className="p-2.5 text-center">{t('pieces_lbl') || 'Pieces'}</th>
+                    <th className="p-2.5 text-end">{t('declared_value') || 'Declared Value'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

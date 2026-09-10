@@ -631,10 +631,10 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
                   <th className="p-2 border-r border-slate-300">#</th>
                   <th className="p-2 border-r border-slate-300">CN Number</th>
                   <th className="p-2 border-r border-slate-300">Origin Hub (Sender)</th>
-                  <th className="p-2 border-r border-slate-300">Description</th>
-                  <th className="p-2 border-r border-slate-300 text-center">Pcs / Wt</th>
-                  <th className="p-2 border-r border-slate-300 text-right">Freight</th>
-                  <th className="p-2 text-center">Payment</th>
+                  <th className="p-2 border-r border-slate-300">{t('description') || 'Description'}</th>
+                  <th className="p-2 border-r border-slate-300 text-center">{t('pieces_lbl') || 'Pcs'} / {t('weight_lbl') || 'Wt'}</th>
+                  <th className="p-2 border-r border-slate-300 text-right">{t('freight_lbl') || 'Freight'}</th>
+                  <th className="p-2 text-center">{t('payment_lbl') || 'Payment'}</th>
                 </tr>
               </thead>
               <tbody>

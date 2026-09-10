@@ -592,7 +592,7 @@ export const ParcelInventory: React.FC = () => {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
-            <span className="text-[11px] font-mono">{isSyncing ? 'Syncing...' : 'Live Synced'}</span>
+            <span className="text-[11px] font-mono">{isSyncing ? (t('syncing') || 'Syncing...') : (t('live_synced') || 'Live Synced')}</span>
           </button>
 
           <button
@@ -634,7 +634,7 @@ export const ParcelInventory: React.FC = () => {
               title="Print Selected Manifests"
             >
               <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Print Selected / چاپ ({selectedParcelIds.size})</span>
+              <span className="hidden sm:inline">{t('print_selected_count')?.replace('{count}', selectedParcelIds.size.toString()) || `Print Selected / چاپ (${selectedParcelIds.size})`}</span>
             </button>
           )}
 
@@ -665,7 +665,7 @@ export const ParcelInventory: React.FC = () => {
                 onClick={() => setSelectedPartnerBranchId('all')}
                 className="text-xs text-red-600 dark:text-red-400 hover:underline font-bold cursor-pointer"
               >
-                Clear Partner Filter ✕
+                {t('clear_partner_filter') || 'Clear Partner Filter ✕'}
               </button>
             )}
           </div>
@@ -679,8 +679,8 @@ export const ParcelInventory: React.FC = () => {
                   : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
               }`}
             >
-              <div className="text-[10px] opacity-75">All Hubs</div>
-              <div className="truncate font-black">All 5 Partners</div>
+              <div className="text-[10px] opacity-75">{t('all_hubs') || 'All Hubs'}</div>
+              <div className="truncate font-black">{t('all_5_partners') || 'All 5 Partners'}</div>
             </button>
 
             {otherBranches.map(b => {
@@ -958,12 +958,12 @@ export const ParcelInventory: React.FC = () => {
                         </div>
                         {isPrebooked ? (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-sans font-bold text-[9px] mt-0.5">
-                            Online Pre-Book
+                            {t('online_pre_book_tag') || 'Online Pre-Book'}
                           </span>
                         ) : s.isPreBooking ? (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-sans font-bold text-[9px] mt-0.5 animate-in fade-in zoom-in slide-in-from-bottom-1 duration-500">
                             <CheckCircle2 className="w-2.5 h-2.5" />
-                            Verified Pre-Book
+                            {t('status_verified_pre_book') || 'Verified Pre-Book'}
                           </span>
                         ) : null}
                       </td>
@@ -984,10 +984,15 @@ export const ParcelInventory: React.FC = () => {
 
                       {/* Route */}
                       <td className="p-3.5 text-center">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-bold text-[11px]">
-                          <span>{orig?.code || 'ORIG'}</span>
-                          <span className="text-slate-400">➔</span>
-                          <span>{dest?.code || 'DEST'}</span>
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 w-full justify-between max-w-[120px] mx-auto bg-slate-50 dark:bg-slate-800/50 p-1 rounded border border-slate-100 dark:border-slate-800">
+                            <span className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">{t('route_from') || 'From'}</span>
+                            <span className="font-bold text-[11px] text-slate-700 dark:text-slate-300">{orig?.code || 'ORIG'}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 w-full justify-between max-w-[120px] mx-auto bg-slate-50 dark:bg-slate-800/50 p-1 rounded border border-slate-100 dark:border-slate-800">
+                            <span className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">{t('route_to') || 'To'}</span>
+                            <span className="font-bold text-[11px] text-slate-700 dark:text-slate-300">{dest?.code || 'DEST'}</span>
+                          </div>
                         </div>
                       </td>
 
@@ -1007,9 +1012,9 @@ export const ParcelInventory: React.FC = () => {
                           <div className="space-y-1">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-800">
                               <Clock className="w-3 h-3 text-amber-600" />
-                              <span>Awaiting Origin Price</span>
+                              <span>{t('awaiting_origin_price') || 'Awaiting Origin Price'}</span>
                             </span>
-                            <div className="text-[9px] text-slate-400">Set on scale intake</div>
+                            <div className="text-[9px] text-slate-400">{t('set_on_scale') || 'Set on scale intake'}</div>
                           </div>
                         ) : (
                           <>
@@ -1023,7 +1028,7 @@ export const ParcelInventory: React.FC = () => {
                                 ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
                                 : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
                             }`}>
-                              {s.financials.paymentStatus === 'to_pay' ? 'COD (To-Pay)' : s.financials.paymentStatus.toUpperCase()}
+                              {s.financials.paymentStatus === 'to_pay' ? (t('pay_to_pay') || 'COD (To-Pay)') : s.financials.paymentStatus.toUpperCase()}
                             </span>
                             {s.destBranchCommission !== undefined && (
                               <div className="text-[9px] text-slate-400 mt-0.5">
@@ -1088,7 +1093,7 @@ export const ParcelInventory: React.FC = () => {
                             className="mt-1 px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-1 mx-auto cursor-pointer"
                           >
                             <ArrowRightLeft className="w-2.5 h-2.5" />
-                            <span>Settle Remittance</span>
+                            <span>{t('settle_remittance_btn') || 'Settle Remittance'}</span>
                           </button>
                         )}
                       </td>
@@ -1255,7 +1260,7 @@ export const ParcelInventory: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
                 <div className="flex items-center justify-between text-amber-900 dark:text-amber-300 font-bold text-xs">
                   <span>1. {t('verify_pricing_title')}</span>
-                  <span className="text-[10px] font-normal">Physical Scale Intake</span>
+                  <span className="text-[10px] font-normal">{t('physical_scale_intake') || 'Physical Scale Intake'}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1530,7 +1535,7 @@ export const ParcelInventory: React.FC = () => {
                   <div className="p-3.5 rounded-2xl bg-slate-900 text-white space-y-1.5 shadow-inner">
                     <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] font-mono text-slate-400">
                       <span>CALCULATED INVOICE BREAKDOWN</span>
-                      <span className="text-emerald-400 font-bold">Auto Math</span>
+                      <span className="text-emerald-400 font-bold">{t('auto_math') || 'Auto Math'}</span>
                     </div>
                     <div className="flex justify-between text-slate-300 text-xs">
                       <span>Base Booking Rate:</span>
@@ -1739,7 +1744,7 @@ export const ParcelInventory: React.FC = () => {
               {/* Visual Lifecycle Stepper */}
               <div className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
-                  <span>Consignment Lifecycle Path</span>
+                  <span>{t('consignment_lifecycle_path') || 'Consignment Lifecycle Path'}</span>
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono">
                     Current: {statusModalShipment.status.replace(/_/g, ' ').toUpperCase()}
                   </span>
@@ -1780,8 +1785,8 @@ export const ParcelInventory: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-[11px] text-blue-950 dark:text-blue-300 space-y-1 leading-relaxed">
-                  <p>• <strong>Origin Branch ({origBranch?.name || 'Sender'}):</strong> Controls <em>Booked</em> ➔ <em>In Transit</em> (Dispatches to highway).</p>
-                  <p>• <strong>Destination Branch ({destBranch?.name || 'Receiver'}):</strong> Controls <em>Received at Branch</em> ➔ <em>Out for Delivery</em> ➔ <em>Delivered</em>.</p>
+                  <p dangerouslySetInnerHTML={{ __html: t('lifecycle_origin_msg')?.replace('{branch}', origBranch?.name || 'Sender') || `• <strong>Origin Branch (${origBranch?.name || 'Sender'}):</strong> Controls <em>Booked</em> ➔ <em>In Transit</em> (Dispatches to highway).` }} />
+                  <p dangerouslySetInnerHTML={{ __html: t('lifecycle_dest_msg')?.replace('{branch}', destBranch?.name || 'Receiver') || `• <strong>Destination Branch (${destBranch?.name || 'Receiver'}):</strong> Controls <em>Received at Branch</em> ➔ <em>Out for Delivery</em> ➔ <em>Delivered</em>.` }} />
                   <p>• <strong>Super Admin (HQ):</strong> Master override across all provincial branches and statuses.</p>
                 </div>
               </div>
@@ -2232,12 +2237,12 @@ export const ParcelInventory: React.FC = () => {
                     <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800">
                       <th className="p-2 border border-slate-300 text-start">#</th>
                       <th className="p-2 border border-slate-300 text-start">CN Number</th>
-                      <th className="p-2 border border-slate-300 text-start">Destination</th>
+                      <th className="p-2 border border-slate-300 text-start">{t('table_destination') || 'Destination'}</th>
                       <th className="p-2 border border-slate-300 text-start">Receiver & Contact</th>
-                      <th className="p-2 border border-slate-300 text-center">Weight</th>
-                      <th className="p-2 border border-slate-300 text-center">Pcs</th>
-                      <th className="p-2 border border-slate-300 text-center">Payment</th>
-                      <th className="p-2 border border-slate-300 text-center">Sign</th>
+                      <th className="p-2 border border-slate-300 text-center">{t('table_weight') || 'Weight'}</th>
+                      <th className="p-2 border border-slate-300 text-center">{t('table_pcs') || 'Pcs'}</th>
+                      <th className="p-2 border border-slate-300 text-center">{t('table_payment') || 'Payment'}</th>
+                      <th className="p-2 border border-slate-300 text-center">{t('table_sign') || 'Sign'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2268,7 +2273,7 @@ export const ParcelInventory: React.FC = () => {
                 <div className="grid grid-cols-3 gap-6 pt-10 mt-6 border-t border-slate-300 text-xs text-center text-slate-600">
                   <div>
                     <div className="border-b border-slate-400 pb-8 mb-1"></div>
-                    <p className="font-bold">Dispatching Officer Sign</p>
+                    <p className="font-bold">{t('manifest_dispatching_sign') || 'Dispatching Officer Sign'}</p>
                   </div>
                   <div>
                     <div className="border-b border-slate-400 pb-8 mb-1"></div>
@@ -2276,7 +2281,7 @@ export const ParcelInventory: React.FC = () => {
                   </div>
                   <div>
                     <div className="border-b border-slate-400 pb-8 mb-1"></div>
-                    <p className="font-bold">Destination Receiving Officer Sign</p>
+                    <p className="font-bold">{t('manifest_dest_sign') || 'Destination Receiving Officer Sign'}</p>
                   </div>
                 </div>
 
