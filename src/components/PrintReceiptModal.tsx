@@ -264,26 +264,20 @@ export const PrintReceiptModal: React.FC = () => {
               )}
             </div>
 
-            {/* 5 Official Cargo Rules & Legal Conditions in Dari (شرایط، قوانین و مقررات بارنامه و انتقال امانات) */}
-            <div className="border-t border-b border-dashed border-slate-900 py-2 my-1 text-[8.5px] leading-snug space-y-1 text-slate-900 text-right" dir="rtl">
-              <div className="font-bold text-center uppercase tracking-wider text-[9px] bg-slate-100 py-0.5 border-y border-dashed border-slate-400">
-                شرایط، قوانین و مقررات بارنامه و انتقال امانات
+            {/* 3 Official Cargo Rules & Legal Conditions in Dari */}
+            <div className="border-t border-b border-dashed border-slate-900 py-1.5 my-1 text-[8px] leading-snug space-y-1 text-slate-900 text-right" dir="rtl">
+              <div className="font-bold text-center uppercase tracking-wider text-[8.5px] bg-slate-100 py-0.5 border-y border-dashed border-slate-400">
+                شرایط، قوانین و مقررات بارنامه
               </div>
               <div className="space-y-1 pt-0.5 font-sans">
                 <div>
-                  <span className="font-bold">۱. مسئولیت امانات:</span> شرکت در قبال پول نقد، طلا، جواهرات، اسناد بهادار و اجناس فاسدشدنی بدون ثبت رسمی و بیمه هیچ‌گونه مسئولیتی ندارد.
+                  <span className="font-bold">۱. </span> بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.
                 </div>
                 <div>
-                  <span className="font-bold">۲. مهلت ادعا و بررسی:</span> در صورت وارد شدن خسارت یا کسر کالا، صاحب مال مکلف است ظرف حداکثر ۴۸ ساعت با ارائه اصل بارنامه رسماً اطلاع دهد.
+                  <span className="font-bold">۲. </span> ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتش‌سوزی و تصادم مسئول نیست.
                 </div>
                 <div>
-                  <span className="font-bold">۳. اقلام ممنوعه و تعهد فرستنده:</span> انتقال سلاح، مواد منفجره، قاچاق، مواد مخدر و کالاهای غیرقانونی اکیداً ممنوع بوده و مسئولیت قانونی مستقیماً به عهده فرستنده است.
-                </div>
-                <div>
-                  <span className="font-bold">۴. تحویل‌دهی و احراز هویت:</span> تحویل امانت صرفاً با ارائه تذکره / کارت هویت معتبر گیرنده، امضا و ثبت اثر انگشت در نمایندگی صورت می‌گیرد.
-                </div>
-                <div>
-                  <span className="font-bold">۵. نگهداری و انبارداری:</span> اماناتی که بیش از ۳۰ روز در انبار نمایندگی بلاتکلیف بمانند، شامل هزینه انبارداری شده و مسئولیت افت کیفیت متوجه صاحب مال خواهد بود.
+                  <span className="font-bold">۳. </span> اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.
                 </div>
               </div>
             </div>
@@ -327,26 +321,43 @@ export const PrintReceiptModal: React.FC = () => {
           </div>
         ) : (
           /* 2. STANDARD A4 OFFICIAL CONSIGNMENT WAYBILL */
-          <div ref={receiptRef} className="p-6 sm:p-8 bg-white text-slate-900 printable-receipt font-sans space-y-6">
+          <div ref={receiptRef} className="p-4 sm:p-5 bg-white text-slate-900 printable-receipt font-sans space-y-2.5 max-w-3xl mx-auto">
+            <style>{`
+              @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 4mm 6mm;
+                }
+                body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                }
+                .printable-receipt {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                  max-height: 282mm !important;
+                }
+              }
+            `}</style>
             
             {/* Header */}
-            <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4 gap-4">
-              <div className="flex items-center gap-3">
+            <div className="flex items-start justify-between border-b-2 border-slate-900 pb-2 gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="p-1 bg-white rounded-lg border border-amber-500/30 flex items-center justify-center shrink-0">
-                  <img src="/logo.jpg" alt="Armaghan Sadeq Transfers" className="w-12 h-12 object-contain" />
+                  <img src="/logo.jpg" alt="Armaghan Sadeq Transfers" className="w-10 h-10 object-contain" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-black tracking-tight text-slate-900">
+                  <h1 className="text-lg font-black tracking-tight text-slate-900">
                     ARMAGHAN SADEQ TRANSFERS
                   </h1>
                   <p className="text-xs text-amber-700 font-bold">
                     خدمات انتقالات ارمغان صادق
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[9.5px] text-slate-500">
                     Afghanistan Nationwide Express Transfers & Freight Logistics
                   </p>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
-                    Helpline: +93 799 123 456 | info@armaghansadeq.af | Kabul HQ
+                  <div className="text-[9px] text-slate-500 mt-0.5">
+                    Helpline: 0711299680 / 0774144004 | info@armaghansadeq.af | Kabul HQ
                   </div>
                 </div>
               </div>
@@ -536,72 +547,64 @@ export const PrintReceiptModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Official 5 Cargo Rules & Conditions in Dari */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[9.5px] text-slate-700 leading-relaxed space-y-1.5" dir="rtl">
-              <div className="font-bold text-slate-900 uppercase tracking-wider text-[10px] flex items-center justify-between border-b border-slate-200 pb-1">
+            {/* Official 3 Cargo Rules & Conditions in Dari (RTL) */}
+            <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] text-slate-800 leading-normal space-y-1" dir="rtl">
+              <div className="font-bold text-slate-900 uppercase tracking-wider text-[9.5px] flex items-center justify-between border-b border-slate-200 pb-1">
                 <span>شرایط، قوانین و مقررات بارنامه و انتقال امانات</span>
-                <span className="text-[9px] text-slate-500 font-mono">ARMAGHAN SADEQ TRANSFERS</span>
+                <span className="text-[8.5px] text-slate-500 font-mono" dir="ltr">ARMAGHAN SADEQ TRANSFERS</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-right font-sans">
+              <div className="space-y-1 text-right font-sans">
                 <div>
-                  <strong className="text-slate-900">۱. مسئولیت امانات:</strong> شرکت در قبال پول نقد، طلا، اسناد بهادار و اجناس فاسدشدنی بدون اظهار و ثبت رسمی قبلی هیچ مسئولیتی ندارد.
+                  <strong className="text-slate-950 font-bold">۱. </strong> بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.
                 </div>
                 <div>
-                  <strong className="text-slate-900">۲. مهلت ادعا و بررسی:</strong> هرگونه ادعا، کسر یا خسارت باید حداکثر ظرف ۴۸ ساعت با ارائه اصل این بارنامه ثبت گردد.
+                  <strong className="text-slate-950 font-bold">۲. </strong> ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتش‌سوزی و تصادم مسئول نیست.
                 </div>
                 <div>
-                  <strong className="text-slate-900">۳. اقلام ممنوعه و تعهد:</strong> انتقال مواد انفجاری، اسلحه، مواد کیمیاوی و مواد مخدر اکیداً ممنوع بوده و مسئولیت آن متوجه فرستنده است.
-                </div>
-                <div>
-                  <strong className="text-slate-900">۴. تحویل‌دهی با تذکره:</strong> تسلیمی بار تنها با حضور گیرنده، ارائه اصل تذکره/سند هویت معتبر و نشان انگشت صورت می‌پذیرد.
-                </div>
-                <div className="md:col-span-2">
-                  <strong className="text-slate-900">۵. نگهداری و انبارداری:</strong> اماناتی که بیش از ۳۰ روز در انبار نمایندگی بلاتکلیف بمانند، شامل مصارف انبارداری گردیده و مسئولیت افت کیفیت متوجه صاحب مال خواهد بود.
+                  <strong className="text-slate-950 font-bold">۳. </strong> اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.
                 </div>
               </div>
             </div>
 
-            {/* Removed Signatures section per user request to fit on one page */}
-
             {/* Official 3 Mandatory Helpline Contacts Strip & Attribution Footer */}
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 bg-red-100 text-red-700 rounded-lg shrink-0 mt-0.5">
+            <div className="flex flex-col gap-1.5 pt-0.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                <div className="flex items-start gap-2">
+                  <div className="p-1 bg-red-100 text-red-700 rounded shrink-0 mt-0.5">
                     <Phone className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 font-bold uppercase">1. Sender Branch Phone</div>
-                    <div className="font-mono font-bold text-slate-900 text-xs" dir="ltr">{originBranch?.phone || 'Origin Branch Hub'}</div>
-                    <div className="text-[9.5px] text-slate-500">{originBranch?.name || 'Origin Hub'}</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">1. Sender Branch Phone</div>
+                    <div className="font-mono font-bold text-slate-900 text-xs" dir="ltr">{originBranch?.phone || 'Origin Hub'}</div>
+                    <div className="text-[9px] text-slate-500">{originBranch?.name || 'Origin Hub'}</div>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
+                <div className="flex items-start gap-2">
+                  <div className="p-1 bg-amber-100 text-amber-800 rounded shrink-0 mt-0.5">
                     <AlertCircle className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 font-bold uppercase">2. Complaints Hotline (شکایات)</div>
-                    <div className="font-mono font-bold text-amber-800 text-sm" dir="ltr">0711299680</div>
-                    <div className="text-[9.5px] text-amber-700 font-medium">Nationwide Complaint Centre</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">2. Complaints Hotline (شکایات)</div>
+                    <div className="font-mono font-bold text-amber-800 text-xs" dir="ltr">0711299680</div>
+                    <div className="text-[9px] text-amber-700 font-medium">Nationwide Complaint Centre</div>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5">
-                  <div className="p-1.5 bg-blue-100 text-blue-800 rounded-lg shrink-0 mt-0.5">
+                <div className="flex items-start gap-2">
+                  <div className="p-1 bg-blue-100 text-blue-800 rounded shrink-0 mt-0.5">
                     <Building2 className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="text-[10px] text-slate-500 font-bold uppercase">3. Main Office Contact (دفتر مرکزی)</div>
-                    <div className="font-mono font-bold text-blue-900 text-sm" dir="ltr">0774144004</div>
-                    <div className="text-[9.5px] text-blue-700 font-medium">Kabul Central HQ Office</div>
+                    <div className="text-[9px] text-slate-500 font-bold uppercase">3. Main Office Contact (دفتر مرکزی)</div>
+                    <div className="font-mono font-bold text-blue-900 text-xs" dir="ltr">0774144004</div>
+                    <div className="text-[9px] text-blue-700 font-medium">Kabul Central HQ Office</div>
                   </div>
                 </div>
               </div>
 
               {/* Attribution Footer Centered */}
-              <div className="text-center text-[9px] text-slate-400 font-medium pb-1">
+              <div className="text-center text-[8.5px] text-slate-400 font-medium pb-0.5">
                 Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)
               </div>
             </div>

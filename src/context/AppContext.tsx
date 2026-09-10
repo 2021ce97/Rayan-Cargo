@@ -261,10 +261,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [shipments, setShipments] = useState<Shipment[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.SHIPMENTS);
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try {
+        const parsed: Shipment[] = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map(s => ({
+            ...s,
+            cnNumber: s.cnNumber ? s.cnNumber.replace(/^RYN-/i, 'ARM-') : s.cnNumber
+          }));
+        }
+      } catch (e) { console.error(e); }
     }
-    return INITIAL_SHIPMENTS;
+    return INITIAL_SHIPMENTS.map(s => ({
+      ...s,
+      cnNumber: s.cnNumber ? s.cnNumber.replace(/^RYN-/i, 'ARM-') : s.cnNumber
+    }));
   });
+
+  // Helper to generate the next sequential CN / Barcode number starting from 1500 with prefix ARM-
+  const getNextSequentialCn = (currentList: Shipment[], isPreBooking: boolean = false): string => {
+    let maxSequentialNum = 1499; // Base so the first consignment starts from 1500
+    currentList.forEach(s => {
+      if (!s.cnNumber) return;
+      const match = s.cnNumber.match(/(?:ARM|RYN)(?:-PR)?-(\d+)/i);
+      if (match) {
+        const val = parseInt(match[1], 10);
+        if (!isNaN(val) && val >= 1500 && val < 1000000) {
+          if (val > maxSequentialNum) {
+            maxSequentialNum = val;
+          }
+        }
+      }
+    });
+
+    const nextNum = maxSequentialNum + 1;
+    const prefix = isPreBooking ? 'ARM-PR-' : 'ARM-';
+    return `${prefix}${nextNum}`;
+  };
 
   // Branch Expenses
   const [expenses, setExpenses] = useState<BranchExpense[]>(() => {
@@ -1682,7 +1714,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Customer Pre-booking
   const createCustomerPreBooking = (input: CustomerPreBookingInput): Shipment => {
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    const newCn = `RYN-PR-${randomSuffix}`;
+    const newCn = getNextSequentialCn(shipments, true);
     const now = new Date().toISOString();
     const originBranch = branches.find(b => b.id === input.originBranchId);
     const destBranch = branches.find(b => b.id === input.destinationBranchId);
@@ -2260,9 +2292,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Add a new shipment (booking)
-  const addShipment = (shipmentData: Omit<Shipment, 'id' | 'cnNumber' | 'statusHistory' | 'bookedAt'>): Shipment => {
+  const addShipment = (shipmentData: Omit<Shipment, 'id' | 'cnNumber' | 'statusHistory' | 'bookedAt'> & { cnNumber?: string }): Shipment => {
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    const newCn = `RYN-${randomSuffix}`;
+    const newCn = shipmentData.cnNumber || getNextSequentialCn(shipments, false);
     const now = new Date().toISOString();
     const originBranch = branches.find(b => b.id === shipmentData.originBranchId);
 

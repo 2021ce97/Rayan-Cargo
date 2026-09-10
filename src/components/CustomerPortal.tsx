@@ -253,6 +253,140 @@ export const CustomerPortal: React.FC = () => {
         </div>
       )}
 
+      {/* RECTANGULAR TABLE: CUSTOMER FINANCIAL & PARCEL SUMMARY */}
+      {(() => {
+        const totalMoneySpent = customerShipments.reduce((sum, s) => sum + (s.financials.totalAmount || 0), 0);
+        const totalParcelsCount = customerShipments.length;
+        const totalParcelsValue = customerShipments.reduce((sum, s) => sum + (s.packageInfo.declaredValueAfn || 0), 0);
+        const deliveredCount = customerShipments.filter(s => s.status === 'delivered').length;
+        const activeCount = customerShipments.filter(s => s.status !== 'delivered' && s.status !== 'cancelled').length;
+
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-0">
+            <div className="bg-slate-900 text-white px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Scale className="w-4 h-4 text-amber-400" />
+                <span className="font-extrabold text-xs uppercase tracking-wider">
+                  {t('customer_stats_table_title')}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono text-[11px]">
+                  {currentUser.name} ({currentUser.phone || 'Customer'})
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-900/60 text-emerald-300 font-bold text-[10px]">
+                  {activeCount} {t('customer_stats_active_count')} • {deliveredCount} {t('customer_stats_delivered_count')}
+                </span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase font-bold text-[10.5px]">
+                    <th className="py-3 px-5 border-r border-slate-200 w-1/3">
+                      {t('customer_stats_total_spent')}
+                    </th>
+                    <th className="py-3 px-5 border-r border-slate-200 text-center w-1/3">
+                      {t('customer_stats_total_parcels')}
+                    </th>
+                    <th className="py-3 px-5 text-end w-1/3">
+                      {t('customer_stats_total_declared_val')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-4 px-5 border-r border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
+                          <DollarSign className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-xl font-black text-emerald-700 font-mono">
+                            {totalMoneySpent.toLocaleString()} <span className="text-xs font-bold text-emerald-900">AFN</span>
+                          </div>
+                          <div className="text-[10.5px] text-slate-500 mt-0.5">
+                            {language === 'fa' ? 'مجموع مبالغ کرایه پرداخت‌شده یا در انتظار وصول' : language === 'ps' ? 'ټول لګښت شوي پیسې د باربري لپاره' : 'Total freight expenditure across all bookings'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-5 border-r border-slate-200 text-center">
+                      <div className="inline-flex flex-col items-center">
+                        <div className="text-xl font-black text-slate-900 font-mono">
+                          {totalParcelsCount} <span className="text-xs font-bold text-slate-500">{t('pcs_unit') || 'Parcels'}</span>
+                        </div>
+                        <div className="text-[10.5px] text-slate-500 mt-0.5">
+                          {language === 'fa' ? `${deliveredCount} تسلیم‌شده • ${activeCount} در جریان` : language === 'ps' ? `${deliveredCount} سپارل شوی • ${activeCount} په لاره` : `${deliveredCount} Delivered • ${activeCount} In-transit`}
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-5 text-end">
+                      <div className="flex flex-col items-end">
+                        <div className="text-xl font-black text-amber-600 font-mono">
+                          {totalParcelsValue.toLocaleString()} <span className="text-xs font-bold text-amber-800">AFN</span>
+                        </div>
+                        <div className="text-[10.5px] text-slate-500 mt-0.5">
+                          {language === 'fa' ? 'مجموع ارزش اظهاری اجناس اماناتی' : language === 'ps' ? 'د لیږل شویو توکو ټول ټاکل شوی ارزښت' : 'Total declared cargo insurance value'}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Official 3 Legal Roles Strip inside Customer Portal (شرایط، قوانین و مقررات بارنامه و انتقال امانات) */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2 text-right" dir="rtl">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-red-600" />
+                  <span className="font-black text-xs text-slate-900">
+                    {t('official_rules_title')}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono" dir="ltr">
+                  ARMAGHAN SADEQ TRANSFERS • 34 PROVINCES
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs leading-relaxed text-slate-700">
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <strong className="text-slate-950 block font-black text-[11px] mb-1">
+                    {t('official_rule_1')}
+                  </strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <strong className="text-slate-950 block font-black text-[11px] mb-1">
+                    {t('official_rule_2')}
+                  </strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                  <strong className="text-slate-950 block font-black text-[11px] mb-1">
+                    {t('official_rule_3')}
+                  </strong>
+                </div>
+              </div>
+              
+              {/* Helpline Contacts */}
+              <div className="flex flex-wrap items-center justify-between pt-1 text-[11px] text-slate-600 border-t border-slate-200/60" dir="ltr">
+                <div className="flex items-center gap-4">
+                  <span>1. Origin Branch: <strong>Assigned at Drop-off</strong></span>
+                  <span>2. Complaints Hotline (شکایات): <strong className="font-mono text-amber-700">0711299680</strong></span>
+                  <span>3. Main Office (دفتر مرکزی): <strong className="font-mono text-blue-800">0774144004</strong></span>
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Developed by Rayan tech solutions | Rayan-Tech-Solution.tech
+                </span>
+              </div>
+            </div>
+
+          </div>
+        );
+      })()}
+
       {/* TAB 1: PRE-BOOKING FORM */}
       {activeTab === 'prebook' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">

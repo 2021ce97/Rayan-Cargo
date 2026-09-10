@@ -351,8 +351,8 @@ api.post('/shipments', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const s = req.body;
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    const cn = s.cnNumber || `RYN-${randomSuffix}`;
+    const randomSuffix = Math.floor(1500 + Math.random() * 8500);
+    const cn = s.cnNumber || `ARM-${randomSuffix}`;
     const id = s.id || `shp_${randomSuffix}`;
     const now = new Date().toISOString();
     const isPre = s.isCustomerPrebooked || s.isPreBooking || s.status === 'pre_booked' || s.status === 'verified' || false;

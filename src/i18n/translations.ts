@@ -895,7 +895,33 @@ export const translations: Record<Language, Record<string, string>> = {
     btn_print_voucher: 'Print Official Voucher',
     from_lbl: 'From:',
     to_lbl: 'To:',
-    by_lbl: 'By:'
+    by_lbl: 'By:',
+    
+    // Official 3 Legal Rules for Waybill and Receipts
+    official_rules_title: 'Terms, Conditions & Consignment Regulations',
+    official_rule_1: '1. Waybill is invalid after one month; accuracy of recorded information is the sender\'s responsibility.',
+    official_rule_2: '2. Transport of illegal goods is prohibited and is sender\'s liability; company is not liable for natural disasters, fire, or road collisions.',
+    official_rule_3: '3. Returned parcels are kept for a maximum of one month. Presenting original waybill is mandatory for cash collection; no payment without bill.',
+
+    // Customer Portal Rectangular Stats Table
+    customer_stats_table_title: 'Customer Financial & Parcel Activity Overview',
+    customer_stats_total_spent: 'Total Money Spent on Parcels',
+    customer_stats_total_parcels: 'Total Consignments Sent',
+    customer_stats_total_declared_val: 'Total Declared Goods Value',
+    customer_stats_pending_payment: 'Pending Payment / COD Balance',
+    customer_stats_delivered_count: 'Successfully Delivered',
+    customer_stats_active_count: 'In-Transit / Active',
+    customer_stats_metric_col: 'Financial & Cargo Indicator',
+    customer_stats_value_col: 'Account Status & Volume',
+    prebook_tracker_title: 'My Pre-Bookings Live Status Tracker',
+    prebook_tracker_desc: 'Live tracking of your pre-booked consignments before and after branch drop-off',
+    prebook_pending_dropoff: 'Pending (Awaiting Branch Drop-off & Weighing)',
+    prebook_verified_priced: 'Verified & Officially Priced',
+    prebook_booked_dispatched: 'Booked & Dispatched',
+    receiver_to_lbl: 'To',
+    price_lbl: 'Price',
+    search_placeholder_cn: 'Search CN #, receiver, phone...',
+    fill_contacts_warning: 'Please fill in sender and receiver contact details.'
   },
   
   fa: {
@@ -1792,7 +1818,33 @@ export const translations: Record<Language, Record<string, string>> = {
     btn_print_voucher: 'چاپ سند رسمی',
     from_lbl: 'از:',
     to_lbl: 'به:',
-    by_lbl: 'توسط:'
+    by_lbl: 'توسط:',
+
+    // Official 3 Legal Rules for Waybill and Receipts (شرایط، قوانین و مقررات بارنامه و انتقال امانات)
+    official_rules_title: 'شرایط، قوانین و مقررات بارنامه و انتقال امانات',
+    official_rule_1: '۱. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.',
+    official_rule_2: '۲. ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتش‌سوزی و تصادم مسئول نیست.',
+    official_rule_3: '۳. اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.',
+
+    // Customer Portal Rectangular Stats Table (خلاصه وضعیت مالی و بسته‌های مشتری)
+    customer_stats_table_title: 'خلاصه حساب مالی و آماری بسته‌های ارسالی مشتری',
+    customer_stats_total_spent: 'مجموع پول مصرف‌شده در پارسل‌ها',
+    customer_stats_total_parcels: 'تعداد مجموعی پارسل‌ها',
+    customer_stats_total_declared_val: 'ارزش مجموعی اجناس ارسالی',
+    customer_stats_pending_payment: 'باقی‌داری / قابل پرداخت (COD)',
+    customer_stats_delivered_count: 'تحویل داده شده',
+    customer_stats_active_count: 'در حال انتقال / فعال',
+    customer_stats_metric_col: 'شاخص مالی و احصائیوی',
+    customer_stats_value_col: 'مقدار و وضعیت حساب',
+    prebook_tracker_title: 'پیگیری آنلاین وضعیت پیش‌ثبت‌های من',
+    prebook_tracker_desc: 'پیگیری وضعیت بسته‌های پیش‌ثبت‌شده قبل و بعد از تحویل به نمایندگی',
+    prebook_pending_dropoff: 'در انتظار تحویل و وزن‌کشی در نمایندگی',
+    prebook_verified_priced: 'تأیید و قیمت‌گذاری رسمی شده',
+    prebook_booked_dispatched: 'ثبت نهایی و ارسال شده',
+    receiver_to_lbl: 'به نام',
+    price_lbl: 'قیمت کرایه',
+    search_placeholder_cn: 'جستجو بر اساس نمبر بل، نام گیرنده، شماره تماس...',
+    fill_contacts_warning: 'لطفاً معلومات تماس فرستنده و گیرنده را تکمیل نمایید.'
   },
   
   ps: {
@@ -2689,6 +2741,32 @@ export const translations: Record<Language, Record<string, string>> = {
     btn_print_voucher: 'د رسمي سند چاپول',
     from_lbl: 'له:',
     to_lbl: 'ته:',
-    by_lbl: 'لخوا:'
+    by_lbl: 'لخوا:',
+
+    // Official 3 Legal Rules for Waybill and Receipts
+    official_rules_title: 'د بارنامې او اماناتو د لېږد شرایط، قوانین او مقررات',
+    official_rule_1: '۱. بل له يوې مياشتې وروسته اعتبار نلري او په هغې کې د ليکل شوو معلوماتو سموالی د ليږونکي په غاړه دی.',
+    official_rule_2: '۲. د غير قانوني مالونو ليږل منع دي او مسؤليت يې د ليږونکي په غاړه دی؛ شرکت د طبيعي پيښو، اورلګيدنې او ټکر له امله د زيانونو مسؤل نه دی.',
+    official_rule_3: '۳. مسترد شوي اجناس تر يوې مياشتې پورې ساتل کيږي. د پيسو د اخستلو پر وخت د بل ښودل لازمي دي او بې له بل هيڅ تاديه نه کيږي.',
+
+    // Customer Portal Rectangular Stats Table
+    customer_stats_table_title: 'د پیرودونکي د مالي حساب او استول شوو بستو عمومي لنډیز',
+    customer_stats_total_spent: 'په پارسلونو لګول شوې ټولې پیسې',
+    customer_stats_total_parcels: 'د ټولو استول شوو پارسلونو شمېر',
+    customer_stats_total_declared_val: 'د استول شوو توکو ټول ارزښت',
+    customer_stats_pending_payment: 'پاتې / د تحویلۍ پر مهال تادیه (COD)',
+    customer_stats_delivered_count: 'په بریالیتوب سره تسلیم شوي',
+    customer_stats_active_count: 'په جریان کې / فعال',
+    customer_stats_metric_col: 'مالي او احصائیوي شاخص',
+    customer_stats_value_col: 'د حساب کچه او وضعیت',
+    prebook_tracker_title: 'زما د مخکینیو ثبت شوو بارونو ژوندی تعقیب',
+    prebook_tracker_desc: 'څانګې ته د سپارلو څخه مخکې او وروسته د بستو تعقیب',
+    prebook_pending_dropoff: 'څانګې ته د سپارلو او وزن کولو په انتظار',
+    prebook_verified_priced: 'تایید او رسمي بیه ټاکل شوې',
+    prebook_booked_dispatched: 'نهایي ثبت او لیږل شوی',
+    receiver_to_lbl: 'ته',
+    price_lbl: 'د بار بیه',
+    search_placeholder_cn: 'د بل نمبر، د اخستونکي نوم، ټلیفون له مخې لټون...',
+    fill_contacts_warning: 'مهرباني وکړئ د لېږونکي او ترلاسه کوونکي معلومات بشپړ کړئ.'
   }
 };

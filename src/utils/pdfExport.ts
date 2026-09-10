@@ -556,20 +556,23 @@ export function generateDispatchManifestPdf(
       y += 6.5;
     });
 
-    // Summary & Signatures at bottom
-    y = 170;
-    doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.3);
-    doc.line(margin, y, margin + contentWidth, y);
+    // Summary & Legal Rules at bottom
+    y = 172;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, y, contentWidth, 14, 'FD');
 
-    y += 5;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('Dispatch Officer Signature: _______________________', margin + 4, y + 5);
-    doc.text('Transit Driver Signature: _______________________', margin + 100, y + 5);
-    doc.text('Receiving Hub Seal & Sign: _______________________', margin + 195, y + 5);
+    doc.setFontSize(7);
+    doc.setTextColor(15, 23, 42);
+    doc.text('CARGO RULES: 1. بل پس از یک ماه فاقد اعتبار است • 2. اموال غیرقانونی ممنوع بوده و مسئولیت به عهده فرستنده است • 3. اجناس مسترد حداکثر یک ماه نگهداری می‌شود.', margin + 3, y + 4.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(51, 65, 85);
+    doc.text('Helplines: Complaints (شکایات): 0711299680 | Central Admin (دفتر مرکزی): 0774144004', margin + 3, y + 9.5);
+    doc.text('Dispatch Officer: __________________   |   Driver: __________________   |   Receiving Hub Seal: __________________', margin + 115, y + 9.5);
 
-    y += 11;
+    y += 16;
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
@@ -758,25 +761,54 @@ export function generateCombinedCustomerPdf(
       y += 6.5;
     });
 
-    // RECEIVER ACKNOWLEDGEMENT & SIGNATURE SECTION
-    y = Math.max(y + 6, 215);
+    // OFFICIAL 3 CARGO RULES & HELPLINE CONTACTS IN COMBINED CUSTOMER PDF
+    y = Math.min(Math.max(y + 3, 196), 205);
 
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, y, contentWidth, 42, 2, 2, 'FD');
+    doc.roundedRect(margin, y, contentWidth, 23, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('OFFICIAL CARGO RULES & REGULATIONS (شرایط و مقررات بارنامه و انتقال امانات)', margin + 3, y + 4.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(30, 41, 59);
+    doc.text('1. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.', margin + 3, y + 9.5);
+    doc.text('2. ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث مسئول نیست.', margin + 3, y + 14.5);
+    doc.text('3. اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.', margin + 3, y + 19.5);
+
+    y += 25;
+
+    // Contacts
+    doc.setFillColor(241, 245, 249);
+    doc.roundedRect(margin, y, contentWidth, 8, 1, 1, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(15, 23, 42);
+    doc.text('1. Origin Hub: Recorded on Issue', margin + 3, y + 5.2);
+    doc.text('2. Complaints (شکایات): 0711299680', margin + 68, y + 5.2);
+    doc.text('3. Main Office (دفتر مرکزی): 0774144004', margin + 128, y + 5.2);
+
+    y += 11;
+
+    // RECEIVER ACKNOWLEDGEMENT & HANDOVER CONFIRMATION
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 18, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
     doc.setTextColor(15, 23, 42);
     doc.text('RECEIVER ACKNOWLEDGMENT & HANDOVER CONFIRMATION (اقرار خط و تسلیمی بسته ها)', margin + 4, y + 5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(71, 85, 105);
-    doc.text(`I, ${customer.name}, hereby confirm that I have inspected and received the ${shipments.length} consignments listed above in good, sealed,`, margin + 4, y + 10);
+    doc.text(`I, ${customer.name}, hereby confirm that I have inspected and received the ${shipments.length} consignments listed above in good, sealed,`, margin + 4, y + 9.5);
     doc.text('and undamaged condition from Armaghan Sadeq Transfers. All freight charges / COD payments have been settled as recorded.', margin + 4, y + 14);
-
-    // Removed signatures row per user request
 
     // Footer Credits
     y = 268;

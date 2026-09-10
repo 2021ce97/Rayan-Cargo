@@ -16,7 +16,7 @@
         "manager_name": "Noor Mohammad",
         "is_head_office": false,
         "active_shipments_count": 0,
-        "total_parcels_dispatched": 0,
+        "total_parcels_dispatched": 2,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
         "created_at": "2026-09-05T09:51:54.829Z",
@@ -154,9 +154,9 @@
         "manager_name": "Central System Admin",
         "is_head_office": true,
         "active_shipments_count": 0,
-        "total_parcels_dispatched": 0,
+        "total_parcels_dispatched": 1,
         "total_parcels_received": 0,
-        "total_revenue_afn": 0,
+        "total_revenue_afn": "600.00",
         "created_at": "2026-01-01T00:00:00.000Z",
         "tazkira_number": "1401-8829102-1"
       }
@@ -318,7 +318,7 @@
       "shp_pr_446156",
       {
         "id": "shp_pr_446156",
-        "cn_number": "RYN-PR-446156",
+        "cn_number": "ARM-PR-446156",
         "origin_branch_id": "br_far01_8916",
         "destination_branch_id": "br_hrt_03",
         "current_branch_id": "br_far01_8916",
@@ -436,6 +436,15 @@
             "timestamp": "2026-09-07T08:20:01.280Z",
             "updatedBy": "Central System Admin",
             "branchName": "Herat Western Gateway"
+          },
+          {
+            "id": "st_submit_1788955332501",
+            "note": "Parcel bill submitted once for customer collection. Reference: System generated.",
+            "status": "delivered",
+            "location": "Herat Western Gateway",
+            "timestamp": "2026-09-09T12:02:12.500Z",
+            "updatedBy": "Farhad Rahimi",
+            "branchName": "Herat Western Gateway"
           }
         ],
         "booked_at": "2026-09-06T11:20:48.633Z",
@@ -447,9 +456,11 @@
         "booked_by_user_id": "usr_br_far01_8916",
         "booked_by_user_name": "Basir",
         "dest_branch_commission": "100",
-        "remittance_status": "pending",
-        "origin_remittance_due": "650",
+        "remittance_status": "settled",
+        "origin_remittance_due": "0",
+        "is_customer_prebooked": false,
         "is_pre_booking": false,
+        "customer_user_id": null,
         "created_at": "2026-09-06T11:20:48.633Z"
       }
     ],
@@ -457,7 +468,7 @@
       "shp_pr_328325",
       {
         "id": "shp_pr_328325",
-        "cn_number": "RYN-PR-328325",
+        "cn_number": "ARM-PR-328325",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -561,7 +572,9 @@
         "dest_branch_commission": "70",
         "remittance_status": "pending",
         "origin_remittance_due": "1070",
+        "is_customer_prebooked": false,
         "is_pre_booking": false,
+        "customer_user_id": null,
         "created_at": "2026-09-07T04:34:43.289Z"
       }
     ],
@@ -569,7 +582,7 @@
       "shp_pr_681800",
       {
         "id": "shp_pr_681800",
-        "cn_number": "RYN-PR-681800",
+        "cn_number": "ARM-PR-681800",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -637,7 +650,9 @@
         "dest_branch_commission": "100",
         "remittance_status": "pending",
         "origin_remittance_due": "0",
-        "is_pre_booking": false,
+        "is_customer_prebooked": true,
+        "is_pre_booking": true,
+        "customer_user_id": null,
         "created_at": "2026-09-09T05:06:37.733Z"
       }
     ],
@@ -645,7 +660,7 @@
       "shp_pr_613059",
       {
         "id": "shp_pr_613059",
-        "cn_number": "RYN-PR-613059",
+        "cn_number": "ARM-PR-613059",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -713,7 +728,9 @@
         "dest_branch_commission": "100",
         "remittance_status": "pending",
         "origin_remittance_due": "0",
-        "is_pre_booking": false,
+        "is_customer_prebooked": true,
+        "is_pre_booking": true,
+        "customer_user_id": null,
         "created_at": "2026-09-07T08:14:05.242Z"
       }
     ],
@@ -721,7 +738,7 @@
       "shp_pr_822627",
       {
         "id": "shp_pr_822627",
-        "cn_number": "RYN-PR-822627",
+        "cn_number": "ARM-PR-822627",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -789,7 +806,9 @@
         "dest_branch_commission": "100",
         "remittance_status": "pending",
         "origin_remittance_due": "0",
-        "is_pre_booking": false,
+        "is_customer_prebooked": true,
+        "is_pre_booking": true,
+        "customer_user_id": null,
         "created_at": "2026-09-07T09:44:24.182Z"
       }
     ],
@@ -797,7 +816,7 @@
       "shp_pr_988809",
       {
         "id": "shp_pr_988809",
-        "cn_number": "RYN-PR-988809",
+        "cn_number": "ARM-PR-988809",
         "origin_branch_id": "br_kdh_04",
         "destination_branch_id": "br_mzk_02",
         "current_branch_id": "br_kdh_04",
@@ -884,7 +903,9 @@
         "dest_branch_commission": "100",
         "remittance_status": "pending",
         "origin_remittance_due": "340",
+        "is_customer_prebooked": false,
         "is_pre_booking": false,
+        "customer_user_id": null,
         "created_at": "2026-09-07T08:30:45.779Z"
       }
     ],
@@ -892,7 +913,7 @@
       "shp_pr_128938",
       {
         "id": "shp_pr_128938",
-        "cn_number": "RYN-PR-128938",
+        "cn_number": "ARM-PR-128938",
         "origin_branch_id": "br_admin_hq",
         "destination_branch_id": "br_jaw08_6896",
         "current_branch_id": "br_admin_hq",
@@ -960,7 +981,9 @@
         "dest_branch_commission": "100",
         "remittance_status": "pending",
         "origin_remittance_due": "0",
-        "is_pre_booking": false,
+        "is_customer_prebooked": true,
+        "is_pre_booking": true,
+        "customer_user_id": null,
         "created_at": "2026-09-07T11:16:45.709Z"
       }
     ],
@@ -968,7 +991,7 @@
       "shp_pr_174899",
       {
         "id": "shp_pr_174899",
-        "cn_number": "RYN-PR-174899",
+        "cn_number": "ARM-PR-174899",
         "origin_branch_id": "br_kdh_04",
         "destination_branch_id": "br_mzk_02",
         "current_branch_id": "br_kdh_04",
@@ -1082,7 +1105,9 @@
         "dest_branch_commission": "100",
         "remittance_status": "pending",
         "origin_remittance_due": "500",
+        "is_customer_prebooked": false,
         "is_pre_booking": false,
+        "customer_user_id": null,
         "created_at": "2026-09-07T11:41:13.419Z"
       }
     ],
@@ -1090,7 +1115,7 @@
       "shp_pr_969214",
       {
         "id": "shp_pr_969214",
-        "cn_number": "RYN-PR-969214",
+        "cn_number": "ARM-PR-969214",
         "origin_branch_id": "br_kdh_04",
         "destination_branch_id": "br_kho06_0281",
         "current_branch_id": "br_kdh_04",
@@ -1159,7 +1184,9 @@
         "dest_branch_commission": "100",
         "remittance_status": "pending",
         "origin_remittance_due": "0",
-        "is_pre_booking": false,
+        "is_customer_prebooked": true,
+        "is_pre_booking": true,
+        "customer_user_id": null,
         "created_at": "2026-09-08T06:33:47.226Z"
       }
     ],
@@ -1167,62 +1194,80 @@
       "shp_pr_370879",
       {
         "id": "shp_pr_370879",
-        "cn_number": "RYN-PR-370879",
+        "cn_number": "ARM-PR-370879",
         "origin_branch_id": "br_mzk_02",
         "destination_branch_id": "br_hrt_03",
         "current_branch_id": "br_mzk_02",
         "sender": {
-          "name": "Abdullah",
-          "phone": "0775656567",
-          "email": "abdullah@gmail.com",
-          "address": "Sholgra",
           "city": "Mazar-i-Sharif",
+          "name": "Abdullah",
+          "email": "abdullah@gmail.com",
+          "phone": "0775656567",
+          "address": "Sholgra",
           "province": "Balkh"
         },
         "receiver": {
+          "city": "Herat",
           "name": "Asif",
           "phone": "0778900067",
-          "nationalId": "1234567876565",
           "address": "Gulha chawk",
-          "city": "Herat",
-          "province": "Herat"
+          "province": "Herat",
+          "nationalId": "1234567876565"
         },
         "package_info": {
-          "category": "garments",
-          "weightKg": 2,
           "pieces": 1,
-          "declaredValueAfn": 10000,
+          "category": "garments",
+          "weightKg": 0.1,
+          "isFragile": false,
           "description": "garments - 1 item(s)",
           "serviceType": "standard",
-          "isFragile": false
+          "declaredValueAfn": 10000
         },
         "financials": {
-          "baseRate": 0,
-          "weightCost": 0,
-          "transportationFee": 0,
-          "destBranchCommission": 0,
-          "originRemittanceDue": 0,
-          "serviceFee": 0,
-          "discountType": "fixed",
-          "discountValue": 0,
-          "discountAmount": 0,
           "tax": 0,
-          "totalAmount": 0,
+          "baseRate": 150,
+          "amountDue": 140,
           "amountPaid": 0,
-          "amountDue": 0,
+          "serviceFee": 0,
+          "weightCost": 0,
+          "totalAmount": 140,
+          "discountType": "fixed",
+          "discountValue": 10,
+          "paymentMethod": "cod",
           "paymentStatus": "to_pay",
-          "paymentMethod": "cod"
+          "discountAmount": 10,
+          "transportationFee": 0,
+          "originRemittanceDue": 70,
+          "destBranchCommission": 70
         },
-        "status": "pre_booked",
+        "status": "booked",
         "status_history": [
           {
             "id": "st_1788954188126",
+            "note": "Consignment pre-booked online by customer Abdullah. Awaiting physical drop-off at Mazar-i-Sharif Northern Terminal for weighing and price determination.",
             "status": "pre_booked",
             "location": "Customer Online Portal",
-            "branchName": "Mazar-i-Sharif Northern Terminal",
             "timestamp": "2026-09-09T11:43:08.125Z",
-            "note": "Consignment pre-booked online by customer Abdullah. Awaiting physical drop-off at Mazar-i-Sharif Northern Terminal for weighing and price determination.",
-            "updatedBy": "Customer Abdullah"
+            "updatedBy": "Customer Abdullah",
+            "branchName": "Mazar-i-Sharif Northern Terminal"
+          },
+          {
+            "id": "st_1788957176941",
+            "note": "Customer pre-booking verified, weighed & priced by Central System Admin (Central HQ Super Admin). Verified weight: 2 kg, 1 pcs (Base: 300 AFN, Rate: 40 AFN/kg, Service: 100 AFN). Total: 480 AFN (TO_PAY). Status: VERIFIED",
+            "status": "verified",
+            "location": "Mazar-i-Sharif Northern Terminal (Mazar-i-Sharif)",
+            "timestamp": "2026-09-09T12:32:56.941Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Mazar-i-Sharif Northern Terminal"
+          },
+          {
+            "id": "st_1789014058893",
+            "note": "Customer pre-booking verified, weighed & priced by Central System Admin (Central HQ Super Admin). Verified weight: 0.1 kg, 1 pcs (Base: 150 AFN, Rate: 0 AFN/kg, Service: 0 AFN). Total: 140 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Mazar-i-Sharif Northern Terminal (Mazar-i-Sharif)",
+            "timestamp": "2026-09-10T04:20:58.893Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Mazar-i-Sharif Northern Terminal"
           }
         ],
         "booked_at": "2026-09-09T11:43:08.125Z",
@@ -1230,20 +1275,23 @@
         "actual_delivery": null,
         "pod_signature": null,
         "receiver_id_proof": null,
-        "delivery_notes": null,
-        "booked_by_user_id": "usr_cust_517987",
-        "booked_by_user_name": "Abdullah",
-        "is_customer_prebooked": true,
-        "is_pre_booking": true,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "70",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
         "customer_user_id": "usr_cust_517987",
-        "created_at": "2026-09-09T11:43:10.682Z"
+        "created_at": "2026-09-09T11:43:08.125Z"
       }
     ],
     [
       "test_1",
       {
         "id": "test_1",
-        "cn_number": "RYN-TEST-1",
+        "cn_number": "ARM-TEST-1",
         "origin_branch_id": "br_kabul",
         "destination_branch_id": "br_herat",
         "current_branch_id": "br_kabul",
@@ -1278,6 +1326,323 @@
         "is_pre_booking": true,
         "customer_user_id": "usr_test",
         "created_at": "2026-09-09T11:46:52.139Z"
+      }
+    ],
+    [
+      "shp_pr_286520",
+      {
+        "id": "shp_pr_286520",
+        "cn_number": "ARM-PR-286520",
+        "origin_branch_id": "br_mzk_02",
+        "destination_branch_id": "br_hrt_03",
+        "current_branch_id": "br_hrt_03",
+        "sender": {
+          "city": "Mazar-i-Sharif",
+          "name": "Abdullah",
+          "email": "abdullah@gmail.com",
+          "phone": "0775656567",
+          "address": "Sholgra",
+          "province": "Balkh"
+        },
+        "receiver": {
+          "city": "Herat",
+          "name": "Aslam",
+          "phone": "0789898767",
+          "address": "Gulha chawk",
+          "province": "Herat",
+          "nationalId": "3435676543567"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "foodstuff",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "foodstuff - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 9000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 300,
+          "amountDue": 0,
+          "amountPaid": 440,
+          "serviceFee": 100,
+          "weightCost": 40,
+          "totalAmount": 440,
+          "discountType": "fixed",
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "paid",
+          "discountAmount": 0,
+          "transportationFee": 100,
+          "originRemittanceDue": 340,
+          "destBranchCommission": 100
+        },
+        "status": "delivered",
+        "status_history": [
+          {
+            "id": "st_1788955008743",
+            "note": "Consignment pre-booked online by customer Abdullah. Awaiting physical drop-off at Mazar-i-Sharif Northern Terminal for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-09T11:56:48.743Z",
+            "updatedBy": "Customer Abdullah",
+            "branchName": "Mazar-i-Sharif Northern Terminal"
+          },
+          {
+            "id": "st_1788955120665",
+            "note": "Customer pre-booking verified, weighed & priced by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Base: 300 AFN, Rate: 40 AFN/kg, Service: 100 AFN). Total: 440 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Mazar-i-Sharif Northern Terminal (Mazar-i-Sharif)",
+            "timestamp": "2026-09-09T11:58:40.665Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Mazar-i-Sharif Northern Terminal"
+          },
+          {
+            "id": "st_1788955161472",
+            "note": "Status updated to in transit by Central System Admin (Branch)",
+            "status": "in_transit",
+            "location": "Transit Station",
+            "timestamp": "2026-09-09T11:59:21.472Z",
+            "updatedBy": "Central System Admin (Branch)",
+            "branchName": "Herat Western Gateway"
+          },
+          {
+            "id": "st_1788955179666",
+            "note": "Status updated to received at_branch by Central System Admin (Branch)",
+            "status": "received_at_branch",
+            "location": "Transit Station",
+            "timestamp": "2026-09-09T11:59:39.666Z",
+            "updatedBy": "Central System Admin (Branch)",
+            "branchName": "Herat Western Gateway"
+          },
+          {
+            "id": "st_1788955199378",
+            "note": "Handed over to receiver. Collected: 440 AFN, Retained: (Commission: 100 + Transport: 20 = 120 AFN), Sender Branch Commission: 20 AFN, Net Remitted to Main Branch: 300 AFN (Ref: HAW-950687)",
+            "status": "delivered",
+            "location": "Transit Station",
+            "timestamp": "2026-09-09T11:59:59.378Z",
+            "updatedBy": "Central System Admin (Branch)",
+            "branchName": "Herat Western Gateway"
+          },
+          {
+            "id": "st_submit_1788955315286",
+            "note": "Parcel bill submitted once for customer collection. Reference: System generated.",
+            "status": "delivered",
+            "location": "Herat Western Gateway",
+            "timestamp": "2026-09-09T12:01:55.286Z",
+            "updatedBy": "Farhad Rahimi",
+            "branchName": "Herat Western Gateway"
+          }
+        ],
+        "booked_at": "2026-09-09T11:56:48.743Z",
+        "estimated_delivery": "2026-09-12T11:56:48.743Z",
+        "actual_delivery": "2026-09-09T11:59:59.378Z",
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "100",
+        "remittance_status": "settled",
+        "origin_remittance_due": "0",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_517987",
+        "created_at": "2026-09-09T11:56:48.743Z"
+      }
+    ],
+    [
+      "shp_pr_429649",
+      {
+        "id": "shp_pr_429649",
+        "cn_number": "ARM-PR-429649",
+        "origin_branch_id": "br_kho06_0281",
+        "destination_branch_id": "br_nan01_0813",
+        "current_branch_id": "br_kho06_0281",
+        "sender": {
+          "city": "Khost city",
+          "name": "Abdullah",
+          "email": "abdullah@gmail.com",
+          "phone": "0775656567",
+          "address": "Chawk e Talashi",
+          "province": "Khost"
+        },
+        "receiver": {
+          "city": "Jalalabad",
+          "name": "Kamran",
+          "phone": "0778989878",
+          "address": "Ghulam khan",
+          "province": "Nangarhar",
+          "nationalId": "2546378256345"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "garments",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "garments - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 4000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 300,
+          "amountDue": 440,
+          "amountPaid": 0,
+          "serviceFee": 100,
+          "weightCost": 40,
+          "totalAmount": 440,
+          "discountType": "fixed",
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "unpaid",
+          "discountAmount": 0,
+          "transportationFee": 100,
+          "originRemittanceDue": 340,
+          "destBranchCommission": 100
+        },
+        "status": "verified",
+        "status_history": [
+          {
+            "id": "st_1788955656041",
+            "note": "Consignment pre-booked online by customer Abdullah. Awaiting physical drop-off at Khost Regional Hub for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-09T12:07:36.041Z",
+            "updatedBy": "Customer Abdullah",
+            "branchName": "Khost Regional Hub"
+          },
+          {
+            "id": "st_1788957149485",
+            "note": "Customer pre-booking verified, weighed & priced by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Base: 300 AFN, Rate: 40 AFN/kg, Service: 100 AFN). Total: 440 AFN (UNPAID). Status: VERIFIED",
+            "status": "verified",
+            "location": "Khost Regional Hub (Khost city)",
+            "timestamp": "2026-09-09T12:32:29.485Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Khost Regional Hub"
+          }
+        ],
+        "booked_at": "2026-09-09T12:07:36.041Z",
+        "estimated_delivery": "2026-09-12T12:07:36.042Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "100",
+        "remittance_status": "pending",
+        "origin_remittance_due": "340",
+        "is_customer_prebooked": true,
+        "is_pre_booking": true,
+        "customer_user_id": "usr_cust_517987",
+        "created_at": "2026-09-09T12:07:36.041Z"
+      }
+    ],
+    [
+      "shp_pr_580347",
+      {
+        "id": "shp_pr_580347",
+        "cn_number": "ARM-PR-580347",
+        "origin_branch_id": "br_admin_hq",
+        "destination_branch_id": "br_jaw08_6896",
+        "current_branch_id": "br_admin_hq",
+        "sender": {
+          "city": "Kabul City",
+          "name": "احمد",
+          "email": "0775216326@customer.armaghansadeq.af",
+          "phone": "0775216326",
+          "address": "Kabul City Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "شبرغان",
+          "name": "نجیب",
+          "phone": "0788966199",
+          "address": "مرکز شهر",
+          "province": "Jawzjan"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 1000,
+          "amountDue": 1140,
+          "amountPaid": 0,
+          "serviceFee": 150,
+          "weightCost": 0,
+          "totalAmount": 1140,
+          "discountType": "fixed",
+          "discountValue": 10,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "transportationFee": 150,
+          "originRemittanceDue": 1070,
+          "destBranchCommission": 70
+        },
+        "status": "received_at_branch",
+        "status_history": [
+          {
+            "id": "st_1788957873538",
+            "note": "Consignment pre-booked online by customer احمد. Awaiting physical drop-off at Head Office (Kabul) for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-09T12:44:33.535Z",
+            "updatedBy": "Customer احمد",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1788958048650",
+            "note": "Customer pre-booking verified, weighed & priced by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Base: 1000 AFN, Rate: 0 AFN/kg, Service: 150 AFN). Total: 1140 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Head Office (Kabul) (Kabul City)",
+            "timestamp": "2026-09-09T12:47:28.650Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1788959332651",
+            "note": "Status updated to in transit by Central System Admin (Branch)",
+            "status": "in_transit",
+            "location": "Transit Station",
+            "timestamp": "2026-09-09T13:08:52.651Z",
+            "updatedBy": "Central System Admin (Branch)",
+            "branchName": "Jawzjan Regional Hub"
+          },
+          {
+            "id": "st_1789021858710",
+            "note": "Status updated to received at_branch by Zabiullah Muhammad Oglu (Jawzjan Regional Hub)",
+            "status": "received_at_branch",
+            "location": "Jawzjan Regional Hub (شبرغان)",
+            "timestamp": "2026-09-10T06:30:58.668Z",
+            "updatedBy": "Zabiullah Muhammad Oglu (Jawzjan Regional Hub)",
+            "branchName": "Jawzjan Regional Hub"
+          }
+        ],
+        "booked_at": "2026-09-09T12:44:33.535Z",
+        "estimated_delivery": "2026-09-12T12:44:33.542Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "1070",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_401425",
+        "created_at": "2026-09-09T12:44:33.535Z"
       }
     ]
   ],

@@ -664,8 +664,23 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
               <div className="text-red-600 font-black">NET COD DUE: {totalCodDue.toLocaleString()} AFN</div>
             </div>
 
+            {/* 3 Official Legal Rules */}
+            <div className="p-2 bg-slate-50 border border-slate-200 rounded text-[8.5px] leading-snug space-y-0.5 text-right font-sans" dir="rtl">
+              <div className="font-bold text-slate-800 text-[9px] pb-0.5 border-b border-slate-200">شرایط و مقررات بارنامه و انتقال امانات:</div>
+              <div><strong>۱. </strong> بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.</div>
+              <div><strong>۲. </strong> ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتش‌سوزی و تصادم مسئول نیست.</div>
+              <div><strong>۳. </strong> اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.</div>
+            </div>
+
+            {/* Official 3 Contacts */}
+            <div className="p-1.5 bg-slate-50 border border-slate-200 rounded flex justify-between text-[8.5px] font-medium text-slate-700">
+              <span>1. Hub: <strong className="font-mono">{destBranch?.phone || 'Branch Hub'}</strong></span>
+              <span>2. Complaints (شکایات): <strong className="font-mono text-amber-800">0711299680</strong></span>
+              <span>3. Main Office (دفتر مرکزی): <strong className="font-mono text-blue-900">0774144004</strong></span>
+            </div>
+
             {/* Acknowledgment */}
-            <div className="p-3 border border-slate-300 rounded-lg text-[10px] space-y-1">
+            <div className="p-2.5 border border-slate-300 rounded-lg text-[10px] space-y-1">
               <p className="font-bold">اقرار خط و تسلیمی بسته ها (Customer Handover Confirmation):</p>
               <p className="text-slate-600">
                 I, {currentSelectedGroup.receiverName}, confirm that I have inspected and received all the above listed {activeSelectedShipments.length} consignments in sealed, good condition from Armaghan Sadeq Transfers.
@@ -673,8 +688,8 @@ export const CombinedCustomerReceiptModal: React.FC<CombinedCustomerReceiptModal
             </div>
 
             {/* Footer */}
-            <div className="text-center text-[9px] text-slate-500 pt-2 border-t border-slate-200">
-              Armaghan Sadeq Transfers • www.armaghansadeq.af • Developed by Rayan tech solutions (Rayan-Tech-Solution.tech)
+            <div className="text-center text-[9px] text-slate-500 pt-1 border-t border-slate-200">
+              Armaghan Sadeq Transfers • www.armaghansadeq.af • Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)
             </div>
 
           </div>
