@@ -487,7 +487,7 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
       finalFinancials = finalFinancials || {};
       const newAmt = Number(price !== undefined ? price : totalAmount);
       finalFinancials.totalAmount = newAmt;
-      if (finalFinancials.baseRate === undefined) finalFinancials.baseRate = newAmt;
+      if (finalFinancials.productPrice === undefined) finalFinancials.productPrice = newAmt;
     }
 
     const finalIsPreBooking = isPreBooking !== undefined ? isPreBooking : (isCustomerPrebooked !== undefined ? isCustomerPrebooked : (status === 'verified' || status === 'booked' ? false : null));

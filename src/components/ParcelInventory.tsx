@@ -153,12 +153,11 @@ export const ParcelInventory: React.FC = () => {
   const [confirmModalShipment, setConfirmModalShipment] = useState<Shipment | null>(null);
   const [weighedWeight, setWeighedWeight] = useState<number>(1);
   const [weighedPieces, setWeighedPieces] = useState<number>(1);
-  const [modalBaseRate, setModalBaseRate] = useState<number>(300);
-  const [modalRatePerKg, setModalRatePerKg] = useState<number>(40);
-  const [modalServiceFee, setModalServiceFee] = useState<number>(100);
+  const [modalProductPrice, setModalProductPrice] = useState<number>(5000);
+  const [modalServiceFee, setModalServiceFee] = useState<number>(150);
   const [modalDiscountAmount, setModalDiscountAmount] = useState<number>(0);
-  const [customDestCommission, setCustomDestCommission] = useState<number>(100);
-  const [confirmedPaymentStatus, setConfirmedPaymentStatus] = useState<PaymentStatus>('paid');
+  const [customDestCommission, setCustomDestCommission] = useState<number>(70);
+  const [confirmedPaymentStatus, setConfirmedPaymentStatus] = useState<PaymentStatus>('to_pay');
   const [editedSenderName, setEditedSenderName] = useState('');
   const [editedSenderPhone, setEditedSenderPhone] = useState('');
   const [editedReceiverName, setEditedReceiverName] = useState('');
@@ -365,12 +364,11 @@ export const ParcelInventory: React.FC = () => {
     setConfirmModalShipment(shipment);
     setWeighedWeight(shipment.packageInfo.weightKg || 1);
     setWeighedPieces(shipment.packageInfo.pieces || 1);
-    setModalBaseRate(shipment.financials?.baseRate || 300);
-    setModalRatePerKg(40);
-    setModalServiceFee(shipment.financials?.serviceFee || 100);
+    setModalProductPrice(shipment.financials?.productPrice || 5000);
+    setModalServiceFee(shipment.financials?.serviceFee || 150);
     setModalDiscountAmount(shipment.financials?.discountAmount || 0);
-    setCustomDestCommission(shipment.destBranchCommission || 100);
-    setConfirmedPaymentStatus(shipment.financials.paymentStatus || 'paid');
+    setCustomDestCommission(shipment.destBranchCommission || 70);
+    setConfirmedPaymentStatus(shipment.financials.paymentStatus || 'to_pay');
     setEditedSenderName(shipment.sender.name);
     setEditedSenderPhone(shipment.sender.phone);
     setEditedReceiverName(shipment.receiver.name);
@@ -393,8 +391,7 @@ export const ParcelInventory: React.FC = () => {
       receiverName: editedReceiverName,
       receiverPhone: editedReceiverPhone,
       description: editedDescription,
-      baseRate: modalBaseRate,
-      ratePerKg: modalRatePerKg,
+      productPrice: modalProductPrice,
       serviceFee: modalServiceFee,
       discountAmount: modalDiscountAmount,
       destBranchCommission: customDestCommission,
@@ -1305,93 +1302,27 @@ export const ParcelInventory: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Quick Presets */}
-                <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalBaseRate(300);
-                      setModalRatePerKg(40);
-                      setModalServiceFee(100);
-                    }}
-                    className={`py-1.5 px-2 rounded-lg font-bold border transition-all text-center cursor-pointer ${
-                      modalBaseRate === 300 && modalRatePerKg === 40
-                        ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-400'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <div>Standard</div>
-                    <div className="text-[9px] font-normal text-slate-400">300 + 40/kg</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalBaseRate(400);
-                      setModalRatePerKg(30);
-                      setModalServiceFee(120);
-                    }}
-                    className={`py-1.5 px-2 rounded-lg font-bold border transition-all text-center cursor-pointer ${
-                      modalBaseRate === 400 && modalRatePerKg === 30
-                        ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-400'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <div>Heavy Cargo</div>
-                    <div className="text-[9px] font-normal text-slate-400">400 + 30/kg</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setModalBaseRate(500);
-                      setModalRatePerKg(70);
-                      setModalServiceFee(150);
-                    }}
-                    className={`py-1.5 px-2 rounded-lg font-bold border transition-all text-center cursor-pointer ${
-                      modalBaseRate === 500 && modalRatePerKg === 70
-                        ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-400'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <div>Express VIP</div>
-                    <div className="text-[9px] font-normal text-slate-400">500 + 70/kg</div>
-                  </button>
-                </div>
+                {/* Quick Presets - Removed */}
 
                 {/* Pricing Inputs */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('base_booking_rate_lbl')}
+                      {t('base_booking_rate_lbl') || 'Product Price'}
                     </label>
                     <input
                       type="number"
                       min="0"
-                      step="10"
-                      value={modalBaseRate}
-                      onChange={(e) => setModalBaseRate(Math.max(0, parseInt(e.target.value) || 0))}
+                      step="100"
+                      value={modalProductPrice}
+                      onChange={(e) => setModalProductPrice(Math.max(0, parseInt(e.target.value) || 0))}
                       className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
                     />
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('rate_per_kg_lbl')}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="5"
-                      value={modalRatePerKg}
-                      onChange={(e) => setModalRatePerKg(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('service_handling_fee_lbl')}
+                      {t('service_handling_fee_lbl') || 'Service Fee'}
                     </label>
                     <input
                       type="number"
@@ -1405,7 +1336,7 @@ export const ParcelInventory: React.FC = () => {
 
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('dest_commission_lbl')}
+                      {t('dest_commission_lbl') || 'Dest. Commission'}
                     </label>
                     <input
                       type="number"
@@ -1417,7 +1348,7 @@ export const ParcelInventory: React.FC = () => {
                     />
                   </div>
 
-                  <div className="sm:col-span-2">
+                  <div>
                     <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       {t('applied_discount_lbl')} (AFN)
                     </label>
@@ -1526,11 +1457,9 @@ export const ParcelInventory: React.FC = () => {
 
               {/* Live Calculation Preview Box */}
               {(() => {
-                const weightCharge = Math.round(weighedWeight * modalRatePerKg);
-                const fragileCharge = confirmModalShipment.packageInfo?.isFragile ? 150 : 0;
-                const cappedDiscount = Math.min(modalDiscountAmount, modalBaseRate);
-                const discountedBaseRate = Math.max(0, modalBaseRate - cappedDiscount);
-                const calcTotal = discountedBaseRate + weightCharge + modalServiceFee + fragileCharge;
+                const fragileCharge = confirmModalShipment.packageInfo?.isFragile ? 50 : 0;
+                const calcSellerPayout = modalProductPrice - modalServiceFee - fragileCharge - customDestCommission + modalDiscountAmount;
+                const calcTotal = modalProductPrice;
                 return (
                   <div className="p-3.5 rounded-2xl bg-slate-900 text-white space-y-1.5 shadow-inner">
                     <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] font-mono text-slate-400">
@@ -1538,32 +1467,32 @@ export const ParcelInventory: React.FC = () => {
                       <span className="text-emerald-400 font-bold">{t('auto_math') || 'Auto Math'}</span>
                     </div>
                     <div className="flex justify-between text-slate-300 text-xs">
-                      <span>Base Booking Rate:</span>
-                      <span className="font-mono font-bold text-white">{modalBaseRate} AFN</span>
+                      <span>Product Price (COD):</span>
+                      <span className="font-mono font-bold text-white">{modalProductPrice} AFN</span>
                     </div>
                     <div className="flex justify-between text-slate-300 text-xs">
-                      <span>Weight Charge ({weighedWeight} kg × {modalRatePerKg} AFN):</span>
-                      <span className="font-mono font-bold text-white">{weightCharge} AFN</span>
+                      <span>Service Fee:</span>
+                      <span className="font-mono font-bold text-red-300">-{modalServiceFee} AFN</span>
                     </div>
                     <div className="flex justify-between text-slate-300 text-xs">
-                      <span>Service & Handling:</span>
-                      <span className="font-mono font-bold text-white">{modalServiceFee} AFN</span>
+                      <span>Dest. Commission:</span>
+                      <span className="font-mono font-bold text-red-300">-{customDestCommission} AFN</span>
                     </div>
                     {fragileCharge > 0 && (
                       <div className="flex justify-between text-amber-300 text-xs">
-                        <span>Fragile Cargo Handling:</span>
-                        <span className="font-mono font-bold">+{fragileCharge} AFN</span>
+                        <span>Fragile Handling:</span>
+                        <span className="font-mono font-bold">-{fragileCharge} AFN</span>
                       </div>
                     )}
                     {modalDiscountAmount > 0 && (
-                      <div className="flex justify-between text-emerald-400 text-xs">
-                        <span>Applied Discount / Concession:</span>
-                        <span className="font-mono font-bold">-{modalDiscountAmount} AFN</span>
+                      <div className="flex justify-between text-emerald-400 text-xs font-bold">
+                        <span>Discount Applied:</span>
+                        <span className="font-mono">+{modalDiscountAmount} AFN</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-black text-sm text-red-400 pt-2 border-t border-slate-800">
-                      <span className="text-white">{t('grand_total_lbl')}:</span>
-                      <span className="font-mono text-lg">{calcTotal} AFN</span>
+                    <div className="flex justify-between font-black text-sm text-emerald-400 pt-2 border-t border-slate-800">
+                      <span className="text-white text-xs">NET SELLER PAYOUT:</span>
+                      <span className="font-mono">{calcSellerPayout} AFN</span>
                     </div>
                   </div>
                 );
@@ -2069,20 +1998,32 @@ export const ParcelInventory: React.FC = () => {
                 </div>
                 <div className="space-y-1 text-[11px]">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Base + Weight Charge:</span>
-                    <span className="font-mono">{detailsModalShipment.financials.baseRate + detailsModalShipment.financials.weightCost} AFN</span>
+                    <span className="text-slate-400">Product Price (COD):</span>
+                    <span className="font-mono">{detailsModalShipment.financials.productPrice} AFN</span>
                   </div>
-                  {detailsModalShipment.transportationFee && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">{t('transport_fee_lbl') || 'Transport Fee'}:</span>
-                      <span className="font-mono">{detailsModalShipment.transportationFee} AFN</span>
+                  {detailsModalShipment.financials.serviceFee > 0 && (
+                    <div className="flex justify-between text-slate-500">
+                      <span>Service Fee:</span>
+                      <span className="font-mono">-{detailsModalShipment.financials.serviceFee} AFN</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-black text-sm text-red-600 dark:text-red-400 pt-1 border-t border-slate-200 dark:border-slate-700">
-                    <span>Total Freight:</span>
-                    <span>{detailsModalShipment.financials.totalAmount} AFN</span>
+                  {detailsModalShipment.financials.destBranchCommission > 0 && (
+                    <div className="flex justify-between text-slate-500">
+                      <span>Dest. Commission:</span>
+                      <span className="font-mono">-{detailsModalShipment.financials.destBranchCommission} AFN</span>
+                    </div>
+                  )}
+                  {detailsModalShipment.financials.discountAmount > 0 && (
+                    <div className="flex justify-between text-emerald-500">
+                      <span>Discount Applied:</span>
+                      <span className="font-mono">+{detailsModalShipment.financials.discountAmount} AFN</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-black text-sm text-emerald-600 dark:text-emerald-400 pt-1 border-t border-slate-200 dark:border-slate-700">
+                    <span>Seller Payout:</span>
+                    <span>{detailsModalShipment.financials.sellerPayout} AFN</span>
                   </div>
-                  <div className="flex justify-between font-bold pt-0.5">
+                  <div className="flex justify-between font-bold pt-0.5 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                     <span>{t('payment_lbl') || 'Payment Status'}:</span>
                     <span className="uppercase text-emerald-600">{detailsModalShipment.financials.paymentStatus}</span>
                   </div>

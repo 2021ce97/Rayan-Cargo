@@ -364,8 +364,8 @@ export const TrackingPortal: React.FC = () => {
                     </div>
                   )}
                   <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-slate-500">{t('declared_value')}:</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">{trackedShipment.packageInfo.declaredValueAfn.toLocaleString()} AFN</span>
+                    <span className="text-slate-500">Product Price (COD):</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{trackedShipment.financials?.productPrice?.toLocaleString()} AFN</span>
                   </div>
                   <div className="py-1.5">
                     <span className="text-slate-500 block mb-1">{t('description')}:</span>

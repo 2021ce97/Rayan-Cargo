@@ -110,11 +110,9 @@ interface AppContextType {
     receiverName?: string;
     receiverPhone?: string;
     description?: string;
-    baseRate?: number;
-    ratePerKg?: number;
+    productPrice?: number;
     serviceFee?: number;
     discountAmount?: number;
-    transportationFee?: number;
     destBranchCommission?: number;
     paymentStatus?: 'paid' | 'to_pay';
   }) => boolean;
@@ -1779,27 +1777,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         category: input.category,
         weightKg: input.estimatedWeightKg,
         pieces: input.pieces,
-        declaredValueAfn: input.declaredValueAfn || 0,
         description: input.description,
         serviceType: 'standard',
         isFragile: input.isFragile || false
       },
       financials: {
-        baseRate: 0,
-        weightCost: 0,
-        transportationFee: 0,
-        destBranchCommission: 0,
-        originRemittanceDue: 0,
+        productPrice: input.productPriceAfn || 0,
         serviceFee: 0,
-        discountType: 'fixed',
-        discountValue: 0,
+        destBranchCommission: 0,
         discountAmount: 0,
-        tax: 0,
-        totalAmount: 0, // Zero until priced and verified by origin branch manager
+        sellerPayout: 0,
+        totalAmount: input.productPriceAfn || 0,
         amountPaid: 0,
-        amountDue: 0,
-        paymentStatus: input.paymentPreference === 'pay_at_branch' ? 'unpaid' : 'to_pay',
-        paymentMethod: input.paymentPreference === 'pay_at_branch' ? 'cash' : 'cod'
+        amountDue: input.productPriceAfn || 0,
+        paymentStatus: 'to_pay',
+        paymentMethod: 'cod'
       },
       status: 'pre_booked',
       isCustomerPrebooked: true,
@@ -1912,11 +1904,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       receiverName?: string;
       receiverPhone?: string;
       description?: string;
-      baseRate?: number;
-      ratePerKg?: number;
+      productPrice?: number;
       serviceFee?: number;
       discountAmount?: number;
-      transportationFee?: number; 
       destBranchCommission?: number; 
       paymentStatus?: 'paid' | 'to_pay';
       status?: ShipmentStatus;
@@ -1946,53 +1936,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let actualWeightKg = 1;
     let pieces = 1;
-    let baseRate = 300;
-    let ratePerKg = 40;
-    let serviceFee = 100;
+    let productPrice = 5000;
+    let serviceFee = 150;
     let discountAmount = 0;
-    let destBranchCommission = 100;
-    let paymentStatus: 'paid' | 'to_pay' = 'paid';
+    let destBranchCommission = 70;
+    let paymentStatus: 'paid' | 'to_pay' = 'to_pay';
 
     if (typeof arg2 === 'object' && arg2 !== null) {
       actualWeightKg = Number(arg2.weightKg) || 1;
       pieces = Number(arg2.pieces) || 1;
-      baseRate = typeof arg2.baseRate === 'number' ? arg2.baseRate : (target.financials?.baseRate || 300);
-      ratePerKg = typeof arg2.ratePerKg === 'number' ? arg2.ratePerKg : 40;
-      serviceFee = typeof arg2.serviceFee === 'number' ? arg2.serviceFee : (typeof arg2.transportationFee === 'number' ? arg2.transportationFee : 100);
+      productPrice = typeof arg2.productPrice === 'number' ? arg2.productPrice : (target.financials?.productPrice || 5000);
+      serviceFee = typeof arg2.serviceFee === 'number' ? arg2.serviceFee : 150;
       discountAmount = typeof arg2.discountAmount === 'number' ? arg2.discountAmount : 0;
-      destBranchCommission = typeof arg2.destBranchCommission === 'number' ? arg2.destBranchCommission : 100;
-      paymentStatus = arg2.paymentStatus || 'paid';
+      destBranchCommission = typeof arg2.destBranchCommission === 'number' ? arg2.destBranchCommission : 70;
+      paymentStatus = arg2.paymentStatus || 'to_pay';
     } else {
       actualWeightKg = Number(arg2) || 1;
       pieces = Number(arg3) || 1;
-      serviceFee = typeof arg4 === 'number' ? arg4 : 100;
-      destBranchCommission = typeof arg5 === 'number' ? arg5 : 100;
-      paymentStatus = arg6 || 'paid';
+      serviceFee = typeof arg4 === 'number' ? arg4 : 150;
+      destBranchCommission = typeof arg5 === 'number' ? arg5 : 70;
+      paymentStatus = arg6 || 'to_pay';
     }
 
     const targetStatus: ShipmentStatus = (typeof arg2 === 'object' && arg2?.status) ? arg2.status : 'verified';
     const finalOriginBranchId = (isSuperAdmin && typeof arg2 === 'object' && arg2?.originBranchId) ? arg2.originBranchId : target.originBranchId;
     const finalDestBranchId = (isSuperAdmin && typeof arg2 === 'object' && arg2?.destinationBranchId) ? arg2.destinationBranchId : target.destinationBranchId;
 
-    const weightCost = Math.round(actualWeightKg * ratePerKg);
-    const fragileFee = target.packageInfo?.isFragile ? 150 : 0;
-    const cappedDiscount = Math.min(discountAmount, baseRate);
-    const discountedBaseRate = Math.max(0, baseRate - cappedDiscount);
-    const totalAmount = discountedBaseRate + weightCost + serviceFee + fragileFee;
+    const fragileFee = target.packageInfo?.isFragile ? 50 : 0;
+    const totalServiceFee = serviceFee + fragileFee;
+    const sellerPayout = productPrice - destBranchCommission - totalServiceFee + discountAmount;
+    const totalAmount = productPrice;
+    
+    // In product sales mode, origin remittance is not based on freight, but we keep it tracking what needs to be remitted
     const originRemittanceDue = Math.max(0, totalAmount - destBranchCommission);
+    
     const now = new Date().toISOString();
     const branchInfo = branches.find(b => b.id === currentUser.branchId) || branches.find(b => b.id === finalOriginBranchId);
 
     const updatedFinancials: BillingFinancials = {
       ...target.financials,
-      baseRate,
-      weightCost,
-      transportationFee: serviceFee,
+      productPrice,
+      serviceFee: totalServiceFee,
       destBranchCommission,
-      originRemittanceDue,
-      serviceFee: serviceFee + fragileFee,
       discountAmount,
-      discountValue: discountAmount,
+      sellerPayout,
       totalAmount,
       amountPaid: paymentStatus === 'paid' ? totalAmount : 0,
       amountDue: paymentStatus === 'paid' ? 0 : totalAmount,
@@ -2002,7 +1989,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const actorRoleName = isSuperAdmin ? 'Central HQ Super Admin' : 'Origin Branch Manager';
     const customNote = (typeof arg2 === 'object' && arg2?.note) ? arg2.note : 
-      `Customer pre-booking verified, weighed & priced by ${currentUser.name} (${actorRoleName}). Verified weight: ${actualWeightKg} kg, ${pieces} pcs (Base: ${baseRate} AFN, Rate: ${ratePerKg} AFN/kg, Service: ${serviceFee} AFN). Total: ${totalAmount} AFN (${paymentStatus.toUpperCase()}). Status: ${targetStatus.toUpperCase()}`;
+      `Customer pre-booking verified by ${currentUser.name} (${actorRoleName}). Verified weight: ${actualWeightKg} kg, ${pieces} pcs (Product Price: ${productPrice} AFN, Service: ${serviceFee} AFN, Dest Comm: ${destBranchCommission} AFN). Total: ${totalAmount} AFN (${paymentStatus.toUpperCase()}). Status: ${targetStatus.toUpperCase()}`;
 
     const newHistoryItem = {
       id: `st_${Date.now()}`,

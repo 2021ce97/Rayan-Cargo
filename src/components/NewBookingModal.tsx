@@ -85,20 +85,16 @@ export const NewBookingModal: React.FC = () => {
   const [weightKg, setWeightKg] = useState<number>(5.0);
   const [pieces, setPieces] = useState<number>(1);
   const [dimensions, setDimensions] = useState<string>('30x25x20 cm');
-  const [declaredValueAfn, setDeclaredValueAfn] = useState<number>(10000);
   const [description, setDescription] = useState<string>('');
   const [serviceType, setServiceType] = useState<ServiceType>('express');
   const [isFragile, setIsFragile] = useState<boolean>(false);
 
-  // Billing & Discounts
-  const [baseRate, setBaseRate] = useState<number>(300);
-  const [ratePerKg, setRatePerKg] = useState<number>(40);
-  const [serviceFee, setServiceFee] = useState<number>(100);
-  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
-  const [discountValue, setDiscountValue] = useState<number>(0);
+  // Billing & Discounts (Product COD Model)
+  const [productPriceAfn, setProductPriceAfn] = useState<number>(5000);
+  const [serviceFee, setServiceFee] = useState<number>(150);
+  const [destCommission, setDestCommission] = useState<number>(70);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountReason, setDiscountReason] = useState<string>('');
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('paid');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
 
   // Initialize and sync origin and destination details
   useEffect(() => {
@@ -131,20 +127,13 @@ export const NewBookingModal: React.FC = () => {
   };
 
   // Calculations
-  const weightCost = Math.round(weightKg * ratePerKg);
-  const fragileFee = isFragile ? 150 : 0;
-  let calculatedDiscount = 0;
-  if (discountType === 'percentage') {
-    calculatedDiscount = Math.round((baseRate * Math.min(discountValue, 100)) / 100);
-  } else {
-    calculatedDiscount = Math.min(discountValue, baseRate);
-  }
-
-  const discountedBaseRate = Math.max(0, baseRate - calculatedDiscount);
-  const subtotal = discountedBaseRate + weightCost + serviceFee + fragileFee;
-  const grandTotal = subtotal;
-  const amountPaid = paymentStatus === 'paid' ? grandTotal : (paymentStatus === 'partial' ? Math.round(grandTotal / 2) : 0);
-  const amountDue = grandTotal - amountPaid;
+  const fragileFee = isFragile ? 50 : 0;
+  const totalServiceFee = serviceFee + fragileFee;
+  const sellerPayout = productPriceAfn - destCommission - totalServiceFee + discountAmount;
+  
+  const grandTotal = productPriceAfn;
+  const amountPaid = 0; // Collected on delivery
+  const amountDue = productPriceAfn;
 
   const originBranchObj = branches.find(b => b.id === originBranchId);
   const destBranchObj = branches.find(b => b.id === destBranchId);
@@ -173,18 +162,15 @@ export const NewBookingModal: React.FC = () => {
     setWeightKg(14.5);
     setPieces(3);
     setDimensions('45x35x30 cm');
-    setDeclaredValueAfn(180000);
-    setDescription('3 Boxes of Smart Security Cameras, Network Adapters and Inverters');
+    setDescription('3 Boxes of Smart Security Cameras');
     setServiceType('express');
     setIsFragile(true);
 
-    setBaseRate(350);
-    setRatePerKg(45);
-    setDiscountType('percentage');
-    setDiscountValue(10);
-    setDiscountReason('Merchant Regular 10%');
-    setPaymentStatus('paid');
-    setPaymentMethod('cash');
+    setProductPriceAfn(180000);
+    setServiceFee(500);
+    setDestCommission(200);
+    setDiscountAmount(50);
+    setDiscountReason('Merchant Regular Discount');
   };
 
   const handleReset = () => {
@@ -201,7 +187,8 @@ export const NewBookingModal: React.FC = () => {
     setDescription('');
     setWeightKg(5);
     setPieces(1);
-    setDiscountValue(0);
+    setProductPriceAfn(0);
+    setDiscountAmount(0);
   };
 
   const handleSubmit = (andPrint: boolean) => {
@@ -242,24 +229,21 @@ export const NewBookingModal: React.FC = () => {
         weightKg,
         pieces,
         dimensions,
-        declaredValueAfn,
         description: description || `${pieces} package(s) of ${category}`,
         serviceType,
         isFragile
       },
       financials: {
-        baseRate,
-        weightCost,
-        serviceFee: serviceFee + fragileFee,
-        discountType,
-        discountValue,
-        discountAmount: calculatedDiscount,
-        tax: 0,
+        productPrice: productPriceAfn,
+        serviceFee: totalServiceFee,
+        destBranchCommission: destCommission,
+        discountAmount: discountAmount,
+        sellerPayout: sellerPayout,
         totalAmount: grandTotal,
         amountPaid,
         amountDue,
-        paymentStatus,
-        paymentMethod,
+        paymentStatus: 'to_pay',
+        paymentMethod: 'cod',
         discountReason
       },
       bookedByUserId: currentUser.id,
@@ -693,16 +677,6 @@ export const NewBookingModal: React.FC = () => {
                   <option value="heavy_cargo">{t('speed_heavy')}</option>
                 </select>
               </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">{t('declared_value_afn')}</label>
-                <input
-                  type="number"
-                  value={declaredValueAfn}
-                  onChange={(e) => setDeclaredValueAfn(parseInt(e.target.value) || 0)}
-                  className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500"
-                />
-              </div>
             </div>
 
             <div>
@@ -754,91 +728,33 @@ export const NewBookingModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Pricing Presets */}
-            <div className="space-y-1.5">
-              <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
-                <span>{t('pricing_rates_presets')}</span>
-                <span className="text-[10px] text-slate-400 font-normal">Click to apply</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBaseRate(300);
-                    setRatePerKg(40);
-                    setServiceFee(100);
-                  }}
-                  className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all text-center cursor-pointer ${
-                    baseRate === 300 && ratePerKg === 40
-                      ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-400'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block truncate">Standard</span>
-                  <span className="text-[9px] font-mono text-slate-500 font-normal">300 + 40/kg</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBaseRate(400);
-                    setRatePerKg(30);
-                    setServiceFee(120);
-                  }}
-                  className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all text-center cursor-pointer ${
-                    baseRate === 400 && ratePerKg === 30
-                      ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-400'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block truncate">Heavy Bulk</span>
-                  <span className="text-[9px] font-mono text-slate-500 font-normal">400 + 30/kg</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBaseRate(500);
-                    setRatePerKg(70);
-                    setServiceFee(150);
-                  }}
-                  className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all text-center cursor-pointer ${
-                    baseRate === 500 && ratePerKg === 70
-                      ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-400'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="block truncate">Express VIP</span>
-                  <span className="text-[9px] font-mono text-slate-500 font-normal">500 + 70/kg</span>
-                </button>
-              </div>
-            </div>
+            {/* Quick Pricing Presets - Removed */}
 
             {/* Editable Rate Inputs Section (Branch Manager Controls) */}
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center justify-between pb-1 border-b border-slate-200">
                 <span className="flex items-center gap-1.5">
                   <SlidersHorizontal className="w-3.5 h-3.5 text-red-600" />
-                  <span>{t('set_rates_title')}</span>
+                  <span>{t('set_rates_title') || 'Product Sales Pricing'}</span>
                 </span>
                 <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                   {t('editable_by_mgr')}
                 </span>
               </div>
 
-              {/* Base Booking Rate */}
+              {/* Product Price */}
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>{t('base_booking_rate_lbl')}:</span>
-                  <span className="text-[10px] text-slate-400 font-normal">{t('fixed_intake_fee')}</span>
+                  <span>{t('base_booking_rate_lbl') || 'Product Price (Collection Amount)'}:</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Amount receiver will pay</span>
                 </div>
                 <div className="relative">
                   <input
                     type="number"
                     min="0"
-                    step="10"
-                    value={baseRate}
-                    onChange={(e) => setBaseRate(Math.max(0, parseInt(e.target.value) || 0))}
+                    step="100"
+                    value={productPriceAfn}
+                    onChange={(e) => setProductPriceAfn(Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-full h-9 pl-3 pr-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                   />
                   <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
@@ -847,23 +763,23 @@ export const NewBookingModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Rate Per KG */}
+              {/* Destination Commission */}
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>{t('rate_per_kg_lbl')}:</span>
-                  <span className="text-[10px] text-slate-400 font-normal">{t('highway_freight_per_kg')}</span>
+                  <span>{t('dest_commission_lbl') || 'Destination Branch Commission'}:</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Kept by receiver branch</span>
                 </div>
                 <div className="relative">
                   <input
                     type="number"
                     min="0"
-                    step="5"
-                    value={ratePerKg}
-                    onChange={(e) => setRatePerKg(Math.max(0, parseInt(e.target.value) || 0))}
+                    step="10"
+                    value={destCommission}
+                    onChange={(e) => setDestCommission(Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-full h-9 pl-3 pr-16 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                   />
                   <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
-                    AFN / kg
+                    AFN
                   </span>
                 </div>
               </div>
@@ -871,7 +787,7 @@ export const NewBookingModal: React.FC = () => {
               {/* Service & Handling Fee */}
               <div>
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-1">
-                  <span>{t('service_handling_fee_lbl')}:</span>
+                  <span>{t('service_handling_fee_lbl') || 'Service & Handling Fee (Origin)'}:</span>
                   <span className="text-[10px] text-slate-400 font-normal">{t('loading_storage_fee')}</span>
                 </div>
                 <div className="relative">
@@ -898,84 +814,55 @@ export const NewBookingModal: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between text-slate-300">
-                <span>{t('base_booking_rate_lbl')}:</span>
-                <span className="font-mono font-bold text-white">{baseRate} AFN</span>
+                <span>{t('product_selling_price_lbl') || 'Product Price (To Collect)'}:</span>
+                <span className="font-mono font-bold text-white">{productPriceAfn} AFN</span>
               </div>
 
-              <div className="flex items-center justify-between text-slate-300">
-                <span>{t('weight_charge_lbl')} ({weightKg} kg × {ratePerKg} AFN):</span>
-                <span className="font-mono font-bold text-white">{weightCost} AFN</span>
+              <div className="flex items-center justify-between text-red-300">
+                <span>{t('dest_commission_lbl') || 'Dest. Commission'}:</span>
+                <span className="font-mono font-bold">-{destCommission} AFN</span>
               </div>
 
-              <div className="flex items-center justify-between text-slate-300">
+              <div className="flex items-center justify-between text-red-300">
                 <span>{t('service_handling_fee')}:</span>
-                <span className="font-mono font-bold text-white">{serviceFee} AFN</span>
+                <span className="font-mono font-bold">-{serviceFee} AFN</span>
               </div>
 
               {isFragile && (
-                <div className="flex items-center justify-between text-amber-300">
+                <div className="flex items-center justify-between text-red-300">
                   <span>{t('fragile_fee_lbl')}:</span>
-                  <span className="font-mono font-bold">+{fragileFee} AFN</span>
+                  <span className="font-mono font-bold">-{fragileFee} AFN</span>
                 </div>
               )}
 
-              {calculatedDiscount > 0 && (
+              {discountAmount > 0 && (
                 <div className="flex items-center justify-between text-emerald-400 font-bold">
                   <span>{t('applied_discount_lbl')}:</span>
-                  <span className="font-mono">-{calculatedDiscount} AFN</span>
+                  <span className="font-mono">+{discountAmount} AFN</span>
                 </div>
               )}
 
               <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between text-base font-black">
-                <span className="text-white">{t('grand_total_lbl')}:</span>
-                <span className="font-mono text-red-400 text-lg">{grandTotal} AFN</span>
+                <span className="text-white">{t('seller_net_payout_lbl') || 'Net Payout to Seller'}:</span>
+                <span className="font-mono text-emerald-400 text-lg">{sellerPayout} AFN</span>
               </div>
             </div>
 
             {/* Discount Inputs */}
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <div className="font-bold text-slate-700 flex items-center justify-between">
-                <span>{t('applied_discount_lbl')}</span>
+                <span>{t('applied_discount_lbl') || 'Seller Fee Discount'}</span>
                 <span className="text-[10px] text-slate-400">{t('optional_badge')}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value as 'percentage' | 'fixed')}
-                  className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-medium"
-                >
-                  <option value="percentage">{t('disc_percentage')}</option>
-                  <option value="fixed">{t('disc_fixed')}</option>
-                </select>
+              <div className="grid grid-cols-1 gap-2">
                 <input
                   type="number"
                   min="0"
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
-                  placeholder="0"
+                  value={discountAmount}
+                  onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                  placeholder="Discount Amount in AFN"
                   className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono font-bold"
                 />
-              </div>
-            </div>
-
-            {/* Payment Mode */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700">{t('payment_status')}</label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {(['paid', 'to_pay', 'partial', 'unpaid'] as PaymentStatus[]).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPaymentStatus(p)}
-                    className={`py-2 px-2 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                      paymentStatus === p
-                        ? 'bg-red-600 text-white border-red-600 shadow-xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    {p === 'to_pay' ? t('cod_topay') : t(`payment_status_${p}` as any) || p.toUpperCase()}
-                  </button>
-                ))}
               </div>
             </div>
 

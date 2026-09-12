@@ -146,24 +146,18 @@ export interface PackageDetails {
   weightKg: number;
   pieces: number;
   dimensions?: string; // e.g. 30x20x15 cm
-  declaredValueAfn: number;
   description: string;
   serviceType: ServiceType;
   isFragile: boolean;
 }
 
 export interface BillingFinancials {
-  baseRate: number;
-  weightCost: number;
-  transportationFee?: number; // Transportation/cargo freight fee added by branch
-  destBranchCommission?: number; // Commission kept by receiving destination branch
-  originRemittanceDue?: number; // Amount remitted back to origin branch after commission
-  serviceFee: number;
-  discountType: 'percentage' | 'fixed';
-  discountValue: number;
-  discountAmount: number;
-  tax: number;
-  totalAmount: number;
+  productPrice: number; // The product selling price to collect from buyer
+  serviceFee: number; // Origin branch service and handling fee
+  destBranchCommission: number; // Destination branch commission
+  discountAmount: number; // Discount applied to the service fee
+  sellerPayout: number; // Net amount payable to the origin seller
+  totalAmount: number; // Same as productPrice, kept for compatibility
   amountPaid: number;
   amountDue: number;
   paymentStatus: PaymentStatus;
@@ -283,7 +277,7 @@ export interface CustomerPreBookingInput {
   estimatedWeightKg: number;
   pieces: number;
   description: string;
-  declaredValueAfn?: number;
+  productPriceAfn?: number; // Replaced declaredValueAfn
   isFragile?: boolean;
   paymentPreference: 'pay_at_branch' | 'to_pay';
 }

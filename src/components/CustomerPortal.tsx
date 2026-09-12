@@ -58,7 +58,7 @@ export const CustomerPortal: React.FC = () => {
   const [category, setCategory] = useState<ParcelCategory>('general');
   const [estimatedWeightKg, setEstimatedWeightKg] = useState<number>(5);
   const [pieces, setPieces] = useState<number>(1);
-  const [declaredValueAfn, setDeclaredValueAfn] = useState<number>(3000);
+  const [productPriceAfn, setProductPriceAfn] = useState<number>(3000);
   const [description, setDescription] = useState('');
   const [isFragile, setIsFragile] = useState(false);
   const [paymentPreference, setPaymentPreference] = useState<'pay_at_branch' | 'pay_on_delivery'>('pay_at_branch');
@@ -108,7 +108,7 @@ export const CustomerPortal: React.FC = () => {
       category,
       estimatedWeightKg: Number(estimatedWeightKg) || 1,
       pieces: Number(pieces) || 1,
-      declaredValueAfn: Number(declaredValueAfn) || 0,
+      productPriceAfn: Number(productPriceAfn) || 0,
       description: description || `${category} - ${pieces} item(s)`,
       isFragile,
       paymentPreference
@@ -257,7 +257,7 @@ export const CustomerPortal: React.FC = () => {
       {(() => {
         const totalMoneySpent = customerShipments.reduce((sum, s) => sum + (s.financials.totalAmount || 0), 0);
         const totalParcelsCount = customerShipments.length;
-        const totalParcelsValue = customerShipments.reduce((sum, s) => sum + (s.packageInfo.declaredValueAfn || 0), 0);
+        const totalParcelsValue = customerShipments.reduce((sum, s) => sum + (s.financials.productPrice || 0), 0);
         const deliveredCount = customerShipments.filter(s => s.status === 'delivered').length;
         const activeCount = customerShipments.filter(s => s.status !== 'delivered' && s.status !== 'cancelled').length;
 
@@ -310,7 +310,7 @@ export const CustomerPortal: React.FC = () => {
                     <th className="py-3 px-6 bg-gradient-to-r from-amber-100/90 to-orange-50 border-b border-amber-200 text-amber-950 text-end w-1/3">
                       <div className="flex items-center justify-end gap-2">
                         <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        <span>{t('customer_stats_total_declared_val')}</span>
+                        <span>{t('customer_stats_total_product_val') || 'Total Expected Payout'}</span>
                       </div>
                     </th>
                   </tr>
@@ -362,7 +362,7 @@ export const CustomerPortal: React.FC = () => {
                           <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">AFN</span>
                         </div>
                         <div className="text-[11px] font-medium text-amber-900/80 mt-1">
-                          {language === 'fa' ? 'مجموع ارزش اظهاری اجناس و بیمه امانات' : language === 'ps' ? 'د لیږل شویو توکو ټول ټاکل شوی ارزښت' : 'Total declared cargo insurance value'}
+                          {language === 'fa' ? 'مجموع ارزش اجناس برای دریافت' : language === 'ps' ? 'د توکو ټول ارزښت د ترلاسه کولو لپاره' : 'Total expected payout for sold products'}
                         </div>
                       </div>
                     </td>
@@ -620,7 +620,7 @@ export const CustomerPortal: React.FC = () => {
             {/* 3. Parcel Details */}
             <div className="space-y-4 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
               <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                {t('parcel_specs_declared_val')}
+                {t('parcel_specs_product_val') || 'Product Details & Selling Price'}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
@@ -663,12 +663,12 @@ export const CustomerPortal: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('goods_value_afn')}</label>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('goods_selling_price_afn') || 'Product Price (AFN)'}</label>
                   <input
                     type="number"
                     min="0"
-                    value={declaredValueAfn}
-                    onChange={(e) => setDeclaredValueAfn(parseFloat(e.target.value) || 0)}
+                    value={productPriceAfn}
+                    onChange={(e) => setProductPriceAfn(parseFloat(e.target.value) || 0)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
@@ -947,7 +947,7 @@ export const CustomerPortal: React.FC = () => {
                       <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-800 text-[11px] flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>{t('official_freight_verified_note')} (<strong>{originBr?.name || 'Origin Branch'}</strong>): {t('base_rate_lbl')} {shipment.financials.baseRate} AFN + {t('weight_rate_lbl')} {shipment.financials.weightCost} AFN + {t('service_rate_lbl')} {shipment.financials.serviceFee} AFN = <strong>{shipment.financials.totalAmount} AFN</strong></span>
+                          <span>Product Verified at <strong>{originBr?.name || 'Origin Branch'}</strong>: Product Price {shipment.financials.productPrice} AFN - Service Fee {shipment.financials.serviceFee} AFN = Seller Payout <strong>{shipment.financials.sellerPayout} AFN</strong></span>
                         </div>
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">{shipment.financials.paymentStatus.toUpperCase()}</span>
                       </div>

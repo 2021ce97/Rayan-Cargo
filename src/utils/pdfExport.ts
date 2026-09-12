@@ -101,7 +101,7 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
  * Direct Vector jsPDF generator for Official Rayan Cargo Consignment Note / Waybill.
  * Highly robust, zero CORS dependencies, vector-sharp graphics, downloads 100% reliably.
  */
-export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
+export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch, receiptRole: 'buyer' | 'seller' = 'buyer'): boolean {
   try {
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -255,7 +255,7 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
     doc.text(shipment.packageInfo.description.substring(0, 32), margin + 42, y + 5.2);
     doc.text(`${shipment.packageInfo.pieces} pcs`, margin + 105, y + 5.2);
     doc.text(`${shipment.packageInfo.weightKg} KG`, margin + 125, y + 5.2);
-    doc.text(`${(shipment.packageInfo.declaredValueAfn || 0).toLocaleString()} AFN`, margin + 152, y + 5.2);
+    doc.text(``, margin + 152, y + 5.2);
 
     y += 10.5;
 
@@ -271,11 +271,18 @@ export function generateWaybillPdf(shipment: Shipment, originBranch?: Branch, de
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    const baseAndWeight = (shipment.financials.baseRate || 0) + (shipment.financials.weightCost || 0);
-    doc.text(`Base & Weight Freight: ${baseAndWeight.toLocaleString()} AFN`, margin + 4, y + 12.5);
-    doc.text(`Service Fee: ${(shipment.financials.serviceFee || 0).toLocaleString()} AFN`, margin + 4, y + 17.5);
-    doc.text(`Tax / Surcharge: ${(shipment.financials.tax || 0).toLocaleString()} AFN`, margin + 4, y + 22.5);
-    doc.text(`Discount / Promo: ${(shipment.financials.discountAmount || 0).toLocaleString()} AFN`, margin + 4, y + 27.5);
+    
+    if (receiptRole === 'seller') {
+      doc.text(`Product Selling Price: ${(shipment.financials.productPrice || 0).toLocaleString()} AFN`, margin + 4, y + 12.5);
+      doc.text(`Service Fee (Deducted): -${(shipment.financials.serviceFee || 0).toLocaleString()} AFN`, margin + 4, y + 17.5);
+      doc.text(`Dest. Commission (Deducted): -${(shipment.financials.destBranchCommission || 0).toLocaleString()} AFN`, margin + 4, y + 22.5);
+      doc.text(`Net Seller Payout: ${(shipment.financials.sellerPayout || 0).toLocaleString()} AFN`, margin + 4, y + 27.5);
+    } else {
+      doc.text(`Product Price (COD): ${(shipment.financials.productPrice || 0).toLocaleString()} AFN`, margin + 4, y + 12.5);
+      doc.text(`Freight Fees: Inclusive / Prepaid`, margin + 4, y + 17.5);
+      doc.text(`Discount / Promo: ${(shipment.financials.discountAmount || 0).toLocaleString()} AFN`, margin + 4, y + 22.5);
+      doc.text(`Total Payable by Receiver: ${(shipment.financials.totalAmount || 0).toLocaleString()} AFN`, margin + 4, y + 27.5);
+    }
 
     // Total and Payment Status Banner Box
     const totalBoxX = margin + 90;
@@ -955,7 +962,7 @@ export function generateExecutiveReportPdf(
 /**
  * Generates a thermal-printer friendly PDF shipping label (100x150mm) with barcode and complete consignment details.
  */
-export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
+export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch, receiptRole: 'buyer' | 'seller' = 'buyer'): boolean {
   try {
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -1096,7 +1103,13 @@ export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branc
     doc.text(`Weight: ${shipment.packageInfo.weightKg} KG`, margin + 3, y + 5);
     doc.text(`Pieces: ${shipment.packageInfo.pieces || 1} Pcs`, margin + 45, y + 5);
     doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase()}`, margin + 3, y + 10);
-    doc.text(`Payment: ${shipment.financials.paymentStatus.toUpperCase()} (${shipment.financials.totalAmount.toLocaleString()} AFN)`, margin + 3, y + 15);
+    
+    if (receiptRole === 'seller') {
+      doc.text(`Product Price: ${shipment.financials.productPrice?.toLocaleString()} AFN`, margin + 45, y + 10);
+      doc.text(`Net Seller Payout: ${shipment.financials.sellerPayout?.toLocaleString()} AFN`, margin + 3, y + 15);
+    } else {
+      doc.text(`Payment: ${shipment.financials.paymentStatus.toUpperCase()} (${shipment.financials.totalAmount.toLocaleString()} AFN)`, margin + 3, y + 15);
+    }
 
     y += specH + 3;
 

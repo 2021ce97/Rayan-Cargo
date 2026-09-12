@@ -28,6 +28,7 @@ export const PrintReceiptModal: React.FC = () => {
   const receiptRef = useRef<HTMLDivElement>(null);
   const thermalRef = useRef<HTMLDivElement>(null);
   const [printFormat, setPrintFormat] = useState<'standard' | 'thermal'>('standard');
+  const [receiptRole, setReceiptRole] = useState<'buyer' | 'seller'>('buyer');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
@@ -53,8 +54,8 @@ export const PrintReceiptModal: React.FC = () => {
 
     try {
       const ok = printFormat === 'thermal' 
-        ? generateThermalLabelPdf(shipment, originBranch, destBranch)
-        : generateWaybillPdf(shipment, originBranch, destBranch);
+        ? generateThermalLabelPdf(shipment, originBranch, destBranch, receiptRole)
+        : generateWaybillPdf(shipment, originBranch, destBranch, receiptRole);
       if (ok) {
         setDownloadSuccess(true);
         setTimeout(() => setDownloadSuccess(false), 4000);
@@ -83,25 +84,46 @@ export const PrintReceiptModal: React.FC = () => {
           </div>
 
           {/* Format Switch: Standard A4 vs Thermal POS */}
-          <div className="flex items-center bg-slate-200/80 rounded-xl p-0.5 text-xs font-bold">
-            <button
-              onClick={() => setPrintFormat('standard')}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                printFormat === 'standard' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>{t('print_format_a4')}</span>
-            </button>
-            <button
-              onClick={() => setPrintFormat('thermal')}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                printFormat === 'thermal' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Receipt className="w-3.5 h-3.5" />
-              <span>{t('print_format_thermal')}</span>
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center bg-slate-200/80 rounded-xl p-0.5 text-xs font-bold">
+              <button
+                onClick={() => setReceiptRole('buyer')}
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                  receiptRole === 'buyer' ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Buyer Copy</span>
+              </button>
+              <button
+                onClick={() => setReceiptRole('seller')}
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                  receiptRole === 'seller' ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>Seller Copy</span>
+              </button>
+            </div>
+            
+            <div className="flex items-center bg-slate-200/80 rounded-xl p-0.5 text-xs font-bold">
+              <button
+                onClick={() => setPrintFormat('standard')}
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                  printFormat === 'standard' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{t('print_format_a4')}</span>
+              </button>
+              <button
+                onClick={() => setPrintFormat('thermal')}
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                  printFormat === 'thermal' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>{t('print_format_thermal')}</span>
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -228,35 +250,44 @@ export const PrintReceiptModal: React.FC = () => {
               {shipment.status === 'pre_booked' || shipment.financials.totalAmount === 0 ? (
                 <div className="text-center py-1 bg-amber-50 rounded border border-amber-200 text-amber-900">
                   <div className="font-bold text-[9px] uppercase">* PRE-BOOKING VOUCHER *</div>
-                  <div className="text-[8px] text-amber-800">Final freight price will be added upon origin branch scale weighing.</div>
+                  <div className="text-[8px] text-amber-800">Final product price and fees will be added upon origin branch scale weighing.</div>
                 </div>
               ) : (
                 <>
-                  <div className="flex justify-between">
-                    <span>Base Booking Rate:</span>
-                    <span>{shipment.financials.baseRate} AFN</span>
+                  <div className="flex justify-between text-slate-700">
+                    <span>Product Selling Price:</span>
+                    <span className="font-bold">{shipment.financials.productPrice} AFN</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Weight Charge ({shipment.packageInfo.weightKg}kg):</span>
-                    <span>{shipment.financials.weightCost} AFN</span>
-                  </div>
-                  {shipment.transportationFee && shipment.transportationFee > 0 && (
-                    <div className="flex justify-between">
-                      <span>Transportation Fee:</span>
-                      <span>{shipment.transportationFee} AFN</span>
-                    </div>
+                  {receiptRole === 'seller' ? (
+                    <>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Service Fee (Deducted):</span>
+                        <span>-{shipment.financials.serviceFee} AFN</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Dest. Comm. (Deducted):</span>
+                        <span>-{shipment.financials.destBranchCommission} AFN</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-[10px] mt-1 border-t border-dashed border-slate-300 pt-1">
+                        <span>NET PAYOUT TO SELLER:</span>
+                        <span className="text-emerald-700">{shipment.financials.sellerPayout} AFN</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {shipment.financials.discountAmount > 0 && (
+                        <div className="flex justify-between text-slate-600">
+                          <span>Fee Discount:</span>
+                          <span>-{shipment.financials.discountAmount} AFN</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-black text-xs pt-1 border-t border-slate-400">
+                        <span>TOTAL DUE FROM BUYER:</span>
+                        <span>{shipment.financials.totalAmount} AFN</span>
+                      </div>
+                    </>
                   )}
-                  {shipment.financials.discountAmount > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span>Discount:</span>
-                      <span>-{shipment.financials.discountAmount} AFN</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-black text-xs pt-1 border-t border-slate-400">
-                    <span>TOTAL AMOUNT:</span>
-                    <span>{shipment.financials.totalAmount} AFN</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-[10px]">
+                  <div className="flex justify-between font-bold text-[10px] mt-0.5">
                     <span>PAYMENT STATUS:</span>
                     <span className="uppercase">
                       {shipment.financials.paymentStatus === 'to_pay' ? 'COD (TO PAY AT DEST)' : shipment.financials.paymentStatus.toUpperCase()}
@@ -484,7 +515,6 @@ export const PrintReceiptModal: React.FC = () => {
                     <th className="p-2.5 text-center">{t('category_lbl') || 'Category'}</th>
                     <th className="p-2.5 text-center">{t('weight_lbl') || 'Weight'}</th>
                     <th className="p-2.5 text-center">{t('pieces_lbl') || 'Pieces'}</th>
-                    <th className="p-2.5 text-end">{t('declared_value') || 'Declared Value'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -500,7 +530,6 @@ export const PrintReceiptModal: React.FC = () => {
                     <td className="p-2.5 text-center capitalize">{shipment.packageInfo.category}</td>
                     <td className="p-2.5 text-center font-mono font-bold">{shipment.packageInfo.weightKg} KG</td>
                     <td className="p-2.5 text-center">{shipment.packageInfo.pieces} Box(es)</td>
-                    <td className="p-2.5 text-end font-mono">{shipment.packageInfo.declaredValueAfn.toLocaleString()} AFN</td>
                   </tr>
                 </tbody>
               </table>
@@ -514,7 +543,7 @@ export const PrintReceiptModal: React.FC = () => {
                         <span>Pre-Booking Status: Pending Origin Branch Scale Intake</span>
                       </div>
                       <div className="text-[11px] text-amber-700">
-                        Official freight charges will be calculated and certified by the origin branch manager when the parcel is dropped off.
+                        Official product price and freight fees will be certified by the origin branch manager when the parcel is dropped off.
                       </div>
                     </div>
                     <div className="px-3 py-1 bg-amber-200/80 rounded-md font-mono font-bold text-xs text-amber-900 whitespace-nowrap">
@@ -530,18 +559,27 @@ export const PrintReceiptModal: React.FC = () => {
                     </div>
 
                     <div className="text-end space-y-1">
-                      <div className="text-xs text-slate-500">
-                        Base ({shipment.financials.baseRate} AFN) + Weight ({shipment.financials.weightCost} AFN)
-                        {shipment.transportationFee ? ` + Trans (${shipment.transportationFee} AFN)` : ''}
-                        {shipment.financials.discountAmount > 0 ? ` - Disc (${shipment.financials.discountAmount} AFN)` : ''}
-                      </div>
-                      <div className="text-base font-black text-slate-900">
-                        Total Charge: <span className="text-red-600 font-mono text-xl">{shipment.financials.totalAmount.toLocaleString()} AFN</span>
-                      </div>
-                      {shipment.financials.amountDue > 0 && (
-                        <div className="text-xs font-bold text-amber-700">
-                          Balance Due on Delivery: {shipment.financials.amountDue.toLocaleString()} AFN
-                        </div>
+                      {receiptRole === 'seller' ? (
+                        <>
+                          <div className="text-xs text-slate-500">
+                            Product Price: {shipment.financials.productPrice} AFN
+                            {shipment.financials.serviceFee > 0 ? ` | Service Fee (Deducted): -${shipment.financials.serviceFee} AFN` : ''}
+                            {shipment.financials.destBranchCommission > 0 ? ` | Dest. Comm. (Deducted): -${shipment.financials.destBranchCommission} AFN` : ''}
+                          </div>
+                          <div className="text-sm font-black text-slate-700">
+                            Net Seller Payout: {shipment.financials.sellerPayout.toLocaleString()} AFN
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-xs text-slate-500">
+                            Product Price (COD): {shipment.financials.productPrice} AFN
+                            {shipment.financials.discountAmount > 0 ? ` | Discount: -${shipment.financials.discountAmount} AFN` : ''}
+                          </div>
+                          <div className="text-base font-black text-slate-900">
+                            Total Due From Buyer (COD): <span className="text-red-600 font-mono text-xl">{shipment.financials.totalAmount.toLocaleString()} AFN</span>
+                          </div>
+                        </>
                       )}
                     </div>
                   </>

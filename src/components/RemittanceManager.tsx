@@ -87,8 +87,6 @@ export const RemittanceManager: React.FC = () => {
   const [customDestBranchId, setCustomDestBranchId] = useState<string>('br_herat');
   const [customTotalCollected, setCustomTotalCollected] = useState<number>(100);
   const [customCommission, setCustomCommission] = useState<number>(30);
-  const [customTransportationFee, setCustomTransportationFee] = useState<number>(20);
-  const [customOriginCommission, setCustomOriginCommission] = useState<number>(0);
   const [customNetToHq, setCustomNetToHq] = useState<number>(50);
   const [paymentMethod, setPaymentMethod] = useState<'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury'>('hawala');
   const [refNumber, setRefNumber] = useState('');
@@ -98,12 +96,9 @@ export const RemittanceManager: React.FC = () => {
   // Recompute net to HQ whenever any money parameter changes
   const recomputeNetToHq = (
     collected: number,
-    destComm: number,
-    transportFee: number,
-    origComm: number
+    destComm: number
   ) => {
-    const destRetained = destComm + transportFee;
-    const net = Math.max(0, collected - destRetained - origComm);
+    const net = Math.max(0, collected - destComm);
     setCustomNetToHq(net);
   };
 
@@ -113,26 +108,19 @@ export const RemittanceManager: React.FC = () => {
     const ids = parcels.map(p => p.id);
     setSelectedParcelIds(ids);
 
-    const totalColl = parcels.reduce((sum, p) => sum + (p.financials?.totalAmount || 0), 0);
+    const totalColl = parcels.reduce((sum, p) => sum + (p.financials?.productPrice || p.financials?.totalAmount || 0), 0);
     const totalComm = parcels.reduce((sum, p) => {
-      const comm = p.destBranchCommission !== undefined ? p.destBranchCommission : (p.financials?.destBranchCommission || 30);
+      const comm = p.financials?.destBranchCommission || p.destBranchCommission || 70;
       return sum + comm;
     }, 0);
-    const transportFee = parcels.length > 0 ? parcels.length * 20 : 20;
     
-    // Check if any parcel originated from provincial branch (e.g., Faryab)
     const firstParcel = parcels[0];
-    const isProvincialOrigin = firstParcel?.originBranchId && firstParcel.originBranchId !== 'br_admin_hq';
-    const origComm = isProvincialOrigin ? 20 : 0;
-    const destRetained = totalComm + transportFee;
-    const net = Math.max(0, totalColl - destRetained - origComm);
+    const net = Math.max(0, totalColl - totalComm);
 
     setCustomOriginBranchId(firstParcel?.originBranchId || 'br_admin_hq');
     setCustomDestBranchId(firstParcel?.destinationBranchId || currentBranchId || 'br_herat');
     setCustomTotalCollected(totalColl);
     setCustomCommission(totalComm);
-    setCustomTransportationFee(transportFee);
-    setCustomOriginCommission(origComm);
     setCustomNetToHq(net);
     setRefNumber(`HAW-${Math.floor(100000 + Math.random() * 900000)}`);
     setAgentName('Sarafi Khorasan / Kabul Central');
@@ -143,22 +131,12 @@ export const RemittanceManager: React.FC = () => {
   // Handlers for manual edits
   const handleTotalCollectedChange = (newTotal: number) => {
     setCustomTotalCollected(newTotal);
-    recomputeNetToHq(newTotal, customCommission, customTransportationFee, customOriginCommission);
+    recomputeNetToHq(newTotal, customCommission);
   };
 
   const handleCommissionChange = (newComm: number) => {
     setCustomCommission(newComm);
-    recomputeNetToHq(customTotalCollected, newComm, customTransportationFee, customOriginCommission);
-  };
-
-  const handleTransportFeeChange = (newFee: number) => {
-    setCustomTransportationFee(newFee);
-    recomputeNetToHq(customTotalCollected, customCommission, newFee, customOriginCommission);
-  };
-
-  const handleOriginCommChange = (newOrigComm: number) => {
-    setCustomOriginCommission(newOrigComm);
-    recomputeNetToHq(customTotalCollected, customCommission, customTransportationFee, newOrigComm);
+    recomputeNetToHq(customTotalCollected, newComm);
   };
 
   // Submit Remittance
@@ -177,8 +155,8 @@ export const RemittanceManager: React.FC = () => {
       refNumber,
       agentName,
       notes,
-      customTransportationFee,
-      customOriginCommission,
+      0, // transportationFee
+      0, // originCommission
       customOriginBranchId
     );
 
@@ -593,11 +571,9 @@ export const RemittanceManager: React.FC = () => {
                   {pendingDeliveredShipments.map(s => {
                     const origBranch = branches.find(b => b.id === s.originBranchId);
                     const destBranch = branches.find(b => b.id === s.destinationBranchId);
-                    const collected = s.financials.totalAmount;
-                    const commission = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
-                    const transport = s.transportationFee ?? s.financials.transportationFee ?? 0;
-                    const originCommission = s.originBranchId !== s.destinationBranchId && s.originBranchId !== mainBranch?.id ? 20 : 0;
-                    const netDue = Math.max(0, collected - commission - transport - originCommission);
+                    const collected = s.financials.productPrice || s.financials.totalAmount;
+                    const commission = s.financials.destBranchCommission || s.destBranchCommission || 70;
+                    const netDue = s.originRemittanceDue || Math.max(0, collected - commission);
 
                     return (
                       <tr key={s.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
@@ -615,7 +591,7 @@ export const RemittanceManager: React.FC = () => {
                           {collected.toLocaleString()} AFN
                         </td>
                         <td className="p-3 text-end font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          + {(commission + transport + originCommission).toLocaleString()} AFN
+                          + {commission.toLocaleString()} AFN
                         </td>
                         <td className="p-3 text-end font-mono font-black text-amber-600 dark:text-amber-400">
                           {netDue.toLocaleString()} AFN
@@ -850,10 +826,6 @@ export const RemittanceManager: React.FC = () => {
                     onChange={(e) => {
                       const orig = e.target.value;
                       setCustomOriginBranchId(orig);
-                      const isProv = orig !== 'br_admin_hq';
-                      const origComm = isProv ? 20 : 0;
-                      setCustomOriginCommission(origComm);
-                      recomputeNetToHq(customTotalCollected, customCommission, customTransportationFee, origComm);
                     }}
                     className="w-full h-8 px-2 font-medium bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
                   >
@@ -913,90 +885,46 @@ export const RemittanceManager: React.FC = () => {
                   <span className="text-[9px] text-emerald-600 dark:text-emerald-400">{t('input_receiver_comm_sub')}</span>
                 </div>
 
-                {/* 3. Transportation Fee */}
-                <div>
-                  <label className="block text-[10px] font-bold text-teal-700 dark:text-teal-400 mb-1">
-                    {t('input_transport_fee_to_receiver')}:
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={customTransportationFee}
-                    onChange={(e) => handleTransportFeeChange(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full h-9 px-3 font-mono font-black text-sm text-teal-700 bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-800 rounded-xl"
-                    placeholder="20"
-                  />
-                  <span className="text-[9px] text-teal-600 dark:text-teal-400">{t('input_transport_fee_sub')}</span>
-                </div>
               </div>
-
-              {/* Inter-branch Origin Commission row if origin is not Kabul */}
-              {customOriginBranchId !== 'br_admin_hq' && (
-                <div className="p-2.5 rounded-lg bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-bold text-blue-900 dark:text-blue-300">
-                      {t('input_origin_branch_comm')} ({branches.find(b => b.id === customOriginBranchId)?.name || t('th_sender')}):
-                    </span>
-                    <p className="text-[10px] text-blue-700 dark:text-blue-400">
-                      {t('input_origin_comm_sub')}
-                    </p>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    value={customOriginCommission}
-                    onChange={(e) => handleOriginCommChange(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-24 h-8 px-2 font-mono font-bold text-xs text-end text-blue-700 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-lg"
-                  />
-                </div>
-              )}
 
               {/* Total Retained Summary for Receiver Branch */}
               <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
                 <span className="font-bold text-emerald-900 dark:text-emerald-200">
-                  {t('total_retained_by_receiver_lbl')}:
+                  {t('total_retained_by_receiver_lbl') || 'Retained by Receiver'}:
                 </span>
                 <span className="font-mono font-black text-emerald-700 dark:text-emerald-400 text-sm">
-                  {customCommission + customTransportationFee + customOriginCommission} AFN
+                  {customCommission} AFN
                 </span>
               </div>
 
               {/* Visual Money Distribution Bar */}
               <div className="space-y-1">
                 <div className="flex justify-between text-[10px] text-slate-500">
-                  <span>{t('th_receiver')}: {customCommission + customTransportationFee} AFN</span>
-                  {customOriginCommission > 0 && <span>{t('th_sender')}: {customOriginCommission} AFN</span>}
+                  <span>{t('th_receiver')}: {customCommission} AFN</span>
                   <span>{t('stat_submitted_to_hq')}: {customNetToHq} AFN</span>
                 </div>
                 <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full flex overflow-hidden">
                   <div 
-                    style={{ width: `${Math.min(100, Math.round(((customCommission + customTransportationFee) / (customTotalCollected || 1)) * 100))}%` }}
+                    style={{ width: `${Math.min(100, Math.round((customCommission / (customTotalCollected || 1)) * 100))}%` }}
                     className="bg-emerald-500 h-full" 
-                    title={t('remit_bar_receiver') || "Receiver Commission + Transport"}
+                    title={t('remit_bar_receiver') || "Receiver Commission"}
                   />
-                  {customOriginCommission > 0 && (
-                    <div 
-                      style={{ width: `${Math.min(100, Math.round((customOriginCommission / (customTotalCollected || 1)) * 100))}%` }}
-                      className="bg-blue-500 h-full" 
-                      title={t('remit_bar_sender') || "Sender Branch Commission"}
-                    />
-                  )}
                   <div 
-                    style={{ width: `${Math.min(100, Math.round((customNetToHq / (customTotalCollected || 1)) * 100))}%` }}
-                    className="bg-amber-500 h-full" 
-                    title={t('remit_bar_net') || "Net to Main Branch HQ"}
+                    style={{ flex: 1 }}
+                    className="bg-amber-400 h-full" 
+                    title={t('remit_bar_hq') || "Head Office / Central Treasury"}
                   />
                 </div>
               </div>
 
               {/* Net Remittance to HQ result */}
-              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-200 dark:border-amber-800 flex items-center justify-between shadow-inner">
                 <div>
                   <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
                     {t('net_remaining_to_send_hq')}:
                   </div>
                   <div className="text-[10px] text-amber-700 dark:text-amber-400 font-mono">
-                    {customTotalCollected} - ({customCommission} + {customTransportationFee}) {customOriginCommission > 0 ? `- ${customOriginCommission}` : ''} = {customNetToHq} AFN
+                    {customTotalCollected} - {customCommission} = {customNetToHq} AFN
                   </div>
                 </div>
                 <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
@@ -1299,18 +1227,6 @@ export const RemittanceManager: React.FC = () => {
                     <td className="p-2 font-bold text-emerald-700">{t('voucher_deducted_receiver_comm')}:</td>
                     <td className="p-2 font-mono font-bold text-emerald-700 text-end">- {viewDetailTransfer.totalCommissionKeptAfn.toLocaleString()} AFN</td>
                   </tr>
-                  {((viewDetailTransfer as any).transportationFeeAfn || 0) > 0 && (
-                    <tr className="border-b border-slate-200">
-                      <td className="p-2 font-bold text-teal-700">{t('voucher_deducted_transport_fee')}:</td>
-                      <td className="p-2 font-mono font-bold text-teal-700 text-end">- {((viewDetailTransfer as any).transportationFeeAfn).toLocaleString()} AFN</td>
-                    </tr>
-                  )}
-                  {((viewDetailTransfer as any).originCommissionAfn || 0) > 0 && (
-                    <tr className="border-b border-slate-200">
-                      <td className="p-2 font-bold text-blue-700">{t('voucher_sender_comm')}:</td>
-                      <td className="p-2 font-mono font-bold text-blue-700 text-end">- {((viewDetailTransfer as any).originCommissionAfn).toLocaleString()} AFN</td>
-                    </tr>
-                  )}
                   <tr className="bg-amber-50/60 font-black text-amber-900 text-sm">
                     <td className="p-2.5">{t('voucher_net_remitted_hq')}:</td>
                     <td className="p-2.5 font-mono text-end text-base text-amber-700">{viewDetailTransfer.netRemittanceAmountAfn.toLocaleString()} AFN</td>
