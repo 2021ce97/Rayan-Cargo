@@ -327,33 +327,59 @@ api.get('/shipments', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { rows } = await db.query('SELECT * FROM shipments ORDER BY booked_at DESC');
-    const formatted = rows.map((r: any) => ({
-      id: r.id,
-      cnNumber: r.cn_number,
-      originBranchId: r.origin_branch_id,
-      destinationBranchId: r.destination_branch_id,
-      currentBranchId: r.current_branch_id,
-      sender: typeof r.sender === 'string' ? JSON.parse(r.sender) : r.sender,
-      receiver: typeof r.receiver === 'string' ? JSON.parse(r.receiver) : r.receiver,
-      packageInfo: typeof r.package_info === 'string' ? JSON.parse(r.package_info) : r.package_info,
-      financials: typeof r.financials === 'string' ? JSON.parse(r.financials) : r.financials,
-      status: r.status,
-      statusHistory: typeof r.status_history === 'string' ? JSON.parse(r.status_history || '[]') : (r.status_history || []),
-      bookedAt: r.booked_at instanceof Date ? r.booked_at.toISOString() : r.booked_at,
-      estimatedDelivery: r.estimated_delivery instanceof Date ? r.estimated_delivery.toISOString() : r.estimated_delivery,
-      actualDelivery: r.actual_delivery instanceof Date ? r.actual_delivery.toISOString() : r.actual_delivery,
-      podSignature: r.pod_signature,
-      receiverIdProof: r.receiver_id_proof,
-      deliveryNotes: r.delivery_notes,
-      bookedByUserId: r.booked_by_user_id,
-      bookedByUserName: r.booked_by_user_name,
-      isCustomerPrebooked: r.is_customer_prebooked === true || r.is_pre_booking === true || r.status === 'pre_booked' || r.status === 'verified',
-      isPreBooking: r.is_customer_prebooked === true || r.is_pre_booking === true || r.status === 'pre_booked' || r.status === 'verified',
-      customerUserId: r.customer_user_id || undefined,
-      customerSubmissionAt: r.customer_submission_at || undefined,
-      customerSubmissionReference: r.customer_submission_reference || undefined,
-      customerSubmissionBy: r.customer_submission_by || undefined
-    }));
+    const formatted = rows.map((r: any) => {
+      const packageInfo = typeof r.package_info === 'string' ? JSON.parse(r.package_info) : r.package_info;
+      let financials = typeof r.financials === 'string' ? JSON.parse(r.financials) : (r.financials || {});
+      
+      const price = Number(financials.productPrice) || Number(packageInfo?.declaredValueAfn) || Number(financials.totalAmount) || 0;
+      const sFee = typeof financials.serviceFee === 'number' && financials.serviceFee > 0 ? financials.serviceFee : (packageInfo?.isFragile ? 200 : 150);
+      const dComm = typeof financials.destBranchCommission === 'number' && financials.destBranchCommission > 0 ? financials.destBranchCommission : 70;
+      const discount = Number(financials.discountAmount) || 0;
+      const total = price > 0 ? price : 3000;
+      const payout = Math.max(0, total - sFee - dComm + discount);
+
+      financials = {
+        ...financials,
+        productPrice: total,
+        serviceFee: sFee,
+        destBranchCommission: dComm,
+        discountAmount: discount,
+        sellerPayout: payout,
+        totalAmount: total,
+        amountPaid: financials.paymentStatus === 'paid' || r.status === 'delivered' ? total : (financials.amountPaid || 0),
+        amountDue: financials.paymentStatus === 'paid' || r.status === 'delivered' ? 0 : total,
+        paymentStatus: financials.paymentStatus || (r.status === 'delivered' ? 'paid' : 'to_pay'),
+        paymentMethod: financials.paymentMethod || 'cod'
+      };
+
+      return {
+        id: r.id,
+        cnNumber: r.cn_number,
+        originBranchId: r.origin_branch_id,
+        destinationBranchId: r.destination_branch_id,
+        currentBranchId: r.current_branch_id,
+        sender: typeof r.sender === 'string' ? JSON.parse(r.sender) : r.sender,
+        receiver: typeof r.receiver === 'string' ? JSON.parse(r.receiver) : r.receiver,
+        packageInfo,
+        financials,
+        status: r.status,
+        statusHistory: typeof r.status_history === 'string' ? JSON.parse(r.status_history || '[]') : (r.status_history || []),
+        bookedAt: r.booked_at instanceof Date ? r.booked_at.toISOString() : r.booked_at,
+        estimatedDelivery: r.estimated_delivery instanceof Date ? r.estimated_delivery.toISOString() : r.estimated_delivery,
+        actualDelivery: r.actual_delivery instanceof Date ? r.actual_delivery.toISOString() : r.actual_delivery,
+        podSignature: r.pod_signature,
+        receiverIdProof: r.receiver_id_proof,
+        deliveryNotes: r.delivery_notes,
+        bookedByUserId: r.booked_by_user_id,
+        bookedByUserName: r.booked_by_user_name,
+        isCustomerPrebooked: r.is_customer_prebooked === true || r.is_pre_booking === true || r.status === 'pre_booked' || r.status === 'verified',
+        isPreBooking: r.is_customer_prebooked === true || r.is_pre_booking === true || r.status === 'pre_booked' || r.status === 'verified',
+        customerUserId: r.customer_user_id || undefined,
+        customerSubmissionAt: r.customer_submission_at || undefined,
+        customerSubmissionReference: r.customer_submission_reference || undefined,
+        customerSubmissionBy: r.customer_submission_by || undefined
+      };
+    });
     res.json({ success: true, shipments: formatted });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -902,7 +928,7 @@ api.get('/remittances', async (req: Request, res: Response) => {
       totalCollectedAfn: parseFloat(r.gross_collected_amount || '0'),
       destCommissionAfn: parseFloat(r.dest_branch_commission || '0'),
       transportationFeeAfn: parseFloat(r.transportation_fee || '0'),
-      destTotalRetainedAfn: parseFloat(r.dest_branch_commission || '0') + parseFloat(r.transportation_fee || '0'),
+      destTotalRetainedAfn: parseFloat(r.dest_branch_commission || '0'), // Receiving branch keeps ONLY commission, not transport fee
       originCommissionAfn: parseFloat(r.origin_branch_commission || '0'),
       totalCommissionKeptAfn: parseFloat(r.total_commission_kept || r.dest_branch_commission || '0'),
       netRemittanceAmountAfn: parseFloat(r.net_remitted_amount || '0'),

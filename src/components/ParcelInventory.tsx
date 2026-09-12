@@ -310,17 +310,17 @@ export const ParcelInventory: React.FC = () => {
     setStatusModalShipment(shipment);
     setStatusNote('');
     
-    const collected = shipment.financials?.totalAmount || 100;
-    const comm = shipment.destBranchCommission !== undefined ? shipment.destBranchCommission : (shipment.financials?.destBranchCommission || 30);
-    const transportFee = 20;
+    const collected = shipment.financials?.totalAmount || shipment.financials?.productPrice || 1000;
+    const comm = shipment.destBranchCommission !== undefined ? shipment.destBranchCommission : (shipment.financials?.destBranchCommission || 70);
+    const transportFee = 0; // Destination branch does NOT keep transport fee
     const isProvincialOrigin = shipment.originBranchId && shipment.originBranchId !== 'br_admin_hq';
     const origComm = isProvincialOrigin ? 20 : 0;
-    const destTotalRetained = comm + transportFee;
+    const destTotalRetained = comm; // Destination branch keeps ONLY commission!
     const net = Math.max(0, collected - destTotalRetained - origComm);
 
     setDeliveryCollectedAfn(collected);
     setDeliveryCommissionAfn(comm);
-    setDeliveryTransportFeeAfn(transportFee);
+    setDeliveryTransportFeeAfn(0);
     setDeliveryOriginCommAfn(origComm);
     setDeliveryNetToHqAfn(net);
     setDeliveryAutoRemit(true);
@@ -336,8 +336,8 @@ export const ParcelInventory: React.FC = () => {
     if (!statusModalShipment) return;
     let finalNote = statusNote;
     if (statusChoice === 'delivered') {
-      const destTotalRetained = deliveryCommissionAfn + deliveryTransportFeeAfn;
-      const moneyNote = `Handed over to receiver. Collected: ${deliveryCollectedAfn} AFN, Retained: (Commission: ${deliveryCommissionAfn} + Transport: ${deliveryTransportFeeAfn} = ${destTotalRetained} AFN), Sender Branch Commission: ${deliveryOriginCommAfn} AFN, Net Remitted to Main Branch: ${deliveryNetToHqAfn} AFN (Ref: ${deliveryRefNumber})`;
+      const destTotalRetained = deliveryCommissionAfn;
+      const moneyNote = `Handed over to receiver. Collected: ${deliveryCollectedAfn} AFN, Retained Destination Commission: ${deliveryCommissionAfn} AFN (no transport kept by branch), Sender Branch Commission: ${deliveryOriginCommAfn} AFN, Net Remitted to Main Branch: ${deliveryNetToHqAfn} AFN (Ref: ${deliveryRefNumber})`;
       finalNote = finalNote ? `${finalNote} | ${moneyNote}` : moneyNote;
     }
 
@@ -352,7 +352,7 @@ export const ParcelInventory: React.FC = () => {
           deliveryRefNumber,
           'Sarafi Central',
           'Submitted upon parcel handover to receiver',
-          deliveryTransportFeeAfn,
+          0,
           deliveryOriginCommAfn
         );
       }
@@ -365,10 +365,11 @@ export const ParcelInventory: React.FC = () => {
     setConfirmModalShipment(shipment);
     setWeighedWeight(shipment.packageInfo.weightKg || 1);
     setWeighedPieces(shipment.packageInfo.pieces || 1);
-    setModalProductPrice(shipment.financials?.productPrice || 5000);
+    const price = shipment.financials?.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials?.totalAmount || 3000;
+    setModalProductPrice(price);
     setModalServiceFee(shipment.financials?.serviceFee || 150);
     setModalDiscountAmount(shipment.financials?.discountAmount || 0);
-    setCustomDestCommission(shipment.destBranchCommission || 70);
+    setCustomDestCommission(shipment.destBranchCommission || shipment.financials?.destBranchCommission || 70);
     setConfirmedPaymentStatus(shipment.financials.paymentStatus || 'to_pay');
     setEditedSenderName(shipment.sender.name);
     setEditedSenderPhone(shipment.sender.phone);
@@ -1776,7 +1777,7 @@ export const ParcelInventory: React.FC = () => {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                           <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
                             Total Collected (AFN)
@@ -1788,8 +1789,7 @@ export const ParcelInventory: React.FC = () => {
                             onChange={(e) => {
                               const val = Math.max(0, Number(e.target.value) || 0);
                               setDeliveryCollectedAfn(val);
-                              const retained = deliveryCommissionAfn + deliveryTransportFeeAfn;
-                              setDeliveryNetToHqAfn(Math.max(0, val - retained - deliveryOriginCommAfn));
+                              setDeliveryNetToHqAfn(Math.max(0, val - deliveryCommissionAfn - deliveryOriginCommAfn));
                             }}
                             className="w-full h-8 px-2 font-bold bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-slate-900 dark:text-white text-xs"
                           />
@@ -1806,34 +1806,15 @@ export const ParcelInventory: React.FC = () => {
                             onChange={(e) => {
                               const comm = Math.max(0, Number(e.target.value) || 0);
                               setDeliveryCommissionAfn(comm);
-                              const retained = comm + deliveryTransportFeeAfn;
-                              setDeliveryNetToHqAfn(Math.max(0, deliveryCollectedAfn - retained - deliveryOriginCommAfn));
+                              setDeliveryNetToHqAfn(Math.max(0, deliveryCollectedAfn - comm - deliveryOriginCommAfn));
                             }}
                             className="w-full h-8 px-2 font-bold bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-emerald-600 dark:text-emerald-400 text-xs"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-teal-700 dark:text-teal-400 mb-0.5">
-                            Transport Fee (AFN)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={deliveryTransportFeeAfn}
-                            onChange={(e) => {
-                              const tf = Math.max(0, Number(e.target.value) || 0);
-                              setDeliveryTransportFeeAfn(tf);
-                              const retained = deliveryCommissionAfn + tf;
-                              setDeliveryNetToHqAfn(Math.max(0, deliveryCollectedAfn - retained - deliveryOriginCommAfn));
-                            }}
-                            className="w-full h-8 px-2 font-bold bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 rounded-lg text-teal-700 dark:text-teal-300 text-xs"
-                          />
-                        </div>
-
-                        <div>
                           <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5">
-                            Remit to HQ (AFN)
+                            Remit to Main Branch HQ (AFN)
                           </label>
                           <div className="w-full h-8 px-2 font-black bg-blue-50 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-700 dark:text-blue-300 text-xs flex items-center">
                             {deliveryNetToHqAfn.toLocaleString()} AFN
@@ -1842,8 +1823,8 @@ export const ParcelInventory: React.FC = () => {
                       </div>
 
                       <div className="p-2 rounded-lg bg-emerald-100/60 dark:bg-emerald-950/60 text-[10px] text-emerald-900 dark:text-emerald-300 flex justify-between font-medium">
-                        <span>Receiver Branch Retained (Commission + Transport):</span>
-                        <strong className="font-mono">{deliveryCommissionAfn + deliveryTransportFeeAfn} AFN</strong>
+                        <span>Receiver Branch Keeps Only Commission:</span>
+                        <strong className="font-mono">{deliveryCommissionAfn} AFN (No transportation fee retained)</strong>
                       </div>
 
                       <div className="flex items-center justify-between pt-1 border-t border-emerald-200/70 dark:border-emerald-800/70 text-[11px]">

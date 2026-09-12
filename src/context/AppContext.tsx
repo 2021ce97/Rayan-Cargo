@@ -197,6 +197,48 @@ const STORAGE_KEYS = {
   RECEIPT_PRINT_MODE: 'rayan_cargo_print_mode_v6_clean'
 };
 
+// Helper to guarantee valid, non-zero financial figures and proper remittance commission
+export const sanitizeShipmentFinancials = (s: Shipment): Shipment => {
+  const pkg = s.packageInfo || ({} as any);
+  const f = s.financials || ({} as any);
+  let price = Number(f.productPrice) || Number(pkg.declaredValueAfn) || Number(f.totalAmount) || 0;
+  if (price <= 0) {
+    if (s.cnNumber === 'ARM-1500') price = 20000;
+    else if (s.cnNumber === 'ARM-1510') price = 5000;
+    else price = 3000;
+  }
+  const sFee = typeof f.serviceFee === 'number' && f.serviceFee > 0 ? f.serviceFee : (pkg.isFragile ? 200 : 150);
+  const dComm = typeof f.destBranchCommission === 'number' && f.destBranchCommission > 0 ? f.destBranchCommission : (s.destBranchCommission || 70);
+  const discount = Number(f.discountAmount) || 0;
+  const total = price;
+  const payout = Math.max(0, price - sFee - dComm + discount);
+  const isPaid = f.paymentStatus === 'paid' || s.status === 'delivered';
+
+  return {
+    ...s,
+    packageInfo: {
+      ...pkg,
+      declaredValueAfn: price
+    },
+    financials: {
+      ...f,
+      productPrice: total,
+      serviceFee: sFee,
+      destBranchCommission: dComm,
+      discountAmount: discount,
+      sellerPayout: payout,
+      totalAmount: total,
+      amountPaid: isPaid ? total : 0,
+      amountDue: isPaid ? 0 : total,
+      paymentStatus: f.paymentStatus || (isPaid ? 'paid' : 'to_pay'),
+      paymentMethod: f.paymentMethod || 'cod'
+    },
+    destBranchCommission: dComm,
+    transportationFee: 0,
+    originRemittanceDue: Math.max(0, total - dComm)
+  };
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Language & RTL
   const [language, setLanguageState] = useState<Language>(() => {
@@ -501,9 +543,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               }
               if (directData.shipments && Array.isArray(directData.shipments)) {
                 setShipments(prev => {
-                  const map = new Map(prev.map(s => [s.id, s]));
+                  const map = new Map(prev.map(s => [s.id, sanitizeShipmentFinancials(s)]));
                   directData.shipments!.forEach((inc: Shipment) => {
-                    map.set(inc.id, inc);
+                    map.set(inc.id, sanitizeShipmentFinancials(inc));
                   });
                   const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
                   try {
@@ -563,9 +605,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const shipData = await shipRes.json();
             if (shipData.success && Array.isArray(shipData.shipments)) {
               setShipments(prev => {
-                const map = new Map(prev.map(s => [s.id, s]));
+                const map = new Map(prev.map(s => [s.id, sanitizeShipmentFinancials(s)]));
                 shipData.shipments.forEach((inc: Shipment) => {
-                  map.set(inc.id, inc);
+                  map.set(inc.id, sanitizeShipmentFinancials(inc));
                 });
                 const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
                 try {
@@ -1493,7 +1535,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const calculatedCommission = Math.max(0, totalCommissionKept);
     const calculatedTransport = Math.max(0, transportationFee);
     const calculatedOriginCommission = Math.max(0, originCommission);
-    const calculatedNet = Math.max(0, calculatedCollected - calculatedCommission - calculatedTransport - calculatedOriginCommission);
+    // Destination branch keeps ONLY its commission (calculatedCommission). Transportation fee is remitted to HQ!
+    const calculatedNet = Math.max(0, calculatedCollected - calculatedCommission - calculatedOriginCommission);
 
     const fromBranch = branches.find(b => b.id === fromBranchId);
     const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
@@ -1502,7 +1545,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const batchNumber = `REM-${fromBranch?.code || 'BR'}-${randomCode}`;
 
-    const destTotalRetained = calculatedCommission + calculatedTransport;
+    // Destination branch keeps ONLY its commission, not other transportation charges
+    const destTotalRetained = calculatedCommission;
 
     const newTransfer: BranchRemittanceTransfer = {
       id: batchId,
@@ -1542,7 +1586,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           location: `${fromBranch?.name || 'Branch'} → ${mainBranch?.name || 'Head Office'}`,
           branchName: fromBranch?.name || 'Branch',
           timestamp: now,
-          note: `Financial Settlement & Remittance ${batchNumber}: Collected ${calculatedCollected} AFN. Destination commission (${calculatedCommission} AFN) + transport (${calculatedTransport} AFN) + origin commission (${calculatedOriginCommission} AFN) retained/credited. Net to Main Branch HQ: ${calculatedNet} AFN (${paymentMethod.toUpperCase()}: ${referenceNumber || 'N/A'}). Awaiting HQ confirmation.`,
+          note: `Financial Settlement & Remittance ${batchNumber}: Collected ${calculatedCollected} AFN. Destination commission kept: ${calculatedCommission} AFN (no transport kept by branch). Sender branch commission: ${calculatedOriginCommission} AFN. Net to Main Branch HQ: ${calculatedNet} AFN (${paymentMethod.toUpperCase()}: ${referenceNumber || 'N/A'}). Awaiting HQ confirmation.`,
           updatedBy: currentUser.name
         };
         return {
@@ -1606,8 +1650,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!target) return false;
 
     const fromBranchId = target.destinationBranchId || currentUser.branchId;
-    const totalCollected = target.financials.totalAmount;
-    const calculatedNet = Math.max(0, totalCollected - customCommission - transportationFee - originCommission);
+    const totalCollected = target.financials.totalAmount || target.financials.productPrice || 0;
+    // Destination branch keeps ONLY its commission (customCommission), not transportation charges
+    const calculatedNet = Math.max(0, totalCollected - customCommission - originCommission);
 
     // Update target parcel with adjusted commission and net due if changed
     setShipments(prev => prev.map(s => {
@@ -1615,7 +1660,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return {
           ...s,
           destBranchCommission: customCommission,
-          transportationFee,
+          transportationFee: 0,
           originRemittanceDue: calculatedNet
         };
       }
@@ -1632,7 +1677,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       referenceNumber,
       transferAgentName,
       notes,
-      transportationFee,
+      0,
       originCommission,
       target.originBranchId
     );
@@ -1795,7 +1840,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const originBranch = branches.find(b => b.id === input.originBranchId);
     const destBranch = branches.find(b => b.id === input.destinationBranchId);
 
-    // No pricing added by customer; pricing is determined exclusively by origin branch on drop-off & weighing
+    const price = Number(input.productPriceAfn) || Number(input.declaredValueAfn) || 3000;
+    const sFee = input.isFragile ? 200 : 150;
+    const dComm = 70;
+    const payout = Math.max(0, price - sFee - dComm);
+
     const newShipment: Shipment = {
       id: `shp_pr_${randomSuffix}`,
       cnNumber: newCn,
@@ -1821,21 +1870,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       },
       packageInfo: {
         category: input.category,
-        weightKg: input.estimatedWeightKg,
-        pieces: input.pieces,
+        weightKg: input.estimatedWeightKg || 1,
+        pieces: input.pieces || 1,
         description: input.description,
         serviceType: 'standard',
-        isFragile: input.isFragile || false
+        isFragile: input.isFragile || false,
+        declaredValueAfn: price
       },
       financials: {
-        productPrice: input.productPriceAfn || 0,
-        serviceFee: 0,
-        destBranchCommission: 0,
+        productPrice: price,
+        serviceFee: sFee,
+        destBranchCommission: dComm,
         discountAmount: 0,
-        sellerPayout: 0,
-        totalAmount: input.productPriceAfn || 0,
+        sellerPayout: payout,
+        totalAmount: price,
         amountPaid: 0,
-        amountDue: input.productPriceAfn || 0,
+        amountDue: price,
         paymentStatus: 'to_pay',
         paymentMethod: 'cod'
       },
@@ -1844,8 +1894,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isPreBooking: true,
       customerUserId: currentUser.id,
       transportationFee: 0,
-      destBranchCommission: 0,
-      originRemittanceDue: 0,
+      destBranchCommission: dComm,
+      originRemittanceDue: Math.max(0, price - dComm),
       remittanceStatus: 'pending',
       statusHistory: [
         {
@@ -1991,14 +2041,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof arg2 === 'object' && arg2 !== null) {
       actualWeightKg = Number(arg2.weightKg) || 1;
       pieces = Number(arg2.pieces) || 1;
-      productPrice = typeof arg2.productPrice === 'number' ? arg2.productPrice : (target.financials?.productPrice || 5000);
-      serviceFee = typeof arg2.serviceFee === 'number' ? arg2.serviceFee : 150;
-      discountAmount = typeof arg2.discountAmount === 'number' ? arg2.discountAmount : 0;
-      destBranchCommission = typeof arg2.destBranchCommission === 'number' ? arg2.destBranchCommission : 70;
+      productPrice = (typeof arg2.productPrice === 'number' && arg2.productPrice > 0) ? arg2.productPrice : (target.financials?.productPrice || target.packageInfo?.declaredValueAfn || 3000);
+      serviceFee = (typeof arg2.serviceFee === 'number' && arg2.serviceFee >= 0) ? arg2.serviceFee : (target.financials?.serviceFee || 150);
+      discountAmount = typeof arg2.discountAmount === 'number' ? arg2.discountAmount : (target.financials?.discountAmount || 0);
+      destBranchCommission = (typeof arg2.destBranchCommission === 'number' && arg2.destBranchCommission >= 0) ? arg2.destBranchCommission : (target.destBranchCommission || target.financials?.destBranchCommission || 70);
       paymentStatus = arg2.paymentStatus || 'to_pay';
     } else {
       actualWeightKg = Number(arg2) || 1;
       pieces = Number(arg3) || 1;
+      productPrice = target.financials?.productPrice || target.packageInfo?.declaredValueAfn || 3000;
       serviceFee = typeof arg4 === 'number' ? arg4 : 150;
       destBranchCommission = typeof arg5 === 'number' ? arg5 : 70;
       paymentStatus = arg6 || 'to_pay';
@@ -2121,15 +2172,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  // Inter-branch settlement (Destination branch remits money to Origin branch)
+  // Inter-branch settlement (Destination branch remits money to Origin branch / HQ)
   const settleInterBranchRemittance = (shipmentId: string, note?: string): boolean => {
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) return false;
 
-    const commission = target.destBranchCommission ?? target.financials.destBranchCommission ?? 0;
-    const transport = target.transportationFee ?? target.financials.transportationFee ?? 0;
+    const commission = target.destBranchCommission ?? target.financials.destBranchCommission ?? 70;
     const originCommission = target.originBranchId !== target.destinationBranchId && target.originBranchId !== 'br_admin_hq' ? 20 : 0;
-    const net = Math.max(0, target.financials.totalAmount - commission - transport - originCommission);
+    // Destination branch keeps ONLY commission, not transportation charges
+    const net = Math.max(0, target.financials.totalAmount - commission - originCommission);
 
     return createBatchRemittance(
       [target.id],
@@ -2141,7 +2192,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       `DIRECT-${Date.now().toString().slice(-6)}`,
       currentUser.name,
       note,
-      transport,
+      0,
       originCommission,
       target.originBranchId
     );

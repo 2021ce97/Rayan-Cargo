@@ -38,6 +38,16 @@ export const PrintReceiptModal: React.FC = () => {
   const originBranch = branches.find(b => b.id === shipment.originBranchId);
   const destBranch = branches.find(b => b.id === shipment.destinationBranchId);
 
+  const priceVal = Number(shipment.financials?.productPrice) || Number(shipment.packageInfo?.declaredValueAfn) || Number(shipment.financials?.totalAmount) || 3000;
+  const sFeeVal = typeof shipment.financials?.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
+  const dCommVal = typeof shipment.financials?.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : (shipment.destBranchCommission || 70);
+  const discountVal = Number(shipment.financials?.discountAmount) || 0;
+  const payoutVal = (typeof shipment.financials?.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
+    ? shipment.financials.sellerPayout
+    : Math.max(0, priceVal - sFeeVal - dCommVal + discountVal);
+  const totalDueVal = Number(shipment.financials?.totalAmount) || priceVal;
+  const isPaid = shipment.financials?.paymentStatus === 'paid' || shipment.status === 'delivered';
+
   const handlePrint = () => {
     const targetRef = printFormat === 'thermal' ? thermalRef.current : receiptRef.current;
     if (targetRef) {
@@ -247,54 +257,61 @@ export const PrintReceiptModal: React.FC = () => {
 
             {/* Charges Breakdown */}
             <div className="space-y-1 py-1 border-b border-dashed border-slate-900 text-[10px]">
-              {shipment.status === 'pre_booked' || shipment.financials.totalAmount === 0 ? (
-                <div className="text-center py-1 bg-amber-50 rounded border border-amber-200 text-amber-900">
-                  <div className="font-bold text-[9px] uppercase">* PRE-BOOKING VOUCHER *</div>
-                  <div className="text-[8px] text-amber-800">Final product price and fees will be added upon origin branch scale weighing.</div>
+              {shipment.status === 'pre_booked' && (
+                <div className="text-center py-1 bg-amber-50 rounded border border-amber-200 text-amber-900 mb-1">
+                  <div className="font-bold text-[9px] uppercase">* PRE-BOOKING ESTIMATE *</div>
+                  <div className="text-[8px] text-amber-800">Final weight & price verified upon branch drop-off.</div>
                 </div>
+              )}
+              <div className="flex justify-between text-slate-700">
+                <span>Product Selling Price:</span>
+                <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
+              </div>
+              {receiptRole === 'seller' ? (
+                <>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Service Fee (Deducted):</span>
+                    <span>-{sFeeVal.toLocaleString()} AFN</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Dest. Comm. (Deducted):</span>
+                    <span>-{dCommVal.toLocaleString()} AFN</span>
+                  </div>
+                  {discountVal > 0 && (
+                    <div className="flex justify-between text-emerald-600">
+                      <span>Fee Discount:</span>
+                      <span>+{discountVal.toLocaleString()} AFN</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-[10px] mt-1 border-t border-dashed border-slate-300 pt-1">
+                    <span>NET PAYOUT TO SELLER:</span>
+                    <span className="text-emerald-700">{payoutVal.toLocaleString()} AFN</span>
+                  </div>
+                </>
               ) : (
                 <>
-                  <div className="flex justify-between text-slate-700">
-                    <span>Product Selling Price:</span>
-                    <span className="font-bold">{shipment.financials.productPrice} AFN</span>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Service & Handling Fee:</span>
+                    <span>{sFeeVal > 0 ? `${sFeeVal.toLocaleString()} AFN` : 'Included'}</span>
                   </div>
-                  {receiptRole === 'seller' ? (
-                    <>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Service Fee (Deducted):</span>
-                        <span>-{shipment.financials.serviceFee} AFN</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Dest. Comm. (Deducted):</span>
-                        <span>-{shipment.financials.destBranchCommission} AFN</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-[10px] mt-1 border-t border-dashed border-slate-300 pt-1">
-                        <span>NET PAYOUT TO SELLER:</span>
-                        <span className="text-emerald-700">{shipment.financials.sellerPayout} AFN</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {shipment.financials.discountAmount > 0 && (
-                        <div className="flex justify-between text-slate-600">
-                          <span>Fee Discount:</span>
-                          <span>-{shipment.financials.discountAmount} AFN</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-black text-xs pt-1 border-t border-slate-400">
-                        <span>TOTAL DUE FROM BUYER:</span>
-                        <span>{shipment.financials.totalAmount} AFN</span>
-                      </div>
-                    </>
+                  {discountVal > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Fee Discount:</span>
+                      <span>-{discountVal.toLocaleString()} AFN</span>
+                    </div>
                   )}
-                  <div className="flex justify-between font-bold text-[10px] mt-0.5">
-                    <span>PAYMENT STATUS:</span>
-                    <span className="uppercase">
-                      {shipment.financials.paymentStatus === 'to_pay' ? 'COD (TO PAY AT DEST)' : shipment.financials.paymentStatus.toUpperCase()}
-                    </span>
+                  <div className="flex justify-between font-black text-xs pt-1 border-t border-slate-400">
+                    <span>TOTAL DUE FROM BUYER:</span>
+                    <span>{totalDueVal.toLocaleString()} AFN</span>
                   </div>
                 </>
               )}
+              <div className="flex justify-between font-bold text-[10px] mt-0.5">
+                <span>PAYMENT STATUS:</span>
+                <span className="uppercase">
+                  {isPaid ? 'PAID / COLLECTED' : 'COD (TO PAY AT DEST)'}
+                </span>
+              </div>
             </div>
 
             {/* 3 Official Cargo Rules & Legal Conditions in Dari */}
@@ -536,60 +553,53 @@ export const PrintReceiptModal: React.FC = () => {
 
               {/* Financial Summary */}
               <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap justify-between items-center gap-4">
-                {shipment.status === 'pre_booked' || shipment.financials.totalAmount === 0 ? (
-                  <div className="w-full p-3 rounded-lg bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900">
-                    <div>
-                      <div className="font-bold text-xs uppercase flex items-center gap-1.5">
-                        <span>Pre-Booking Status: Pending Origin Branch Scale Intake</span>
-                      </div>
-                      <div className="text-[11px] text-amber-700">
-                        Official product price and freight fees will be certified by the origin branch manager when the parcel is dropped off.
-                      </div>
+                {shipment.status === 'pre_booked' && (
+                  <div className="w-full p-2.5 rounded-lg bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-amber-900 mb-2">
+                    <div className="text-xs">
+                      <strong className="uppercase">Pre-Booking Estimate:</strong> Final dimensions and pricing certified upon origin branch drop-off.
                     </div>
-                    <div className="px-3 py-1 bg-amber-200/80 rounded-md font-mono font-bold text-xs text-amber-900 whitespace-nowrap">
-                      PRICE PENDING
+                    <div className="px-2.5 py-0.5 bg-amber-200/80 rounded font-mono font-bold text-[10px] text-amber-900 whitespace-nowrap">
+                      PRE-BOOKING
                     </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <div>Payment Method: <strong className="uppercase">{shipment.financials.paymentMethod}</strong></div>
-                      <div>Payment Status: <strong className="uppercase text-emerald-700">{shipment.financials.paymentStatus}</strong></div>
-                      <div>Booked By Officer: <strong>{shipment.bookedByUserName || 'Terminal Agent'}</strong></div>
-                    </div>
-
-                    <div className="text-end space-y-1">
-                      {receiptRole === 'seller' ? (
-                        <>
-                          <div className="text-xs text-slate-600 flex flex-wrap justify-end gap-x-3 gap-y-0.5">
-                            <span>Product Price: <strong>{(shipment.financials.productPrice || shipment.financials.totalAmount || 0).toLocaleString()} AFN</strong></span>
-                            <span className="text-rose-600">Service Fee (Deducted): <strong>-{(shipment.financials.serviceFee || 0).toLocaleString()} AFN</strong></span>
-                            <span className="text-rose-600">Dest. Commission (Deducted): <strong>-{(shipment.financials.destBranchCommission || 0).toLocaleString()} AFN</strong></span>
-                            {shipment.financials.discountAmount > 0 && (
-                              <span className="text-emerald-600">Discount: <strong>+{(shipment.financials.discountAmount).toLocaleString()} AFN</strong></span>
-                            )}
-                          </div>
-                          <div className="text-base font-black text-slate-900 pt-1">
-                            Net Seller Payout (مبلغ قابل تادیه به فروشنده): <span className="text-emerald-700 font-mono text-lg font-black">{(shipment.financials.sellerPayout || 0).toLocaleString()} AFN</span>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-xs text-slate-600 flex flex-wrap justify-end gap-x-3 gap-y-0.5">
-                            <span>Product Price: <strong>{(shipment.financials.productPrice || shipment.financials.totalAmount || 0).toLocaleString()} AFN</strong></span>
-                            <span>Service Fee: <strong>{shipment.financials.serviceFee > 0 ? `${shipment.financials.serviceFee.toLocaleString()} AFN` : 'Included / Prepaid'}</strong></span>
-                            {shipment.financials.discountAmount > 0 && (
-                              <span className="text-emerald-600">Discount: <strong>-{(shipment.financials.discountAmount).toLocaleString()} AFN</strong></span>
-                            )}
-                          </div>
-                          <div className="text-base font-black text-slate-900 pt-1">
-                            Total Payable (مجموع قابل پرداخت): <span className="text-rose-600 font-mono text-xl font-black">{(shipment.financials.totalAmount || 0).toLocaleString()} AFN</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </>
                 )}
+
+                <div className="text-xs text-slate-600 space-y-1">
+                  <div>Payment Method: <strong className="uppercase">{shipment.financials.paymentMethod}</strong></div>
+                  <div>Payment Status: <strong className="uppercase text-emerald-700">{isPaid ? 'PAID / COLLECTED' : 'COD (TO PAY AT DEST)'}</strong></div>
+                  <div>Booked By Officer: <strong>{shipment.bookedByUserName || 'Terminal Agent'}</strong></div>
+                </div>
+
+                <div className="text-end space-y-1">
+                  {receiptRole === 'seller' ? (
+                    <>
+                      <div className="text-xs text-slate-600 flex flex-wrap justify-end gap-x-3 gap-y-0.5">
+                        <span>Product Price: <strong>{priceVal.toLocaleString()} AFN</strong></span>
+                        <span className="text-rose-600">Service Fee (Deducted): <strong>-{sFeeVal.toLocaleString()} AFN</strong></span>
+                        <span className="text-rose-600">Dest. Commission (Deducted): <strong>-{dCommVal.toLocaleString()} AFN</strong></span>
+                        {discountVal > 0 && (
+                          <span className="text-emerald-600">Discount: <strong>+{discountVal.toLocaleString()} AFN</strong></span>
+                        )}
+                      </div>
+                      <div className="text-base font-black text-slate-900 pt-1">
+                        Net Seller Payout (مبلغ قابل تادیه به فروشنده): <span className="text-emerald-700 font-mono text-lg font-black">{payoutVal.toLocaleString()} AFN</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-xs text-slate-600 flex flex-wrap justify-end gap-x-3 gap-y-0.5">
+                        <span>Product Price: <strong>{priceVal.toLocaleString()} AFN</strong></span>
+                        <span>Service Fee: <strong>{sFeeVal > 0 ? `${sFeeVal.toLocaleString()} AFN` : 'Included / Prepaid'}</strong></span>
+                        {discountVal > 0 && (
+                          <span className="text-emerald-600">Discount: <strong>-{discountVal.toLocaleString()} AFN</strong></span>
+                        )}
+                      </div>
+                      <div className="text-base font-black text-slate-900 pt-1">
+                        Total Payable (مجموع قابل پرداخت): <span className="text-rose-600 font-mono text-xl font-black">{totalDueVal.toLocaleString()} AFN</span>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 

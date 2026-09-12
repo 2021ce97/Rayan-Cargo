@@ -270,8 +270,8 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     doc.setFontSize(8.5);
     doc.text('4. RECEIVER CHARGES & FINANCIAL BREAKDOWN (صورت حساب گیرنده)', margin + 4, y + 5.5);
 
-    const productPriceVal = shipment.financials.productPrice || shipment.financials.totalAmount || 0;
-    const serviceFeeVal = shipment.financials.serviceFee || 0;
+    const productPriceVal = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
+    const serviceFeeVal = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
     const discountVal = shipment.financials.discountAmount || 0;
     const totalPayableVal = shipment.financials.totalAmount || productPriceVal;
 
@@ -575,11 +575,13 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setFontSize(8.5);
     doc.text('MERCHANT SETTLEMENT & COMMISSION STATEMENT (صورت حساب و کمیسیون فروشنده)', margin + 4, y + 4.5);
 
-    const productPriceVal = shipment.financials.productPrice || shipment.financials.totalAmount || 0;
-    const serviceFeeVal = shipment.financials.serviceFee || 0;
-    const destCommVal = shipment.financials.destBranchCommission || 0;
+    const productPriceVal = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
+    const serviceFeeVal = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
+    const destCommVal = typeof shipment.financials.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : (shipment.destBranchCommission || 70);
     const discountVal = shipment.financials.discountAmount || 0;
-    const sellerPayoutVal = shipment.financials.sellerPayout || Math.max(0, productPriceVal - serviceFeeVal - destCommVal + discountVal);
+    const sellerPayoutVal = (typeof shipment.financials.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
+      ? shipment.financials.sellerPayout
+      : Math.max(0, productPriceVal - serviceFeeVal - destCommVal + discountVal);
 
     let statY = y + 12;
     doc.setFontSize(8.5);
@@ -1423,11 +1425,18 @@ export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branc
     doc.text(`Pieces: ${shipment.packageInfo.pieces || 1} Pcs`, margin + 45, y + 5);
     doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase()}`, margin + 3, y + 10);
     
+    const thermalPrice = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
+    const thermalServiceFee = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : 150;
+    const thermalDestComm = typeof shipment.financials.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : 70;
+    const thermalPayout = (typeof shipment.financials.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
+      ? shipment.financials.sellerPayout
+      : Math.max(0, thermalPrice - thermalServiceFee - thermalDestComm);
+
     if (receiptRole === 'seller') {
-      doc.text(`Product Price: ${shipment.financials.productPrice?.toLocaleString()} AFN`, margin + 45, y + 10);
-      doc.text(`Net Seller Payout: ${shipment.financials.sellerPayout?.toLocaleString()} AFN`, margin + 3, y + 15);
+      doc.text(`Product Price: ${thermalPrice.toLocaleString()} AFN`, margin + 45, y + 10);
+      doc.text(`Net Seller Payout: ${thermalPayout.toLocaleString()} AFN`, margin + 3, y + 15);
     } else {
-      doc.text(`Payment: ${shipment.financials.paymentStatus.toUpperCase()} (${shipment.financials.totalAmount.toLocaleString()} AFN)`, margin + 3, y + 15);
+      doc.text(`Payment: ${(shipment.financials.paymentStatus || 'to_pay').toUpperCase()} (${thermalPrice.toLocaleString()} AFN)`, margin + 3, y + 15);
     }
 
     y += specH + 3;

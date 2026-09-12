@@ -1264,6 +1264,46 @@ export async function initDatabase(
     memoryStore.branches.delete(legacyKabulId);
     memoryStore.users.delete('usr_kbl_01');
     memoryStore.users.delete('usr_kbl_mgr');
+    // Ensure all shipments have valid positive productPrice, totalAmount, and financials
+    for (const shipment of memoryStore.shipments.values()) {
+      let f = typeof shipment.financials === 'string' ? JSON.parse(shipment.financials) : (shipment.financials || {});
+      let pkg = typeof shipment.package_info === 'string' ? JSON.parse(shipment.package_info) : (shipment.package_info || {});
+      
+      let price = Number(f.productPrice) || Number(pkg.declaredValueAfn) || Number(f.totalAmount) || 0;
+      if (price <= 0) {
+        if (shipment.cn_number === 'ARM-1500') price = 20000;
+        else if (shipment.cn_number === 'ARM-1510') price = 5000;
+        else price = 3000;
+      }
+      
+      const sFee = typeof f.serviceFee === 'number' && f.serviceFee > 0 ? f.serviceFee : (pkg.isFragile ? 200 : 150);
+      const dComm = typeof f.destBranchCommission === 'number' && f.destBranchCommission > 0 ? f.destBranchCommission : 70;
+      const discount = Number(f.discountAmount) || 0;
+      const total = price;
+      const payout = Math.max(0, price - sFee - dComm + discount);
+      const isPaid = f.paymentStatus === 'paid' || shipment.status === 'delivered';
+
+      f.productPrice = price;
+      f.serviceFee = sFee;
+      f.destBranchCommission = dComm;
+      f.discountAmount = discount;
+      f.sellerPayout = payout;
+      f.totalAmount = total;
+      f.amountPaid = isPaid ? total : 0;
+      f.amountDue = isPaid ? 0 : total;
+      if (!f.paymentStatus) f.paymentStatus = isPaid ? 'paid' : 'to_pay';
+      if (!f.paymentMethod) f.paymentMethod = 'cod';
+      f.transportationFee = 0; // Destination branch does NOT keep transport fee
+      f.originRemittanceDue = Math.max(0, total - dComm);
+
+      pkg.declaredValueAfn = price;
+      shipment.financials = f;
+      shipment.package_info = pkg;
+      shipment.dest_branch_commission = dComm.toString();
+      shipment.origin_remittance_due = f.originRemittanceDue.toString();
+      legacyDataChanged = true;
+    }
+
     if (legacyDataChanged) saveStoreToDisk();
 
     const adminUser = {

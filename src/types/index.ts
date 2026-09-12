@@ -149,6 +149,7 @@ export interface PackageDetails {
   description: string;
   serviceType: ServiceType;
   isFragile: boolean;
+  declaredValueAfn?: number;
 }
 
 export interface BillingFinancials {
@@ -179,12 +180,12 @@ export interface BranchRemittanceTransfer {
   parcelIds: string[]; // List of shipment IDs or CNs
   parcelCount: number;
   totalCollectedAfn: number; // Total money collected from receiver (e.g. 100 or 600 AFN)
-  destCommissionAfn: number; // Commission kept by receiving branch (e.g. 30 AFN)
-  transportationFeeAfn: number; // Transportation fee kept by receiver branch (e.g. 20 AFN)
-  destTotalRetainedAfn: number; // Total kept by receiving branch = destCommission + transportationFee (e.g. 50 AFN)
+  destCommissionAfn: number; // Commission kept by receiving branch (e.g. 70 AFN)
+  transportationFeeAfn: number; // Logistics transport fee (remitted to HQ/Logistics, NOT kept by destination branch)
+  destTotalRetainedAfn: number; // Total kept by receiving branch = destCommission ONLY (no transport fee kept)
   originCommissionAfn?: number; // Commission credited to origin branch if provincial sender (e.g. 20 AFN for Faryab)
-  totalCommissionKeptAfn: number; // Legacy/Aggregate kept by branch
-  netRemittanceAmountAfn: number; // Remaining balance remitted to Main Branch (e.g. 50 or 30 AFN)
+  totalCommissionKeptAfn: number; // Total commissions retained across branches (dest + origin)
+  netRemittanceAmountAfn: number; // Remaining balance remitted to Main Branch
   paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury';
   referenceNumber?: string; // Hawala code, Sarafi voucher, or Bank transaction ID
   transferAgentName?: string; // Sarafi agent name or bank branch
@@ -278,6 +279,7 @@ export interface CustomerPreBookingInput {
   pieces: number;
   description: string;
   productPriceAfn?: number; // Replaced declaredValueAfn
+  declaredValueAfn?: number; // Kept for backward compatibility
   isFragile?: boolean;
   paymentPreference: 'pay_at_branch' | 'to_pay';
 }
