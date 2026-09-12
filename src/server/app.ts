@@ -7,7 +7,8 @@ import {
   SUPABASE_SCHEMA_SQL, 
   connectToSupabase,
   DEFAULT_SUPABASE_DATABASE_URL,
-  sanitizeConnectionString
+  sanitizeConnectionString,
+  syncAllDataToStore
 } from './db.ts';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from '../data/initialData.ts';
 
@@ -130,6 +131,17 @@ api.get('/database/info', async (req: Request, res: Response) => {
 
 api.get('/database/schema', (req: Request, res: Response) => {
   res.type('text/plain').send(SUPABASE_SCHEMA_SQL);
+});
+
+// Sync client state to database
+api.post('/database/sync', async (req: Request, res: Response) => {
+  try {
+    const { branches, users, shipments, expenses, settlements } = req.body || {};
+    const result = await syncAllDataToStore({ branches, users, shipments, expenses, settlements });
+    res.json({ success: true, message: 'Database state synchronized successfully.', stats: result.stats });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
+  }
 });
 
 // 1. Branches API

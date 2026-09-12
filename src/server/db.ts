@@ -82,14 +82,22 @@ const mockDb = {
     }
 
     // 2. Count queries
-    if (upper.includes('SELECT COUNT(*) AS COUNT FROM BRANCHES') || upper.includes('SELECT COUNT(*) FROM BRANCHES')) {
-      return { rows: [{ count: String(memoryStore.branches.size) }], rowCount: 1 };
-    }
-    if (upper.includes('SELECT COUNT(*) AS COUNT FROM USERS') || upper.includes('SELECT COUNT(*) FROM USERS')) {
-      return { rows: [{ count: String(memoryStore.users.size) }], rowCount: 1 };
-    }
-    if (upper.includes('SELECT COUNT(*) AS COUNT FROM SHIPMENTS') || upper.includes('SELECT COUNT(*) FROM SHIPMENTS')) {
-      return { rows: [{ count: String(memoryStore.shipments.size) }], rowCount: 1 };
+    if (upper.includes('COUNT(*)') || upper.includes('COUNT(')) {
+      if (upper.includes('BRANCH_EXPENSES') || upper.includes('EXPENSES')) {
+        return { rows: [{ count: String(memoryStore.branch_expenses.size) }], rowCount: 1 };
+      }
+      if (upper.includes('BRANCH_SETTLEMENTS') || upper.includes('SETTLEMENTS') || upper.includes('REMITTANCES')) {
+        return { rows: [{ count: String(memoryStore.branch_settlements.size) }], rowCount: 1 };
+      }
+      if (upper.includes('BRANCHES')) {
+        return { rows: [{ count: String(memoryStore.branches.size) }], rowCount: 1 };
+      }
+      if (upper.includes('USERS')) {
+        return { rows: [{ count: String(memoryStore.users.size) }], rowCount: 1 };
+      }
+      if (upper.includes('SHIPMENTS')) {
+        return { rows: [{ count: String(memoryStore.shipments.size) }], rowCount: 1 };
+      }
     }
 
     // 3. Branches queries
@@ -1325,6 +1333,42 @@ export async function initDatabase(
       }
     }
 
+    // Populate initial shipments if provided and memoryStore shipments are empty
+    if (Array.isArray(initialShipments) && initialShipments.length > 0) {
+      for (const s of initialShipments) {
+        if (!memoryStore.shipments.has(s.id)) {
+          memoryStore.shipments.set(s.id, {
+            id: s.id,
+            cn_number: s.cnNumber || s.cn_number,
+            origin_branch_id: s.originBranchId || s.origin_branch_id,
+            destination_branch_id: s.destinationBranchId || s.destination_branch_id,
+            current_branch_id: s.currentBranchId || s.current_branch_id,
+            sender: s.sender,
+            receiver: s.receiver,
+            package_info: s.packageInfo || s.package_info,
+            financials: s.financials,
+            status: s.status || 'booked',
+            status_history: s.statusHistory || s.status_history || [],
+            booked_at: s.bookedAt || s.booked_at || new Date().toISOString(),
+            estimated_delivery: s.estimatedDelivery || s.estimated_delivery || null,
+            actual_delivery: s.actualDelivery || s.actual_delivery || null,
+            pod_signature: s.podSignature || s.pod_signature || null,
+            receiver_id_proof: s.receiverIdProof || s.receiver_id_proof || null,
+            delivery_notes: s.deliveryNotes || s.delivery_notes || '',
+            booked_by_user_id: s.bookedByUserId || s.booked_by_user_id || 'usr_admin',
+            booked_by_user_name: s.bookedByUserName || s.booked_by_user_name || 'Central System Admin',
+            dest_branch_commission: s.destBranchCommission || s.dest_branch_commission || 100,
+            remittance_status: s.remittanceStatus || s.remittance_status || 'pending',
+            origin_remittance_due: s.originRemittanceDue || s.origin_remittance_due || 0,
+            is_customer_prebooked: s.isCustomerPrebooked || s.is_customer_prebooked || false,
+            is_pre_booking: s.isPreBooking || s.is_pre_booking || false,
+            customer_user_id: s.customerUserId || s.customer_user_id || null,
+            created_at: s.createdAt || s.created_at || new Date().toISOString()
+          });
+        }
+      }
+    }
+
     saveStoreToDisk();
 
     // 2. If Supabase / PostgreSQL database is configured, migrate and sync
@@ -1423,6 +1467,149 @@ export async function initDatabase(
   } catch (error) {
     console.warn('Database initialization notice:', error);
     return { success: true };
+  }
+}
+
+export async function syncAllDataToStore(payload: {
+  branches?: any[];
+  users?: any[];
+  shipments?: any[];
+  expenses?: any[];
+  settlements?: any[];
+}): Promise<{ success: boolean; stats: any }> {
+  try {
+    if (Array.isArray(payload.branches) && payload.branches.length > 0) {
+      for (const b of payload.branches) {
+        memoryStore.branches.set(b.id, {
+          id: b.id,
+          name: b.name,
+          name_fa: b.nameFa || b.name_fa || b.name,
+          name_ps: b.namePs || b.name_ps || b.name,
+          code: b.code,
+          province: b.province,
+          city: b.city,
+          address: b.address,
+          phone: b.phone,
+          email: b.email,
+          manager_name: b.managerName || b.manager_name,
+          tazkira_number: b.tazkiraNumber || b.tazkira_number || '',
+          is_head_office: !!(b.isHeadOffice || b.is_head_office),
+          active_shipments_count: b.activeShipmentsCount || b.active_shipments_count || 0,
+          total_parcels_dispatched: b.totalParcelsDispatched || b.total_parcels_dispatched || 0,
+          total_parcels_received: b.totalParcelsReceived || b.total_parcels_received || 0,
+          total_revenue_afn: b.totalRevenueAfn || b.total_revenue_afn || 0,
+          created_at: b.createdAt || b.created_at || new Date().toISOString()
+        });
+      }
+    }
+
+    if (Array.isArray(payload.users) && payload.users.length > 0) {
+      for (const u of payload.users) {
+        memoryStore.users.set(u.id, {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.phone,
+          role: u.role,
+          branch_id: u.branchId || u.branch_id,
+          password: u.password,
+          password_changed_by_branch: u.passwordChangedByBranch || u.password_changed_by_branch || false,
+          last_password_change: u.lastPasswordChange || u.last_password_change || null,
+          status: u.status || 'active',
+          avatar: u.avatar || null,
+          created_at: u.createdAt || u.created_at || new Date().toISOString(),
+          last_login: u.lastLogin || u.last_login || 'Just now'
+        });
+      }
+    }
+
+    if (Array.isArray(payload.shipments) && payload.shipments.length > 0) {
+      for (const s of payload.shipments) {
+        memoryStore.shipments.set(s.id, {
+          id: s.id,
+          cn_number: s.cnNumber || s.cn_number,
+          origin_branch_id: s.originBranchId || s.origin_branch_id,
+          destination_branch_id: s.destinationBranchId || s.destination_branch_id,
+          current_branch_id: s.currentBranchId || s.current_branch_id,
+          sender: s.sender,
+          receiver: s.receiver,
+          package_info: s.packageInfo || s.package_info,
+          financials: s.financials,
+          status: s.status || 'booked',
+          status_history: s.statusHistory || s.status_history || [],
+          booked_at: s.bookedAt || s.booked_at || new Date().toISOString(),
+          estimated_delivery: s.estimatedDelivery || s.estimated_delivery || null,
+          actual_delivery: s.actualDelivery || s.actual_delivery || null,
+          pod_signature: s.podSignature || s.pod_signature || null,
+          receiver_id_proof: s.receiverIdProof || s.receiver_id_proof || null,
+          delivery_notes: s.deliveryNotes || s.delivery_notes || '',
+          booked_by_user_id: s.bookedByUserId || s.booked_by_user_id || 'usr_admin',
+          booked_by_user_name: s.bookedByUserName || s.booked_by_user_name || 'Central System Admin',
+          dest_branch_commission: s.destBranchCommission || s.dest_branch_commission || 100,
+          remittance_status: s.remittanceStatus || s.remittance_status || 'pending',
+          origin_remittance_due: s.originRemittanceDue || s.origin_remittance_due || 0,
+          is_customer_prebooked: s.isCustomerPrebooked || s.is_customer_prebooked || false,
+          is_pre_booking: s.isPreBooking || s.is_pre_booking || false,
+          customer_user_id: s.customerUserId || s.customer_user_id || null,
+          created_at: s.createdAt || s.created_at || new Date().toISOString()
+        });
+      }
+    }
+
+    if (Array.isArray(payload.expenses) && payload.expenses.length > 0) {
+      for (const e of payload.expenses) {
+        memoryStore.branch_expenses.set(e.id, {
+          id: e.id,
+          branch_id: e.branchId || e.branch_id,
+          category: e.category,
+          amount: e.amount,
+          currency: e.currency || 'AFN',
+          description: e.description,
+          receipt_url: e.receiptUrl || e.receipt_url || null,
+          recorded_by_user_id: e.recordedByUserId || e.recorded_by_user_id || 'usr_admin',
+          recorded_by_user_name: e.recordedByUserName || e.recorded_by_user_name || 'Branch Cashier',
+          recorded_at: e.recordedAt || e.recorded_at || new Date().toISOString(),
+          created_at: e.createdAt || e.created_at || new Date().toISOString()
+        });
+      }
+    }
+
+    if (Array.isArray(payload.settlements) && payload.settlements.length > 0) {
+      for (const st of payload.settlements) {
+        memoryStore.branch_settlements.set(st.id, {
+          id: st.id,
+          shipment_id: st.shipmentId || st.shipment_id || null,
+          cn_number: st.cnNumber || st.cn_number || '',
+          origin_branch_id: st.originBranchId || st.origin_branch_id,
+          destination_branch_id: st.destinationBranchId || st.destination_branch_id,
+          gross_collected_amount: st.grossCollectedAmount || st.gross_collected_amount || 0,
+          dest_branch_commission: st.destBranchCommission || st.dest_branch_commission || 100,
+          net_remitted_amount: st.netRemittedAmount || st.net_remitted_amount || 0,
+          settlement_channel: st.settlementChannel || st.settlement_channel || 'sarafi_hawala',
+          sarafi_reference_no: st.sarafiReferenceNo || st.sarafi_reference_no || null,
+          settlement_status: st.settlementStatus || st.settlement_status || 'settled',
+          settled_by_user_name: st.settledByUserName || st.settled_by_user_name || 'Cashier',
+          settled_at: st.settledAt || st.settled_at || new Date().toISOString(),
+          notes: st.notes || null,
+          created_at: st.createdAt || st.created_at || new Date().toISOString(),
+          parcel_ids: st.parcelIds ? JSON.stringify(st.parcelIds) : (st.parcel_ids || '[]')
+        });
+      }
+    }
+
+    saveStoreToDisk();
+
+    const stats = {
+      branches: memoryStore.branches.size,
+      users: memoryStore.users.size,
+      shipments: memoryStore.shipments.size,
+      expenses: memoryStore.branch_expenses.size,
+      settlements: memoryStore.branch_settlements.size
+    };
+
+    return { success: true, stats };
+  } catch (err: any) {
+    return { success: false, stats: { branches: 0, users: 0, shipments: 0, expenses: 0, settlements: 0 } };
   }
 }
 

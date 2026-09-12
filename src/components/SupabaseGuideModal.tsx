@@ -24,10 +24,12 @@ interface SupabaseGuideModalProps {
 }
 
 export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, onClose }) => {
-  const { t, language, syncWithDatabase } = useApp();
+  const { t, language, syncWithDatabase, branches, users, shipments, expenses, remittanceTransfers } = useApp();
   const isRtl = language === 'fa' || language === 'ps';
   const [dbInfo, setDbInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [isSyncingStore, setIsSyncingStore] = useState(false);
+  const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
   const [copiedSchema, setCopiedSchema] = useState(false);
   const [copiedEnv, setCopiedEnv] = useState(false);
   const [sqlSchema, setSqlSchema] = useState('');
@@ -47,6 +49,11 @@ export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, 
       if (res.ok) {
         const data = await res.json();
         setDbInfo(data);
+
+        // If backend store has 0 branches but client state has records, trigger automatic sync
+        if (data.stats && data.stats.branches === 0 && branches.length > 0) {
+          handleSyncActiveStateToDb(false);
+        }
       }
       const schemaRes = await fetch('/api/database/schema');
       if (schemaRes.ok) {
@@ -57,6 +64,40 @@ export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, 
       console.warn('Failed to fetch db info:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncActiveStateToDb = async (showNotification = true) => {
+    setIsSyncingStore(true);
+    setSyncSuccessMsg(null);
+    try {
+      const res = await fetch('/api/database/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branches,
+          users,
+          shipments,
+          expenses,
+          settlements: remittanceTransfers
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (showNotification) {
+          setSyncSuccessMsg('All live branch, parcel, and user records synchronized to database successfully!');
+          setTimeout(() => setSyncSuccessMsg(null), 4000);
+        }
+        const infoRes = await fetch('/api/database/info');
+        if (infoRes.ok) {
+          const updatedInfo = await infoRes.json();
+          setDbInfo(updatedInfo);
+        }
+      }
+    } catch (err: any) {
+      console.warn('Sync to database failed:', err);
+    } finally {
+      setIsSyncingStore(false);
     }
   };
 
@@ -87,6 +128,7 @@ export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, 
       if (res.ok && data.success) {
         setConnectResult({ success: true, message: data.message || 'Connected to Supabase PostgreSQL successfully!' });
         await fetchDbInfo();
+        await handleSyncActiveStateToDb(false);
         await syncWithDatabase();
       } else {
         setConnectResult({ success: false, message: data.error || 'Failed to connect. Please verify your password.' });
@@ -240,28 +282,48 @@ export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, 
 
               {/* Table Records Summary Grid */}
               <div className="space-y-2">
-                <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
-                  Database Tables & Managed Records
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Database Tables & Managed Records</span>
+                  </h3>
+                  <button
+                    onClick={() => handleSyncActiveStateToDb(true)}
+                    disabled={isSyncingStore}
+                    className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    title="Push current application records into the database"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isSyncingStore ? 'animate-spin' : ''}`} />
+                    <span>{isSyncingStore ? 'Syncing...' : 'Sync Active Records to DB'}</span>
+                  </button>
+                </div>
+
+                {syncSuccessMsg && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{syncSuccessMsg}</span>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.branches ?? 0}</div>
+                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.branches ?? branches.length}</div>
                     <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">branches</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.users ?? 0}</div>
+                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.users ?? users.length}</div>
                     <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">users</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.shipments ?? 0}</div>
+                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.shipments ?? shipments.length}</div>
                     <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">shipments</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.expenses ?? 0}</div>
+                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.expenses ?? expenses.length}</div>
                     <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">expenses</div>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.settlements ?? 0}</div>
+                    <div className="text-lg font-black text-slate-900">{dbInfo?.stats?.settlements ?? remittanceTransfers.length}</div>
                     <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">settlements</div>
                   </div>
                 </div>
