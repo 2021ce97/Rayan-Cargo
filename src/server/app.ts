@@ -370,6 +370,15 @@ api.post('/shipments', async (req: Request, res: Response) => {
     const now = new Date().toISOString();
     const isPre = s.isCustomerPrebooked || s.isPreBooking || s.status === 'pre_booked' || s.status === 'verified' || false;
 
+    // Validate Product Price as mandatory
+    const productPriceVal = s.financials?.productPrice ?? s.productPriceAfn ?? s.price;
+    if (isPre && (productPriceVal === undefined || productPriceVal === null || Number(productPriceVal) <= 0)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Product Price is mandatory and must be greater than 0.'
+      });
+    }
+
     await db.query(
       `INSERT INTO shipments (
         id, cn_number, origin_branch_id, destination_branch_id, current_branch_id,

@@ -1743,6 +1743,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Customer Pre-booking
   const createCustomerPreBooking = (input: CustomerPreBookingInput): Shipment => {
+    if (!input.productPriceAfn || Number(input.productPriceAfn) <= 0) {
+      throw new Error('Product Price is mandatory and must be greater than 0.');
+    }
+
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
     const newCn = getNextSequentialCn(shipments, true);
     const now = new Date().toISOString();

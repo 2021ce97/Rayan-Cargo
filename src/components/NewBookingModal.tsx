@@ -193,11 +193,15 @@ export const NewBookingModal: React.FC = () => {
 
   const handleSubmit = (andPrint: boolean) => {
     if (!senderName.trim() || !senderPhone.trim()) {
-      alert('Please provide Sender Name and Phone Number');
+      alert(t('fill_contacts_warning') || 'Please provide Sender Name and Phone Number');
       return;
     }
     if (!receiverName.trim() || !receiverPhone.trim()) {
-      alert('Please provide Receiver Name and Destination Phone Number');
+      alert(t('fill_contacts_warning') || 'Please provide Receiver Name and Destination Phone Number');
+      return;
+    }
+    if (!productPriceAfn || Number(productPriceAfn) <= 0) {
+      alert(t('alert_product_price_required') || 'Product Price is mandatory and must be greater than 0.');
       return;
     }
 

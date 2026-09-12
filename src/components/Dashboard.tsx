@@ -291,7 +291,7 @@ export const Dashboard: React.FC = () => {
           <div className="space-y-1">
             <div className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
               <Clock className="w-4 h-4" />
-              <span>Pending Pre-Bookings</span>
+              <span>{t('pending_pre_bookings') || 'Pending Pre-Bookings'}</span>
             </div>
             <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
               {isSuperAdmin 
@@ -299,7 +299,7 @@ export const Dashboard: React.FC = () => {
                 : shipments.filter(s => s.status === 'pre_booked' && s.originBranchId === currentUser.branchId).length}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Awaiting verification at origin branch
+              {t('awaiting_verification_origin') || 'Awaiting verification at origin branch'}
             </p>
           </div>
           <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
@@ -311,7 +311,7 @@ export const Dashboard: React.FC = () => {
           <div className="space-y-1">
             <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Verified Pre-Bookings</span>
+              <span>{t('verified_pre_bookings') || 'Verified Pre-Bookings'}</span>
             </div>
             <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
               {isSuperAdmin 
@@ -319,7 +319,7 @@ export const Dashboard: React.FC = () => {
                 : shipments.filter(s => s.isPreBooking && s.status !== 'pre_booked' && s.originBranchId === currentUser.branchId).length}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Processed and integrated into active fleet
+              {t('processed_active_fleet') || 'Processed and integrated into active fleet'}
             </p>
           </div>
           <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
@@ -346,13 +346,13 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-base font-black text-white flex items-center gap-2">
-                    <span>Verification Required: Online Pre-Bookings</span>
+                    <span>{t('verification_required_title') || 'Verification Required: Online Pre-Bookings'}</span>
                     <span className="px-2 py-0.5 rounded-full bg-purple-500 text-white text-xs font-mono">
-                      {pendingPreBookings.length} Pending
+                      {pendingPreBookings.length} {t('prebook_pending_badge') || 'Pending'}
                     </span>
                   </h2>
                   <p className="text-xs text-purple-200">
-                    Customer-submitted pre-bookings waiting at origin branch for weighing, physical inspection & official pricing
+                    {t('verification_required_desc') || 'Customer-submitted pre-bookings waiting at origin branch for weighing, physical inspection & official pricing'}
                   </p>
                 </div>
               </div>
@@ -360,7 +360,7 @@ export const Dashboard: React.FC = () => {
                 onClick={() => setActiveView('parcels')}
                 className="px-4 py-2 rounded-xl bg-white text-purple-950 font-bold text-xs hover:bg-purple-100 transition-colors shadow-sm cursor-pointer"
               >
-                View All in Inventory ➔
+                {t('view_all_inventory') || 'View All in Inventory ➔'}
               </button>
             </div>
 
@@ -380,13 +380,13 @@ export const Dashboard: React.FC = () => {
                     </div>
 
                     <div className="text-xs space-y-1 text-slate-200">
-                      <div><strong>Sender:</strong> {s.sender.name} ({s.sender.phone})</div>
-                      <div><strong>Receiver:</strong> {s.receiver.name} ({s.receiver.phone})</div>
+                      <div><strong>{t('sender_lbl') || 'Sender'}:</strong> {s.sender.name} ({s.sender.phone})</div>
+                      <div><strong>{t('receiver_lbl') || 'Receiver'}:</strong> {s.receiver.name} ({s.receiver.phone})</div>
                       <div className="text-purple-300">
-                        <strong>Route:</strong> {originBr?.city || 'Origin'} ➔ {destBr?.city || 'Dest'}
+                        <strong>{t('route_lbl') || 'Route'}:</strong> {originBr ? getLocalizedBranchName(originBr) : 'Origin'} ➔ {destBr ? getLocalizedBranchName(destBr) : 'Dest'}
                       </div>
                       <div className="text-amber-200">
-                        <strong>Est. Weight:</strong> {s.packageInfo.weightKg} KG ({s.packageInfo.pieces} pcs)
+                        <strong>{t('est_weight_lbl') || 'Est. Weight'}:</strong> {s.packageInfo.weightKg} KG ({s.packageInfo.pieces} pcs)
                       </div>
                     </div>
 
@@ -398,7 +398,7 @@ export const Dashboard: React.FC = () => {
                         onClick={() => setActiveView('parcels')}
                         className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs shadow-md hover:from-amber-400 hover:to-yellow-400 transition-all cursor-pointer"
                       >
-                        Verify & Price ➔
+                        {t('verify_and_price') || 'Verify & Price ➔'}
                       </button>
                     </div>
                   </div>
