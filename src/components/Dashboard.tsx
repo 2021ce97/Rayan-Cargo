@@ -27,6 +27,7 @@ import {
   Tooltip
 } from 'recharts';
 import { Branch } from '../types';
+import { DashboardSummaryCards } from './DashboardSummaryCards';
 
 export const Dashboard: React.FC = () => {
   const { 
@@ -284,6 +285,10 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Pre-Booking Overview Component */}
+      {/* 1. Aggregated Analytics Summary Cards */}
+      <DashboardSummaryCards />
 
       {/* Pre-Booking Overview Component */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

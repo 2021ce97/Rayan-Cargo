@@ -35,7 +35,8 @@ export const NewBookingModal: React.FC = () => {
     activeBranchId,
     addShipment, 
     setSelectedShipmentForReceipt,
-    setActiveView 
+    setActiveView,
+    showToast 
   } = useApp();
 
   const getLocalizedBranchName = (b: { name: string; nameFa?: string; namePs?: string } | undefined) => {
@@ -193,15 +194,15 @@ export const NewBookingModal: React.FC = () => {
 
   const handleSubmit = (andPrint: boolean) => {
     if (!senderName.trim() || !senderPhone.trim()) {
-      alert(t('fill_contacts_warning') || 'Please provide Sender Name and Phone Number');
+      showToast(t('fill_contacts_warning') || 'Please provide Sender Name and Phone Number', 'warning', 'Required Information');
       return;
     }
     if (!receiverName.trim() || !receiverPhone.trim()) {
-      alert(t('fill_contacts_warning') || 'Please provide Receiver Name and Destination Phone Number');
+      showToast(t('fill_contacts_warning') || 'Please provide Receiver Name and Destination Phone Number', 'warning', 'Required Information');
       return;
     }
     if (!productPriceAfn || Number(productPriceAfn) <= 0) {
-      alert(t('alert_product_price_required') || 'Product Price is mandatory and must be greater than 0.');
+      showToast(t('alert_product_price_required') || 'Product Price is mandatory and must be greater than 0.', 'error', 'Invalid Product Price');
       return;
     }
 
@@ -264,6 +265,12 @@ export const NewBookingModal: React.FC = () => {
     } catch (e) {
       // ignore
     }
+
+    showToast(
+      `✓ Consignment #${newShipment.cnNumber} booked successfully! (ثبت بارنامه انجام شد)`,
+      'success',
+      'Booking Confirmed'
+    );
 
     if (andPrint) {
       setSelectedShipmentForReceipt(newShipment);

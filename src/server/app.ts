@@ -8,7 +8,8 @@ import {
   connectToSupabase,
   DEFAULT_SUPABASE_DATABASE_URL,
   sanitizeConnectionString,
-  syncAllDataToStore
+  syncAllDataToStore,
+  withTransaction
 } from './db.ts';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from '../data/initialData.ts';
 
@@ -512,6 +513,183 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
     }
 
     const finalIsPreBooking = isPreBooking !== undefined ? isPreBooking : (isCustomerPrebooked !== undefined ? isCustomerPrebooked : (status === 'verified' || status === 'booked' ? false : null));
+
+    const isCompleting = status === 'delivered' || status === 'completed' || status === 'complete';
+
+    if (isCompleting) {
+      // Execute completion with atomic SQL transaction to calculate & split Product Price
+      // and update branch ledgers atomically
+      await withTransaction(async (client) => {
+        // Fetch full shipment details for precise calculation
+        const { rows: currentRows } = await client.query('SELECT * FROM shipments WHERE id = $1', [id]);
+        const currentShipment = currentRows.length > 0 ? currentRows[0] : (existing.length > 0 ? existing[0] : {});
+
+        const currFinancials = currentShipment.financials 
+          ? (typeof currentShipment.financials === 'string' ? JSON.parse(currentShipment.financials) : currentShipment.financials)
+          : {};
+
+        const origBranchId = originBranchId || currentShipment.origin_branch_id || 'br_admin_hq';
+        const dstBranchId = destinationBranchId || currentShipment.destination_branch_id || currentBranchId || 'br_admin_hq';
+
+        // 1. Calculate and split Product Price into Destination Commission & Service/Handling Fee
+        const rawProductPrice = Number(
+          finalFinancials?.productPrice ?? 
+          finalFinancials?.totalAmount ?? 
+          currFinancials.productPrice ?? 
+          currFinancials.totalAmount ?? 
+          price ?? 
+          totalAmount ?? 
+          0
+        );
+
+        // Destination Branch Commission (e.g., 70 or 100 AFN default, or explicitly set)
+        const computedDestCommission = Number(
+          destBranchCommission ?? 
+          finalFinancials?.destBranchCommission ?? 
+          currFinancials.destBranchCommission ?? 
+          currentShipment.dest_branch_commission ?? 
+          (rawProductPrice > 0 ? 70 : 0)
+        );
+
+        // Service & Handling Fee (origin transport + handling charges)
+        const computedServiceFee = Number(
+          finalFinancials?.serviceFee ?? 
+          currFinancials.serviceFee ?? 
+          (rawProductPrice > 0 ? Math.max(0, 150) : 0)
+        );
+
+        // Discount
+        const computedDiscount = Number(
+          finalFinancials?.discountAmount ?? 
+          currFinancials.discountAmount ?? 
+          0
+        );
+
+        // Net Seller Payout (deducting service fee and dest commission)
+        const computedSellerPayout = Math.max(
+          0, 
+          rawProductPrice - computedDestCommission - computedServiceFee + computedDiscount
+        );
+
+        // Receiver total payable at destination (COD product price)
+        const computedTotalPayable = rawProductPrice > 0 ? rawProductPrice : Number(currFinancials.totalAmount || 0);
+
+        const mergedFinancials = {
+          ...currFinancials,
+          ...(finalFinancials || {}),
+          productPrice: rawProductPrice,
+          destBranchCommission: computedDestCommission,
+          serviceFee: computedServiceFee,
+          discountAmount: computedDiscount,
+          sellerPayout: computedSellerPayout,
+          totalAmount: computedTotalPayable,
+          amountPaid: computedTotalPayable,
+          amountDue: 0,
+          paymentStatus: 'paid',
+          paymentMethod: finalFinancials?.paymentMethod || currFinancials.paymentMethod || 'cash'
+        };
+
+        const deliveryTimestamp = actualDelivery || new Date().toISOString();
+
+        // 2. Atomic Step 1: Update Shipment status, financials, and remittance state
+        await client.query(
+          `UPDATE shipments SET 
+            status = 'delivered',
+            status_history = COALESCE($1::jsonb, status_history),
+            actual_delivery = $2,
+            financials = $3::jsonb,
+            dest_branch_commission = $4,
+            origin_remittance_due = $5,
+            remittance_status = 'pending',
+            current_branch_id = $6,
+            is_pre_booking = false
+          WHERE id = $7`,
+          [
+            statusHistory ? JSON.stringify(statusHistory) : null,
+            deliveryTimestamp,
+            JSON.stringify(mergedFinancials),
+            computedDestCommission,
+            computedSellerPayout,
+            dstBranchId,
+            id
+          ]
+        );
+
+        // 3. Atomic Step 2: Update Destination Branch Ledger (Add Destination Commission)
+        if (dstBranchId && computedDestCommission > 0) {
+          await client.query(
+            `UPDATE branches SET 
+              total_revenue_afn = total_revenue_afn + $1,
+              total_parcels_received = total_parcels_received + 1,
+              active_shipments_count = GREATEST(0, active_shipments_count - 1)
+            WHERE id = $2`,
+            [computedDestCommission, dstBranchId]
+          );
+        } else if (dstBranchId) {
+          await client.query(
+            `UPDATE branches SET 
+              total_parcels_received = total_parcels_received + 1,
+              active_shipments_count = GREATEST(0, active_shipments_count - 1)
+            WHERE id = $1`,
+            [dstBranchId]
+          );
+        }
+
+        // 4. Atomic Step 3: Update Origin Branch Ledger (Add Service Fee net of discount)
+        const originNetServiceRevenue = Math.max(0, computedServiceFee - computedDiscount);
+        if (origBranchId && originNetServiceRevenue > 0) {
+          await client.query(
+            `UPDATE branches SET 
+              total_revenue_afn = total_revenue_afn + $1,
+              active_shipments_count = GREATEST(0, active_shipments_count - 1)
+            WHERE id = $2`,
+            [originNetServiceRevenue, origBranchId]
+          );
+        } else if (origBranchId) {
+          await client.query(
+            `UPDATE branches SET 
+              active_shipments_count = GREATEST(0, active_shipments_count - 1)
+            WHERE id = $1`,
+            [origBranchId]
+          );
+        }
+
+        // 5. Atomic Step 4: Record audit settlement entry into branch_settlements
+        const settlementId = `stl_${id.replace(/[^a-zA-Z0-9_]/g, '')}_${Date.now().toString().slice(-4)}`;
+        const cnNumber = currentShipment.cn_number || id;
+        
+        await client.query(
+          `INSERT INTO branch_settlements (
+            id, shipment_id, cn_number, origin_branch_id, destination_branch_id,
+            gross_collected_amount, dest_branch_commission, net_remitted_amount,
+            settlement_channel, settlement_status, settled_by_user_name,
+            settled_at, notes, created_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW()
+          )`,
+          [
+            settlementId,
+            id,
+            cnNumber,
+            origBranchId,
+            dstBranchId,
+            computedTotalPayable,
+            computedDestCommission,
+            computedSellerPayout,
+            'sarafi_hawala',
+            'pending',
+            req.body.completedByUserName || 'Destination Agent',
+            deliveryTimestamp,
+            `Auto-split on delivery: Product Price ${computedTotalPayable} AFN = Dest Comm ${computedDestCommission} AFN + Service Fee ${computedServiceFee} AFN (Seller Payout: ${computedSellerPayout} AFN)`
+          ]
+        );
+      });
+
+      return res.json({ 
+        success: true, 
+        message: 'Shipment marked as complete, financials split and branch ledgers updated atomically.' 
+      });
+    }
 
     await db.query(
       `UPDATE shipments SET 

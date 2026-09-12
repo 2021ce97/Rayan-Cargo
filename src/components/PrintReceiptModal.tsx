@@ -88,19 +88,19 @@ export const PrintReceiptModal: React.FC = () => {
             <div className="flex items-center bg-slate-200/80 rounded-xl p-0.5 text-xs font-bold">
               <button
                 onClick={() => setReceiptRole('buyer')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                  receiptRole === 'buyer' ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                  receiptRole === 'buyer' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>Buyer Copy</span>
+                <span>Receiver Copy (رسید گیرنده)</span>
               </button>
               <button
                 onClick={() => setReceiptRole('seller')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                  receiptRole === 'seller' ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                  receiptRole === 'seller' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>Seller Copy</span>
+                <span>Seller Copy (رسید فروشنده)</span>
               </button>
             </div>
             
@@ -561,23 +561,29 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="text-end space-y-1">
                       {receiptRole === 'seller' ? (
                         <>
-                          <div className="text-xs text-slate-500">
-                            Product Price: {shipment.financials.productPrice} AFN
-                            {shipment.financials.serviceFee > 0 ? ` | Service Fee (Deducted): -${shipment.financials.serviceFee} AFN` : ''}
-                            {shipment.financials.destBranchCommission > 0 ? ` | Dest. Comm. (Deducted): -${shipment.financials.destBranchCommission} AFN` : ''}
+                          <div className="text-xs text-slate-600 flex flex-wrap justify-end gap-x-3 gap-y-0.5">
+                            <span>Product Price: <strong>{(shipment.financials.productPrice || shipment.financials.totalAmount || 0).toLocaleString()} AFN</strong></span>
+                            <span className="text-rose-600">Service Fee (Deducted): <strong>-{(shipment.financials.serviceFee || 0).toLocaleString()} AFN</strong></span>
+                            <span className="text-rose-600">Dest. Commission (Deducted): <strong>-{(shipment.financials.destBranchCommission || 0).toLocaleString()} AFN</strong></span>
+                            {shipment.financials.discountAmount > 0 && (
+                              <span className="text-emerald-600">Discount: <strong>+{(shipment.financials.discountAmount).toLocaleString()} AFN</strong></span>
+                            )}
                           </div>
-                          <div className="text-sm font-black text-slate-700">
-                            Net Seller Payout: {shipment.financials.sellerPayout.toLocaleString()} AFN
+                          <div className="text-base font-black text-slate-900 pt-1">
+                            Net Seller Payout (مبلغ قابل تادیه به فروشنده): <span className="text-emerald-700 font-mono text-lg font-black">{(shipment.financials.sellerPayout || 0).toLocaleString()} AFN</span>
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="text-xs text-slate-500">
-                            Product Price (COD): {shipment.financials.productPrice} AFN
-                            {shipment.financials.discountAmount > 0 ? ` | Discount: -${shipment.financials.discountAmount} AFN` : ''}
+                          <div className="text-xs text-slate-600 flex flex-wrap justify-end gap-x-3 gap-y-0.5">
+                            <span>Product Price: <strong>{(shipment.financials.productPrice || shipment.financials.totalAmount || 0).toLocaleString()} AFN</strong></span>
+                            <span>Service Fee: <strong>{shipment.financials.serviceFee > 0 ? `${shipment.financials.serviceFee.toLocaleString()} AFN` : 'Included / Prepaid'}</strong></span>
+                            {shipment.financials.discountAmount > 0 && (
+                              <span className="text-emerald-600">Discount: <strong>-{(shipment.financials.discountAmount).toLocaleString()} AFN</strong></span>
+                            )}
                           </div>
-                          <div className="text-base font-black text-slate-900">
-                            Total Due From Buyer (COD): <span className="text-red-600 font-mono text-xl">{shipment.financials.totalAmount.toLocaleString()} AFN</span>
+                          <div className="text-base font-black text-slate-900 pt-1">
+                            Total Payable (مجموع قابل پرداخت): <span className="text-rose-600 font-mono text-xl font-black">{(shipment.financials.totalAmount || 0).toLocaleString()} AFN</span>
                           </div>
                         </>
                       )}

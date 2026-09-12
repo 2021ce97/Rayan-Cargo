@@ -73,6 +73,11 @@ const mockDb = {
     const q = queryText.trim();
     const upper = q.toUpperCase();
 
+    // 0. Transactions
+    if (upper === 'BEGIN' || upper === 'COMMIT' || upper === 'ROLLBACK' || upper.startsWith('SAVEPOINT') || upper.startsWith('RELEASE SAVEPOINT')) {
+      return { rows: [], rowCount: 0 };
+    }
+
     // 1. Health checks & simple selects
     if (upper.includes('SELECT NOW()')) {
       return {
@@ -141,30 +146,42 @@ const mockDb = {
     }
 
     if (upper.startsWith('UPDATE BRANCHES SET')) {
-      if (upper.includes('TOTAL_REVENUE_AFN = TOTAL_REVENUE_AFN +') && (upper.includes('IS_HEAD_OFFICE') || upper.includes('BR_KBL') || params.length === 2)) {
-        const [revenueAdd, targetBranchId] = params;
-        const addVal = parseFloat(revenueAdd || '0');
-        let updatedAny = false;
-        for (const b of memoryStore.branches.values()) {
-          if (b.is_head_office || b.id === 'br_admin_hq' || b.id === targetBranchId || (targetBranchId && b.id === targetBranchId)) {
-            b.total_revenue_afn = (parseFloat(b.total_revenue_afn || '0') + addVal);
-            updatedAny = true;
-          }
-        }
-        if (!updatedAny && memoryStore.branches.size > 0) {
-          const first = Array.from(memoryStore.branches.values())[0];
-          first.total_revenue_afn = (parseFloat(first.total_revenue_afn || '0') + addVal);
-        }
-        saveStoreToDisk();
-      } else if (params.length === 2) {
-        // [amount, originBranchId]
-        const [revenueAdd, branchId] = params;
-        const target = memoryStore.branches.get(branchId);
+      const branchId = params[params.length - 1];
+      const target = memoryStore.branches.get(branchId);
+
+      if (upper.includes('TOTAL_REVENUE_AFN = TOTAL_REVENUE_AFN +')) {
+        const revenueAdd = parseFloat(params[0] || '0');
         if (target) {
-          target.total_parcels_dispatched = (target.total_parcels_dispatched || 0) + 1;
-          target.total_revenue_afn = (parseFloat(target.total_revenue_afn || '0') + parseFloat(revenueAdd || '0'));
+          target.total_revenue_afn = (parseFloat(target.total_revenue_afn || '0') + revenueAdd);
+          if (upper.includes('TOTAL_PARCELS_RECEIVED = TOTAL_PARCELS_RECEIVED + 1')) {
+            target.total_parcels_received = (target.total_parcels_received || 0) + 1;
+          }
+          if (upper.includes('TOTAL_PARCELS_DISPATCHED = TOTAL_PARCELS_DISPATCHED + 1')) {
+            target.total_parcels_dispatched = (target.total_parcels_dispatched || 0) + 1;
+          }
+          if (upper.includes('ACTIVE_SHIPMENTS_COUNT')) {
+            target.active_shipments_count = Math.max(0, (target.active_shipments_count || 0) - 1);
+          }
+          saveStoreToDisk();
+        } else {
+          for (const b of memoryStore.branches.values()) {
+            if (b.is_head_office || b.id === 'br_admin_hq' || b.id === branchId) {
+              b.total_revenue_afn = (parseFloat(b.total_revenue_afn || '0') + revenueAdd);
+            }
+          }
           saveStoreToDisk();
         }
+      } else if (target) {
+        if (upper.includes('TOTAL_PARCELS_DISPATCHED = TOTAL_PARCELS_DISPATCHED + 1')) {
+          target.total_parcels_dispatched = (target.total_parcels_dispatched || 0) + 1;
+        }
+        if (upper.includes('TOTAL_PARCELS_RECEIVED = TOTAL_PARCELS_RECEIVED + 1')) {
+          target.total_parcels_received = (target.total_parcels_received || 0) + 1;
+        }
+        if (upper.includes('ACTIVE_SHIPMENTS_COUNT = ACTIVE_SHIPMENTS_COUNT + 1')) {
+          target.active_shipments_count = (target.active_shipments_count || 0) + 1;
+        }
+        saveStoreToDisk();
       }
       return { rows: [], rowCount: 1 };
     }
@@ -1610,6 +1627,60 @@ export async function syncAllDataToStore(payload: {
     return { success: true, stats };
   } catch (err: any) {
     return { success: false, stats: { branches: 0, users: 0, shipments: 0, expenses: 0, settlements: 0 } };
+  }
+}
+
+/**
+ * Execute a callback within an atomic SQL transaction.
+ * If using Supabase / PostgreSQL pool, uses real client BEGIN / COMMIT / ROLLBACK.
+ * If using the in-memory engine, executes with snapshot rollback protection.
+ */
+export async function withTransaction<T>(
+  callback: (client: { query: (sql: string, params?: any[]) => Promise<any> }) => Promise<T>
+): Promise<T> {
+  if (realPool && !useMock) {
+    const client = await realPool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.warn('Rollback error:', rollbackErr);
+      }
+      throw err;
+    } finally {
+      client.release();
+    }
+  } else {
+    // Snapshot-based atomic rollback for in-memory store
+    const snapshot = {
+      branches: new Map(Array.from(memoryStore.branches.entries()).map(([k, v]) => [k, { ...v }])),
+      users: new Map(Array.from(memoryStore.users.entries()).map(([k, v]) => [k, { ...v }])),
+      shipments: new Map(Array.from(memoryStore.shipments.entries()).map(([k, v]) => [k, { ...v }])),
+      branch_expenses: new Map(Array.from(memoryStore.branch_expenses.entries()).map(([k, v]) => [k, { ...v }])),
+      branch_settlements: new Map(Array.from(memoryStore.branch_settlements.entries()).map(([k, v]) => [k, { ...v }]))
+    };
+
+    try {
+      await mockDb.query('BEGIN');
+      const result = await callback(mockDb);
+      await mockDb.query('COMMIT');
+      saveStoreToDisk();
+      return result;
+    } catch (err) {
+      await mockDb.query('ROLLBACK');
+      memoryStore.branches = snapshot.branches;
+      memoryStore.users = snapshot.users;
+      memoryStore.shipments = snapshot.shipments;
+      memoryStore.branch_expenses = snapshot.branch_expenses;
+      memoryStore.branch_settlements = snapshot.branch_settlements;
+      saveStoreToDisk();
+      throw err;
+    }
   }
 }
 

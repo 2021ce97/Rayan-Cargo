@@ -339,4 +339,15 @@ export interface AppNotification {
   targetRoles?: UserRole[];
 }
 
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ToastItem {
+  id: string;
+  message: string;
+  type: ToastType;
+  title?: string;
+  duration?: number;
+  timestamp: number;
+}
+
 

@@ -13,7 +13,9 @@ import {
   StatusPermissionResult,
   BillingFinancials,
   LoginResult,
-  BranchRemittanceTransfer
+  BranchRemittanceTransfer,
+  ToastItem,
+  ToastType
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
@@ -166,7 +168,9 @@ interface AppContextType {
   customerShipments: Shipment[];
   branchExpenses: BranchExpense[];
   toastMessage: string | null;
-  showToast: (message: string) => void;
+  toasts: ToastItem[];
+  showToast: (message: string, type?: ToastType, title?: string, duration?: number) => void;
+  dismissToast: (id: string) => void;
   isOfflineCached: boolean;
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: (open: boolean) => void;
@@ -379,14 +383,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.ACTIVE_BRANCH_ID, id);
   };
 
-  // Toast
+  // Global Toast Notification System
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const showToast = (message: string) => {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  const showToast = useCallback((
+    message: string, 
+    type: ToastType = 'info', 
+    title?: string, 
+    duration: number = 4000
+  ) => {
+    // If message starts with a checkmark or success keyword, default type to success
+    let resolvedType: ToastType = type;
+    if (type === 'info') {
+      if (message.includes('✓') || message.toLowerCase().includes('success') || message.toLowerCase().includes('موفقانه')) {
+        resolvedType = 'success';
+      } else if (message.toLowerCase().includes('error') || message.toLowerCase().includes('failed') || message.toLowerCase().includes('ناموفق')) {
+        resolvedType = 'error';
+      } else if (message.toLowerCase().includes('warning') || message.toLowerCase().includes('alert') || message.toLowerCase().includes('هشدار')) {
+        resolvedType = 'warning';
+      }
+    }
+
     setToastMessage(message);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
-  };
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const newToast: ToastItem = {
+      id,
+      message,
+      type: resolvedType,
+      title,
+      duration,
+      timestamp: Date.now()
+    };
+
+    setToasts(prev => [newToast, ...prev.slice(0, 4)]); // Keep at most 5 toasts visible
+
+    if (duration > 0) {
+      setTimeout(() => {
+        dismissToast(id);
+        setToastMessage(prev => (prev === message ? null : prev));
+      }, duration);
+    }
+  }, [dismissToast]);
 
   // Sync with Supabase PostgreSQL
   const syncWithDatabase = useCallback(async (force = false) => {
@@ -2358,7 +2400,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const perm = canUserUpdateStatus(target);
     if (!perm.allowed || !perm.allowedStatuses.includes(newStatus)) {
-      showToast(perm.reason || 'You do not have permission to set this status.');
+      showToast(perm.reason || 'You do not have permission to set this status.', 'error', 'Permission Denied');
       return false;
     }
 
@@ -2387,8 +2429,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       amountPaid: newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay' 
         ? target.financials.totalAmount 
         : target.financials?.amountPaid || 0,
-      amountDue: newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay'
-        ? 0
+      amountDue: newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay' 
+        ? 0 
         : target.financials?.amountDue || 0,
       paymentStatus: (newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay' 
         ? 'paid' 
@@ -2431,7 +2473,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     }).catch(err => console.error('Error updating status in Supabase:', err));
 
-    showToast(t('status_updated_successfully') || 'Consignment milestone updated in Supabase!');
+    showToast(
+      `✓ Status updated to ${newStatus.replace(/_/g, ' ').toUpperCase()} for CN #${target.cnNumber}`,
+      'success',
+      'Milestone Updated'
+    );
     return true;
   };
 
@@ -2499,7 +2545,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         customerShipments,
         branchExpenses,
         toastMessage,
+        toasts,
         showToast,
+        dismissToast,
         isOfflineCached,
         isMobileSidebarOpen,
         setIsMobileSidebarOpen,

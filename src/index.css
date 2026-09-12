@@ -17,35 +17,86 @@
 
 @media print {
   @page {
-    size: A4;
-    margin: 10mm;
+    size: A4 portrait;
+    margin: 8mm 6mm;
   }
   
-  body {
-    background: #ffffff !important;
-    color: #0f172a !important;
+  *, *::before, *::after {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    box-sizing: border-box !important;
   }
   
-  header, aside, .no-print, nav, button:not(.print-include) {
+  html, body {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 12pt !important;
+    overflow: visible !important;
+  }
+  
+  /* Strictly hide all application navigation, headers, sidebars, toolbars, and toasts */
+  header, 
+  aside, 
+  nav, 
+  #main-sidebar, 
+  #app-header, 
+  #global-toast-container,
+  .no-print, 
+  .no-print *,
+  button:not(.print-include),
+  input,
+  select,
+  textarea,
+  [role="tablist"],
+  [role="navigation"] {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
   .print-only {
     display: block !important;
+    visibility: visible !important;
   }
   
-  .printable-receipt, .printable-manifest, .printable-report {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  /* Centered, formatted A4 printable receipt document container */
+  .printable-receipt, 
+  .printable-manifest, 
+  .printable-report,
+  .printable-waybill {
+    position: relative !important;
+    display: block !important;
     width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    max-width: 195mm !important;
+    margin: 0 auto !important;
+    padding: 2mm 0 !important;
     box-shadow: none !important;
     border: none !important;
     background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Page break rules for printing tables & manifests */
+  table {
+    page-break-inside: auto;
+  }
+  tr, img, svg {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  thead {
+    display: table-header-group !important;
+  }
+  tfoot {
+    display: table-footer-group !important;
   }
 }

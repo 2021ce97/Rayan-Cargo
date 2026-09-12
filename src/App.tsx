@@ -14,6 +14,7 @@ import { RemittanceManager } from './components/RemittanceManager';
 import { CustomerPortal } from './components/CustomerPortal';
 import { PrintReceiptModal } from './components/PrintReceiptModal';
 import { LoginPage } from './components/LoginPage';
+import { ToastContainer } from './components/ToastContainer';
 
 const MainLayout: React.FC = () => {
   const { activeView, isAuthenticated, currentUser } = useApp();
@@ -23,6 +24,7 @@ const MainLayout: React.FC = () => {
       <>
         <LoginPage />
         <PrintReceiptModal />
+        <ToastContainer />
       </>
     );
   }
@@ -81,6 +83,9 @@ const MainLayout: React.FC = () => {
 
       {/* Printable Consignment Waybill Modal */}
       <PrintReceiptModal />
+
+      {/* Global Toast Notification System */}
+      <ToastContainer />
 
     </div>
   );

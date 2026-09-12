@@ -43,6 +43,7 @@ import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../type
 import { generateDispatchManifestPdf, printElementUsingIframe, generateThermalLabelPdf, generateCombinedCustomerPdf } from '../utils/pdfExport';
 import { BarcodeGenerator } from './BarcodeGenerator';
 import { CombinedCustomerReceiptModal } from './CombinedCustomerReceiptModal';
+import { ShipmentStatusTimeline } from './ShipmentStatusTimeline';
 
 type SortField = 'date' | 'weight' | 'amount' | 'cn' | 'status';
 type SortOrder = 'asc' | 'desc';
@@ -2029,6 +2030,15 @@ export const ParcelInventory: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Timeline-based Status History Component */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 max-h-72 overflow-y-auto">
+              <ShipmentStatusTimeline 
+                history={detailsModalShipment.statusHistory}
+                currentStatus={detailsModalShipment.status}
+                bookedAt={detailsModalShipment.createdAt || detailsModalShipment.created_at}
+              />
             </div>
 
             {/* Modal Actions Footer */}
