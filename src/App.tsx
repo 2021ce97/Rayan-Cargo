@@ -15,6 +15,7 @@ import { CustomerPortal } from './components/CustomerPortal';
 import { PrintReceiptModal } from './components/PrintReceiptModal';
 import { LoginPage } from './components/LoginPage';
 import { ToastContainer } from './components/ToastContainer';
+import { PrintQueueFAB } from './components/PrintQueueFAB';
 
 const MainLayout: React.FC = () => {
   const { activeView, isAuthenticated, currentUser } = useApp();
@@ -86,6 +87,9 @@ const MainLayout: React.FC = () => {
 
       {/* Global Toast Notification System */}
       <ToastContainer />
+
+      {/* Offline Print Queue FAB */}
+      <PrintQueueFAB />
 
     </div>
   );

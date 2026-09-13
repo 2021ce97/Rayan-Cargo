@@ -21,6 +21,8 @@ import {
   generateThermalPdfFromElement, 
   printElementUsingIframe 
 } from '../utils/pdfExport';
+import { usePrintQueue } from '../hooks/usePrintQueue';
+import { Save } from 'lucide-react';
 
 export const PrintReceiptModal: React.FC = () => {
   const { 
@@ -41,6 +43,8 @@ export const PrintReceiptModal: React.FC = () => {
   const [receiptRole, setReceiptRole] = useState<'buyer' | 'seller'>('buyer');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  
+  const { enqueue } = usePrintQueue();
 
   if (!selectedShipmentForReceipt) return null;
 
@@ -57,6 +61,16 @@ export const PrintReceiptModal: React.FC = () => {
     : Math.max(0, priceVal - sFeeVal - dCommVal + discountVal);
   const totalDueVal = Number(shipment.financials?.totalAmount) || priceVal;
   const isPaid = shipment.financials?.paymentStatus === 'paid' || shipment.status === 'delivered';
+
+  const handleAddToQueue = () => {
+    enqueue({
+      cnNumber: shipment.cnNumber,
+      format: printFormat,
+      role: receiptRole,
+      shipmentId: shipment.id
+    });
+    showToast('✓ Added to Offline Print Queue!');
+  };
 
   const handlePrint = () => {
     let targetRef: HTMLElement | null = null;
@@ -229,9 +243,19 @@ export const PrintReceiptModal: React.FC = () => {
               ) : (
                 <>
                   <Download className="w-3.5 h-3.5" />
-                  <span>{printFormat === 'standard' ? 'A4 PDF' : '80mm PDF'}</span>
+                  <span className="hidden sm:inline">{printFormat === 'standard' ? 'A4 PDF' : '80mm PDF'}</span>
                 </>
               )}
+            </button>
+
+            {/* Offline Queue button */}
+            <button
+              onClick={handleAddToQueue}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Add to Offline Queue to print later"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Queue</span>
             </button>
 
             {/* Direct Print button */}
@@ -258,10 +282,15 @@ export const PrintReceiptModal: React.FC = () => {
         {/* 1. THERMAL POS RECEIPT FORMAT (80MM CONTINUOUS ROLL)     */}
         {/* ======================================================== */}
         {printFormat === 'thermal_80mm' && (
-          <div className="p-3 bg-slate-50 overflow-y-auto max-h-[78vh]">
+          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <span className="w-8 h-px bg-slate-300"></span>
+              Print Preview (80mm)
+              <span className="w-8 h-px bg-slate-300"></span>
+            </div>
             <div 
               ref={thermal80mmRef} 
-              className="thermal-receipt-container bg-white text-black font-sans text-xs leading-tight space-y-2.5 mx-auto border border-dashed border-slate-300 shadow-sm my-1 select-text"
+              className="thermal-receipt-container bg-white text-black font-sans text-xs leading-tight space-y-2.5 mx-auto border border-dashed border-slate-300 shadow-xl select-text"
               style={{ 
                 width: '300px', 
                 maxWidth: '300px',
@@ -442,10 +471,15 @@ export const PrintReceiptModal: React.FC = () => {
         {/* 2. THERMAL 80X80MM SQUARE LABEL FORMAT                   */}
         {/* ======================================================== */}
         {printFormat === 'thermal_80x80' && (
-          <div className="p-3 bg-slate-50 overflow-y-auto max-h-[78vh] flex items-center justify-center">
+          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <span className="w-8 h-px bg-slate-300"></span>
+              Print Preview (80x80)
+              <span className="w-8 h-px bg-slate-300"></span>
+            </div>
             <div 
               ref={thermal80x80Ref} 
-              className="thermal-receipt-container bg-white text-black font-sans leading-tight mx-auto border-2 border-black shadow-sm my-1 select-text"
+              className="thermal-receipt-container bg-white text-black font-sans leading-tight mx-auto border border-dashed border-slate-400 shadow-xl select-text"
               style={{ 
                 width: '300px', 
                 height: '300px', 
