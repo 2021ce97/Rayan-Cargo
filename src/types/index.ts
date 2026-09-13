@@ -284,6 +284,36 @@ export interface CustomerPreBookingInput {
   paymentPreference: 'pay_at_branch' | 'to_pay';
 }
 
+export interface AdminEditShipmentInput {
+  productPrice: number;
+  serviceFee: number;
+  destBranchCommission: number;
+  discountAmount: number;
+  paymentStatus: PaymentStatus;
+  paymentMethod?: PaymentMethod;
+  weightKg: number;
+  pieces: number;
+  description: string;
+  category: ParcelCategory;
+  isFragile: boolean;
+  senderName: string;
+  senderPhone: string;
+  senderAddress?: string;
+  senderCity?: string;
+  senderProvince?: string;
+  senderNationalId?: string;
+  receiverName: string;
+  receiverPhone: string;
+  receiverAddress?: string;
+  receiverCity?: string;
+  receiverProvince?: string;
+  receiverNationalId?: string;
+  originBranchId?: string;
+  destinationBranchId?: string;
+  status?: ShipmentStatus;
+  auditNote?: string;
+}
+
 export interface AnalyticsSummary {
   totalRevenue: number;
   totalPaid: number;

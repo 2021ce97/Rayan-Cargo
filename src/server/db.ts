@@ -403,6 +403,28 @@ const mockDb = {
       return { rows: [], rowCount: 1 };
     }
 
+    if (upper.startsWith('UPDATE SHIPMENTS SET') && upper.includes('ORIGIN_BRANCH_ID = $1')) {
+      const [
+        originBranchId, destinationBranchId, sender, receiver, packageInfo,
+        financials, destBranchCommission, originRemittanceDue, status, statusHistory, id
+      ] = params;
+      const s = memoryStore.shipments.get(id);
+      if (s) {
+        if (originBranchId) s.origin_branch_id = originBranchId;
+        if (destinationBranchId) s.destination_branch_id = destinationBranchId;
+        if (sender) s.sender = typeof sender === 'string' ? JSON.parse(sender) : sender;
+        if (receiver) s.receiver = typeof receiver === 'string' ? JSON.parse(receiver) : receiver;
+        if (packageInfo) s.package_info = typeof packageInfo === 'string' ? JSON.parse(packageInfo) : packageInfo;
+        if (financials) s.financials = typeof financials === 'string' ? JSON.parse(financials) : financials;
+        if (destBranchCommission !== null && destBranchCommission !== undefined) s.dest_branch_commission = destBranchCommission;
+        if (originRemittanceDue !== null && originRemittanceDue !== undefined) s.origin_remittance_due = originRemittanceDue;
+        if (status) s.status = status;
+        if (statusHistory) s.status_history = typeof statusHistory === 'string' ? JSON.parse(statusHistory) : statusHistory;
+        saveStoreToDisk();
+      }
+      return { rows: [], rowCount: 1 };
+    }
+
     if (upper.includes('UPDATE SHIPMENTS SET REMITTANCE_STATUS = \'SETTLED\'')) {
       const [id] = params;
       const s = memoryStore.shipments.get(id);

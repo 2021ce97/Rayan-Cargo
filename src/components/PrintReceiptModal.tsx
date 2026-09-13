@@ -263,12 +263,12 @@ export const PrintReceiptModal: React.FC = () => {
                   <div className="text-[8px] text-amber-800">Final weight & price verified upon branch drop-off.</div>
                 </div>
               )}
-              <div className="flex justify-between text-slate-700">
-                <span>Product Selling Price:</span>
-                <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
-              </div>
               {receiptRole === 'seller' ? (
                 <>
+                  <div className="flex justify-between text-slate-700">
+                    <span>Product Selling Price:</span>
+                    <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
+                  </div>
                   <div className="flex justify-between text-slate-600">
                     <span>Service Fee (Deducted):</span>
                     <span>-{sFeeVal.toLocaleString()} AFN</span>
@@ -289,22 +289,10 @@ export const PrintReceiptModal: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Service & Handling Fee:</span>
-                    <span>{sFeeVal > 0 ? `${sFeeVal.toLocaleString()} AFN` : 'Included'}</span>
-                  </div>
-                  {discountVal > 0 && (
-                    <div className="flex justify-between text-slate-600">
-                      <span>Fee Discount:</span>
-                      <span>-{discountVal.toLocaleString()} AFN</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-black text-xs pt-1 border-t border-slate-400">
-                    <span>TOTAL DUE FROM BUYER:</span>
-                    <span>{totalDueVal.toLocaleString()} AFN</span>
-                  </div>
-                </>
+                <div className="flex justify-between font-black text-xs pt-1 border-t border-slate-400">
+                  <span>TOTAL PAYABLE (مجموع قابل پرداخت):</span>
+                  <span className="font-mono text-rose-600 font-bold">{totalDueVal.toLocaleString()} AFN</span>
+                </div>
               )}
               <div className="flex justify-between font-bold text-[10px] mt-0.5">
                 <span>PAYMENT STATUS:</span>
@@ -586,18 +574,14 @@ export const PrintReceiptModal: React.FC = () => {
                       </div>
                     </>
                   ) : (
-                    <>
-                      <div className="text-xs text-slate-600 flex flex-wrap justify-end gap-x-3 gap-y-0.5">
-                        <span>Product Price: <strong>{priceVal.toLocaleString()} AFN</strong></span>
-                        <span>Service Fee: <strong>{sFeeVal > 0 ? `${sFeeVal.toLocaleString()} AFN` : 'Included / Prepaid'}</strong></span>
-                        {discountVal > 0 && (
-                          <span className="text-emerald-600">Discount: <strong>-{discountVal.toLocaleString()} AFN</strong></span>
-                        )}
-                      </div>
-                      <div className="text-base font-black text-slate-900 pt-1">
+                    <div className="space-y-0.5">
+                      <div className="text-base font-black text-slate-900">
                         Total Payable (مجموع قابل پرداخت): <span className="text-rose-600 font-mono text-xl font-black">{totalDueVal.toLocaleString()} AFN</span>
                       </div>
-                    </>
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        {isPaid ? 'Payment Confirmed / Paid at Origin' : 'Cash on Delivery (COD) to be collected upon handover'}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

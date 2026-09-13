@@ -15,7 +15,8 @@ import {
   LoginResult,
   BranchRemittanceTransfer,
   ToastItem,
-  ToastType
+  ToastType,
+  AdminEditShipmentInput
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
@@ -119,6 +120,7 @@ interface AppContextType {
     paymentStatus?: 'paid' | 'to_pay';
   }) => boolean;
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
+  adminEditShipment: (shipmentId: string, input: AdminEditShipmentInput) => Promise<boolean>;
   submitParcelForCollection: (shipmentId: string, reference?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
   reportDeliveryIssue: (shipmentId: string, issueType: string, customNote?: string) => boolean;
@@ -2198,6 +2200,126 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  // Super Admin: Edit parcel information and recalculate financials atomically
+  const adminEditShipment = async (shipmentId: string, input: AdminEditShipmentInput): Promise<boolean> => {
+    if (currentUser.role !== 'super_admin') {
+      showToast(t('unauthorized_admin_only') || 'Unauthorized: Only Super Admin can edit parcel information.', 'error');
+      return false;
+    }
+
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) {
+      showToast('Shipment not found in records', 'error');
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    const productPrice = Number(input.productPrice);
+    const serviceFee = Number(input.serviceFee);
+    const destBranchCommission = Number(input.destBranchCommission);
+    const discountAmount = Number(input.discountAmount || 0);
+    const sellerPayout = Math.max(0, productPrice - serviceFee - destBranchCommission + discountAmount);
+    const paymentStatus = input.paymentStatus || target.financials.paymentStatus || 'to_pay';
+    const isPaid = paymentStatus === 'paid' || input.status === 'delivered';
+
+    const updatedFinancials = {
+      ...target.financials,
+      productPrice,
+      totalAmount: productPrice,
+      serviceFee,
+      destBranchCommission,
+      discountAmount,
+      sellerPayout,
+      paymentStatus,
+      paymentMethod: input.paymentMethod || target.financials.paymentMethod || 'cod',
+      amountPaid: isPaid ? productPrice : 0,
+      amountDue: isPaid ? 0 : productPrice
+    };
+
+    const newHistoryItem = {
+      id: `st_edit_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      status: input.status || target.status,
+      location: 'Head Office Admin',
+      branchName: 'Head Office Admin',
+      timestamp: now,
+      note: input.auditNote?.trim() ? `[Admin Edit] ${input.auditNote.trim()}` : `[Admin Edit] Parcel records and pricing updated by ${currentUser.name}`,
+      updatedBy: `${currentUser.name} (Super Admin)`
+    };
+
+    const updatedShipment: Shipment = {
+      ...target,
+      status: input.status || target.status,
+      originBranchId: input.originBranchId || target.originBranchId,
+      destinationBranchId: input.destinationBranchId || target.destinationBranchId,
+      currentBranchId: input.originBranchId || target.currentBranchId,
+      destBranchCommission,
+      originRemittanceDue: Math.max(0, productPrice - destBranchCommission),
+      packageInfo: {
+        ...target.packageInfo,
+        weightKg: Number(input.weightKg),
+        pieces: Number(input.pieces),
+        category: input.category,
+        description: input.description,
+        isFragile: input.isFragile,
+        declaredValueAfn: productPrice
+      },
+      sender: {
+        ...target.sender,
+        name: input.senderName,
+        phone: input.senderPhone,
+        address: input.senderAddress || target.sender.address,
+        city: input.senderCity || target.sender.city,
+        province: input.senderProvince || target.sender.province,
+        nationalId: input.senderNationalId || target.sender.nationalId
+      },
+      receiver: {
+        ...target.receiver,
+        name: input.receiverName,
+        phone: input.receiverPhone,
+        address: input.receiverAddress || target.receiver.address,
+        city: input.receiverCity || target.receiver.city,
+        province: input.receiverProvince || target.receiver.province,
+        nationalId: input.receiverNationalId || target.receiver.nationalId
+      },
+      financials: updatedFinancials,
+      statusHistory: [...(target.statusHistory || []), newHistoryItem]
+    };
+
+    const sanitized = sanitizeShipmentFinancials(updatedShipment);
+
+    // Update state and local storage immediately
+    setShipments(prev => prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? sanitized : s));
+
+    // Send update to backend PUT /api/shipments/:id
+    try {
+      const res = await fetch(`/api/shipments/${target.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...input,
+          userRole: currentUser.role,
+          userName: currentUser.name
+        })
+      });
+      if (!res.ok) {
+        console.warn('Backend admin edit PUT response status:', res.status);
+      }
+    } catch (err) {
+      console.warn('Backend admin edit PUT sync network error:', err);
+    }
+
+    // Direct Supabase sync if enabled
+    try {
+      directSupabaseInsertShipment(sanitized);
+      directSupabaseUpdateShipmentStatus(sanitized.id, sanitized.status, sanitized.statusHistory);
+    } catch (sbErr) {
+      // Fallback
+    }
+
+    showToast(t('parcel_edited_success') || 'Parcel information and financials updated successfully!', 'success');
+    return true;
+  };
+
   const submitParcelForCollection = (shipmentId: string, reference?: string): boolean => {
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) return false;
@@ -2569,6 +2691,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addShipment,
         createCustomerPreBooking,
         confirmCustomerPreBooking,
+        adminEditShipment,
         settleInterBranchRemittance,
         submitParcelForCollection,
         updateShipmentStatus,

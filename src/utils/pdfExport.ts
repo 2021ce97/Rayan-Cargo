@@ -41,7 +41,7 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
 
     const pageStyle = format === 'thermal'
       ? `@page { size: 80mm auto; margin: 0; }`
-      : `@page { size: A4; margin: 5mm; }`;
+      : `@page { size: A4 portrait; margin: 4mm 6mm; }`;
 
     doc.open();
     doc.write(`
@@ -63,7 +63,18 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
               background: #ffffff !important;
               color: #0f172a !important;
               margin: 0;
-              padding: ${format === 'thermal' ? '0' : '10px'};
+              padding: ${format === 'thermal' ? '0' : '6px'};
+            }
+            @media print {
+              html, body {
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              .printable-receipt {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
             }
             .no-print {
               display: none !important;
@@ -99,7 +110,9 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
 
 /**
  * Dedicated Vector jsPDF generator for Receiver Receipt (Template 1).
- * Displays: Product Price, Service Fee, Discount, and Total Payable.
+ * Displays: Total Payable, Payment Method, and Delivery Collection Status.
+ * Note: Service fee, destination commission, and discounts are strictly merchant/seller side and omitted for buyer.
+ * Formatted strictly for a single A4 page with 3 Helpline Contacts shifted to the upper-middle page body.
  */
 export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
   try {
@@ -111,297 +124,235 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     });
 
     const pageWidth = 210;
-    const margin = 12;
-    const contentWidth = pageWidth - margin * 2; // 186mm
+    const margin = 10;
+    const contentWidth = pageWidth - margin * 2; // 190mm
 
-    // Header Background Accent (Emerald / Dark Slate for Receiver)
-    doc.setFillColor(15, 23, 42); // Slate-900
-    doc.rect(margin, margin, contentWidth, 24, 'F');
+    // 1. Header Background Accent (Slate-900 for Receiver Delivery)
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(margin, 8, contentWidth, 18, 1.5, 1.5, 'F');
 
     // Header Text
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.text('ARMAGHAN SADEQ TRANSFERS', margin + 6, margin + 8.5);
+    doc.setFontSize(14);
+    doc.text('ARMAGHAN SADEQ TRANSFERS', margin + 5, 14);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text('RECEIVER DELIVERY RECEIPT & CONSIGNMENT NOTE (رسید تحویلی گیرنده)', margin + 6, margin + 14.5);
-    doc.text('Fast, Secure Nationwide Courier & Freight Services | Kabul HQ', margin + 6, margin + 19.5);
+    doc.setFontSize(7.5);
+    doc.text('RECEIVER DELIVERY RECEIPT & CONSIGNMENT NOTE (رسید تحویلی گیرنده)', margin + 5, 19);
+    doc.text('Fast, Secure Nationwide Courier & Freight Services | Kabul HQ', margin + 5, 23);
 
     // CN Number Box on Header Right
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(margin + contentWidth - 62, margin + 3.5, 58, 17, 2, 2, 'F');
+    doc.roundedRect(margin + contentWidth - 62, 10, 58, 14, 1.5, 1.5, 'F');
     doc.setTextColor(225, 29, 72);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('WAYBILL / CN #', margin + contentWidth - 60, margin + 8);
-    doc.setFontSize(13);
-    doc.text(shipment.cnNumber, margin + contentWidth - 60, margin + 16);
+    doc.setFontSize(7);
+    doc.text('WAYBILL / CN #', margin + contentWidth - 60, 13.5);
+    doc.setFontSize(11.5);
+    doc.text(shipment.cnNumber, margin + contentWidth - 60, 20.5);
 
-    let y = margin + 30;
+    let y = 28;
 
-    // Sub-header Information Strip
-    doc.setFillColor(241, 245, 249); // Slate-100
-    doc.rect(margin, y, contentWidth, 8, 'F');
+    // 2. Sub-header Information Strip
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, contentWidth, 6.5, 'F');
     doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, y, contentWidth, 8, 'S');
+    doc.rect(margin, y, contentWidth, 6.5, 'S');
 
     doc.setTextColor(51, 65, 85);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text(`Booking Date: ${new Date(shipment.bookedAt).toLocaleDateString()} ${new Date(shipment.bookedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, margin + 4, y + 5.5);
-    doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase().replace('_', ' ')}`, margin + 90, y + 5.5);
-    doc.text(`Status: ${shipment.status.toUpperCase().replace(/_/g, ' ')}`, margin + contentWidth - 48, y + 5.5);
+    doc.setFontSize(7.5);
+    doc.text(`Booking Date: ${new Date(shipment.bookedAt).toLocaleDateString()} ${new Date(shipment.bookedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, margin + 3, y + 4.5);
+    doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase().replace('_', ' ')}`, margin + 85, y + 4.5);
+    doc.text(`Status: ${shipment.status.toUpperCase().replace(/_/g, ' ')}`, margin + contentWidth - 45, y + 4.5);
 
-    y += 13;
+    y += 8.5;
 
-    // SENDER (SHIPPER) & RECEIVER (CONSIGNEE) TWO-COLUMN BOXES
-    const colWidth = (contentWidth - 6) / 2; // 90mm each
-    const boxHeight = 36;
+    // 3. SENDER & RECEIVER TWO-COLUMN BOXES
+    const colWidth = (contentWidth - 4) / 2; // 93mm each
+    const boxHeight = 27;
 
     // Sender Box
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.3);
     doc.rect(margin, y, colWidth, boxHeight);
 
     doc.setFillColor(15, 23, 42);
-    doc.rect(margin, y, colWidth, 6, 'F');
+    doc.rect(margin, y, colWidth, 5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('1. SENDER / SHIPPER (ارسال کننده)', margin + 3, y + 4.5);
+    doc.setFontSize(7.5);
+    doc.text('1. SENDER / SHIPPER (ارسال کننده)', margin + 3, y + 3.8);
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.text(shipment.sender.name, margin + 3, y + 11.5);
+    doc.setFontSize(8.5);
+    doc.text(shipment.sender.name, margin + 3, y + 9.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 17);
+    doc.setFontSize(7.5);
+    doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 14);
     if (shipment.sender.nationalId) {
-      doc.text(`Tazkira / ID: ${shipment.sender.nationalId}`, margin + 3, y + 22.5);
+      doc.text(`Tazkira / ID: ${shipment.sender.nationalId}`, margin + 3, y + 18.5);
     }
-    doc.text(`Origin: ${originBranch?.city || shipment.sender.city} (${originBranch?.name || shipment.sender.province || 'AFG'})`, margin + 3, y + 28);
-    doc.text(`Address: ${shipment.sender.address.substring(0, 36)}`, margin + 3, y + 33.5);
+    doc.text(`Origin: ${originBranch?.city || shipment.sender.city} (${originBranch?.name || shipment.sender.province || 'AFG'})`, margin + 3, y + (shipment.sender.nationalId ? 22.5 : 18.5));
+    doc.text(`Address: ${shipment.sender.address.substring(0, 36)}`, margin + 3, y + (shipment.sender.nationalId ? 26 : 22.5));
 
-    // Receiver Box (Highlighted in Emerald)
-    const rxX = margin + colWidth + 6;
+    // Receiver Box (Emerald Accent)
+    const rxX = margin + colWidth + 4;
     doc.rect(rxX, y, colWidth, boxHeight);
-    doc.setFillColor(16, 185, 129); // Emerald-600
-    doc.rect(rxX, y, colWidth, 6, 'F');
+    doc.setFillColor(16, 185, 129);
+    doc.rect(rxX, y, colWidth, 5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('2. RECEIVER / CONSIGNEE (گیرنده محترم)', rxX + 3, y + 4.5);
+    doc.setFontSize(7.5);
+    doc.text('2. RECEIVER / CONSIGNEE (گیرنده محترم)', rxX + 3, y + 3.8);
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(shipment.receiver.name, rxX + 3, y + 11.5);
+    doc.setFontSize(8.5);
+    doc.text(shipment.receiver.name, rxX + 3, y + 9.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     const rxPhoneLine = shipment.receiver.altPhone 
       ? `Phone: ${shipment.receiver.phone} / ${shipment.receiver.altPhone}`
       : `Phone: ${shipment.receiver.phone}`;
-    doc.text(rxPhoneLine, rxX + 3, y + 17);
+    doc.text(rxPhoneLine, rxX + 3, y + 14);
 
     const receiverTazkiraNumber = shipment.receiver.nationalId || shipment.sender.receiverTazkira;
     if (receiverTazkiraNumber) {
       doc.setFont('helvetica', 'bold');
-      doc.text(`Receiver Tazkira: ${receiverTazkiraNumber}`, rxX + 3, y + 22.5);
+      doc.text(`Receiver Tazkira: ${receiverTazkiraNumber}`, rxX + 3, y + 18.5);
       doc.setFont('helvetica', 'normal');
     }
-    doc.text(`Destination: ${destBranch?.city || shipment.receiver.city} (${destBranch?.name || shipment.receiver.province || 'AFG'})`, rxX + 3, y + 28);
-    doc.text(`Address: ${shipment.receiver.address.substring(0, 36)}`, rxX + 3, y + 33.5);
+    doc.text(`Destination: ${destBranch?.city || shipment.receiver.city} (${destBranch?.name || shipment.receiver.province || 'AFG'})`, rxX + 3, y + (receiverTazkiraNumber ? 22.5 : 18.5));
+    doc.text(`Address: ${shipment.receiver.address.substring(0, 36)}`, rxX + 3, y + (receiverTazkiraNumber ? 26 : 22.5));
 
-    y += boxHeight + 4;
+    y += boxHeight + 3;
 
-    // PARCEL INFORMATION TABLE
+    // 4. PARCEL SPECIFICATIONS TABLE
     doc.setFillColor(15, 23, 42);
-    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.rect(margin, y, contentWidth, 5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('3. CONSIGNMENT & CARGO SPECIFICATIONS', margin + 4, y + 4.2);
+    doc.setFontSize(7.5);
+    doc.text('3. CONSIGNMENT & CARGO SPECIFICATIONS', margin + 3, y + 3.5);
 
-    y += 6;
+    y += 5;
 
     // Table Header
     doc.setFillColor(241, 245, 249);
-    doc.rect(margin, y, contentWidth, 6, 'F');
+    doc.rect(margin, y, contentWidth, 5, 'F');
     doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, y, contentWidth, 5, 'S');
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('Category', margin + 3, y + 3.5);
+    doc.text('Description', margin + 42, y + 3.5);
+    doc.text('Pieces', margin + 110, y + 3.5);
+    doc.text('Weight (KG)', margin + 132, y + 3.5);
+    doc.text('Service Mode', margin + 158, y + 3.5);
+
+    y += 5;
+
+    // Table Row
     doc.rect(margin, y, contentWidth, 6, 'S');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(shipment.packageInfo.category.toUpperCase(), margin + 3, y + 4.2);
+    doc.text(shipment.packageInfo.description.substring(0, 35), margin + 42, y + 4.2);
+    doc.text(`${shipment.packageInfo.pieces} pcs`, margin + 110, y + 4.2);
+    doc.text(`${shipment.packageInfo.weightKg} KG`, margin + 132, y + 4.2);
+    doc.text(shipment.packageInfo.serviceType.toUpperCase(), margin + 158, y + 4.2);
+
+    y += 8.5;
+
+    // 5. FINANCIAL SUMMARY & PAYMENT SECTION (RECEIVER BREAKDOWN)
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 27, 1.5, 1.5, 'FD');
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('Category', margin + 3, y + 4.2);
-    doc.text('Description', margin + 42, y + 4.2);
-    doc.text('Pieces', margin + 105, y + 4.2);
-    doc.text('Weight (KG)', margin + 125, y + 4.2);
-    doc.text('Service Mode', margin + 152, y + 4.2);
+    doc.text('4. RECEIVER CHARGES & FINANCIAL BREAKDOWN (صورت حساب گیرنده)', margin + 3, y + 4.5);
 
-    y += 6;
-
-    // Table Row
-    doc.rect(margin, y, contentWidth, 7.5, 'S');
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(shipment.packageInfo.category.toUpperCase(), margin + 3, y + 5.2);
-    doc.text(shipment.packageInfo.description.substring(0, 32), margin + 42, y + 5.2);
-    doc.text(`${shipment.packageInfo.pieces} pcs`, margin + 105, y + 5.2);
-    doc.text(`${shipment.packageInfo.weightKg} KG`, margin + 125, y + 5.2);
-    doc.text(shipment.packageInfo.serviceType.toUpperCase(), margin + 152, y + 5.2);
-
-    y += 10.5;
-
-    // FINANCIAL SUMMARY & PAYMENT SECTION (RECEIVER BREAKDOWN)
-    // Explicitly displays: Product Price, Service Fee, Discount, and Total Payable
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, y, contentWidth, 34, 2, 2, 'FD');
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('4. RECEIVER CHARGES & FINANCIAL BREAKDOWN (صورت حساب گیرنده)', margin + 4, y + 5.5);
-
-    const productPriceVal = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
-    const serviceFeeVal = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
-    const discountVal = shipment.financials.discountAmount || 0;
-    const totalPayableVal = shipment.financials.totalAmount || productPriceVal;
+    const totalPayableVal = shipment.financials.totalAmount || shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || 3000;
+    const isPaid = shipment.financials.paymentStatus === 'paid' || shipment.status === 'delivered';
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
+    doc.setFontSize(7.5);
     doc.setTextColor(51, 65, 85);
-    doc.text(`• Product Price (قیمت اصلی جنس):`, margin + 4, y + 12.5);
+    doc.text(`• Payment Method (روش پرداخت):`, margin + 3, y + 10.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(`${productPriceVal.toLocaleString()} AFN`, margin + 65, y + 12.5);
+    doc.text(shipment.financials.paymentMethod.toUpperCase(), margin + 55, y + 10.5);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text(`• Service Fee (فیس خدمات و انتقال):`, margin + 4, y + 18);
+    doc.text(`• Delivery Terms (شرایط تحویلی):`, margin + 3, y + 16);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(serviceFeeVal > 0 ? `${serviceFeeVal.toLocaleString()} AFN` : `Included / Prepaid`, margin + 65, y + 18);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text(`• Discount (تخفیف):`, margin + 4, y + 23.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(discountVal > 0 ? 22 : 15, discountVal > 0 ? 163 : 23, discountVal > 0 ? 74 : 42);
-    doc.text(discountVal > 0 ? `-${discountVal.toLocaleString()} AFN` : `0 AFN`, margin + 65, y + 23.5);
+    doc.setTextColor(isPaid ? 22 : 225, isPaid ? 101 : 29, isPaid ? 52 : 72);
+    doc.text(isPaid ? 'Prepaid / Paid at Origin (قبلا پرداخت شده)' : 'COD Collection at Delivery (پرداخت هنگام تحویل)', margin + 55, y + 16);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.setFontSize(7.5);
-    doc.text(`Payment Method: ${shipment.financials.paymentMethod.toUpperCase()}`, margin + 4, y + 29.5);
+    doc.setFontSize(7);
+    doc.text(`• Notice: Parcel handed over to consignee upon settlement of Total Payable.`, margin + 3, y + 21.5);
 
     // Total Payable Banner Box
     const totalBoxX = margin + 98;
-    const isPaid = shipment.financials.paymentStatus === 'paid';
     doc.setFillColor(isPaid ? 236 : 254, isPaid ? 253 : 242, isPaid ? 245 : 242);
     doc.setDrawColor(isPaid ? 16 : 225, isPaid ? 185 : 29, isPaid ? 129 : 72);
-    doc.roundedRect(totalBoxX, y + 4, contentWidth - 102, 26, 2, 2, 'FD');
+    doc.roundedRect(totalBoxX, y + 3, contentWidth - 101, 21, 1.5, 1.5, 'FD');
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('TOTAL PAYABLE (مجموع قابل پرداخت):', totalBoxX + 4, y + 10);
-    doc.setFontSize(14);
+    doc.setFontSize(7.5);
+    doc.text('TOTAL PAYABLE (مجموع قابل پرداخت):', totalBoxX + 3, y + 8);
+    doc.setFontSize(12.5);
     doc.setTextColor(225, 29, 72);
-    doc.text(`${totalPayableVal.toLocaleString()} AFN`, totalBoxX + 4, y + 17.5);
+    doc.text(`${totalPayableVal.toLocaleString()} AFN`, totalBoxX + 3, y + 14.5);
 
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(isPaid ? 22 : 180, isPaid ? 101 : 83, isPaid ? 52 : 9);
-    doc.text(`STATUS: ${isPaid ? 'PAID / تحویل شده' : 'COD (TO PAY ON DELIVERY)'}`, totalBoxX + 4, y + 24);
+    doc.text(`STATUS: ${isPaid ? 'PAID / تحویل شده' : 'COD (TO PAY ON DELIVERY)'}`, totalBoxX + 3, y + 19.5);
 
-    y += 37;
+    y += 29.5;
 
-    // BARCODE VISUAL RECTANGLE & TRACKING TEXT
+    // 6. BARCODE VISUAL RECTANGLE & TRACKING TEXT
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.3);
-    doc.rect(margin, y, contentWidth, 14);
+    doc.rect(margin, y, contentWidth, 11.5);
     
-    // Draw simulated barcode lines
     doc.setFillColor(15, 23, 42);
-    let barX = margin + 8;
+    let barX = margin + 5;
     const barsPattern = [2, 1, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 3, 1, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2];
     for (let i = 0; i < barsPattern.length; i++) {
-      const w = barsPattern[i] * 0.6;
-      doc.rect(barX, y + 1.5, w, 8, 'F');
-      barX += w + 1.1;
+      const w = barsPattern[i] * 0.55;
+      doc.rect(barX, y + 1.2, w, 6.5, 'F');
+      barX += w + 0.9;
     }
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`* ${shipment.cnNumber} *`, margin + 28, y + 12.5);
-
     doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`* ${shipment.cnNumber} *`, margin + 24, y + 10);
+
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Track live online at www.armaghansadeq.af using Consignment Note (CN #).', margin + 88, y + 5.5);
+    doc.text('Track live online at www.armaghansadeq.af using Consignment Note (CN #).', margin + 85, y + 4.5);
     const senderHubPhone = originBranch?.phone ? originBranch.phone : 'Hub Contact';
-    doc.text(`Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 88, y + 10.5);
+    doc.text(`Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 85, y + 8.5);
 
-    y += 17;
+    y += 14;
 
-    // OFFICIAL RULES & LEGAL CONDITIONS BOX
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(203, 213, 225);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(margin, y, contentWidth, 42, 2, 2, 'FD');
-
-    // Header strip for Rules
-    doc.setFillColor(15, 23, 42);
-    doc.roundedRect(margin, y, contentWidth, 5.5, 1.5, 1.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('5. OFFICIAL RECEIVER CONDITIONS & REGULATIONS (شرایط و قوانین تحویلی امانات)', margin + 3, y + 4);
-
-    let ruleY = y + 9.5;
-    doc.setFontSize(6.5);
-    
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text('1. ID Verification (تثبیت هویت):', margin + 3, ruleY);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('Consignment is handed over strictly upon presentation of original Tazkira / National ID and recipient signature.', margin + 44, ruleY);
-    ruleY += 6.5;
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text('2. Package Inspection (بررسی بسته):', margin + 3, ruleY);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('Receiver must inspect the outer condition of the parcel before signing the electronic Proof of Delivery (POD).', margin + 44, ruleY);
-    ruleY += 6.5;
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text('3. Claims Window (مهلت شکایت):', margin + 3, ruleY);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('Any discrepancy or claim must be reported to the branch manager within 48 hours with this original receipt.', margin + 44, ruleY);
-    ruleY += 6.5;
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text('4. Storage Policy (نگهداری امانات):', margin + 3, ruleY);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('Uncollected parcels will be kept securely in destination warehouse for up to 30 days before statutory return.', margin + 44, ruleY);
-
-    y += 45;
-
-    // OFFICIAL 3 MANDATORY CONTACT NUMBERS STRIP AT BOTTOM OF PDF
+    // 7. SHIFTED OFFICIAL 3 MANDATORY CONTACT NUMBERS STRIP (FIRMLY ON PAGE 1)
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.3);
@@ -424,7 +375,7 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     doc.setTextColor(180, 83, 9);
     doc.text('2. COMPLAINTS / SHIKAYAT:', margin + colContactW + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
     doc.text('0711299680', margin + colContactW + 3, y + 8.2);
 
@@ -433,18 +384,68 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     doc.setTextColor(30, 58, 138);
     doc.text('3. MAIN OFFICE (KABUL HQ):', margin + colContactW * 2 + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
     doc.text('0774144004', margin + colContactW * 2 + 3, y + 8.2);
 
-    // Footer with Rayan Tech Solutions Attribution
-    y += 14;
+    y += 13.5;
+
+    // 8. OFFICIAL RULES & LEGAL CONDITIONS BOX
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, y, contentWidth, 24, 1.5, 1.5, 'FD');
+
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(margin, y, contentWidth, 4.5, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.text('5. OFFICIAL RECEIVER CONDITIONS & REGULATIONS (شرایط و قوانین تحویلی امانات)', margin + 3, y + 3.2);
+
+    let ruleY = y + 7.5;
+    doc.setFontSize(6);
+    
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. ID Verification (تثبیت هویت):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Consignment handed over strictly upon presentation of original Tazkira / ID and recipient signature.', margin + 38, ruleY);
+    ruleY += 4.5;
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Package Inspection (بررسی بسته):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Receiver must inspect outer condition before signing the electronic Proof of Delivery (POD).', margin + 38, ruleY);
+    ruleY += 4.5;
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('3. Claims Window (مهلت شکایت):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Any discrepancy or claim must be reported to branch manager within 48 hours with original receipt.', margin + 38, ruleY);
+    ruleY += 4.5;
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('4. Storage Policy (نگهداری امانات):', margin + 3, ruleY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Uncollected parcels kept in warehouse up to 30 days before statutory return to origin.', margin + 38, ruleY);
+
+    // 9. Signatures and Attribution Footer (Safely within single A4 page)
+    y += 27;
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(100, 116, 139);
     doc.text('Armaghan Sadeq Transfers | Receiver Delivery Receipt', margin, y);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
-    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 68, y);
+    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 60, y);
 
     const filename = `Receiver_Receipt_${shipment.cnNumber}.pdf`;
     doc.save(filename);
@@ -456,8 +457,9 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
 }
 
 /**
- * Dedicated Vector jsPDF generator for Simplified Seller Receipt (Template 2).
+ * Dedicated Vector jsPDF generator for Seller Receipt (Template 2).
  * Displays: Product Price, Service Fee, Destination Commission, Discount, and Net Seller Payout.
+ * Formatted strictly for a single A4 page with 3 Helpline Contacts shifted to the upper-middle page body.
  */
 export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
   try {
@@ -469,111 +471,150 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     });
 
     const pageWidth = 210;
-    const margin = 12;
-    const contentWidth = pageWidth - margin * 2; // 186mm
+    const margin = 10;
+    const contentWidth = pageWidth - margin * 2; // 190mm
 
-    // Header Background Accent (Navy / Dark Blue for Merchant/Seller)
-    doc.setFillColor(30, 41, 59); // Slate-800
-    doc.rect(margin, margin, contentWidth, 24, 'F');
+    // 1. Header Background Accent (Slate-800 for Merchant/Seller)
+    doc.setFillColor(30, 41, 59);
+    doc.roundedRect(margin, 8, contentWidth, 18, 1.5, 1.5, 'F');
 
     // Header Text
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(15);
-    doc.text('ARMAGHAN SADEQ TRANSFERS', margin + 6, margin + 8.5);
+    doc.setFontSize(14);
+    doc.text('ARMAGHAN SADEQ TRANSFERS', margin + 5, 14);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text('SELLER BOOKING VOUCHER & PAYOUT STATEMENT (رسید و حساب فروشنده)', margin + 6, margin + 14.5);
-    doc.text('Merchant Remittance & Logistics Account Voucher | Origin Booking Copy', margin + 6, margin + 19.5);
+    doc.setFontSize(7.5);
+    doc.text('SELLER BOOKING VOUCHER & PAYOUT STATEMENT (رسید و حساب فروشنده)', margin + 5, 19);
+    doc.text('Merchant Remittance & Logistics Account Voucher | Origin Booking Copy', margin + 5, 23);
 
     // CN Number Box on Header Right
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(margin + contentWidth - 62, margin + 3.5, 58, 17, 2, 2, 'F');
+    doc.roundedRect(margin + contentWidth - 62, 10, 58, 14, 1.5, 1.5, 'F');
     doc.setTextColor(30, 41, 59);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('MERCHANT BOOKING #', margin + contentWidth - 60, margin + 8);
-    doc.setFontSize(13);
-    doc.text(shipment.cnNumber, margin + contentWidth - 60, margin + 16);
+    doc.setFontSize(7);
+    doc.text('MERCHANT BOOKING #', margin + contentWidth - 60, 13.5);
+    doc.setFontSize(11.5);
+    doc.text(shipment.cnNumber, margin + contentWidth - 60, 20.5);
 
-    let y = margin + 30;
+    let y = 28;
 
-    // Sub-header Information Strip
+    // 2. Sub-header Information Strip
     doc.setFillColor(241, 245, 249);
-    doc.rect(margin, y, contentWidth, 8, 'F');
+    doc.rect(margin, y, contentWidth, 6.5, 'F');
     doc.setDrawColor(203, 213, 225);
-    doc.rect(margin, y, contentWidth, 8, 'S');
+    doc.rect(margin, y, contentWidth, 6.5, 'S');
 
     doc.setTextColor(51, 65, 85);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text(`Booking Date: ${new Date(shipment.bookedAt).toLocaleDateString()} ${new Date(shipment.bookedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, margin + 4, y + 5.5);
-    doc.text(`Route: ${(originBranch?.city || shipment.sender.city).toUpperCase()} ➔ ${(destBranch?.city || shipment.receiver.city).toUpperCase()}`, margin + 85, y + 5.5);
-    doc.text(`Officer: ${shipment.bookedByUserName || 'Origin Cashier'}`, margin + contentWidth - 48, y + 5.5);
+    doc.setFontSize(7.5);
+    doc.text(`Booking Date: ${new Date(shipment.bookedAt).toLocaleDateString()} ${new Date(shipment.bookedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, margin + 3, y + 4.5);
+    doc.text(`Route: ${(originBranch?.city || shipment.sender.city).toUpperCase()} ➔ ${(destBranch?.city || shipment.receiver.city).toUpperCase()}`, margin + 85, y + 4.5);
+    doc.text(`Officer: ${shipment.bookedByUserName || 'Origin Cashier'}`, margin + contentWidth - 45, y + 4.5);
 
-    y += 13;
+    y += 8.5;
 
-    // SENDER (SELLER) & RECEIVER SUMMARY BOXES
-    const colWidth = (contentWidth - 6) / 2;
-    const boxHeight = 32;
+    // 3. SENDER (SELLER) & RECEIVER SUMMARY BOXES
+    const colWidth = (contentWidth - 4) / 2; // 93mm each
+    const boxHeight = 25;
 
     // Seller Box
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(15, 23, 42);
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.3);
     doc.rect(margin, y, colWidth, boxHeight);
 
     doc.setFillColor(30, 41, 59);
-    doc.rect(margin, y, colWidth, 6, 'F');
+    doc.rect(margin, y, colWidth, 5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('SELLER / MERCHANT ACCOUNT (فروشنده / فرستنده)', margin + 3, y + 4.5);
+    doc.setFontSize(7.5);
+    doc.text('SELLER / MERCHANT ACCOUNT (فروشنده / فرستنده)', margin + 3, y + 3.8);
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(shipment.sender.name, margin + 3, y + 12);
+    doc.setFontSize(8.5);
+    doc.text(shipment.sender.name, margin + 3, y + 9.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 18);
-    doc.text(`Origin Hub: ${originBranch?.name || shipment.sender.city}`, margin + 3, y + 24);
+    doc.setFontSize(7.5);
+    doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 14);
+    doc.text(`Origin Hub: ${originBranch?.name || shipment.sender.city}`, margin + 3, y + 18.5);
+    doc.text(`Address: ${shipment.sender.address.substring(0, 36)}`, margin + 3, y + 22.5);
 
     // Receiver Summary Box
-    const rxX = margin + colWidth + 6;
+    const rxX = margin + colWidth + 4;
     doc.rect(rxX, y, colWidth, boxHeight);
     doc.setFillColor(71, 85, 105);
-    doc.rect(rxX, y, colWidth, 6, 'F');
+    doc.rect(rxX, y, colWidth, 5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('CONSIGNEE / DESTINATION (گیرنده)', rxX + 3, y + 4.5);
+    doc.setFontSize(7.5);
+    doc.text('CONSIGNEE / DESTINATION (گیرنده)', rxX + 3, y + 3.8);
 
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(shipment.receiver.name, rxX + 3, y + 12);
+    doc.setFontSize(8.5);
+    doc.text(shipment.receiver.name, rxX + 3, y + 9.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(`Phone: ${shipment.receiver.phone}`, rxX + 3, y + 18);
-    doc.text(`Destination Hub: ${destBranch?.name || shipment.receiver.city}`, rxX + 3, y + 24);
+    doc.setFontSize(7.5);
+    doc.text(`Phone: ${shipment.receiver.phone}`, rxX + 3, y + 14);
+    doc.text(`Destination Hub: ${destBranch?.name || shipment.receiver.city}`, rxX + 3, y + 18.5);
+    doc.text(`Address: ${shipment.receiver.address.substring(0, 36)}`, rxX + 3, y + 22.5);
 
-    y += boxHeight + 4;
+    y += boxHeight + 3;
 
-    // SIMPLIFIED FINANCIAL STATEMENT (SELLER PAYOUT BREAKDOWN)
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, y, contentWidth, 50, 2, 2, 'FD');
-
+    // 4. PARCEL SPECIFICATIONS TABLE
     doc.setFillColor(30, 41, 59);
-    doc.roundedRect(margin, y, contentWidth, 6, 1.5, 1.5, 'F');
+    doc.rect(margin, y, contentWidth, 5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('MERCHANT SETTLEMENT & COMMISSION STATEMENT (صورت حساب و کمیسیون فروشنده)', margin + 4, y + 4.5);
+    doc.setFontSize(7.5);
+    doc.text('CONSIGNMENT SPECIFICATIONS & WEIGHT', margin + 3, y + 3.5);
+
+    y += 5;
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, contentWidth, 5, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, y, contentWidth, 5, 'S');
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('Category', margin + 3, y + 3.5);
+    doc.text('Description', margin + 42, y + 3.5);
+    doc.text('Pieces', margin + 110, y + 3.5);
+    doc.text('Weight (KG)', margin + 132, y + 3.5);
+    doc.text('Service Mode', margin + 158, y + 3.5);
+
+    y += 5;
+
+    doc.rect(margin, y, contentWidth, 6, 'S');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(shipment.packageInfo.category.toUpperCase(), margin + 3, y + 4.2);
+    doc.text(shipment.packageInfo.description.substring(0, 35), margin + 42, y + 4.2);
+    doc.text(`${shipment.packageInfo.pieces} pcs`, margin + 110, y + 4.2);
+    doc.text(`${shipment.packageInfo.weightKg} KG`, margin + 132, y + 4.2);
+    doc.text(shipment.packageInfo.serviceType.toUpperCase(), margin + 158, y + 4.2);
+
+    y += 8.5;
+
+    // 5. SIMPLIFIED FINANCIAL STATEMENT (SELLER PAYOUT BREAKDOWN)
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 29, 1.5, 1.5, 'FD');
+
+    doc.setFillColor(30, 41, 59);
+    doc.roundedRect(margin, y, contentWidth, 5, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('MERCHANT SETTLEMENT & COMMISSION STATEMENT (صورت حساب و کمیسیون فروشنده)', margin + 3, y + 3.6);
 
     const productPriceVal = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
     const serviceFeeVal = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
@@ -583,136 +624,93 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
       ? shipment.financials.sellerPayout
       : Math.max(0, productPriceVal - serviceFeeVal - destCommVal + discountVal);
 
-    let statY = y + 12;
-    doc.setFontSize(8.5);
+    let statY = y + 9.5;
+    doc.setFontSize(7.5);
 
     // Line 1: Product Price
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('1. Product Selling Price (قیمت فروش جنس):', margin + 4, statY);
+    doc.text('1. Product Selling Price (قیمت فروش جنس):', margin + 3, statY);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(15, 23, 42);
-    doc.text(`${productPriceVal.toLocaleString()} AFN`, margin + 75, statY);
+    doc.text(`${productPriceVal.toLocaleString()} AFN`, margin + 65, statY);
 
     // Line 2: Service Fee
-    statY += 6;
+    statY += 4.5;
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('2. Service & Handling Fee (فیس خدمات و انتقال کسر شده):', margin + 4, statY);
+    doc.text('2. Service & Handling Fee (فیس خدمات کسر شده):', margin + 3, statY);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(225, 29, 72);
-    doc.text(`-${serviceFeeVal.toLocaleString()} AFN`, margin + 75, statY);
+    doc.text(`-${serviceFeeVal.toLocaleString()} AFN`, margin + 65, statY);
 
     // Line 3: Destination Commission
-    statY += 6;
+    statY += 4.5;
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('3. Dest. Branch Commission (کمیسیون نمایندگی مقصد کسر شده):', margin + 4, statY);
+    doc.text('3. Dest. Branch Commission (کمیسیون مقصد کسر شده):', margin + 3, statY);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(225, 29, 72);
-    doc.text(`-${destCommVal.toLocaleString()} AFN`, margin + 75, statY);
+    doc.text(`-${destCommVal.toLocaleString()} AFN`, margin + 65, statY);
 
     // Line 4: Discount
-    statY += 6;
+    statY += 4.5;
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('4. Fee Discount Applied (تخفیف اعمال شده):', margin + 4, statY);
+    doc.text('4. Fee Discount Applied (تخفیف اعمال شده):', margin + 3, statY);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(discountVal > 0 ? 22 : 15, discountVal > 0 ? 163 : 23, discountVal > 0 ? 74 : 42);
-    doc.text(discountVal > 0 ? `+${discountVal.toLocaleString()} AFN` : `0 AFN`, margin + 75, statY);
+    doc.text(discountVal > 0 ? `+${discountVal.toLocaleString()} AFN` : `0 AFN`, margin + 65, statY);
 
     // Net Seller Payout Banner Box on the Right
-    const payoutBoxX = margin + 104;
-    doc.setFillColor(236, 253, 245); // Emerald-50
-    doc.setDrawColor(16, 185, 129); // Emerald-500
-    doc.roundedRect(payoutBoxX, y + 9, contentWidth - 108, 36, 2, 2, 'FD');
+    const payoutBoxX = margin + 98;
+    doc.setFillColor(236, 253, 245);
+    doc.setDrawColor(16, 185, 129);
+    doc.roundedRect(payoutBoxX, y + 6.5, contentWidth - 101, 21, 1.5, 1.5, 'FD');
 
-    doc.setTextColor(6, 78, 59); // Emerald-900
+    doc.setTextColor(6, 78, 59);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('NET SELLER PAYOUT:', payoutBoxX + 4, y + 16);
     doc.setFontSize(7.5);
-    doc.setTextColor(4, 120, 87);
-    doc.text('(مبلغ قابل تادیه به فروشنده)', payoutBoxX + 4, y + 21);
+    doc.text('NET SELLER PAYOUT (مبلغ قابل تادیه):', payoutBoxX + 3, y + 11.5);
 
-    doc.setFontSize(14);
+    doc.setFontSize(12.5);
     doc.setTextColor(5, 150, 105);
-    doc.text(`${sellerPayoutVal.toLocaleString()} AFN`, payoutBoxX + 4, y + 29);
+    doc.text(`${sellerPayoutVal.toLocaleString()} AFN`, payoutBoxX + 3, y + 18);
 
-    doc.setFontSize(7.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text(`Remittance: Via Sarafi / Origin Branch Cash`, payoutBoxX + 4, y + 38);
-
-    y += 54;
-
-    // SELLER REMITTANCE TERMS & NOTES
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, y, contentWidth, 38, 2, 2, 'FD');
-
-    doc.setFillColor(30, 41, 59);
-    doc.roundedRect(margin, y, contentWidth, 5.5, 1.5, 1.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('MERCHANT REMITTANCE POLICY & NOTES (شرایط تسویه حساب و پرداخت پول فروشنده)', margin + 3, y + 4);
-
-    let noteY = y + 9.5;
     doc.setFontSize(6.5);
-    
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text('1. Payout Disbursement (تادیه وجوه):', margin + 3, noteY);
-    doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('Net seller funds are payable at origin branch or via registered Sarafi account immediately after receiver collection confirmation.', margin + 44, noteY);
-    noteY += 6.5;
+    doc.text(`Remittance: Via Sarafi / Origin Branch Cash`, payoutBoxX + 3, y + 23.5);
 
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text('2. Receipt Requirement (ارائه رسید):', margin + 3, noteY);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('Presenting this original booking slip or valid CN verification code is mandatory for receiving merchant remittance.', margin + 44, noteY);
-    noteY += 6.5;
+    y += 31.5;
 
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.text('3. Returned Parcels (اجناس مسترد شده):', margin + 3, noteY);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('If parcel is rejected by receiver, return freight will be settled per standard merchant terms and parcel returned to origin.', margin + 44, noteY);
-
-    y += 42;
-
-    // BARCODE VISUAL RECTANGLE
+    // 6. BARCODE VISUAL RECTANGLE
     doc.setDrawColor(15, 23, 42);
     doc.setLineWidth(0.3);
-    doc.rect(margin, y, contentWidth, 14);
+    doc.rect(margin, y, contentWidth, 11.5);
     
     doc.setFillColor(15, 23, 42);
-    let barX = margin + 8;
+    let barX = margin + 5;
     const barsPattern = [2, 1, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 1, 2, 3, 1, 2, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 1, 3, 1, 2, 4, 1, 3, 2, 1, 4, 2];
     for (let i = 0; i < barsPattern.length; i++) {
-      const w = barsPattern[i] * 0.6;
-      doc.rect(barX, y + 1.5, w, 8, 'F');
-      barX += w + 1.1;
+      const w = barsPattern[i] * 0.55;
+      doc.rect(barX, y + 1.2, w, 6.5, 'F');
+      barX += w + 0.9;
     }
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`* ${shipment.cnNumber} *`, margin + 28, y + 12.5);
-
     doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`* ${shipment.cnNumber} *`, margin + 24, y + 10);
+
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Seller portal tracking & payment status available at www.armaghansadeq.af', margin + 88, y + 5.5);
+    doc.text('Seller portal tracking & payment status available at www.armaghansadeq.af', margin + 85, y + 4.5);
     const senderHubPhone = originBranch?.phone ? originBranch.phone : 'Hub Contact';
-    doc.text(`Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 88, y + 10.5);
+    doc.text(`Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 85, y + 8.5);
 
-    y += 17;
+    y += 14;
 
-    // OFFICIAL 3 MANDATORY CONTACT NUMBERS STRIP
+    // 7. SHIFTED OFFICIAL 3 MANDATORY CONTACT NUMBERS STRIP (FIRMLY ON PAGE 1)
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.3);
@@ -735,7 +733,7 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setTextColor(180, 83, 9);
     doc.text('2. COMPLAINTS / SHIKAYAT:', margin + colContactW + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
     doc.text('0711299680', margin + colContactW + 3, y + 8.2);
 
@@ -744,18 +742,59 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setTextColor(30, 58, 138);
     doc.text('3. MAIN OFFICE (KABUL HQ):', margin + colContactW * 2 + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
     doc.text('0774144004', margin + colContactW * 2 + 3, y + 8.2);
 
-    // Footer with Rayan Tech Solutions Attribution
-    y += 14;
+    y += 13.5;
+
+    // 8. SELLER REMITTANCE TERMS & NOTES
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 23, 1.5, 1.5, 'FD');
+
+    doc.setFillColor(30, 41, 59);
+    doc.roundedRect(margin, y, contentWidth, 4.5, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.text('MERCHANT REMITTANCE POLICY & NOTES (شرایط تسویه حساب و پرداخت پول فروشنده)', margin + 3, y + 3.2);
+
+    let noteY = y + 7.5;
+    doc.setFontSize(6);
+    
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Payout Disbursement (تادیه وجوه):', margin + 3, noteY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Net seller funds payable at origin branch or via Sarafi immediately after receiver collection confirmation.', margin + 40, noteY);
+    noteY += 4.5;
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Receipt Requirement (ارائه رسید):', margin + 3, noteY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Presenting this original booking slip or valid CN code is mandatory for receiving merchant remittance.', margin + 40, noteY);
+    noteY += 4.5;
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text('3. Returned Parcels (اجناس مسترد شده):', margin + 3, noteY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(51, 65, 85);
+    doc.text('If parcel rejected by receiver, return freight settled per standard merchant terms and parcel returned to origin.', margin + 40, noteY);
+
+    // 9. Attribution Footer (Guaranteed single page)
+    y += 26;
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(100, 116, 139);
     doc.text('Armaghan Sadeq Transfers | Seller Payout Voucher', margin, y);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(51, 65, 85);
-    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 68, y);
+    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 60, y);
 
     const filename = `Seller_Receipt_${shipment.cnNumber}.pdf`;
     doc.save(filename);

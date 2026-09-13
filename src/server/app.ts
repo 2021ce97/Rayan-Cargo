@@ -763,6 +763,181 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
   }
 });
 
+// Admin-only: Edit parcel info & financials
+api.put('/shipments/:id', async (req: Request, res: Response) => {
+  try {
+    const db = getDbPool();
+    const { id } = req.params;
+    const {
+      userRole,
+      userName,
+      productPrice,
+      serviceFee,
+      destBranchCommission,
+      discountAmount,
+      paymentStatus,
+      paymentMethod,
+      weightKg,
+      pieces,
+      description,
+      category,
+      isFragile,
+      senderName,
+      senderPhone,
+      senderAddress,
+      senderCity,
+      senderProvince,
+      senderNationalId,
+      receiverName,
+      receiverPhone,
+      receiverAddress,
+      receiverCity,
+      receiverProvince,
+      receiverNationalId,
+      originBranchId,
+      destinationBranchId,
+      status,
+      auditNote
+    } = req.body;
+
+    // Security: Only Head Office Super Admin can edit parcel information
+    if (userRole !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: Only Head Office Super Admin can modify parcel details and financials.'
+      });
+    }
+
+    // Fetch existing shipment
+    const { rows: existingRows } = await db.query('SELECT * FROM shipments WHERE id = $1', [id]);
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Shipment not found' });
+    }
+    const existing = existingRows[0];
+    const existingSender = typeof existing.sender === 'string' ? JSON.parse(existing.sender) : (existing.sender || {});
+    const existingReceiver = typeof existing.receiver === 'string' ? JSON.parse(existing.receiver) : (existing.receiver || {});
+    const existingPkg = typeof existing.package_info === 'string' ? JSON.parse(existing.package_info) : (existing.package_info || {});
+    const existingFin = typeof existing.financials === 'string' ? JSON.parse(existing.financials) : (existing.financials || {});
+    const existingHistory = typeof existing.status_history === 'string' ? JSON.parse(existing.status_history) : (existing.status_history || []);
+
+    const finalProductPrice = Number(productPrice !== undefined ? productPrice : (existingFin.productPrice ?? existingFin.totalAmount ?? 0));
+    const finalServiceFee = Number(serviceFee !== undefined ? serviceFee : (existingFin.serviceFee ?? 150));
+    const finalDestCommission = Number(destBranchCommission !== undefined ? destBranchCommission : (existingFin.destBranchCommission ?? existing.dest_branch_commission ?? 70));
+    const finalDiscount = Number(discountAmount !== undefined ? discountAmount : (existingFin.discountAmount ?? 0));
+    const finalSellerPayout = Math.max(0, finalProductPrice - finalServiceFee - finalDestCommission + finalDiscount);
+    const finalPaymentStatus = paymentStatus || existingFin.paymentStatus || 'to_pay';
+    const finalStatus = status || existing.status || 'booked';
+    const isPaid = finalPaymentStatus === 'paid' || finalStatus === 'delivered';
+
+    const mergedFinancials = {
+      ...existingFin,
+      productPrice: finalProductPrice,
+      totalAmount: finalProductPrice,
+      serviceFee: finalServiceFee,
+      destBranchCommission: finalDestCommission,
+      discountAmount: finalDiscount,
+      sellerPayout: finalSellerPayout,
+      paymentStatus: finalPaymentStatus,
+      paymentMethod: paymentMethod || existingFin.paymentMethod || 'cod',
+      amountPaid: isPaid ? finalProductPrice : 0,
+      amountDue: isPaid ? 0 : finalProductPrice
+    };
+
+    const mergedSender = {
+      ...existingSender,
+      name: senderName !== undefined ? senderName : existingSender.name,
+      phone: senderPhone !== undefined ? senderPhone : existingSender.phone,
+      address: senderAddress !== undefined ? senderAddress : existingSender.address,
+      city: senderCity !== undefined ? senderCity : existingSender.city,
+      province: senderProvince !== undefined ? senderProvince : existingSender.province,
+      nationalId: senderNationalId !== undefined ? senderNationalId : existingSender.nationalId
+    };
+
+    const mergedReceiver = {
+      ...existingReceiver,
+      name: receiverName !== undefined ? receiverName : existingReceiver.name,
+      phone: receiverPhone !== undefined ? receiverPhone : existingReceiver.phone,
+      address: receiverAddress !== undefined ? receiverAddress : existingReceiver.address,
+      city: receiverCity !== undefined ? receiverCity : existingReceiver.city,
+      province: receiverProvince !== undefined ? receiverProvince : existingReceiver.province,
+      nationalId: receiverNationalId !== undefined ? receiverNationalId : existingReceiver.nationalId
+    };
+
+    const mergedPackage = {
+      ...existingPkg,
+      category: category || existingPkg.category || 'general',
+      weightKg: Number(weightKg !== undefined ? weightKg : (existingPkg.weightKg ?? 1)),
+      pieces: Number(pieces !== undefined ? pieces : (existingPkg.pieces ?? 1)),
+      description: description !== undefined ? description : (existingPkg.description ?? ''),
+      isFragile: isFragile !== undefined ? Boolean(isFragile) : Boolean(existingPkg.isFragile),
+      declaredValueAfn: finalProductPrice
+    };
+
+    const auditItem = {
+      id: `st_admin_edit_${Date.now()}`,
+      status: finalStatus,
+      location: 'Head Office Admin HQ',
+      branchName: 'Head Office Admin HQ',
+      timestamp: new Date().toISOString(),
+      note: `[Admin Correction] ${auditNote || 'Parcel data & financials adjusted by Super Admin (' + (userName || 'Admin') + ')'}: Price ${finalProductPrice} AFN, Weight ${mergedPackage.weightKg}kg`,
+      updatedBy: `${userName || 'Super Admin'} (Admin)`
+    };
+
+    const updatedHistory = [...existingHistory, auditItem];
+    const finalOriginBranch = originBranchId || existing.origin_branch_id;
+    const finalDestBranch = destinationBranchId || existing.destination_branch_id;
+    const originRemittance = Math.max(0, finalProductPrice - finalDestCommission);
+
+    await db.query(
+      `UPDATE shipments SET
+        origin_branch_id = $1,
+        destination_branch_id = $2,
+        sender = $3::jsonb,
+        receiver = $4::jsonb,
+        package_info = $5::jsonb,
+        financials = $6::jsonb,
+        dest_branch_commission = $7,
+        origin_remittance_due = $8,
+        status = $9,
+        status_history = $10::jsonb
+      WHERE id = $11`,
+      [
+        finalOriginBranch,
+        finalDestBranch,
+        JSON.stringify(mergedSender),
+        JSON.stringify(mergedReceiver),
+        JSON.stringify(mergedPackage),
+        JSON.stringify(mergedFinancials),
+        finalDestCommission,
+        originRemittance,
+        finalStatus,
+        JSON.stringify(updatedHistory),
+        id
+      ]
+    );
+
+    res.json({
+      success: true,
+      shipment: {
+        ...existing,
+        id,
+        originBranchId: finalOriginBranch,
+        destinationBranchId: finalDestBranch,
+        sender: mergedSender,
+        receiver: mergedReceiver,
+        packageInfo: mergedPackage,
+        financials: mergedFinancials,
+        destBranchCommission: finalDestCommission,
+        originRemittanceDue: originRemittance,
+        status: finalStatus,
+        statusHistory: updatedHistory
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 4. Branch Expenses API
 api.get('/expenses', async (req: Request, res: Response) => {
   try {
