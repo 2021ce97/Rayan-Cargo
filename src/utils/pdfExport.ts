@@ -1,11 +1,17 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { Shipment, Branch } from '../types';
 
 /**
  * Universal safe print utility that uses an isolated hidden iframe.
  * This completely avoids parent document clipping, sandbox issues, and prints ONLY the targeted element.
+ * Specially calibrated for 80mm POS Thermal Roll printers (e.g. MG-820) and standard A4 documents.
  */
-export function printElementUsingIframe(element: HTMLElement, title: string = 'Print Document', format: 'standard' | 'thermal' = 'standard'): boolean {
+export function printElementUsingIframe(
+  element: HTMLElement, 
+  title: string = 'Print Document', 
+  format: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' = 'standard'
+): boolean {
   try {
     // Remove any existing print iframes
     const oldIframe = document.getElementById('rayan_print_iframe');
@@ -13,14 +19,20 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
       document.body.removeChild(oldIframe);
     }
 
-    // Create a hidden iframe
+    const isThermal = format.startsWith('thermal');
+    const isSquare80 = format === 'thermal_80x80';
+
+    // Create an isolated hidden iframe with exact physical layout dimensions
     const iframe = document.createElement('iframe');
     iframe.id = 'rayan_print_iframe';
     iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
+    iframe.style.top = '0';
+    iframe.style.left = '0';
+    // CRITICAL: Sizing iframe to 80mm forces browser to calculate layout and media queries in 80mm space
+    iframe.style.width = isThermal ? '80mm' : '210mm';
+    iframe.style.height = isThermal ? (isSquare80 ? '80mm' : '400mm') : '297mm';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
     iframe.style.border = '0';
     iframe.style.zIndex = '-9999';
     document.body.appendChild(iframe);
@@ -39,9 +51,12 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
       .map(node => node.outerHTML)
       .join('\n');
 
-    const pageStyle = format === 'thermal'
-      ? `@page { size: 80mm auto; margin: 0; }`
-      : `@page { size: A4 portrait; margin: 4mm 6mm; }`;
+    // For 80mm thermal printers, size must be 80mm with 0 margin so browser doesn't add headers/footers
+    const pageSizeCss = isThermal
+      ? (isSquare80 ? 'size: 80mm 80mm;' : 'size: 80mm auto;')
+      : 'size: A4 portrait;';
+
+    const pageMarginCss = isThermal ? 'margin: 0mm !important;' : 'margin: 4mm 6mm;';
 
     doc.open();
     doc.write(`
@@ -52,29 +67,68 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
           <meta charset="utf-8" />
           ${styles}
           <style>
-            ${pageStyle}
+            @page {
+              ${pageSizeCss}
+              ${pageMarginCss}
+            }
             * {
               box-sizing: border-box;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            html, body {
               background: #ffffff !important;
-              color: #0f172a !important;
-              margin: 0;
-              padding: ${format === 'thermal' ? '0' : '6px'};
+              color: #000000 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              ${isThermal ? `
+                width: 80mm !important;
+                max-width: 80mm !important;
+                min-width: 80mm !important;
+                overflow-x: hidden !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              ` : `
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                padding: 6px;
+              `}
             }
             @media print {
+              @page {
+                ${pageSizeCss}
+                ${pageMarginCss}
+              }
               html, body {
-                height: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
+                ${isThermal ? `
+                  width: 80mm !important;
+                  max-width: 80mm !important;
+                  min-width: 80mm !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  background: #ffffff !important;
+                  color: #000000 !important;
+                ` : `
+                  height: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                `}
               }
-              .printable-receipt {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-              }
+              ${isThermal ? `
+                .thermal-receipt-container {
+                  width: 76mm !important;
+                  max-width: 76mm !important;
+                  min-width: 76mm !important;
+                  margin: 0 auto !important;
+                  padding: 1.5mm 1mm !important;
+                  border-left: none !important;
+                  border-right: none !important;
+                  box-shadow: none !important;
+                }
+              ` : `
+                .printable-receipt {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+              `}
             }
             .no-print {
               display: none !important;
@@ -88,8 +142,7 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
     `);
     doc.close();
 
-    // Trigger printing once content is ready
-    // Using a slightly longer timeout to ensure external stylesheets (if any) load
+    // Trigger printing once content and fonts are ready
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -104,6 +157,49 @@ export function printElementUsingIframe(element: HTMLElement, title: string = 'P
   } catch (err) {
     console.error('Direct print failed, using window.print fallback:', err);
     window.print();
+    return false;
+  }
+}
+
+/**
+ * Generates an ultra-high resolution (600 DPI equivalent) 80mm thermal PDF directly from
+ * a rendered DOM element. Preserves exact Afghan Dari/Pashto fonts, table borders, and barcodes.
+ */
+export async function generateThermalPdfFromElement(
+  element: HTMLElement,
+  filename: string,
+  widthMm: number = 80,
+  fixedHeightMm?: number
+): Promise<boolean> {
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 3, // 3x scale yields ~600 DPI crisp thermal printing
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      windowWidth: 320, // Forces narrow thermal layout calculation
+    });
+
+    const printableWidthMm = widthMm - 4; // 76mm printable width on 80mm roll
+    const calculatedHeightMm = (canvas.height * printableWidthMm) / canvas.width;
+    const finalHeightMm = fixedHeightMm || Math.ceil(calculatedHeightMm) + 4;
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [widthMm, finalHeightMm],
+      compress: true,
+    });
+
+    const xPos = (widthMm - printableWidthMm) / 2; // 2mm margin left
+    const yPos = fixedHeightMm ? Math.max(1, (fixedHeightMm - calculatedHeightMm) / 2) : 2;
+
+    const imgData = canvas.toDataURL('image/png');
+    doc.addImage(imgData, 'PNG', xPos, yPos, printableWidthMm, calculatedHeightMm);
+    doc.save(filename);
+    return true;
+  } catch (err) {
+    console.error('generateThermalPdfFromElement failed:', err);
     return false;
   }
 }
@@ -1320,14 +1416,328 @@ export function generateExecutiveReportPdf(
 }
 
 /**
- * Generates a thermal-printer friendly PDF shipping label (100x150mm) with barcode and complete consignment details.
+ * Generates a thermal-printer friendly PDF receipt or label calibrated for 80mm POS printers (e.g. MG-820)
+ * or 80x80mm square labels.
  */
-export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch, receiptRole: 'buyer' | 'seller' = 'buyer'): boolean {
+export function generateThermalLabelPdf(
+  shipment: Shipment, 
+  originBranch?: Branch, 
+  destBranch?: Branch, 
+  receiptRole: 'buyer' | 'seller' = 'buyer',
+  thermalSize: '80mm' | '80x80' | '100x150' = '80mm'
+): boolean {
   try {
+    const originName = originBranch?.city || shipment.sender.city || 'Origin';
+    const destName = destBranch?.city || shipment.receiver.city || 'Destination';
+    const thermalPrice = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
+    const thermalServiceFee = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : 150;
+    const thermalDestComm = typeof shipment.financials.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : 70;
+    const thermalPayout = (typeof shipment.financials.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
+      ? shipment.financials.sellerPayout
+      : Math.max(0, thermalPrice - thermalServiceFee - thermalDestComm);
+
+    // ==========================================
+    // 1. STANDARD 80MM CONTINUOUS ROLL (MG-820)
+    // ==========================================
+    if (thermalSize === '80mm') {
+      const pageWidth = 80;
+      const margin = 3;
+      const contentWidth = pageWidth - margin * 2; // 74mm printable area
+      const pageHeight = 165;
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [pageWidth, pageHeight],
+        compress: true,
+      });
+
+      let y = margin;
+
+      // Header Banner
+      doc.setFillColor(15, 23, 42); // Black / Dark Slate
+      doc.rect(margin, y, contentWidth, 12, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('ARMAGHAN SADEQ TRANSFERS', margin + contentWidth / 2, y + 5, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.text('CENTRAL LOGISTICS HUB KABUL • OFFICIAL POS SLIP', margin + contentWidth / 2, y + 9.5, { align: 'center' });
+
+      y += 14;
+
+      // CN Number Box
+      doc.setDrawColor(15, 23, 42);
+      doc.setLineWidth(0.4);
+      doc.rect(margin, y, contentWidth, 22);
+
+      doc.setTextColor(100, 116, 139);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.text('CONSIGNMENT NOTE (CN #)', margin + 3, y + 4.5);
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.text(shipment.cnNumber, margin + 3, y + 11);
+
+      // Barcode lines
+      const barcodeX = margin + 3;
+      const barcodeY = y + 13;
+      doc.setFillColor(0, 0, 0);
+      const barPattern = [2, 1, 1, 2, 3, 1, 2, 1, 1, 3, 2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 3, 2, 1, 1, 3, 1, 2, 1];
+      let bx = barcodeX;
+      barPattern.forEach((w, i) => {
+        if (i % 2 === 0) {
+          doc.rect(bx, barcodeY, w * 0.95, 5.5, 'F');
+        }
+        bx += w * 0.95 + 0.8;
+      });
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`*${shipment.cnNumber}*`, margin + contentWidth / 2, y + 21, { align: 'center' });
+
+      y += 24;
+
+      // Route Box
+      doc.setFillColor(15, 23, 42);
+      doc.rect(margin, y, contentWidth, 9, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.text(`${originName.toUpperCase()} ➔ ${destName.toUpperCase()}`, margin + contentWidth / 2, y + 6, { align: 'center' });
+
+      y += 11;
+
+      // SENDER & RECEIVER
+      const partyBoxH = 19;
+      doc.rect(margin, y, contentWidth, partyBoxH);
+      doc.setFillColor(241, 245, 249);
+      doc.rect(margin, y, contentWidth, 4.5, 'F');
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.text('FROM (SENDER):', margin + 2, y + 3.2);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text(shipment.sender.name.substring(0, 32), margin + 2, y + 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text(`Tel: ${shipment.sender.phone}`, margin + 2, y + 12);
+      doc.text(`Origin: ${shipment.sender.city} (${originBranch?.name || 'Central'})`, margin + 2, y + 16);
+
+      y += partyBoxH + 2;
+
+      doc.rect(margin, y, contentWidth, partyBoxH);
+      doc.setFillColor(241, 245, 249);
+      doc.rect(margin, y, contentWidth, 4.5, 'F');
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.text('TO (CONSIGNEE):', margin + 2, y + 3.2);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text(shipment.receiver.name.substring(0, 32), margin + 2, y + 8);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text(`Tel: ${shipment.receiver.phone} ${shipment.receiver.altPhone ? `/ ${shipment.receiver.altPhone}` : ''}`, margin + 2, y + 12);
+      doc.text(`Dest: ${shipment.receiver.city} (${destBranch?.name || 'Dest Branch'})`, margin + 2, y + 16);
+
+      y += partyBoxH + 2;
+
+      // PARCEL SPECS
+      doc.rect(margin, y, contentWidth, 12);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.text(`Weight: ${shipment.packageInfo.weightKg} KG`, margin + 2, y + 4.5);
+      doc.text(`Pieces: ${shipment.packageInfo.pieces || 1} PKG`, margin + 40, y + 4.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.text(`Category: ${shipment.packageInfo.category || 'General'}`, margin + 2, y + 9.5);
+      doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase()}`, margin + 40, y + 9.5);
+
+      y += 14;
+
+      // FINANCIAL SUMMARY BOX
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y, contentWidth, 16, 'FD');
+
+      if (receiptRole === 'seller') {
+        doc.setTextColor(100, 116, 139);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.text('SELLER PAYOUT (AFTER DEDUCTIONS)', margin + 2, y + 4.5);
+
+        doc.setTextColor(16, 185, 129); // Emerald
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(`${thermalPayout.toLocaleString()} AFN`, margin + 2, y + 10.5);
+
+        doc.setTextColor(100, 116, 139);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
+        doc.text(`Item: ${thermalPrice.toLocaleString()} | Fee: ${thermalServiceFee} | Comm: ${thermalDestComm}`, margin + 2, y + 14.5);
+      } else {
+        doc.setTextColor(15, 23, 42);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.text('TOTAL PAYABLE (COD / RECEIVER COPY)', margin + 2, y + 4.5);
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(`${thermalPrice.toLocaleString()} AFN`, margin + 2, y + 10.5);
+
+        const statusLabel = shipment.financials.paymentStatus === 'paid' ? 'PAID / COLLECTED' : 'COD (TO PAY AT DESTINATION)';
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(shipment.financials.paymentStatus === 'paid' ? 22 : 180, shipment.financials.paymentStatus === 'paid' ? 163 : 30, 74);
+        doc.text(statusLabel, margin + 2, y + 14.5);
+      }
+
+      y += 18;
+
+      // HELPLINES & FOOTER
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineDashPattern([1, 1], 0);
+      doc.line(margin, y, margin + contentWidth, y);
+      doc.setLineDashPattern([], 0);
+
+      y += 3;
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.text(`Helplines: ${originBranch?.phone || '0799123456'} | Complaints: 0711299680`, margin + contentWidth / 2, y, { align: 'center' });
+      doc.text('Main Kabul: 0774144004 | Track: www.armaghansadeq.af', margin + contentWidth / 2, y + 3.5, { align: 'center' });
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(5.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Printed: ${new Date().toLocaleDateString()} | Rayan Tech Solutions`, margin + contentWidth / 2, y + 7, { align: 'center' });
+
+      const filename = `Thermal_Receipt_${shipment.cnNumber}_80mm.pdf`;
+      doc.save(filename);
+      return true;
+    }
+
+    // ==========================================
+    // 2. 80MM X 80MM SQUARE LABEL FORMAT (80/80)
+    // ==========================================
+    if (thermalSize === '80x80') {
+      const size = 80;
+      const margin = 2.5;
+      const contentWidth = size - margin * 2; // 75mm
+
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [size, size],
+        compress: true,
+      });
+
+      let y = margin;
+
+      // Header
+      doc.setFillColor(15, 23, 42);
+      doc.rect(margin, y, contentWidth, 7, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.text('ARMAGHAN SADEQ EXPRESS', margin + contentWidth / 2, y + 4.8, { align: 'center' });
+
+      y += 8.5;
+
+      // CN & Route
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(`CN: ${shipment.cnNumber}`, margin + 1, y + 3);
+
+      doc.setFillColor(15, 23, 42);
+      doc.rect(margin + 42, y - 0.5, 32, 5.5, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(7);
+      doc.text(`${originName.substring(0, 8)} ➔ ${destName.substring(0, 8)}`, margin + 58, y + 3.2, { align: 'center' });
+
+      y += 7.5;
+
+      // Barcode
+      const barcodeX = margin + 1;
+      const barcodeY = y;
+      doc.setFillColor(0, 0, 0);
+      const barPattern = [2, 1, 1, 2, 3, 1, 2, 1, 1, 3, 2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 3, 2, 1, 1, 3, 1, 2, 1];
+      let bx = barcodeX;
+      barPattern.forEach((w, i) => {
+        if (i % 2 === 0) {
+          doc.rect(bx, barcodeY, w * 0.95, 5, 'F');
+        }
+        bx += w * 0.95 + 0.8;
+      });
+
+      y += 7.5;
+
+      // From & To Compact Box
+      doc.setDrawColor(15, 23, 42);
+      doc.setLineWidth(0.3);
+      doc.rect(margin, y, contentWidth, 18);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('FROM:', margin + 1.5, y + 3.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${shipment.sender.name.substring(0, 24)} • ${shipment.sender.phone}`, margin + 12, y + 3.5);
+
+      doc.setTextColor(100, 116, 139);
+      doc.text('TO:', margin + 1.5, y + 8);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${shipment.receiver.name.substring(0, 24)} • ${shipment.receiver.phone}`, margin + 12, y + 8);
+
+      doc.setTextColor(100, 116, 139);
+      doc.text('DEST:', margin + 1.5, y + 12.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${destName} Hub (${destBranch?.phone || '0799123456'})`, margin + 12, y + 12.5);
+
+      doc.text(`SPECS: ${shipment.packageInfo.weightKg} KG | ${shipment.packageInfo.pieces || 1} Pcs | ${shipment.packageInfo.serviceType}`, margin + 1.5, y + 16.5);
+
+      y += 20;
+
+      // Highlighted COD Box
+      doc.setFillColor(241, 245, 249);
+      doc.rect(margin, y, contentWidth, 9, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(0, 0, 0);
+
+      const isPaid = shipment.financials.paymentStatus === 'paid';
+      const codText = isPaid ? `PAID / DELIVER` : `COLLECT COD: ${thermalPrice.toLocaleString()} AFN`;
+      doc.text(codText, margin + contentWidth / 2, y + 5.8, { align: 'center' });
+
+      y += 11;
+
+      // Footer line
+      doc.setFontSize(5.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Helpline: 0774144004 | Track: www.armaghansadeq.af`, margin + contentWidth / 2, y, { align: 'center' });
+
+      const filename = `Thermal_Label_${shipment.cnNumber}_80x80.pdf`;
+      doc.save(filename);
+      return true;
+    }
+
+    // ==========================================
+    // 3. 100X150MM SHIPPING LABEL (4x6 INCH)
+    // ==========================================
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [100, 150], // Standard 4x6 inch thermal shipping label format
+      format: [100, 150],
       compress: true,
     });
 
@@ -1366,7 +1776,7 @@ export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branc
     doc.setFontSize(14);
     doc.text(shipment.cnNumber, margin + 4, y + 13);
 
-    // Simulated vector barcode lines on the right side of CN box
+    // Vector barcode lines
     const barcodeX = margin + 50;
     const barcodeY = y + 4;
     doc.setFillColor(15, 23, 42);
@@ -1385,7 +1795,7 @@ export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branc
 
     y += 24;
 
-    // ROUTE BOX (ORIGIN -> DESTINATION)
+    // ROUTE BOX
     doc.setFillColor(225, 29, 72);
     doc.rect(margin, y, contentWidth, 14, 'F');
     doc.setTextColor(255, 255, 255);
@@ -1393,8 +1803,6 @@ export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branc
     doc.setFontSize(8);
     doc.text('ROUTE / HUB DESTINATION', margin + 4, y + 4.5);
     doc.setFontSize(11);
-    const originName = originBranch?.city || shipment.sender.city;
-    const destName = destBranch?.city || shipment.receiver.city;
     doc.text(`${originName.toUpperCase()} ➔ ${destName.toUpperCase()}`, margin + 4, y + 11.5);
 
     y += 16;
@@ -1464,13 +1872,6 @@ export function generateThermalLabelPdf(shipment: Shipment, originBranch?: Branc
     doc.text(`Pieces: ${shipment.packageInfo.pieces || 1} Pcs`, margin + 45, y + 5);
     doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase()}`, margin + 3, y + 10);
     
-    const thermalPrice = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
-    const thermalServiceFee = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : 150;
-    const thermalDestComm = typeof shipment.financials.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : 70;
-    const thermalPayout = (typeof shipment.financials.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
-      ? shipment.financials.sellerPayout
-      : Math.max(0, thermalPrice - thermalServiceFee - thermalDestComm);
-
     if (receiptRole === 'seller') {
       doc.text(`Product Price: ${thermalPrice.toLocaleString()} AFN`, margin + 45, y + 10);
       doc.text(`Net Seller Payout: ${thermalPayout.toLocaleString()} AFN`, margin + 3, y + 15);

@@ -1730,8 +1730,17 @@ export const ParcelInventory: React.FC = () => {
                   </span>
                 </div>
                 <div className="text-[11px] text-blue-950 dark:text-blue-300 space-y-1 leading-relaxed">
-                  <p dangerouslySetInnerHTML={{ __html: t('lifecycle_origin_msg')?.replace('{branch}', origBranch?.name || 'Sender') || `• <strong>Origin Branch (${origBranch?.name || 'Sender'}):</strong> Controls <em>Booked</em> ➔ <em>In Transit</em> (Dispatches to highway).` }} />
-                  <p dangerouslySetInnerHTML={{ __html: t('lifecycle_dest_msg')?.replace('{branch}', destBranch?.name || 'Receiver') || `• <strong>Destination Branch (${destBranch?.name || 'Receiver'}):</strong> Controls <em>Received at Branch</em> ➔ <em>Out for Delivery</em> ➔ <em>Delivered</em>.` }} />
+                  {(() => {
+                    const escapeHtml = (s: string) => s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] || c));
+                    const safeOrig = escapeHtml(origBranch?.name || 'Sender');
+                    const safeDest = escapeHtml(destBranch?.name || 'Receiver');
+                    return (
+                      <>
+                        <p dangerouslySetInnerHTML={{ __html: t('lifecycle_origin_msg')?.replace('{branch}', safeOrig) || `• <strong>Origin Branch (${safeOrig}):</strong> Controls <em>Booked</em> ➔ <em>In Transit</em> (Dispatches to highway).` }} />
+                        <p dangerouslySetInnerHTML={{ __html: t('lifecycle_dest_msg')?.replace('{branch}', safeDest) || `• <strong>Destination Branch (${safeDest}):</strong> Controls <em>Received at Branch</em> ➔ <em>Out for Delivery</em> ➔ <em>Delivered</em>.` }} />
+                      </>
+                    );
+                  })()}
                   <p>• <strong>Super Admin (HQ):</strong> Master override across all provincial branches and statuses.</p>
                 </div>
               </div>

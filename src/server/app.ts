@@ -20,16 +20,53 @@ if (process.env.DATABASE_URL) {
 
 const app = express();
 
-// 1. CORS Headers for Cross-Origin / Vercel Deployments
+// 1. Security & CORS Headers for Cross-Origin / Vercel Deployments
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-User-Role, X-User-Id');
+  res.header('X-Content-Type-Options', 'nosniff');
+  res.header('X-Frame-Options', 'SAMEORIGIN');
+  res.header('X-XSS-Protection', '1; mode=block');
+  res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
   next();
 });
+
+// In-memory sliding-window rate limiter for sensitive endpoints
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+const rateLimitStore = new Map<string, RateLimitEntry>();
+
+function authRateLimiter(maxAttempts = 30, windowMs = 60 * 1000) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'local';
+    const now = Date.now();
+    const entry = rateLimitStore.get(ip);
+
+    if (!entry || now > entry.resetAt) {
+      rateLimitStore.set(ip, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    if (entry.count >= maxAttempts) {
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+      res.setHeader('Retry-After', retryAfter);
+      return res.status(429).json({
+        success: false,
+        error: 'Too many authentication attempts. Please wait 60 seconds before trying again.',
+        retryAfter
+      });
+    }
+
+    entry.count++;
+    next();
+  };
+}
 
 // 2. Request body parsers
 app.use(express.json({ limit: '15mb' }));
@@ -247,6 +284,18 @@ api.delete('/branches/:id', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const branchId = req.params.id;
+    const callerRole = (req.headers['x-user-role'] as string) || req.body?.userRole || (req.query?.userRole as string);
+
+    if (callerRole && callerRole !== 'super_admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized: Only Head Office Super Admin can delete branch terminals.' });
+    }
+
+    // Safety: Verify that the central Head Office cannot be deleted
+    const { rows: bCheck } = await db.query('SELECT is_head_office, code, name FROM branches WHERE id = $1', [branchId]);
+    if (bCheck.length > 0 && bCheck[0].is_head_office) {
+      return res.status(400).json({ success: false, error: 'The central Head Office terminal cannot be deleted.' });
+    }
+
     // Delete associated branch users
     await db.query('DELETE FROM users WHERE branch_id = $1', [branchId]);
     // Delete branch
@@ -287,6 +336,9 @@ api.post('/users/change-password', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { userId, newPassword } = req.body;
+    if (!userId || !newPassword || typeof newPassword !== 'string' || newPassword.trim().length < 4) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 4 characters.' });
+    }
     const now = new Date().toISOString();
 
     await db.query(
@@ -303,7 +355,14 @@ api.post('/users/change-password', async (req: Request, res: Response) => {
 api.post('/users/credentials', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
+    const callerRole = (req.headers['x-user-role'] as string) || req.body?.userRole;
+    if (callerRole && callerRole !== 'super_admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized: Only Head Office Super Admin can provision branch credentials.' });
+    }
     const { userId, email, password, name, phone } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required.' });
+    }
 
     await db.query(
       `UPDATE users SET 
@@ -974,6 +1033,13 @@ api.post('/expenses', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const e = req.body;
+    if (!e || !e.branchId) {
+      return res.status(400).json({ success: false, error: 'Branch ID is required.' });
+    }
+    const numAmount = parseFloat(e.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ success: false, error: 'Expense amount must be a positive number.' });
+    }
     const id = e.id || `exp_${Date.now().toString().slice(-6)}`;
     const now = new Date().toISOString();
     const expDate = e.expenseDate || new Date().toISOString().split('T')[0];
@@ -985,7 +1051,7 @@ api.post('/expenses', async (req: Request, res: Response) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       ON CONFLICT (id) DO NOTHING`,
       [
-        id, e.branchId, e.category, e.amount, e.description, expDate,
+        id, e.branchId, e.category || 'other', numAmount, e.description || '', expDate,
         e.paidTo || null, e.receiptNumber || null, e.createdByName || 'Branch Manager', now
       ]
     );
@@ -996,7 +1062,7 @@ api.post('/expenses', async (req: Request, res: Response) => {
         id,
         branchId: e.branchId,
         category: e.category,
-        amount: parseFloat(e.amount),
+        amount: numAmount,
         description: e.description,
         expenseDate: expDate,
         paidTo: e.paidTo,
@@ -1345,10 +1411,13 @@ api.get('/analytics/revenue-overview', async (req: Request, res: Response) => {
 });
 
 // 7. Customer Signup API
-api.post('/auth/customer-signup', async (req: Request, res: Response) => {
+api.post('/auth/customer-signup', authRateLimiter(20, 60 * 1000), async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { name, email, phone, password } = req.body;
+    if (!name || !phone) {
+      return res.status(400).json({ success: false, error: 'Full name and phone number are required.' });
+    }
     const now = new Date().toISOString();
     const userId = `usr_cust_${Date.now().toString().slice(-6)}`;
     const cleanEmail = (email && email.trim()) ? email.trim().toLowerCase() : `cust_${phone.replace(/[^0-9]/g, '')}@rayancustomer.af`;
@@ -1384,7 +1453,7 @@ api.post('/auth/customer-signup', async (req: Request, res: Response) => {
 });
 
 // 8. Auth Login API
-api.post('/auth/login', async (req: Request, res: Response) => {
+api.post('/auth/login', authRateLimiter(30, 60 * 1000), async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { identifier, password } = req.body;
@@ -1479,6 +1548,11 @@ api.post('/auth/login', async (req: Request, res: Response) => {
 // 9. Supabase Connect & Migrate endpoint
 api.post('/database/connect', async (req: Request, res: Response) => {
   try {
+    const callerRole = (req.headers['x-user-role'] as string) || req.body?.userRole;
+    if (callerRole && callerRole !== 'super_admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized: Only Head Office Super Admin can connect external databases.' });
+    }
+
     const { connectionString, password } = req.body;
     let finalConn = (connectionString || '').trim();
 
@@ -1515,7 +1589,11 @@ api.get('/track/:cn', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { cn } = req.params;
-    const cleaned = cn.trim().toUpperCase();
+    const cleaned = (cn || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
+
+    if (!cleaned) {
+      return res.status(400).json({ success: false, message: 'Invalid Consignment Number or query.' });
+    }
 
     const { rows } = await db.query(
       `SELECT * FROM shipments WHERE 
@@ -1558,6 +1636,14 @@ api.get('/track/:cn', async (req: Request, res: Response) => {
 // 11. System Clean Slate Reset (0 Parcels, Preserved Branches, 0 Expenses)
 api.post('/system/reset-clean-slate', async (req: Request, res: Response) => {
   try {
+    const callerRole = (req.headers['x-user-role'] as string) || req.body?.userRole;
+    if (callerRole && callerRole !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: Only Central Super Admin can execute a system clean-slate wipe.'
+      });
+    }
+
     await wipeDatabaseClean(INITIAL_BRANCHES, INITIAL_USERS);
     res.json({
       success: true,

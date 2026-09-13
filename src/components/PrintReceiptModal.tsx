@@ -10,11 +10,17 @@ import {
   FileText,
   Phone,
   AlertCircle,
-  Building2
+  Building2,
+  Tag
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { BarcodeGenerator, QRCodeVisual } from './BarcodeGenerator';
-import { generateWaybillPdf, generateThermalLabelPdf, printElementUsingIframe } from '../utils/pdfExport';
+import { 
+  generateWaybillPdf, 
+  generateThermalLabelPdf, 
+  generateThermalPdfFromElement, 
+  printElementUsingIframe 
+} from '../utils/pdfExport';
 
 export const PrintReceiptModal: React.FC = () => {
   const { 
@@ -22,12 +28,16 @@ export const PrintReceiptModal: React.FC = () => {
     setSelectedShipmentForReceipt, 
     branches, 
     t,
-    showToast
+    showToast,
+    receiptPrintMode
   } = useApp();
 
   const receiptRef = useRef<HTMLDivElement>(null);
-  const thermalRef = useRef<HTMLDivElement>(null);
-  const [printFormat, setPrintFormat] = useState<'standard' | 'thermal'>('standard');
+  const thermal80mmRef = useRef<HTMLDivElement>(null);
+  const thermal80x80Ref = useRef<HTMLDivElement>(null);
+  const [printFormat, setPrintFormat] = useState<'standard' | 'thermal_80mm' | 'thermal_80x80'>(
+    receiptPrintMode === 'thermal' ? 'thermal_80mm' : 'thermal_80mm'
+  );
   const [receiptRole, setReceiptRole] = useState<'buyer' | 'seller'>('buyer');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
@@ -49,26 +59,71 @@ export const PrintReceiptModal: React.FC = () => {
   const isPaid = shipment.financials?.paymentStatus === 'paid' || shipment.status === 'delivered';
 
   const handlePrint = () => {
-    const targetRef = printFormat === 'thermal' ? thermalRef.current : receiptRef.current;
+    let targetRef: HTMLElement | null = null;
+    let formatArg: 'standard' | 'thermal_80mm' | 'thermal_80x80' = 'standard';
+
+    if (printFormat === 'standard') {
+      targetRef = receiptRef.current;
+      formatArg = 'standard';
+    } else if (printFormat === 'thermal_80x80') {
+      targetRef = thermal80x80Ref.current;
+      formatArg = 'thermal_80x80';
+    } else {
+      targetRef = thermal80mmRef.current;
+      formatArg = 'thermal_80mm';
+    }
+
     if (targetRef) {
-      printElementUsingIframe(targetRef, `Receipt_${shipment.cnNumber}`, printFormat);
+      printElementUsingIframe(targetRef, `Receipt_${shipment.cnNumber}`, formatArg);
     } else {
       window.print();
     }
     showToast(`✓ Print job sent to printer for CN #${shipment.cnNumber}!`);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
     setDownloadSuccess(false);
 
     try {
-      const ok = printFormat === 'thermal' 
-        ? generateThermalLabelPdf(shipment, originBranch, destBranch, receiptRole)
-        : generateWaybillPdf(shipment, originBranch, destBranch, receiptRole);
-      if (ok) {
-        setDownloadSuccess(true);
-        setTimeout(() => setDownloadSuccess(false), 4000);
+      if (printFormat === 'standard') {
+        const ok = generateWaybillPdf(shipment, originBranch, destBranch, receiptRole);
+        if (ok) {
+          setDownloadSuccess(true);
+          setTimeout(() => setDownloadSuccess(false), 4000);
+        }
+      } else {
+        const isSquare = printFormat === 'thermal_80x80';
+        const targetElement = isSquare ? thermal80x80Ref.current : thermal80mmRef.current;
+        const filename = `Receipt_${shipment.cnNumber}_${isSquare ? '80x80mm' : '80mm'}.pdf`;
+
+        // 1. High-resolution DOM-to-PDF capture (600 DPI equivalent with authentic Afghan Dari script)
+        if (targetElement) {
+          const ok = await generateThermalPdfFromElement(
+            targetElement,
+            filename,
+            80,
+            isSquare ? 80 : undefined
+          );
+          if (ok) {
+            setDownloadSuccess(true);
+            setTimeout(() => setDownloadSuccess(false), 4000);
+            return;
+          }
+        }
+
+        // 2. Vector jsPDF fallback
+        const ok = generateThermalLabelPdf(
+          shipment,
+          originBranch,
+          destBranch,
+          receiptRole,
+          isSquare ? '80x80' : '80mm'
+        );
+        if (ok) {
+          setDownloadSuccess(true);
+          setTimeout(() => setDownloadSuccess(false), 4000);
+        }
       }
     } catch (err) {
       console.error('PDF error:', err);
@@ -80,11 +135,11 @@ export const PrintReceiptModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className={`bg-white rounded-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 ${
-        printFormat === 'thermal' ? 'max-w-md' : 'max-w-3xl'
+        printFormat === 'standard' ? 'max-w-3xl' : 'max-w-md'
       }`}>
         
         {/* Modal Action Header (Excluded from Print) */}
-        <div className="no-print p-4 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <div className="no-print p-3 sm:p-4 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 font-bold text-sm text-slate-800">
             <Printer className="w-4 h-4 text-red-600" />
             <span>{t('receipt_title')}</span>
@@ -93,45 +148,61 @@ export const PrintReceiptModal: React.FC = () => {
             </span>
           </div>
 
-          {/* Format Switch: Standard A4 vs Thermal POS */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center bg-slate-200/80 rounded-xl p-0.5 text-xs font-bold">
+          {/* Controls: Role and Thermal Format Switcher */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Receiver vs Seller Copy Switcher */}
+            <div className="flex items-center bg-slate-200/90 rounded-xl p-0.5 text-xs font-bold">
               <button
                 onClick={() => setReceiptRole('buyer')}
-                className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
                   receiptRole === 'buyer' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Receiver Copy (Without internal commission/discount)"
               >
-                <span>Receiver Copy (رسید گیرنده)</span>
+                <span>Receiver (رسید گیرنده)</span>
               </button>
               <button
                 onClick={() => setReceiptRole('seller')}
-                className={`px-3 py-1 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
                   receiptRole === 'seller' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Seller Copy (With commission, fee deductions, and net payout)"
               >
-                <span>Seller Copy (رسید فروشنده)</span>
+                <span>Seller (رسید فروشنده)</span>
               </button>
             </div>
             
-            <div className="flex items-center bg-slate-200/80 rounded-xl p-0.5 text-xs font-bold">
+            {/* Format Selector: 80mm Roll vs 80x80 Square vs A4 */}
+            <div className="flex items-center bg-slate-200/90 rounded-xl p-0.5 text-xs font-bold">
+              <button
+                onClick={() => setPrintFormat('thermal_80mm')}
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                  printFormat === 'thermal_80mm' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="80mm Thermal POS Roll (Standard for MG-820 thermal printer)"
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>80mm Roll</span>
+              </button>
+              <button
+                onClick={() => setPrintFormat('thermal_80x80')}
+                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                  printFormat === 'thermal_80x80' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="80mm x 80mm Square Label (Square sticker format)"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>80/80 Label</span>
+              </button>
               <button
                 onClick={() => setPrintFormat('standard')}
                 className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
                   printFormat === 'standard' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
+                title="Standard A4 Document"
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>{t('print_format_a4')}</span>
-              </button>
-              <button
-                onClick={() => setPrintFormat('thermal')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                  printFormat === 'thermal' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Receipt className="w-3.5 h-3.5" />
-                <span>{t('print_format_thermal')}</span>
+                <span>A4</span>
               </button>
             </div>
           </div>
@@ -143,222 +214,303 @@ export const PrintReceiptModal: React.FC = () => {
               disabled={isGeneratingPdf}
               id="btn-modal-download-pdf"
               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Download PDF to computer/phone"
+              title={printFormat === 'standard' ? 'Download A4 PDF' : 'Download 80mm Thermal PDF (Perfect for MG-820)'}
             >
-                {isGeneratingPdf ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>{t('generating_pdf')}</span>
-                  </>
-                ) : downloadSuccess ? (
-                  <>
-                    <FileCheck className="w-3.5 h-3.5 text-emerald-200" />
-                    <span>{t('pdf_downloaded_success')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-3.5 h-3.5" />
-                    <span>PDF</span>
-                  </>
-                )}
-              </button>
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{t('generating_pdf')}</span>
+                </>
+              ) : downloadSuccess ? (
+                <>
+                  <FileCheck className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>{t('pdf_downloaded_success')}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{printFormat === 'standard' ? 'A4 PDF' : '80mm PDF'}</span>
+                </>
+              )}
+            </button>
 
-            {/* Print button */}
+            {/* Direct Print button */}
             <button
               onClick={handlePrint}
               id="btn-modal-print-receipt"
               className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Open print dialog"
+              title="Send directly to thermal printer (MG-820)"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>{printFormat === 'thermal' ? 'Print Slip' : t('btn_print_pdf')}</span>
+              <span>{printFormat === 'standard' ? t('btn_print_pdf') : 'Print 80mm'}</span>
             </button>
 
             <button
               onClick={() => setSelectedShipmentForReceipt(null)}
-              className="p-1.5 rounded-xl text-slate-500 hover:bg-slate-200 transition-colors"
+              className="p-1.5 rounded-xl text-slate-500 hover:bg-slate-200 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* 1. THERMAL POS RECEIPT FORMAT (58mm / 80mm POS Mini Printer) */}
-        {printFormat === 'thermal' ? (
-          <div 
-            ref={thermalRef} 
-            className="p-6 bg-white text-slate-950 font-mono text-[11px] leading-tight space-y-3 max-w-[340px] mx-auto border-x border-dashed border-slate-300 shadow-inner my-3"
-            style={{ width: '100%', maxWidth: '340px' }}
-          >
-            {/* Thermal Slip Header */}
-            <div className="text-center space-y-1 pb-2 border-b border-dashed border-slate-900">
-              <div className="text-sm font-black tracking-tight">ARMAGHAN SADEQ TRANSFERS</div>
-              <div className="text-[11px] font-bold">خدمات انتقالات ارمغان صادق</div>
-              <div className="text-[9px] text-slate-600">Helpline: +93 799 123 456 | Central Hub Kabul</div>
-              <div className="text-[10px] font-bold pt-1">*** OFFICIAL CONSIGNMENT SLIP ***</div>
-            </div>
-
-            {/* CN & Date */}
-            <div className="space-y-0.5 text-[11px] pb-2 border-b border-dashed border-slate-900">
-              <div className="flex justify-between font-bold">
-                <span>CN NUMBER:</span>
-                <span className="text-xs">{shipment.cnNumber}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span>DATE:</span>
-                <span>{new Date(shipment.bookedAt).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-[10px]">
-                <span>SERVICE:</span>
-                <span className="uppercase font-bold">{shipment.packageInfo.serviceType}</span>
-              </div>
-            </div>
-
-            {/* Route */}
-            <div className="space-y-1 py-1 border-b border-dashed border-slate-900">
-              <div className="font-bold text-[10px] uppercase text-center bg-slate-100 py-0.5">
-                {originBranch?.city?.toUpperCase() || 'ORIGIN'} ➔ {destBranch?.city?.toUpperCase() || 'DESTINATION'}
-              </div>
-              <div className="text-[10px]">
-                <div><span className="font-bold">FROM:</span> {shipment.sender.name}</div>
-                <div><span className="font-bold">TEL:</span> <span dir="ltr">{shipment.sender.phone}</span></div>
-                <div><span className="font-bold">CITY:</span> {shipment.sender.city}</div>
-              </div>
-              <div className="text-[10px] pt-1">
-                <div><span className="font-bold">TO:</span> {shipment.receiver.name}</div>
-                <div><span className="font-bold">TEL:</span> <span dir="ltr">{shipment.receiver.phone}</span></div>
-                {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
-                  <div><span className="font-bold">TAZKIRA:</span> {shipment.receiver.nationalId || shipment.sender.receiverTazkira}</div>
-                )}
-                <div><span className="font-bold">DEST:</span> {shipment.receiver.city}</div>
-              </div>
-            </div>
-
-            {/* Cargo Specs */}
-            <div className="space-y-0.5 py-1 border-b border-dashed border-slate-900 text-[10px]">
-              <div className="flex justify-between">
-                <span>CATEGORY:</span>
-                <span className="font-bold">{shipment.packageInfo.category}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>WEIGHT:</span>
-                <span className="font-bold">{shipment.packageInfo.weightKg} KG</span>
-              </div>
-              <div className="flex justify-between">
-                <span>PIECES:</span>
-                <span className="font-bold">{shipment.packageInfo.pieces} PKG(S)</span>
-              </div>
-              {shipment.packageInfo.isFragile && (
-                <div className="text-center font-bold text-[9px] bg-slate-200 py-0.5 mt-1">
-                  * FRAGILE CARGO - HANDLE WITH CARE *
+        {/* ======================================================== */}
+        {/* 1. THERMAL POS RECEIPT FORMAT (80MM CONTINUOUS ROLL)     */}
+        {/* ======================================================== */}
+        {printFormat === 'thermal_80mm' && (
+          <div className="p-3 bg-slate-50 overflow-y-auto max-h-[78vh]">
+            <div 
+              ref={thermal80mmRef} 
+              className="thermal-receipt-container bg-white text-black font-sans text-xs leading-tight space-y-2.5 mx-auto border border-dashed border-slate-300 shadow-sm my-1 select-text"
+              style={{ 
+                width: '300px', 
+                maxWidth: '300px',
+                padding: '12px 10px',
+                boxSizing: 'border-box'
+              }}
+            >
+              {/* Header */}
+              <div className="text-center space-y-1 pb-1.5 border-b-2 border-black">
+                <div className="text-[13px] font-black tracking-tight uppercase text-black">ARMAGHAN SADEQ TRANSFERS</div>
+                <div className="text-[12px] font-bold text-black">خدمات انتقالات ارمغان صادق</div>
+                <div className="text-[10px] font-semibold text-neutral-800">مرکز کابل • Central Hub Kabul</div>
+                <div className="text-[10.5px] font-black pt-1 border-t border-dashed border-black tracking-wider uppercase">
+                  *** OFFICIAL CONSIGNMENT SLIP ***
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Charges Breakdown */}
-            <div className="space-y-1 py-1 border-b border-dashed border-slate-900 text-[10px]">
-              {shipment.status === 'pre_booked' && (
-                <div className="text-center py-1 bg-amber-50 rounded border border-amber-200 text-amber-900 mb-1">
-                  <div className="font-bold text-[9px] uppercase">* PRE-BOOKING ESTIMATE *</div>
-                  <div className="text-[8px] text-amber-800">Final weight & price verified upon branch drop-off.</div>
+              {/* CN & Date */}
+              <div className="space-y-0.5 text-xs pb-1.5 border-b border-black">
+                <div className="flex justify-between items-baseline font-bold">
+                  <span className="text-[11px] text-neutral-800">CN NUMBER:</span>
+                  <span className="text-[15px] font-black font-mono tracking-wider text-black">{shipment.cnNumber}</span>
                 </div>
-              )}
-              {receiptRole === 'seller' ? (
-                <>
-                  <div className="flex justify-between text-slate-700">
-                    <span>Product Selling Price:</span>
-                    <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Service Fee (Deducted):</span>
-                    <span>-{sFeeVal.toLocaleString()} AFN</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Dest. Comm. (Deducted):</span>
-                    <span>-{dCommVal.toLocaleString()} AFN</span>
-                  </div>
-                  {discountVal > 0 && (
-                    <div className="flex justify-between text-emerald-600">
-                      <span>Fee Discount:</span>
-                      <span>+{discountVal.toLocaleString()} AFN</span>
-                    </div>
+                <div className="flex justify-between text-[11px] text-neutral-900">
+                  <span className="font-semibold">DATE:</span>
+                  <span>{new Date(shipment.bookedAt).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-neutral-900">
+                  <span className="font-semibold">SERVICE:</span>
+                  <span className="uppercase font-black">{shipment.packageInfo.serviceType}</span>
+                </div>
+              </div>
+
+              {/* Route */}
+              <div className="space-y-1.5 py-1 border-b border-black">
+                <div className="font-black text-[12px] uppercase text-center bg-black text-white py-1 px-2 rounded-xs tracking-wide">
+                  {originBranch?.city?.toUpperCase() || 'ORIGIN'} ➔ {destBranch?.city?.toUpperCase() || 'DESTINATION'}
+                </div>
+                <div className="text-[11px] space-y-0.5 text-black">
+                  <div><span className="font-black">FROM:</span> <span className="font-bold">{shipment.sender.name}</span></div>
+                  <div><span className="font-black">TEL:</span> <span className="font-mono font-bold" dir="ltr">{shipment.sender.phone}</span></div>
+                  <div><span className="font-semibold">CITY:</span> {shipment.sender.city} ({originBranch?.name || 'Main'})</div>
+                </div>
+                <div className="text-[11px] space-y-0.5 pt-1 border-t border-dashed border-neutral-300 text-black">
+                  <div><span className="font-black">TO:</span> <span className="font-bold">{shipment.receiver.name}</span></div>
+                  <div><span className="font-black">TEL:</span> <span className="font-mono font-bold" dir="ltr">{shipment.receiver.phone}</span></div>
+                  {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
+                    <div><span className="font-black">TAZKIRA:</span> <span className="font-bold">{shipment.receiver.nationalId || shipment.sender.receiverTazkira}</span></div>
                   )}
-                  <div className="flex justify-between font-bold text-[10px] mt-1 border-t border-dashed border-slate-300 pt-1">
-                    <span>NET PAYOUT TO SELLER:</span>
-                    <span className="text-emerald-700">{payoutVal.toLocaleString()} AFN</span>
+                  <div><span className="font-semibold">DEST:</span> {shipment.receiver.city} ({destBranch?.name || 'Destination'})</div>
+                </div>
+              </div>
+
+              {/* Cargo Specs */}
+              <div className="space-y-0.5 py-1 border-b border-black text-[11px] text-black">
+                <div className="flex justify-between">
+                  <span className="font-semibold">CATEGORY:</span>
+                  <span className="font-black">{shipment.packageInfo.category}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold">WEIGHT:</span>
+                  <span className="font-black">{shipment.packageInfo.weightKg} KG</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold">PIECES:</span>
+                  <span className="font-black">{shipment.packageInfo.pieces} PKG(S)</span>
+                </div>
+                {shipment.packageInfo.isFragile && (
+                  <div className="text-center font-black text-[10px] border border-black py-0.5 mt-1 bg-neutral-100">
+                    * FRAGILE CARGO - HANDLE WITH CARE *
                   </div>
-                </>
-              ) : (
-                <div className="flex justify-between font-black text-xs pt-1 border-t border-slate-400">
-                  <span>TOTAL PAYABLE (مجموع قابل پرداخت):</span>
-                  <span className="font-mono text-rose-600 font-bold">{totalDueVal.toLocaleString()} AFN</span>
-                </div>
-              )}
-              <div className="flex justify-between font-bold text-[10px] mt-0.5">
-                <span>PAYMENT STATUS:</span>
-                <span className="uppercase">
-                  {isPaid ? 'PAID / COLLECTED' : 'COD (TO PAY AT DEST)'}
-                </span>
+                )}
               </div>
-            </div>
 
-            {/* 3 Official Cargo Rules & Legal Conditions in Dari */}
-            <div className="border-t border-b border-dashed border-slate-900 py-1.5 my-1 text-[8px] leading-snug space-y-1 text-slate-900 text-right" dir="rtl">
-              <div className="font-bold text-center uppercase tracking-wider text-[8.5px] bg-slate-100 py-0.5 border-y border-dashed border-slate-400">
-                شرایط، قوانین و مقررات بارنامه
+              {/* Charges Breakdown */}
+              <div className="space-y-1.5 py-1 border-b border-black text-[11px]">
+                {shipment.status === 'pre_booked' && (
+                  <div className="text-center py-1 bg-neutral-100 border border-black text-black mb-1">
+                    <div className="font-black text-[10px] uppercase">* PRE-BOOKING ESTIMATE *</div>
+                    <div className="text-[9px]">Final weight & price verified upon branch drop-off.</div>
+                  </div>
+                )}
+                {receiptRole === 'seller' ? (
+                  <div className="space-y-1 text-black">
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Product Selling Price:</span>
+                      <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Service Fee (Deducted):</span>
+                      <span className="font-bold">-{sFeeVal.toLocaleString()} AFN</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-semibold">Dest. Comm. (Deducted):</span>
+                      <span className="font-bold">-{dCommVal.toLocaleString()} AFN</span>
+                    </div>
+                    {discountVal > 0 && (
+                      <div className="flex justify-between">
+                        <span className="font-semibold">Fee Discount:</span>
+                        <span className="font-bold">+{discountVal.toLocaleString()} AFN</span>
+                      </div>
+                    )}
+                    <div className="p-1.5 bg-neutral-100 border-2 border-black mt-1 text-center">
+                      <div className="text-[10px] font-bold uppercase text-neutral-800">NET PAYOUT TO SELLER (پرداخت خالص به فروشنده)</div>
+                      <div className="text-[16px] font-black font-mono text-black">{payoutVal.toLocaleString()} AFN</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-1.5 bg-neutral-100 border-2 border-black text-center space-y-0.5">
+                    <div className="text-[10.5px] font-black uppercase text-black">TOTAL PAYABLE (مجموع قابل پرداخت)</div>
+                    <div className="text-[18px] font-black font-mono text-black">{totalDueVal.toLocaleString()} AFN</div>
+                  </div>
+                )}
+                <div className="flex justify-between font-black text-[11px] pt-1 border-t border-dashed border-neutral-300">
+                  <span>PAYMENT STATUS:</span>
+                  <span className="uppercase">
+                    {isPaid ? 'PAID / تحویل داده شد' : 'COD (COLLECT AT DEST)'}
+                  </span>
+                </div>
               </div>
-              <div className="space-y-1 pt-0.5 font-sans">
-                <div>
-                  <span className="font-bold">۱. </span> بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.
-                </div>
-                <div>
-                  <span className="font-bold">۲. </span> ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتش‌سوزی و تصادم مسئول نیست.
-                </div>
-                <div>
-                  <span className="font-bold">۳. </span> اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.
-                </div>
-              </div>
-            </div>
 
-            {/* Official 3 Helpline Contacts */}
-            <div className="border-t border-b border-dashed border-slate-900 py-1.5 my-1 text-[9px] space-y-0.5">
-              <div className="font-bold text-center uppercase tracking-wider text-[8.5px]">{t('contact_sender_branch') || 'Official Helpline Contacts'}</div>
-              <div className="flex justify-between">
-                <span>1. Sender Hub:</span>
-                <span className="font-bold font-mono" dir="ltr">{originBranch?.phone || 'Origin Hub'}</span>
+              {/* 3 Official Cargo Rules & Legal Conditions in Dari */}
+              <div className="border-b border-black py-1.5 text-[9px] leading-snug space-y-1 text-black text-right" dir="rtl">
+                <div className="font-black text-center uppercase tracking-wider text-[9.5px] bg-neutral-100 py-0.5 border-y border-black">
+                  شرایط، قوانین و مقررات بارنامه
+                </div>
+                <div className="space-y-1 pt-0.5 font-sans">
+                  <div>
+                    <span className="font-black">۱. </span> بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.
+                  </div>
+                  <div>
+                    <span className="font-black">۲. </span> ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتش‌سوزی و تصادم مسئول نیست.
+                  </div>
+                  <div>
+                    <span className="font-black">۳. </span> اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-between text-amber-900">
-                <span className="font-bold">2. Complaints (شکایات):</span>
-                <span className="font-bold font-mono text-[9.5px]">0711299680</span>
-              </div>
-              <div className="flex justify-between text-blue-900">
-                <span className="font-bold">3. Main Office (مرکزی):</span>
-                <span className="font-bold font-mono text-[9.5px]">0774144004</span>
-              </div>
-            </div>
 
-            {/* Barcode & Footer Notice */}
-            <div className="text-center space-y-2 pt-1">
-              <div className="flex justify-center">
-                <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={35} displayValue={false} />
+              {/* Official 3 Helpline Contacts */}
+              <div className="border-b border-black py-1.5 text-[10px] space-y-1 text-black">
+                <div className="font-black text-center uppercase tracking-wider text-[9.5px]">شماره‌های تماس رسمی و شکایات</div>
+                <div className="flex justify-between">
+                  <span className="font-bold">1. مرکز مبدأ (Sender Hub):</span>
+                  <span className="font-black font-mono" dir="ltr">{originBranch?.phone || '0799123456'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold">2. شکایات (Complaints):</span>
+                  <span className="font-black font-mono text-[10.5px]">0711299680</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-bold">3. دفتر مرکزی (Main Office):</span>
+                  <span className="font-black font-mono text-[10.5px]">0774144004</span>
+                </div>
               </div>
-              <div className="text-[9px] text-slate-600">
-                Track live at www.armaghansadeq.af using CN #{shipment.cnNumber}
+
+              {/* Barcode & Footer Notice */}
+              <div className="text-center space-y-1.5 pt-1">
+                <div className="flex justify-center">
+                  <BarcodeGenerator value={shipment.cnNumber} width={1.6} height={38} displayValue={false} />
+                </div>
+                <div className="font-mono font-black text-[12px] tracking-widest text-black">
+                  *{shipment.cnNumber}*
+                </div>
+                <div className="text-[10px] font-bold text-black">
+                  Track live: www.armaghansadeq.af
+                </div>
+                <div className="text-[8.5px] text-neutral-600 pt-0.5">
+                  Developed by Rayan tech solutions | سیستم توسعه یافته توسط خدمات تکنالوژی رایان
+                </div>
+                <div className="text-center text-[10px] font-bold text-neutral-400">--------------------------------</div>
               </div>
-              <div className="text-[8px] text-slate-500 pt-1 border-t border-dashed border-slate-400">
-                Please present this slip at destination branch for parcel collection. Thank you for choosing Armaghan Sadeq Transfers!
-              </div>
-              <div className="text-[8px] text-slate-500 pt-0.5 font-medium">
-                Developed by Rayan tech solutions | Rayan-Tech-Solution.tech
-              </div>
-              <div className="text-[7.5px] text-slate-400">
-                سیستم توسعه یافته توسط خدمات تکنالوژی رایان
-              </div>
-              <div className="text-center text-[10px] font-bold text-slate-400">--------------------------------</div>
             </div>
           </div>
-        ) : (
-          /* 2. STANDARD A4 OFFICIAL CONSIGNMENT WAYBILL */
+        )}
+
+        {/* ======================================================== */}
+        {/* 2. THERMAL 80X80MM SQUARE LABEL FORMAT                   */}
+        {/* ======================================================== */}
+        {printFormat === 'thermal_80x80' && (
+          <div className="p-3 bg-slate-50 overflow-y-auto max-h-[78vh] flex items-center justify-center">
+            <div 
+              ref={thermal80x80Ref} 
+              className="thermal-receipt-container bg-white text-black font-sans leading-tight mx-auto border-2 border-black shadow-sm my-1 select-text"
+              style={{ 
+                width: '300px', 
+                height: '300px', 
+                maxWidth: '300px',
+                maxHeight: '300px',
+                padding: '12px',
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Top Header */}
+              <div>
+                <div className="flex justify-between items-center border-b border-black pb-0.5">
+                  <div className="text-[10.5px] font-black uppercase text-black">ARMAGHAN SADEQ</div>
+                  <div className="text-[9px] font-bold text-neutral-800">80x80 LABEL</div>
+                </div>
+
+                {/* CN & Route */}
+                <div className="flex justify-between items-center pt-1 pb-1">
+                  <div>
+                    <div className="text-[7.5px] font-bold text-neutral-700">CONSIGNMENT NOTE</div>
+                    <div className="text-[13px] font-black font-mono leading-none text-black">{shipment.cnNumber}</div>
+                  </div>
+                  <div className="bg-black text-white text-[9.5px] font-black py-0.5 px-1.5 rounded-xs uppercase">
+                    {originBranch?.city?.substring(0, 6)?.toUpperCase() || 'ORIGIN'} ➔ {destBranch?.city?.substring(0, 6)?.toUpperCase() || 'DEST'}
+                  </div>
+                </div>
+
+                {/* Barcode */}
+                <div className="flex justify-center py-0.5">
+                  <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={24} displayValue={false} />
+                </div>
+              </div>
+
+              {/* Sender & Receiver Compact */}
+              <div className="border border-black p-1 text-[9.5px] space-y-0.5 leading-tight">
+                <div><span className="font-black">FROM:</span> {shipment.sender.name} • <span className="font-mono" dir="ltr">{shipment.sender.phone}</span></div>
+                <div><span className="font-black">TO:</span> <span className="font-bold">{shipment.receiver.name}</span> • <span className="font-mono font-bold" dir="ltr">{shipment.receiver.phone}</span></div>
+                <div><span className="font-bold">DEST:</span> {shipment.receiver.city} ({destBranch?.name || 'Hub'})</div>
+                <div className="text-[8.5px] text-neutral-800 font-semibold pt-0.5 border-t border-dashed border-neutral-300">
+                  {shipment.packageInfo.weightKg} KG • {shipment.packageInfo.pieces || 1} PKG • {shipment.packageInfo.serviceType.toUpperCase()}
+                </div>
+              </div>
+
+              {/* Bottom Financial / COD Box */}
+              <div>
+                <div className="p-1 bg-neutral-100 border border-black text-center font-black text-[11px] leading-tight text-black">
+                  {isPaid ? 'PAID / تحویل داده شد' : `COLLECT COD: ${totalDueVal.toLocaleString()} AFN`}
+                </div>
+                <div className="flex justify-between items-center text-[7.5px] text-neutral-700 pt-0.5">
+                  <span>Helpline: 0774144004</span>
+                  <span>www.armaghansadeq.af</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* 3. STANDARD A4 OFFICIAL CONSIGNMENT WAYBILL              */}
+        {/* ======================================================== */}
+        {printFormat === 'standard' && (
           <div ref={receiptRef} className="p-4 sm:p-5 bg-white text-slate-900 printable-receipt font-sans space-y-2.5 max-w-3xl mx-auto">
             <style>{`
               @media print {
