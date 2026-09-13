@@ -11,12 +11,14 @@ import {
   Phone,
   AlertCircle,
   Building2,
-  Tag
+  Tag,
+  Package,
+  Languages
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { BarcodeGenerator, QRCodeVisual } from './BarcodeGenerator';
 import { 
-  generateWaybillPdf, 
+  generateA4PdfFromElement, 
   generateThermalLabelPdf, 
   generateThermalPdfFromElement, 
   printElementUsingIframe 
@@ -33,14 +35,15 @@ export const PrintReceiptModal: React.FC = () => {
     showToast,
     receiptPrintMode
   } = useApp();
-
   const receiptRef = useRef<HTMLDivElement>(null);
   const thermal80mmRef = useRef<HTMLDivElement>(null);
   const thermal80x80Ref = useRef<HTMLDivElement>(null);
+
   const [printFormat, setPrintFormat] = useState<'standard' | 'thermal_80mm' | 'thermal_80x80'>(
     receiptPrintMode === 'thermal' ? 'thermal_80mm' : 'thermal_80mm'
   );
   const [receiptRole, setReceiptRole] = useState<'buyer' | 'seller'>('buyer');
+  const [language, setLanguage] = useState<'dari' | 'en'>('dari');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   
@@ -56,9 +59,11 @@ export const PrintReceiptModal: React.FC = () => {
   const sFeeVal = typeof shipment.financials?.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
   const dCommVal = typeof shipment.financials?.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : (shipment.destBranchCommission || 70);
   const discountVal = Number(shipment.financials?.discountAmount) || 0;
+  
   const payoutVal = (typeof shipment.financials?.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
     ? shipment.financials.sellerPayout
     : Math.max(0, priceVal - sFeeVal - dCommVal + discountVal);
+
   const totalDueVal = Number(shipment.financials?.totalAmount) || priceVal;
   const isPaid = shipment.financials?.paymentStatus === 'paid' || shipment.status === 'delivered';
 
@@ -75,24 +80,20 @@ export const PrintReceiptModal: React.FC = () => {
   const handlePrint = () => {
     let targetRef: HTMLElement | null = null;
     let formatArg: 'standard' | 'thermal_80mm' | 'thermal_80x80' = 'standard';
-
+    
     if (printFormat === 'standard') {
       targetRef = receiptRef.current;
       formatArg = 'standard';
-    } else if (printFormat === 'thermal_80x80') {
-      targetRef = thermal80x80Ref.current;
-      formatArg = 'thermal_80x80';
-    } else {
+    } else if (printFormat === 'thermal_80mm') {
       targetRef = thermal80mmRef.current;
       formatArg = 'thermal_80mm';
+    } else {
+      targetRef = thermal80x80Ref.current;
+      formatArg = 'thermal_80x80';
     }
 
-    if (targetRef) {
-      printElementUsingIframe(targetRef, `Receipt_${shipment.cnNumber}`, formatArg);
-    } else {
-      window.print();
-    }
-    showToast(`✓ Print job sent to printer for CN #${shipment.cnNumber}!`);
+    if (!targetRef) return;
+    printElementUsingIframe(targetRef, formatArg, shipment.cnNumber);
   };
 
   const handleDownloadPdf = async () => {
@@ -101,10 +102,12 @@ export const PrintReceiptModal: React.FC = () => {
 
     try {
       if (printFormat === 'standard') {
-        const ok = generateWaybillPdf(shipment, originBranch, destBranch, receiptRole);
-        if (ok) {
-          setDownloadSuccess(true);
-          setTimeout(() => setDownloadSuccess(false), 4000);
+        if (receiptRef.current) {
+          const ok = await generateA4PdfFromElement(receiptRef.current, `Receipt_${shipment.cnNumber}.pdf`);
+          if (ok) {
+            setDownloadSuccess(true);
+            setTimeout(() => setDownloadSuccess(false), 4000);
+          }
         }
       } else {
         const isSquare = printFormat === 'thermal_80x80';
@@ -139,141 +142,46 @@ export const PrintReceiptModal: React.FC = () => {
           setTimeout(() => setDownloadSuccess(false), 4000);
         }
       }
-    } catch (err) {
-      console.error('PDF error:', err);
+    } catch (error) {
+      console.error('PDF Generation error:', error);
+      showToast('Error generating PDF', 'error');
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
+  // Translation helpers
+  const l = (enText: string, dariText: string) => language === 'dari' ? dariText : enText;
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-      <div className={`bg-white rounded-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 ${
-        printFormat === 'standard' ? 'max-w-3xl' : 'max-w-md'
-      }`}>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col max-h-full border border-slate-200 dark:border-slate-800">
         
-        {/* Modal Action Header (Excluded from Print) */}
-        <div className="no-print p-3 sm:p-4 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2 font-bold text-sm text-slate-800">
-            <Printer className="w-4 h-4 text-red-600" />
-            <span>{t('receipt_title')}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-mono font-bold">
-              {shipment.cnNumber}
-            </span>
-          </div>
-
-          {/* Controls: Role and Thermal Format Switcher */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Receiver vs Seller Copy Switcher */}
-            <div className="flex items-center bg-slate-200/90 rounded-xl p-0.5 text-xs font-bold">
-              <button
-                onClick={() => setReceiptRole('buyer')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                  receiptRole === 'buyer' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Receiver Copy (Without internal commission/discount)"
-              >
-                <span>Receiver (رسید گیرنده)</span>
-              </button>
-              <button
-                onClick={() => setReceiptRole('seller')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                  receiptRole === 'seller' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Seller Copy (With commission, fee deductions, and net payout)"
-              >
-                <span>Seller (رسید فروشنده)</span>
-              </button>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 rounded-t-3xl shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400">
+              <Printer className="w-5 h-5" />
             </div>
-            
-            {/* Format Selector: 80mm Roll vs 80x80 Square vs A4 */}
-            <div className="flex items-center bg-slate-200/90 rounded-xl p-0.5 text-xs font-bold">
-              <button
-                onClick={() => setPrintFormat('thermal_80mm')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                  printFormat === 'thermal_80mm' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="80mm Thermal POS Roll (Standard for MG-820 thermal printer)"
-              >
-                <Receipt className="w-3.5 h-3.5" />
-                <span>80mm Roll</span>
-              </button>
-              <button
-                onClick={() => setPrintFormat('thermal_80x80')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                  printFormat === 'thermal_80x80' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="80mm x 80mm Square Label (Square sticker format)"
-              >
-                <Tag className="w-3.5 h-3.5" />
-                <span>80/80 Label</span>
-              </button>
-              <button
-                onClick={() => setPrintFormat('standard')}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                  printFormat === 'standard' ? 'bg-white text-red-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Standard A4 Document"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>A4</span>
-              </button>
+            <div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Print Receipt / Waybill</h2>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono tracking-wider">CN: {shipment.cnNumber}</p>
             </div>
           </div>
-
+          
           <div className="flex items-center gap-2">
-            {/* Download PDF button */}
-            <button
-              onClick={handleDownloadPdf}
-              disabled={isGeneratingPdf}
-              id="btn-modal-download-pdf"
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title={printFormat === 'standard' ? 'Download A4 PDF' : 'Download 80mm Thermal PDF (Perfect for MG-820)'}
+            <button 
+              onClick={() => setLanguage(lang => lang === 'dari' ? 'en' : 'dari')}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors"
             >
-              {isGeneratingPdf ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>{t('generating_pdf')}</span>
-                </>
-              ) : downloadSuccess ? (
-                <>
-                  <FileCheck className="w-3.5 h-3.5 text-emerald-200" />
-                  <span>{t('pdf_downloaded_success')}</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{printFormat === 'standard' ? 'A4 PDF' : '80mm PDF'}</span>
-                </>
-              )}
+              <Languages className="w-4 h-4" />
+              <span>{language === 'dari' ? 'EN' : 'دری'}</span>
             </button>
-
-            {/* Offline Queue button */}
-            <button
-              onClick={handleAddToQueue}
-              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Add to Offline Queue to print later"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Queue</span>
+            <button onClick={handleAddToQueue} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors" title="Add to Offline Queue">
+              <Save className="w-5 h-5" />
             </button>
-
-            {/* Direct Print button */}
-            <button
-              onClick={handlePrint}
-              id="btn-modal-print-receipt"
-              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Send directly to thermal printer (MG-820)"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>{printFormat === 'standard' ? t('btn_print_pdf') : 'Print 80mm'}</span>
-            </button>
-
-            <button
-              onClick={() => setSelectedShipmentForReceipt(null)}
-              className="p-1.5 rounded-xl text-slate-500 hover:bg-slate-200 transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4" />
+            <button onClick={() => setSelectedShipmentForReceipt(null)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors">
+              <X className="w-6 h-6" />
             </button>
           </div>
         </div>
@@ -282,259 +190,225 @@ export const PrintReceiptModal: React.FC = () => {
         {/* 1. THERMAL POS RECEIPT FORMAT (80MM CONTINUOUS ROLL)     */}
         {/* ======================================================== */}
         {printFormat === 'thermal_80mm' && (
-          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center">
+          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
               <span className="w-8 h-px bg-slate-300"></span>
               Print Preview (80mm)
               <span className="w-8 h-px bg-slate-300"></span>
             </div>
+            
             <div 
               ref={thermal80mmRef} 
-              className="thermal-receipt-container bg-white text-black font-sans text-xs leading-tight space-y-2.5 mx-auto border border-dashed border-slate-300 shadow-xl select-text"
+              className="thermal-receipt-container bg-white text-black font-sans text-sm leading-tight space-y-2.5 mx-auto shadow-xl select-text print:shadow-none print:border-none"
               style={{ 
-                width: '300px', 
-                maxWidth: '300px',
+                width: '80mm', 
+                maxWidth: '80mm',
                 padding: '12px 10px',
                 boxSizing: 'border-box'
               }}
+              dir={language === 'dari' ? 'rtl' : 'ltr'}
             >
               {/* Header */}
               <div className="text-center space-y-1 pb-1.5 border-b-2 border-black">
-                <div className="text-[13px] font-black tracking-tight uppercase text-black">ARMAGHAN SADEQ TRANSFERS</div>
-                <div className="text-[12px] font-bold text-black">خدمات انتقالات ارمغان صادق</div>
-                <div className="text-[10px] font-semibold text-neutral-800">مرکز کابل • Central Hub Kabul</div>
-                <div className="text-[10.5px] font-black pt-1 border-t border-dashed border-black tracking-wider uppercase">
-                  *** OFFICIAL CONSIGNMENT SLIP ***
+                <div className="text-[14px] font-black tracking-tight uppercase text-black" dir="ltr">ARMAGHAN SADEQ TRANSFERS</div>
+                <div className="text-[13px] font-bold text-black">{l('Armaghan Sadeq Transfer Services', 'خدمات انتقالات ارمغان صادق')}</div>
+                <div className="text-[11px] font-semibold text-neutral-800" dir="ltr">Central Hub Kabul</div>
+                <div className="text-[11px] font-black pt-1 border-t border-dashed border-black tracking-wider uppercase">
+                  {l('*** OFFICIAL RECEIPT ***', '*** رسید رسمی محموله ***')}
                 </div>
               </div>
 
               {/* CN & Date */}
-              <div className="space-y-0.5 text-xs pb-1.5 border-b border-black">
+              <div className="space-y-0.5 text-sm pb-1.5 border-b border-black">
                 <div className="flex justify-between items-baseline font-bold">
-                  <span className="text-[11px] text-neutral-800">CN NUMBER:</span>
-                  <span className="text-[15px] font-black font-mono tracking-wider text-black">{shipment.cnNumber}</span>
+                  <span className="text-[12px] text-neutral-800">{l('Consignment No:', 'نمبر بارنامه (CN):')}</span>
+                  <span className="text-[16px] font-black font-mono tracking-wider text-black">{shipment.cnNumber}</span>
                 </div>
-                <div className="flex justify-between text-[11px] text-neutral-900">
-                  <span className="font-semibold">DATE:</span>
-                  <span>{new Date(shipment.bookedAt).toLocaleString()}</span>
+                <div className="flex justify-between text-[12px] text-neutral-900">
+                  <span className="font-semibold">{l('Date:', 'تاریخ:')}</span>
+                  <span dir="ltr">{new Date(shipment.bookedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
                 </div>
-                <div className="flex justify-between text-[11px] text-neutral-900">
-                  <span className="font-semibold">SERVICE:</span>
-                  <span className="uppercase font-black">{shipment.packageInfo.serviceType}</span>
+                <div className="flex justify-between text-[12px] text-neutral-900">
+                  <span className="font-semibold">{l('Type:', 'نوعیت:')}</span>
+                  <span className="uppercase font-black">{shipment.packageInfo.serviceType.replace('_', ' ')}</span>
                 </div>
               </div>
 
               {/* Route */}
               <div className="space-y-1.5 py-1 border-b border-black">
-                <div className="font-black text-[12px] uppercase text-center bg-black text-white py-1 px-2 rounded-xs tracking-wide">
+                <div className="font-black text-[13px] uppercase text-center bg-black text-white py-1 px-2 rounded-xs tracking-wide" dir="ltr">
                   {originBranch?.city?.toUpperCase() || 'ORIGIN'} ➔ {destBranch?.city?.toUpperCase() || 'DESTINATION'}
                 </div>
-                <div className="text-[11px] space-y-0.5 text-black">
-                  <div><span className="font-black">FROM:</span> <span className="font-bold">{shipment.sender.name}</span></div>
-                  <div><span className="font-black">TEL:</span> <span className="font-mono font-bold" dir="ltr">{shipment.sender.phone}</span></div>
-                  <div><span className="font-semibold">CITY:</span> {shipment.sender.city} ({originBranch?.name || 'Main'})</div>
+                <div className="text-[12px] space-y-0.5 text-black">
+                  <div><span className="font-black">{l('Sender:', 'فرستنده:')}</span> <span className="font-bold">{shipment.sender.name}</span></div>
+                  <div><span className="font-black">{l('Phone:', 'تماس:')}</span> <span className="font-mono font-bold" dir="ltr">{shipment.sender.phone}</span></div>
+                  <div><span className="font-semibold">{l('City:', 'شهر:')}</span> {shipment.sender.city} ({originBranch?.name || 'Main'})</div>
                 </div>
-                <div className="text-[11px] space-y-0.5 pt-1 border-t border-dashed border-neutral-300 text-black">
-                  <div><span className="font-black">TO:</span> <span className="font-bold">{shipment.receiver.name}</span></div>
-                  <div><span className="font-black">TEL:</span> <span className="font-mono font-bold" dir="ltr">{shipment.receiver.phone}</span></div>
+                <div className="text-[12px] space-y-0.5 pt-1 border-t border-dashed border-neutral-300 text-black">
+                  <div><span className="font-black">{l('Receiver:', 'گیرنده:')}</span> <span className="font-bold">{shipment.receiver.name}</span></div>
+                  <div><span className="font-black">{l('Phone:', 'تماس:')}</span> <span className="font-mono font-bold" dir="ltr">{shipment.receiver.phone}</span></div>
                   {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
-                    <div><span className="font-black">TAZKIRA:</span> <span className="font-bold">{shipment.receiver.nationalId || shipment.sender.receiverTazkira}</span></div>
+                    <div><span className="font-black">{l('ID:', 'تذکره:')}</span> <span className="font-bold">{shipment.receiver.nationalId || shipment.sender.receiverTazkira}</span></div>
                   )}
-                  <div><span className="font-semibold">DEST:</span> {shipment.receiver.city} ({destBranch?.name || 'Destination'})</div>
+                  <div><span className="font-semibold">{l('Dest:', 'مقصد:')}</span> {shipment.receiver.city} ({destBranch?.name || 'Destination'})</div>
                 </div>
               </div>
 
               {/* Cargo Specs */}
-              <div className="space-y-0.5 py-1 border-b border-black text-[11px] text-black">
+              <div className="space-y-0.5 py-1 border-b border-black text-[12px] text-black">
                 <div className="flex justify-between">
-                  <span className="font-semibold">CATEGORY:</span>
+                  <span className="font-semibold">{l('Category:', 'دسته بندی:')}</span>
                   <span className="font-black">{shipment.packageInfo.category}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-semibold">WEIGHT:</span>
+                  <span className="font-semibold">{l('Weight:', 'وزن:')}</span>
                   <span className="font-black">{shipment.packageInfo.weightKg} KG</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-semibold">PIECES:</span>
+                  <span className="font-semibold">{l('Pieces:', 'تعداد:')}</span>
                   <span className="font-black">{shipment.packageInfo.pieces} PKG(S)</span>
                 </div>
                 {shipment.packageInfo.isFragile && (
-                  <div className="text-center font-black text-[10px] border border-black py-0.5 mt-1 bg-neutral-100">
-                    * FRAGILE CARGO - HANDLE WITH CARE *
+                  <div className="text-center font-black text-[11px] border border-black py-0.5 mt-1 bg-neutral-100">
+                    {l('* FRAGILE - HANDLE WITH CARE *', '* جنس شکستنی - با احتیاط انتقال یابد *')}
                   </div>
                 )}
               </div>
 
               {/* Charges Breakdown */}
-              <div className="space-y-1.5 py-1 border-b border-black text-[11px]">
+              <div className="space-y-1.5 py-1 border-b border-black text-[12px]">
                 {shipment.status === 'pre_booked' && (
                   <div className="text-center py-1 bg-neutral-100 border border-black text-black mb-1">
-                    <div className="font-black text-[10px] uppercase">* PRE-BOOKING ESTIMATE *</div>
-                    <div className="text-[9px]">Final weight & price verified upon branch drop-off.</div>
+                    <div className="font-black text-[11px] uppercase">{l('* PRE-BOOKING ESTIMATE *', '* تخمین پیش‌ثبت‌نام *')}</div>
+                    <div className="text-[10px]">{l('Final weight and price confirmed at drop-off.', 'وزن و قیمت نهایی پس از تحویل در نمایندگی تایید می‌گردد.')}</div>
                   </div>
                 )}
                 {receiptRole === 'seller' ? (
                   <div className="space-y-1 text-black">
                     <div className="flex justify-between">
-                      <span className="font-semibold">Product Selling Price:</span>
+                      <span className="font-semibold">{l('Item Value:', 'قیمت فروش جنس:')}</span>
                       <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-semibold">Service Fee (Deducted):</span>
+                      <span className="font-semibold">{l('Service Fee:', 'فیس خدمات (کسر شده):')}</span>
                       <span className="font-bold">-{sFeeVal.toLocaleString()} AFN</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-semibold">Dest. Comm. (Deducted):</span>
+                      <span className="font-semibold">{l('Dest Comm:', 'کمیسیون مقصد:')}</span>
                       <span className="font-bold">-{dCommVal.toLocaleString()} AFN</span>
                     </div>
                     {discountVal > 0 && (
                       <div className="flex justify-between">
-                        <span className="font-semibold">Fee Discount:</span>
+                        <span className="font-semibold">{l('Discount:', 'تخفیف:')}</span>
                         <span className="font-bold">+{discountVal.toLocaleString()} AFN</span>
                       </div>
                     )}
                     <div className="p-1.5 bg-neutral-100 border-2 border-black mt-1 text-center">
-                      <div className="text-[10px] font-bold uppercase text-neutral-800">NET PAYOUT TO SELLER (پرداخت خالص به فروشنده)</div>
-                      <div className="text-[16px] font-black font-mono text-black">{payoutVal.toLocaleString()} AFN</div>
+                      <div className="text-[11px] font-bold uppercase text-neutral-800" dir="ltr">NET PAYOUT TO SELLER</div>
+                      <div className="text-[17px] font-black font-mono text-black">{payoutVal.toLocaleString()} AFN</div>
                     </div>
                   </div>
                 ) : (
                   <div className="p-1.5 bg-neutral-100 border-2 border-black text-center space-y-0.5">
-                    <div className="text-[10.5px] font-black uppercase text-black">TOTAL PAYABLE (مجموع قابل پرداخت)</div>
-                    <div className="text-[18px] font-black font-mono text-black">{totalDueVal.toLocaleString()} AFN</div>
+                    <div className="text-[11px] font-black uppercase text-black">{l('TOTAL PAYABLE', 'TOTAL PAYABLE (مجموع قابل پرداخت)')}</div>
+                    <div className="text-[19px] font-black font-mono text-black">{totalDueVal.toLocaleString()} AFN</div>
                   </div>
                 )}
-                <div className="flex justify-between font-black text-[11px] pt-1 border-t border-dashed border-neutral-300">
-                  <span>PAYMENT STATUS:</span>
-                  <span className="uppercase">
-                    {isPaid ? 'PAID / تحویل داده شد' : 'COD (COLLECT AT DEST)'}
+                <div className="flex justify-between font-black text-[12px] pt-1 border-t border-dashed border-neutral-300">
+                  <span>{l('Payment Status:', 'وضعیت پرداخت:')}</span>
+                  <span className="uppercase" dir="ltr">
+                    {isPaid ? 'PAID' : 'COD (COLLECT AT DEST)'}
                   </span>
                 </div>
               </div>
 
-              {/* 3 Official Cargo Rules & Legal Conditions in Dari */}
-              <div className="border-b border-black py-1.5 text-[9px] leading-snug space-y-1 text-black text-right" dir="rtl">
-                <div className="font-black text-center uppercase tracking-wider text-[9.5px] bg-neutral-100 py-0.5 border-y border-black">
-                  شرایط، قوانین و مقررات بارنامه
+              {/* Rules & Footer */}
+              <div className="border-b border-black py-1.5 text-[10px] leading-snug space-y-1 text-black">
+                <div className="font-black text-center uppercase tracking-wider text-[10.5px] bg-neutral-100 py-0.5 border-y border-black mb-1">
+                  {l('Terms & Conditions', 'شرایط، قوانین و مقررات بارنامه')}
                 </div>
-                <div className="space-y-1 pt-0.5 font-sans">
-                  <div>
-                    <span className="font-black">۱. </span> بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.
-                  </div>
-                  <div>
-                    <span className="font-black">۲. </span> ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتش‌سوزی و تصادم مسئول نیست.
-                  </div>
-                  <div>
-                    <span className="font-black">۳. </span> اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.
-                  </div>
+                <div className="space-y-1 font-sans pr-1">
+                  <div><span className="font-black">1. </span> {l('Receipt valid for 30 days. Sender is responsible for correct info.', 'بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات بر عهده فرستنده است.')}</div>
+                  <div><span className="font-black">2. </span> {l('Illegal items are strictly prohibited.', 'ارسال اموال غیرقانونی ممنوع است.')}</div>
+                  <div><span className="font-black">3. </span> {l('Original receipt required for payout.', 'هنگام دریافت پول، ارائه بل اصلی الزامی است.')}</div>
                 </div>
               </div>
 
-              {/* Official 3 Helpline Contacts */}
-              <div className="border-b border-black py-1.5 text-[10px] space-y-1 text-black">
-                <div className="font-black text-center uppercase tracking-wider text-[9.5px]">شماره‌های تماس رسمی و شکایات</div>
-                <div className="flex justify-between">
-                  <span className="font-bold">1. مرکز مبدأ (Sender Hub):</span>
-                  <span className="font-black font-mono" dir="ltr">{originBranch?.phone || '0799123456'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">2. شکایات (Complaints):</span>
-                  <span className="font-black font-mono text-[10.5px]">0711299680</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-bold">3. دفتر مرکزی (Main Office):</span>
-                  <span className="font-black font-mono text-[10.5px]">0774144004</span>
-                </div>
+              {/* Official Contacts */}
+              <div className="border-b border-black py-1.5 text-[11px] space-y-1 text-black">
+                <div className="font-black text-center uppercase tracking-wider text-[10.5px]">{l('Official Contacts', 'شماره‌های تماس رسمی')}</div>
+                <div className="flex justify-between"><span className="font-bold">{l('Origin:', 'مرکز مبدأ:')}</span><span className="font-black font-mono" dir="ltr">{originBranch?.phone || '0799123456'}</span></div>
+                <div className="flex justify-between"><span className="font-bold">{l('Complaints:', 'شکایات:')}</span><span className="font-black font-mono text-[11px]" dir="ltr">0711299680</span></div>
               </div>
 
-              {/* Barcode & Footer Notice */}
-              <div className="text-center space-y-1.5 pt-1">
-                <div className="flex justify-center">
-                  <BarcodeGenerator value={shipment.cnNumber} width={1.6} height={38} displayValue={false} />
-                </div>
-                <div className="font-mono font-black text-[12px] tracking-widest text-black">
-                  *{shipment.cnNumber}*
-                </div>
-                <div className="text-[10px] font-bold text-black">
-                  Track live: www.armaghansadeq.af
-                </div>
-                <div className="text-[8.5px] text-neutral-600 pt-0.5">
-                  Developed by Rayan tech solutions | سیستم توسعه یافته توسط خدمات تکنالوژی رایان
-                </div>
-                <div className="text-center text-[10px] font-bold text-neutral-400">--------------------------------</div>
+              <div className="text-center space-y-1 pt-2 pb-2">
+                <BarcodeGenerator value={shipment.cnNumber} width={1.8} height={40} />
+                <div className="text-[9px] font-bold text-neutral-800" dir="ltr">www.armaghansadeq.af</div>
               </div>
             </div>
           </div>
         )}
 
         {/* ======================================================== */}
-        {/* 2. THERMAL 80X80MM SQUARE LABEL FORMAT                   */}
+        {/* 2. THERMAL LABEL FORMAT (80x80 SQUARE STICKER)           */}
         {/* ======================================================== */}
         {printFormat === 'thermal_80x80' && (
-          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center">
+          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
               <span className="w-8 h-px bg-slate-300"></span>
-              Print Preview (80x80)
+              Print Preview (80x80 Label)
               <span className="w-8 h-px bg-slate-300"></span>
             </div>
+            
             <div 
               ref={thermal80x80Ref} 
-              className="thermal-receipt-container bg-white text-black font-sans leading-tight mx-auto border border-dashed border-slate-400 shadow-xl select-text"
+              className="thermal-label-container bg-white text-black font-sans text-sm mx-auto shadow-xl select-text overflow-hidden relative print:shadow-none print:border-none"
               style={{ 
-                width: '300px', 
-                height: '300px', 
-                maxWidth: '300px',
-                maxHeight: '300px',
-                padding: '12px',
+                width: '80mm', 
+                height: '80mm',
+                padding: '8px',
                 boxSizing: 'border-box',
                 display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                overflow: 'hidden'
+                flexDirection: 'column'
               }}
+              dir={language === 'dari' ? 'rtl' : 'ltr'}
             >
-              {/* Top Header */}
-              <div>
-                <div className="flex justify-between items-center border-b border-black pb-0.5">
-                  <div className="text-[10.5px] font-black uppercase text-black">ARMAGHAN SADEQ</div>
-                  <div className="text-[9px] font-bold text-neutral-800">80x80 LABEL</div>
+              <div className="flex justify-between items-start border-b-2 border-black pb-1 mb-1">
+                <div>
+                  <div className="text-[12px] font-black tracking-tight" dir="ltr">ARMAGHAN SADEQ</div>
+                  <div className="text-[10px] font-semibold text-neutral-600">{l('Logistics Services', 'خدمات باربری')}</div>
                 </div>
-
-                {/* CN & Route */}
-                <div className="flex justify-between items-center pt-1 pb-1">
-                  <div>
-                    <div className="text-[7.5px] font-bold text-neutral-700">CONSIGNMENT NOTE</div>
-                    <div className="text-[13px] font-black font-mono leading-none text-black">{shipment.cnNumber}</div>
-                  </div>
-                  <div className="bg-black text-white text-[9.5px] font-black py-0.5 px-1.5 rounded-xs uppercase">
-                    {originBranch?.city?.substring(0, 6)?.toUpperCase() || 'ORIGIN'} ➔ {destBranch?.city?.substring(0, 6)?.toUpperCase() || 'DEST'}
-                  </div>
-                </div>
-
-                {/* Barcode */}
-                <div className="flex justify-center py-0.5">
-                  <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={24} displayValue={false} />
+                <div className="text-right">
+                  <div className="text-[14px] font-black font-mono">{shipment.cnNumber}</div>
+                  <div className="text-[9px] font-bold" dir="ltr">{new Date(shipment.bookedAt).toLocaleDateString('en-GB')}</div>
                 </div>
               </div>
-
-              {/* Sender & Receiver Compact */}
-              <div className="border border-black p-1 text-[9.5px] space-y-0.5 leading-tight">
-                <div><span className="font-black">FROM:</span> {shipment.sender.name} • <span className="font-mono" dir="ltr">{shipment.sender.phone}</span></div>
-                <div><span className="font-black">TO:</span> <span className="font-bold">{shipment.receiver.name}</span> • <span className="font-mono font-bold" dir="ltr">{shipment.receiver.phone}</span></div>
-                <div><span className="font-bold">DEST:</span> {shipment.receiver.city} ({destBranch?.name || 'Hub'})</div>
-                <div className="text-[8.5px] text-neutral-800 font-semibold pt-0.5 border-t border-dashed border-neutral-300">
-                  {shipment.packageInfo.weightKg} KG • {shipment.packageInfo.pieces || 1} PKG • {shipment.packageInfo.serviceType.toUpperCase()}
+              
+              <div className="text-center my-1 bg-black text-white font-black py-0.5 text-[14px] uppercase" dir="ltr">
+                {originBranch?.city?.substring(0,3)} ➔ {destBranch?.city?.substring(0,3)}
+              </div>
+              
+              <div className="flex-1 flex flex-col justify-center space-y-1 text-[12px]">
+                <div className="border border-black p-1 rounded-sm">
+                  <div className="text-[9px] text-neutral-500 font-bold mb-0.5">{l('SENDER', 'فرستنده (SENDER)')}</div>
+                  <div className="font-black text-[13px]">{shipment.sender.name}</div>
+                  <div className="font-mono font-bold text-[11px]" dir="ltr">{shipment.sender.phone}</div>
+                </div>
+                <div className="border-2 border-black p-1 rounded-sm bg-neutral-100">
+                  <div className="text-[9px] text-neutral-800 font-bold mb-0.5">{l('RECEIVER', 'گیرنده (RECEIVER)')}</div>
+                  <div className="font-black text-[14px]">{shipment.receiver.name}</div>
+                  <div className="font-mono font-black text-[12px]" dir="ltr">{shipment.receiver.phone}</div>
+                  <div className="text-[11px] font-bold mt-0.5"><MapPin className="w-3 h-3 inline mr-0.5"/> {shipment.receiver.city}</div>
                 </div>
               </div>
-
-              {/* Bottom Financial / COD Box */}
-              <div>
-                <div className="p-1 bg-neutral-100 border border-black text-center font-black text-[11px] leading-tight text-black">
-                  {isPaid ? 'PAID / تحویل داده شد' : `COLLECT COD: ${totalDueVal.toLocaleString()} AFN`}
+              
+              <div className="flex justify-between items-end mt-1 pt-1 border-t border-black">
+                <div className="text-[10px] font-bold">
+                  <div>{shipment.packageInfo.pieces} PCS | {shipment.packageInfo.weightKg} KG</div>
+                  <div className="uppercase">{shipment.packageInfo.serviceType.replace('_', ' ')}</div>
                 </div>
-                <div className="flex justify-between items-center text-[7.5px] text-neutral-700 pt-0.5">
-                  <span>Helpline: 0774144004</span>
-                  <span>www.armaghansadeq.af</span>
+                <div className="text-right">
+                   <BarcodeGenerator value={shipment.cnNumber} width={1.2} height={25} />
                 </div>
               </div>
             </div>
@@ -542,300 +416,338 @@ export const PrintReceiptModal: React.FC = () => {
         )}
 
         {/* ======================================================== */}
-        {/* 3. STANDARD A4 OFFICIAL CONSIGNMENT WAYBILL              */}
+        {/* 3. STANDARD A4 PRINT FORMAT (FULL RECEIPT/WAYBILL)       */}
         {/* ======================================================== */}
         {printFormat === 'standard' && (
-          <div ref={receiptRef} className="p-4 sm:p-5 bg-white text-slate-900 printable-receipt font-sans space-y-2.5 max-w-3xl mx-auto">
-            <style>{`
-              @media print {
-                @page {
-                  size: A4 portrait;
-                  margin: 4mm 6mm;
-                }
-                body {
-                  margin: 0 !important;
-                  padding: 0 !important;
-                }
-                .printable-receipt {
-                  page-break-inside: avoid !important;
-                  break-inside: avoid !important;
-                  max-height: 282mm !important;
-                }
-              }
-            `}</style>
+          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <span className="w-12 h-px bg-slate-300"></span>
+              Print Preview (A4)
+              <span className="w-12 h-px bg-slate-300"></span>
+            </div>
             
-            {/* Header */}
-            <div className="flex items-start justify-between border-b-2 border-slate-900 pb-2 gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-1 bg-white rounded-lg border border-amber-500/30 flex items-center justify-center shrink-0">
-                  <img src="/logo.jpg" alt="Armaghan Sadeq Transfers" className="w-10 h-10 object-contain" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-black tracking-tight text-slate-900">
-                    ARMAGHAN SADEQ TRANSFERS
-                  </h1>
-                  <p className="text-xs text-amber-700 font-bold">
-                    خدمات انتقالات ارمغان صادق
-                  </p>
-                  <p className="text-[9.5px] text-slate-500">
-                    Afghanistan Nationwide Express Transfers & Freight Logistics
-                  </p>
-                  <div className="text-[9px] text-slate-500 mt-0.5">
-                    Helpline: 0711299680 / 0774144004 | info@armaghansadeq.af | Kabul HQ
-                  </div>
-                </div>
-              </div>
+            <div 
+              ref={receiptRef} 
+              className="bg-white text-slate-900 border border-slate-200 shadow-xl overflow-hidden print:shadow-none print:border-0 relative font-sans select-text"
+              style={{ width: '794px', minHeight: '1123px', padding: '40px' }}
+              dir={language === 'dari' ? 'rtl' : 'ltr'}
+            >
+              {/* Decorative Header Banner */}
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-red-600 to-red-800"></div>
 
-              <div className="flex flex-col items-end text-end">
-                <div className="text-[11px] font-mono font-bold text-slate-500">
-                  WAYBILL / CONSIGNMENT NOTE
-                </div>
-                <div className="text-xl font-mono font-black text-red-600 tracking-wider">
-                  {shipment.cnNumber}
-                </div>
-                <div className="text-[11px] text-slate-500 mt-1">
-                  Date: {new Date(shipment.bookedAt).toLocaleString()}
-                </div>
-              </div>
-            </div>
-
-            {/* Barcode & QR Code Section */}
-            <div className="flex flex-wrap items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200 gap-4">
-              <div className="flex items-center gap-6">
-                <BarcodeGenerator value={shipment.cnNumber} width={1.8} height={50} />
-                <div>
-                  <div className="text-xs font-mono font-bold text-slate-700">
-                    SERVICE: {shipment.packageInfo.serviceType.toUpperCase()}
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    CATEGORY: {shipment.packageInfo.category.toUpperCase()}
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    WEIGHT: {shipment.packageInfo.weightKg} KG • PIECES: {shipment.packageInfo.pieces}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="text-end">
-                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    STATUS
-                  </div>
-                  <div className="font-black text-sm text-emerald-600 uppercase">
-                    {shipment.status.replace(/_/g, ' ')}
-                  </div>
-                  <div className="text-[10px] text-slate-500 font-mono">
-                    {shipment.financials.paymentStatus.toUpperCase()}
-                  </div>
-                </div>
-                <QRCodeVisual value={`https://rayancargo.af/track/${shipment.cnNumber}`} size={55} />
-              </div>
-            </div>
-
-            {/* Route & Sender/Receiver Table */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              {/* Sender / Origin */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-red-600 uppercase tracking-wider pb-1 border-b border-slate-200">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Sender (Origin)</span>
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500">
-                    {originBranch?.code || 'ORIGIN'} HUB
-                  </span>
-                </div>
-                <div className="font-bold text-sm text-slate-900">{shipment.sender.name}</div>
-                <div className="text-xs font-mono text-slate-700 flex items-center gap-1.5">
-                  <span dir="ltr">{shipment.sender.phone}</span>
-                </div>
-                <div className="text-xs text-slate-600">
-                  {shipment.sender.address}, {shipment.sender.city}, {shipment.sender.province}
-                </div>
-                {shipment.sender.nationalId && (
-                  <div className="text-[11px] font-mono text-slate-500">
-                    Tazkira / ID: {shipment.sender.nationalId}
-                  </div>
-                )}
-                {shipment.sender.receiverTazkira && (
-                  <div className="text-[11px] font-mono text-slate-500">
-                    Receiver Tazkira recorded: {shipment.sender.receiverTazkira}
-                  </div>
-                )}
-              </div>
-
-              {/* Receiver / Destination */}
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-emerald-600 uppercase tracking-wider pb-1 border-b border-slate-200">
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Receiver (Destination)</span>
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500">
-                    {destBranch?.code || 'DEST'} HUB
-                  </span>
-                </div>
-                <div className="font-bold text-sm text-slate-900">{shipment.receiver.name}</div>
-                <div className="text-xs font-mono text-slate-700 flex items-center gap-1.5">
-                  <span dir="ltr">{shipment.receiver.phone}</span>
-                </div>
-                <div className="text-xs text-slate-600">
-                  {shipment.receiver.address}, {shipment.receiver.city}, {shipment.receiver.province}
-                </div>
-                {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
-                  <div className="text-[11px] font-mono font-semibold text-emerald-700">
-                    Receiver Tazkira / ID: {shipment.receiver.nationalId || shipment.sender.receiverTazkira}
-                  </div>
-                )}
-                {shipment.receiver.altPhone && (
-                  <div className="text-[11px] font-mono text-slate-500">
-                    Alt Tel: <span dir="ltr">{shipment.receiver.altPhone}</span>
-                  </div>
-                )}
-              </div>
-
-            </div>
-
-            {/* Cargo Details & Billing Breakdown */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
-                  <tr>
-                    <th className="p-2.5 text-start">{t('description') || 'Cargo Description'}</th>
-                    <th className="p-2.5 text-center">{t('category_lbl') || 'Category'}</th>
-                    <th className="p-2.5 text-center">{t('weight_lbl') || 'Weight'}</th>
-                    <th className="p-2.5 text-center">{t('pieces_lbl') || 'Pieces'}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  <tr>
-                    <td className="p-2.5 font-medium text-slate-900">
-                      {shipment.packageInfo.description || 'General Cargo Shipment'}
-                      {shipment.packageInfo.isFragile && (
-                        <span className="ms-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700">
-                          FRAGILE
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-2.5 text-center capitalize">{shipment.packageInfo.category}</td>
-                    <td className="p-2.5 text-center font-mono font-bold">{shipment.packageInfo.weightKg} KG</td>
-                    <td className="p-2.5 text-center">{shipment.packageInfo.pieces} Box(es)</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Financial Summary */}
-              <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-wrap justify-between items-center gap-4">
-                {shipment.status === 'pre_booked' && (
-                  <div className="w-full p-2.5 rounded-lg bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-amber-900 mb-2">
-                    <div className="text-xs">
-                      <strong className="uppercase">Pre-Booking Estimate:</strong> Final dimensions and pricing certified upon origin branch drop-off.
-                    </div>
-                    <div className="px-2.5 py-0.5 bg-amber-200/80 rounded font-mono font-bold text-[10px] text-amber-900 whitespace-nowrap">
-                      PRE-BOOKING
+              {/* Header */}
+              <div className="flex justify-between items-start border-b-2 border-red-800 pb-6 mb-6 pt-2">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-3 text-red-700">
+                    <Building2 className="w-10 h-10" />
+                    <div>
+                      <h1 className="text-3xl font-black tracking-tight">{l('Armaghan Sadeq', 'ارمغان صادق')}</h1>
+                      <div className="text-sm font-bold tracking-widest text-red-600/80 uppercase" dir="ltr">Armaghan Sadeq Transfers</div>
                     </div>
                   </div>
-                )}
-
-                <div className="text-xs text-slate-600 space-y-1">
-                  <div>Payment Method: <strong className="uppercase">{shipment.financials.paymentMethod}</strong></div>
-                  <div>Payment Status: <strong className="uppercase text-emerald-700">{isPaid ? 'PAID / COLLECTED' : 'COD (TO PAY AT DEST)'}</strong></div>
-                  <div>Booked By Officer: <strong>{shipment.bookedByUserName || 'Terminal Agent'}</strong></div>
+                  <div className="text-sm font-medium text-slate-600 mt-2 max-w-xs">
+                    {l('Fast, secure and professional logistics services across Afghanistan.', 'خدمات باربری و انتقالات سریع، مطمئن و مسلکی در سراسر افغانستان.')}
+                  </div>
                 </div>
 
-                <div className="text-end space-y-1">
+                <div className="text-left flex flex-col items-end">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{l('Consignment Number (CN)', 'نمبر بارنامه (CN)')}</div>
+                  <div className="text-4xl font-black font-mono tracking-tighter text-slate-900 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+                    {shipment.cnNumber}
+                  </div>
+                  <div className="mt-3">
+                    <BarcodeGenerator value={shipment.cnNumber} width={1.5} height={40} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Meta Info Bar */}
+              <div className="grid grid-cols-3 gap-4 bg-slate-50 border border-slate-200 p-4 rounded-xl mb-6 text-sm">
+                <div>
+                  <div className="text-slate-500 text-xs mb-0.5">{l('Registration Date', 'تاریخ ثبت')}</div>
+                  <div className="font-bold">{new Date(shipment.bookedAt).toLocaleString(language === 'dari' ? 'fa-AF' : 'en-US', { dateStyle: 'long', timeStyle: 'short' })}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500 text-xs mb-0.5">{l('Service Type', 'نوعیت خدمات')}</div>
+                  <div className="font-black uppercase text-red-700">{shipment.packageInfo.serviceType.replace('_', ' ')}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500 text-xs mb-0.5">{l('Payment Status', 'وضعیت پرداخت')}</div>
+                  <div className="font-bold uppercase flex items-center gap-1.5">
+                    {isPaid ? (
+                      <span className="text-emerald-600 flex items-center gap-1"><FileCheck className="w-4 h-4"/> PAID {l('', '(تحویل داده شد)')}</span>
+                    ) : (
+                      <span className="text-orange-600 flex items-center gap-1"><AlertCircle className="w-4 h-4"/> COD {l('', '(پرداخت در مقصد)')}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Sender & Receiver Boxes (Two-Column Layout) */}
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="border-2 border-slate-100 rounded-2xl p-5 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50 rounded-bl-full -z-10"></div>
+                  <div className="flex items-center gap-2 text-blue-800 font-black mb-4">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">1</div>
+                    {l('Sender Details', 'مشخصات فرستنده (Sender)')}
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <span className="text-slate-500">{l('Name:', 'اسم:')}</span>
+                      <span className="font-bold text-lg text-slate-900">{shipment.sender.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <span className="text-slate-500">{l('Phone:', 'شماره تماس:')}</span>
+                      <span className="font-bold font-mono text-base" dir="ltr">{shipment.sender.phone}</span>
+                    </div>
+                    <div className="flex items-center justify-between pb-1">
+                      <span className="text-slate-500">{l('City/Branch:', 'ولایت / شهر:')}</span>
+                      <span className="font-bold flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                        {shipment.sender.city} ({originBranch?.name})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-2 border-slate-100 rounded-2xl p-5 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50 rounded-bl-full -z-10"></div>
+                  <div className="flex items-center gap-2 text-emerald-800 font-black mb-4">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">2</div>
+                    {l('Receiver Details', 'مشخصات گیرنده (Receiver)')}
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <span className="text-slate-500">{l('Name:', 'اسم:')}</span>
+                      <span className="font-bold text-lg text-slate-900">{shipment.receiver.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <span className="text-slate-500">{l('Phone:', 'شماره تماس:')}</span>
+                      <span className="font-bold font-mono text-base" dir="ltr">{shipment.receiver.phone}</span>
+                    </div>
+                    <div className="flex items-center justify-between pb-1">
+                      <span className="text-slate-500">{l('Dest/City:', 'مقصد / شهر:')}</span>
+                      <span className="font-bold flex items-center gap-1.5">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                        {shipment.receiver.city} ({destBranch?.name})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cargo Details Grid */}
+              <div className="mb-6 border-2 border-slate-900 rounded-2xl overflow-hidden">
+                <div className="bg-slate-900 text-white px-5 py-2.5 font-bold flex items-center gap-2">
+                  <Package className="w-4 h-4 text-red-400" />
+                  {l('Cargo Details', 'مشخصات محموله (Cargo Details)')}
+                </div>
+                <div className="p-5">
+                  <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="text-xs text-slate-500 mb-1">{l('Category', 'دسته بندی')}</div>
+                      <div className="font-bold">{shipment.packageInfo.category}</div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="text-xs text-slate-500 mb-1">{l('Total Pieces', 'تعداد پارسل')}</div>
+                      <div className="font-black text-lg">{shipment.packageInfo.pieces} <span className="text-xs font-normal text-slate-400">PCS</span></div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="text-xs text-slate-500 mb-1">{l('Total Weight', 'وزن مجموعی')}</div>
+                      <div className="font-black text-lg">{shipment.packageInfo.weightKg} <span className="text-xs font-normal text-slate-400">KG</span></div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <div className="text-xs text-slate-500 mb-1">{l('Contents', 'محتویات')}</div>
+                      <div className="font-bold break-words whitespace-pre-wrap text-[13px] leading-tight">{shipment.packageInfo.description || l('Unspecified', 'نامشخص')}</div>
+                    </div>
+                  </div>
+                  
+                  {shipment.packageInfo.isFragile && (
+                    <div className="bg-red-50 text-red-700 p-3 rounded-xl border border-red-100 flex items-center gap-2 font-bold text-sm">
+                      <AlertCircle className="w-5 h-5" />
+                      {l('This cargo is fragile. Please handle with care. (FRAGILE CARGO)', 'این محموله شکستنی است. لطفاً با احتیاط کامل انتقال داده شود. (FRAGILE CARGO)')}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Financials & Signatures */}
+              <div className="grid grid-cols-2 gap-8 mb-8">
+                {/* Signatures */}
+                <div className="flex flex-col justify-end space-y-8 pb-2">
+                  <div className="flex justify-between items-end border-b-2 border-dashed border-slate-300 pb-2">
+                    <span className="text-slate-400 font-bold">{l('Sender Signature:', 'امضای فرستنده (Sender):')}</span>
+                    <span className="w-32"></span>
+                  </div>
+                  <div className="flex justify-between items-end border-b-2 border-dashed border-slate-300 pb-2">
+                    <span className="text-slate-400 font-bold">{l('Receiver Signature:', 'امضای گیرنده (Receiver):')}</span>
+                    <span className="w-32"></span>
+                  </div>
+                  <div className="flex justify-between items-end border-b-2 border-dashed border-slate-300 pb-2">
+                    <span className="text-slate-400 font-bold">{l('Company Stamp:', 'مهر نماینده شرکت:')}</span>
+                    <span className="w-32"></span>
+                  </div>
+                </div>
+
+                {/* Financial Summary */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                  <div className="font-black text-lg border-b border-slate-200 pb-3 mb-3">{l('Financials', 'تفصیلات مالی (Financials)')}</div>
+                  
                   {receiptRole === 'seller' ? (
-                    <>
-                      <div className="text-xs text-slate-600 flex flex-wrap justify-end gap-x-3 gap-y-0.5">
-                        <span>Product Price: <strong>{priceVal.toLocaleString()} AFN</strong></span>
-                        <span className="text-rose-600">Service Fee (Deducted): <strong>-{sFeeVal.toLocaleString()} AFN</strong></span>
-                        <span className="text-rose-600">Dest. Commission (Deducted): <strong>-{dCommVal.toLocaleString()} AFN</strong></span>
-                        {discountVal > 0 && (
-                          <span className="text-emerald-600">Discount: <strong>+{discountVal.toLocaleString()} AFN</strong></span>
-                        )}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">{l('Item Value:', 'قیمت فروش جنس:')}</span>
+                        <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
                       </div>
-                      <div className="text-base font-black text-slate-900 pt-1">
-                        Net Seller Payout (مبلغ قابل تادیه به فروشنده): <span className="text-emerald-700 font-mono text-lg font-black">{payoutVal.toLocaleString()} AFN</span>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">{l('Service Fee (Freight):', 'فیس خدمات (کرایه):')}</span>
+                        <span className="font-bold text-red-600">-{sFeeVal.toLocaleString()} AFN</span>
                       </div>
-                    </>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">{l('Destination Comm:', 'کمیسیون مقصد:')}</span>
+                        <span className="font-bold text-red-600">-{dCommVal.toLocaleString()} AFN</span>
+                      </div>
+                      {discountVal > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-500">{l('Discount:', 'تخفیف:')}</span>
+                          <span className="font-bold text-emerald-600">+{discountVal.toLocaleString()} AFN</span>
+                        </div>
+                      )}
+                      <div className="pt-3 mt-3 border-t-2 border-slate-200">
+                        <div className="flex justify-between items-center">
+                          <span className="font-black text-slate-800">{l('Payable to Seller:', 'مبلغ قابل پرداخت به فروشنده:')}</span>
+                          <span className="text-2xl font-black font-mono text-emerald-700">{payoutVal.toLocaleString()} AFN</span>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    <div className="space-y-0.5">
-                      <div className="text-base font-black text-slate-900">
-                        Total Payable (مجموع قابل پرداخت): <span className="text-rose-600 font-mono text-xl font-black">{totalDueVal.toLocaleString()} AFN</span>
+                    <div className="flex flex-col h-full justify-between">
+                      <div className="text-center text-slate-500 text-sm mb-4">
+                        {l('You are viewing the receiver copy. Commission deductions are hidden.', 'شما در حال مشاهده رسید گیرنده هستید. کسر کمیسیون‌ها در این رسید نمایش داده نمی‌شود.')}
                       </div>
-                      <div className="text-[11px] text-slate-500 font-medium">
-                        {isPaid ? 'Payment Confirmed / Paid at Origin' : 'Cash on Delivery (COD) to be collected upon handover'}
+                      <div className="bg-slate-900 rounded-xl p-4 text-center">
+                        <div className="text-slate-400 font-bold text-xs uppercase mb-1">{l('Total Payable', 'مجموع قابل پرداخت (Total Payable)')}</div>
+                        <div className="text-3xl font-black font-mono text-white">{totalDueVal.toLocaleString()} AFN</div>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Official 3 Cargo Rules & Conditions in Dari (RTL) */}
-            <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] text-slate-800 leading-normal space-y-1" dir="rtl">
-              <div className="font-bold text-slate-900 uppercase tracking-wider text-[9.5px] flex items-center justify-between border-b border-slate-200 pb-1">
-                <span>شرایط، قوانین و مقررات بارنامه و انتقال امانات</span>
-                <span className="text-[8.5px] text-slate-500 font-mono" dir="ltr">ARMAGHAN SADEQ TRANSFERS</span>
-              </div>
-              <div className="space-y-1 text-right font-sans">
-                <div>
-                  <strong className="text-slate-950 font-bold">۱. </strong> بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.
-                </div>
-                <div>
-                  <strong className="text-slate-950 font-bold">۲. </strong> ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتش‌سوزی و تصادم مسئول نیست.
-                </div>
-                <div>
-                  <strong className="text-slate-950 font-bold">۳. </strong> اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمی‌گیرد.
-                </div>
-              </div>
-            </div>
-
-            {/* Official 3 Mandatory Helpline Contacts Strip & Attribution Footer */}
-            <div className="flex flex-col gap-1.5 pt-0.5">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-xs">
-                <div className="flex items-start gap-2">
-                  <div className="p-1 bg-red-100 text-red-700 rounded shrink-0 mt-0.5">
-                    <Phone className="w-3.5 h-3.5" />
+              {/* Rules & Footer */}
+              <div className="border-t-2 border-red-800 pt-4 mt-auto">
+                <div className="grid grid-cols-4 gap-6">
+                  <div className="col-span-3 text-[10px] text-slate-500 space-y-1.5 leading-relaxed">
+                    <div className="font-bold text-slate-700 text-xs">{l('Terms & Conditions:', 'شرایط و مقررات:')}</div>
+                    <p>{l('1. Receipt is valid for one month. The sender is responsible for the accuracy of information.', '۱. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده بر عهده فرستنده است.')}</p>
+                    <p>{l('2. Sending illegal items is prohibited; the company is not responsible for natural disasters and fire.', '۲. ارسال اموال غیرقانونی ممنوع است؛ شرکت در برابر حوادث طبیعی و آتش‌سوزی مسئول نمی‌باشد.')}</p>
+                    <p>{l('3. Original receipt is mandatory when collecting money.', '۳. هنگام دریافت پول، ارائه بل اصلی الزامی است.')}</p>
                   </div>
-                  <div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase">1. Sender Branch Phone</div>
-                    <div className="font-mono font-bold text-slate-900 text-xs" dir="ltr">{originBranch?.phone || 'Origin Hub'}</div>
-                    <div className="text-[9px] text-slate-500">{originBranch?.name || 'Origin Hub'}</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <div className="p-1 bg-amber-100 text-amber-800 rounded shrink-0 mt-0.5">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase">2. Complaints Hotline (شکایات)</div>
-                    <div className="font-mono font-bold text-amber-800 text-xs" dir="ltr">0711299680</div>
-                    <div className="text-[9px] text-amber-700 font-medium">Nationwide Complaint Centre</div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2">
-                  <div className="p-1 bg-blue-100 text-blue-800 rounded shrink-0 mt-0.5">
-                    <Building2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase">3. Main Office Contact (دفتر مرکزی)</div>
-                    <div className="font-mono font-bold text-blue-900 text-xs" dir="ltr">0774144004</div>
-                    <div className="text-[9px] text-blue-700 font-medium">Kabul Central HQ Office</div>
+                  <div className="flex flex-col items-end justify-center">
+                    <QRCodeVisual value={`https://armaghansadeq.af/track/${shipment.cnNumber}`} size={64} />
+                    <div className="text-[9px] font-bold mt-1 text-slate-400 tracking-wider">SCAN TO TRACK</div>
                   </div>
                 </div>
               </div>
 
-              {/* Attribution Footer Centered */}
-              <div className="text-center text-[8.5px] text-slate-400 font-medium pb-0.5">
-                Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)
-              </div>
             </div>
           </div>
         )}
+
+        {/* Controls and Footer */}
+        <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 rounded-b-3xl shrink-0">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            
+            {/* Controls: Role and Thermal Format Switcher */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Receiver vs Seller Copy Switcher */}
+              <div className="flex items-center bg-slate-200/90 dark:bg-slate-800 rounded-xl p-0.5 text-xs font-bold">
+                <button
+                  onClick={() => setReceiptRole('buyer')}
+                  className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                    receiptRole === 'buyer' ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Receiver Copy (Without internal commission/discount)"
+                >
+                  <span>{l('Receiver Copy', 'رسید گیرنده')}</span>
+                </button>
+                <button
+                  onClick={() => setReceiptRole('seller')}
+                  className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                    receiptRole === 'seller' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Seller Copy (With commission, fee deductions, and net payout)"
+                >
+                  <span>{l('Seller Copy', 'رسید فروشنده')}</span>
+                </button>
+              </div>
+              
+              {/* Format Selector: 80mm Roll vs 80x80 Square vs A4 */}
+              <div className="flex items-center bg-slate-200/90 dark:bg-slate-800 rounded-xl p-0.5 text-xs font-bold">
+                <button
+                  onClick={() => setPrintFormat('thermal_80mm')}
+                  className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                    printFormat === 'thermal_80mm' ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="80mm Thermal POS Roll (Standard for MG-820 thermal printer)"
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span>{l('80mm Roll', '80mm Roll')}</span>
+                </button>
+                <button
+                  onClick={() => setPrintFormat('thermal_80x80')}
+                  className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                    printFormat === 'thermal_80x80' ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="80mm x 80mm Square Label (Square sticker format)"
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>{l('80/80 Label', '80/80 Label')}</span>
+                </button>
+                <button
+                  onClick={() => setPrintFormat('standard')}
+                  className={`px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                    printFormat === 'standard' ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Standard A4 Document"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>{l('A4', 'A4')}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Download PDF button */}
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {isGeneratingPdf ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+                ) : downloadSuccess ? (
+                  <FileCheck className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {isGeneratingPdf ? l('Generating...', 'در حال ساخت...') : downloadSuccess ? l('Downloaded!', 'دانلود شد!') : l('Download PDF', 'دانلود PDF')}
+                </span>
+              </button>
+
+              {/* Print button */}
+              <button
+                onClick={handlePrint}
+                disabled={isGeneratingPdf}
+                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <Printer className="w-5 h-5" />
+                <span>{l('Print', 'Print (چاپ)')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

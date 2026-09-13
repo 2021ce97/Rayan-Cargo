@@ -210,6 +210,44 @@ export async function generateThermalPdfFromElement(
  * Note: Service fee, destination commission, and discounts are strictly merchant/seller side and omitted for buyer.
  * Formatted strictly for a single A4 page with 3 Helpline Contacts shifted to the upper-middle page body.
  */
+
+export async function generateA4PdfFromElement(
+  element: HTMLElement,
+  filename: string
+): Promise<boolean> {
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 3, // 3x scale yields ~600 DPI crisp A4 printing
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      windowWidth: 1024,
+    });
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    const pageWidth = 210;
+    const pageHeight = 297;
+    
+    // Scale canvas to fit within A4
+    const imgWidth = pageWidth - 10; // 5mm margin on each side
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    const imgData = canvas.toDataURL('image/png');
+    doc.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
+    doc.save(filename);
+    return true;
+  } catch (err) {
+    console.error('generateA4PdfFromElement failed:', err);
+    return false;
+  }
+}
+
 export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
   try {
     const doc = new jsPDF({
