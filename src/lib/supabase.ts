@@ -127,7 +127,8 @@ export async function directSupabaseInsertUser(user: User): Promise<{ success: b
       status: user.status || 'active',
       avatar: user.avatar || null,
       created_at: user.createdAt || new Date().toISOString(),
-      last_login: user.lastLogin || 'Just now'
+      last_login: user.lastLogin || 'Just now',
+      preferences: user.preferences || null
     };
 
     const { error } = await client
@@ -382,7 +383,8 @@ export async function directSupabaseFetchAll(): Promise<{
       status: u.status || 'active',
       avatar: u.avatar || undefined,
       createdAt: u.created_at,
-      lastLogin: u.last_login || 'Never'
+      lastLogin: u.last_login || 'Never',
+      preferences: typeof u.preferences === 'string' ? JSON.parse(u.preferences) : u.preferences
     }));
 
     const shipments: Shipment[] = (sRes.data || []).map((s: any) => ({

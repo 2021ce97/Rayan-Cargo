@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { 
   Language, 
   User, 
+  UserPreferences,
   Branch, 
   Shipment, 
   ShipmentStatus, 
@@ -126,6 +127,7 @@ interface AppContextType {
   reportDeliveryIssue: (shipmentId: string, issueType: string, customNote?: string) => boolean;
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
+  updateUserPreferences: (prefs: UserPreferences) => boolean;
   resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string) => boolean;
   addBranch: (input: AddBranchInput) => { branch: Branch; user: User };
   updateBranch: (branchId: string, updates: Partial<Branch>) => boolean;
@@ -995,6 +997,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }).catch(err => console.error('Error updating password in Supabase:', err));
 
     showToast('Your branch password was updated securely in Supabase!');
+    return true;
+  };
+
+  const updateUserPreferences = (prefs: UserPreferences): boolean => {
+    const updatedUser = {
+      ...currentUser,
+      preferences: {
+        ...currentUser.preferences,
+        ...prefs
+      }
+    };
+
+    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+    setCurrentUser(updatedUser);
+
+    fetch('/api/users/preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.id, preferences: updatedUser.preferences })
+    }).catch(err => console.error('Error updating preferences:', err));
+
+    showToast('User preferences updated and saved.');
     return true;
   };
 
@@ -2713,6 +2737,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         reportDeliveryIssue,
         canUserUpdateStatus,
         changePassword,
+        updateUserPreferences,
         resetBranchUserCredentials,
         addBranch,
         updateBranch,

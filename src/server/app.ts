@@ -324,7 +324,8 @@ api.get('/users', async (req: Request, res: Response) => {
       status: r.status,
       avatar: r.avatar,
       createdAt: r.created_at,
-      lastLogin: r.last_login
+      lastLogin: r.last_login,
+      preferences: typeof r.preferences === 'string' ? JSON.parse(r.preferences) : r.preferences
     }));
     res.json({ success: true, users: formatted });
   } catch (err: any) {
@@ -346,6 +347,24 @@ api.post('/users/change-password', async (req: Request, res: Response) => {
       [newPassword.trim(), now, userId]
     );
 
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+api.post('/users/preferences', async (req: Request, res: Response) => {
+  try {
+    const db = getDbPool();
+    const { userId, preferences } = req.body;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required.' });
+    }
+    
+    await db.query(
+      `UPDATE users SET preferences = $1 WHERE id = $2`,
+      [JSON.stringify(preferences || {}), userId]
+    );
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -1536,7 +1555,8 @@ api.post('/auth/login', authRateLimiter(30, 60 * 1000), async (req: Request, res
       status: matched.status,
       avatar: matched.avatar,
       createdAt: matched.created_at,
-      lastLogin: 'Just now'
+      lastLogin: 'Just now',
+      preferences: typeof matched.preferences === 'string' ? JSON.parse(matched.preferences) : matched.preferences
     };
 
     res.json({ success: true, user: formatted });

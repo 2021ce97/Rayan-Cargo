@@ -666,8 +666,17 @@ CREATE TABLE IF NOT EXISTS users (
   status TEXT DEFAULT 'active',
   avatar TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  last_login TEXT
+  last_login TEXT,
+  preferences JSONB
 );
+
+-- Try adding preferences column if it does not exist (for existing tables)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='preferences') THEN
+    ALTER TABLE users ADD COLUMN preferences JSONB;
+  END IF;
+END $$;
 
 -- 3. Shipments Table (CN Booking, QR Tracking, Financials, POD)
 CREATE TABLE IF NOT EXISTS shipments (

@@ -92,6 +92,10 @@ export interface LoginResult {
   user?: User;
 }
 
+export interface UserPreferences {
+  receiptPrintMode?: 'a4' | 'thermal' | 'auto';
+}
+
 export interface User {
   id: string;
   name: string;
@@ -106,6 +110,7 @@ export interface User {
   avatar?: string;
   createdAt: string;
   lastLogin?: string;
+  preferences?: UserPreferences;
 }
 
 export interface StatusHistoryItem {

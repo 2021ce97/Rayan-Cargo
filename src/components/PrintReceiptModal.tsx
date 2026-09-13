@@ -33,24 +33,34 @@ export const PrintReceiptModal: React.FC = () => {
     branches, 
     t,
     showToast,
-    receiptPrintMode
+    receiptPrintMode,
+    currentUser
   } = useApp();
+
   const receiptRef = useRef<HTMLDivElement>(null);
   const thermal80mmRef = useRef<HTMLDivElement>(null);
   const thermal80x80Ref = useRef<HTMLDivElement>(null);
 
+  const getEffectivePrintMode = () => {
+    const userPref = currentUser.preferences?.receiptPrintMode;
+    if (userPref && userPref !== 'auto') {
+      return userPref;
+    }
+    return receiptPrintMode;
+  };
+
   const [printFormat, setPrintFormat] = useState<'standard' | 'thermal_80mm' | 'thermal_80x80'>(
-    receiptPrintMode === 'thermal' ? 'thermal_80mm' : 'standard'
+    getEffectivePrintMode() === 'thermal' ? 'thermal_80mm' : 'standard'
   );
   const [receiptRole, setReceiptRole] = useState<'buyer' | 'seller'>('buyer');
   const [language, setLanguage] = useState<'dari' | 'en'>('dari');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   
-  // Sync if global setting changes
+  // Sync if setting changes
   useEffect(() => {
-    setPrintFormat(receiptPrintMode === 'thermal' ? 'thermal_80mm' : 'standard');
-  }, [receiptPrintMode, selectedShipmentForReceipt]);
+    setPrintFormat(getEffectivePrintMode() === 'thermal' ? 'thermal_80mm' : 'standard');
+  }, [receiptPrintMode, currentUser.preferences?.receiptPrintMode, selectedShipmentForReceipt]);
 
   const { enqueue } = usePrintQueue();
 
