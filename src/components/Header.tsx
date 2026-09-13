@@ -20,6 +20,8 @@ import { Language, UserRole, Branch } from '../types';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { ArmaghanLogo } from './ArmaghanLogo';
 import { SupabaseGuideModal } from './SupabaseGuideModal';
+import { SystemSettingsModal } from './SystemSettingsModal';
+import { Settings as SettingsIcon } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { 
@@ -49,6 +51,7 @@ export const Header: React.FC = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,6 +302,17 @@ export const Header: React.FC = () => {
                 </button>
               )}
 
+              {/* Global Settings Button (for Super Admin) */}
+              {currentUser.role === 'super_admin' && (
+                <button
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                  title="System Settings"
+                >
+                  <SettingsIcon className="w-4 h-4" />
+                </button>
+              )}
+
               {/* User Account Info */}
               <div
                 className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors text-start"
@@ -368,6 +382,12 @@ export const Header: React.FC = () => {
       <SupabaseGuideModal 
         isOpen={isDbModalOpen} 
         onClose={() => setIsDbModalOpen(false)} 
+      />
+
+      {/* System Settings Modal */}
+      <SystemSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
       />
     </>
   );

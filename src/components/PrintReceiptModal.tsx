@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { 
   Printer, 
   X, 
@@ -40,13 +40,18 @@ export const PrintReceiptModal: React.FC = () => {
   const thermal80x80Ref = useRef<HTMLDivElement>(null);
 
   const [printFormat, setPrintFormat] = useState<'standard' | 'thermal_80mm' | 'thermal_80x80'>(
-    receiptPrintMode === 'thermal' ? 'thermal_80mm' : 'thermal_80mm'
+    receiptPrintMode === 'thermal' ? 'thermal_80mm' : 'standard'
   );
   const [receiptRole, setReceiptRole] = useState<'buyer' | 'seller'>('buyer');
   const [language, setLanguage] = useState<'dari' | 'en'>('dari');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   
+  // Sync if global setting changes
+  useEffect(() => {
+    setPrintFormat(receiptPrintMode === 'thermal' ? 'thermal_80mm' : 'standard');
+  }, [receiptPrintMode, selectedShipmentForReceipt]);
+
   const { enqueue } = usePrintQueue();
 
   if (!selectedShipmentForReceipt) return null;
