@@ -2,6 +2,23 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Shipment, Branch } from '../types';
 
+const PRINT_IFRAME_ID = 'rayan_print_iframe';
+let isPrintInProgress = false;
+
+/**
+ * Thermal drivers cannot reliably use `@page { size: 80mm auto }`.  `auto`
+ * makes the driver fall back to its own (often 80 x 80mm) page size, which
+ * can restart a receipt on every page.  Convert the rendered receipt height
+ * to a concrete physical page height before opening the print dialog.
+ */
+function getThermalReceiptHeightMm(element: HTMLElement): number {
+  const heightPx = Math.max(element.getBoundingClientRect().height, element.scrollHeight);
+  const heightMm = (heightPx * 25.4) / 96;
+
+  // Leave a small feed allowance for the printer's non-printable bottom edge.
+  return Math.max(100, Math.ceil(heightMm + 3));
+}
+
 /**
  * Universal safe print utility that uses an isolated hidden iframe.
  * This completely avoids parent document clipping, sandbox issues, and prints ONLY the targeted element.
@@ -12,6 +29,14 @@ export function printElementUsingIframe(
   titleOrFormat: string = 'Print Document', 
   formatArg: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' = 'standard'
 ): boolean {
+  if (isPrintInProgress) {
+    // Ignore double-clicks while the native print dialog is opening. They
+    // otherwise become separate jobs on Bluetooth receipt printers.
+    return false;
+  }
+
+  isPrintInProgress = true;
+
   try {
     // Robust detection even if arguments are passed in reverse order (targetRef, format, title)
     let title = titleOrFormat;
@@ -34,22 +59,27 @@ export function printElementUsingIframe(
     }
 
     // Remove any existing print iframes
-    const oldIframe = document.getElementById('rayan_print_iframe');
+    const oldIframe = document.getElementById(PRINT_IFRAME_ID);
     if (oldIframe) {
       document.body.removeChild(oldIframe);
     }
 
     const isThermal = format.startsWith('thermal');
     const isSquare80 = format === 'thermal_80x80';
+    const thermalReceiptHeightMm = isThermal && !isSquare80
+      ? getThermalReceiptHeightMm(element)
+      : undefined;
 
     // Create an isolated hidden iframe with exact physical layout dimensions
     const iframe = document.createElement('iframe');
-    iframe.id = 'rayan_print_iframe';
+    iframe.id = PRINT_IFRAME_ID;
     iframe.style.position = 'fixed';
     iframe.style.top = '0';
     iframe.style.left = '0';
     iframe.style.width = isThermal ? '80mm' : '210mm';
-    iframe.style.height = isThermal ? (isSquare80 ? '80mm' : '400mm') : '297mm';
+    iframe.style.height = isThermal
+      ? (isSquare80 ? '80mm' : `${thermalReceiptHeightMm}mm`)
+      : '297mm';
     iframe.style.opacity = '0';
     iframe.style.pointerEvents = 'none';
     iframe.style.border = '0';
@@ -58,6 +88,7 @@ export function printElementUsingIframe(
 
     const doc = iframe.contentWindow?.document;
     if (!doc) {
+      isPrintInProgress = false;
       window.print();
       return false;
     }
@@ -70,9 +101,12 @@ export function printElementUsingIframe(
       .map(node => node.outerHTML)
       .join('\n');
 
-    // For 80mm thermal printers, size: 80mm auto allows continuous printing without forced page breaks
+    // A concrete height avoids the printer driver's short-page fallback and
+    // produces one continuous 80mm receipt.
     const pageSizeCss = isThermal
-      ? (isSquare80 ? 'size: 80mm 80mm !important;' : 'size: 80mm auto !important;')
+      ? (isSquare80
+        ? 'size: 80mm 80mm !important;'
+        : `size: 80mm ${thermalReceiptHeightMm}mm !important;`)
       : 'size: A4 portrait !important;';
 
     const pageMarginCss = isThermal ? 'margin: 0mm !important;' : 'margin: 4mm 6mm !important;';
@@ -171,10 +205,11 @@ export function printElementUsingIframe(
                   border-right: none !important;
                   box-shadow: none !important;
                   box-sizing: border-box !important;
-                  page-break-inside: avoid !important;
-                  break-inside: avoid !important;
-                  page-break-after: avoid !important;
-                  break-after: avoid !important;
+                  /* This is one measured continuous-roll page. Avoiding a
+                     break here can make a short-page driver reprint the top
+                     of an over-height receipt. */
+                  page-break-inside: auto !important;
+                  break-inside: auto !important;
                 }
               `) : `
                 .printable-receipt {
@@ -195,20 +230,36 @@ export function printElementUsingIframe(
     `);
     doc.close();
 
-    // Trigger printing once content and fonts are ready
+    const cleanup = () => {
+      const activeIframe = document.getElementById(PRINT_IFRAME_ID);
+      if (activeIframe === iframe) {
+        iframe.remove();
+      }
+      isPrintInProgress = false;
+    };
+
+    iframe.contentWindow?.addEventListener('afterprint', cleanup, { once: true });
+
+    // Trigger printing once content and fonts are ready.
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
       } catch (err) {
         console.error('Iframe print error:', err);
+        cleanup();
         window.print();
       }
     }, 450);
 
+    // Some browser/driver combinations do not dispatch `afterprint` for an
+    // iframe. Keep the duplicate-print guard from getting stuck in that case.
+    window.setTimeout(cleanup, 60_000);
+
     return true;
   } catch (err) {
     console.error('Direct print failed, using window.print fallback:', err);
+    isPrintInProgress = false;
     window.print();
     return false;
   }
