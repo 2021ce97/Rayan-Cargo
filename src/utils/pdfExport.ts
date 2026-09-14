@@ -5,14 +5,34 @@ import { Shipment, Branch } from '../types';
 /**
  * Universal safe print utility that uses an isolated hidden iframe.
  * This completely avoids parent document clipping, sandbox issues, and prints ONLY the targeted element.
- * Specially calibrated for 80mm POS Thermal Roll printers (e.g. MG-820) and standard A4 documents.
+ * Specially calibrated for 80mm POS Thermal Roll printers (e.g. MG-820), 80x80mm labels, and standard A4 documents.
  */
 export function printElementUsingIframe(
   element: HTMLElement, 
-  title: string = 'Print Document', 
-  format: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' = 'standard'
+  titleOrFormat: string = 'Print Document', 
+  formatArg: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' = 'standard'
 ): boolean {
   try {
+    // Robust detection even if arguments are passed in reverse order (targetRef, format, title)
+    let title = titleOrFormat;
+    let format: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' = formatArg;
+
+    if (
+      titleOrFormat === 'standard' || 
+      titleOrFormat === 'thermal' || 
+      titleOrFormat === 'thermal_80mm' || 
+      titleOrFormat === 'thermal_80x80'
+    ) {
+      format = titleOrFormat;
+      title = 'Print Document';
+    } else if (formatArg === 'standard') {
+      if (titleOrFormat.includes('80x80')) {
+        format = 'thermal_80x80';
+      } else if (titleOrFormat.includes('80mm')) {
+        format = 'thermal_80mm';
+      }
+    }
+
     // Remove any existing print iframes
     const oldIframe = document.getElementById('rayan_print_iframe');
     if (oldIframe) {
@@ -28,7 +48,6 @@ export function printElementUsingIframe(
     iframe.style.position = 'fixed';
     iframe.style.top = '0';
     iframe.style.left = '0';
-    // CRITICAL: Sizing iframe to 80mm forces browser to calculate layout and media queries in 80mm space
     iframe.style.width = isThermal ? '80mm' : '210mm';
     iframe.style.height = isThermal ? (isSquare80 ? '80mm' : '400mm') : '297mm';
     iframe.style.opacity = '0';
@@ -51,12 +70,12 @@ export function printElementUsingIframe(
       .map(node => node.outerHTML)
       .join('\n');
 
-    // For 80mm thermal printers, size must be 80mm with 0 margin so browser doesn't add headers/footers
+    // For 80mm thermal printers, size must be exactly 80mm with 0 margin so browser doesn't add headers/footers
     const pageSizeCss = isThermal
-      ? (isSquare80 ? 'size: 80mm 80mm;' : 'size: 80mm auto;')
-      : 'size: A4 portrait;';
+      ? (isSquare80 ? 'size: 80mm 80mm !important;' : 'size: 80mm auto !important;')
+      : 'size: A4 portrait !important;';
 
-    const pageMarginCss = isThermal ? 'margin: 0mm !important;' : 'margin: 4mm 6mm;';
+    const pageMarginCss = isThermal ? 'margin: 0mm !important;' : 'margin: 4mm 6mm !important;';
 
     doc.open();
     doc.write(`
@@ -72,7 +91,7 @@ export function printElementUsingIframe(
               ${pageMarginCss}
             }
             * {
-              box-sizing: border-box;
+              box-sizing: border-box !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
@@ -85,11 +104,11 @@ export function printElementUsingIframe(
                 width: 80mm !important;
                 max-width: 80mm !important;
                 min-width: 80mm !important;
-                overflow-x: hidden !important;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : 'overflow-x: hidden !important;'}
+                font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
               ` : `
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                padding: 6px;
+                font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                padding: 4px;
               `}
             }
             @media print {
@@ -102,6 +121,7 @@ export function printElementUsingIframe(
                   width: 80mm !important;
                   max-width: 80mm !important;
                   min-width: 80mm !important;
+                  ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : ''}
                   margin: 0 !important;
                   padding: 0 !important;
                   background: #ffffff !important;
@@ -112,18 +132,40 @@ export function printElementUsingIframe(
                   padding: 0 !important;
                 `}
               }
-              ${isThermal ? `
+              ${isThermal ? (isSquare80 ? `
+                .thermal-label-container {
+                  width: 80mm !important;
+                  height: 80mm !important;
+                  max-width: 80mm !important;
+                  max-height: 80mm !important;
+                  min-height: 80mm !important;
+                  margin: 0 !important;
+                  padding: 2.5mm 3mm !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  box-sizing: border-box !important;
+                  overflow: hidden !important;
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                  display: flex !important;
+                  flex-direction: column !important;
+                  justify-content: space-between !important;
+                }
+              ` : `
                 .thermal-receipt-container {
-                  width: 76mm !important;
-                  max-width: 76mm !important;
-                  min-width: 76mm !important;
+                  width: 78mm !important;
+                  max-width: 78mm !important;
+                  min-width: 78mm !important;
                   margin: 0 auto !important;
-                  padding: 1.5mm 1mm !important;
+                  padding: 2mm 1.5mm !important;
                   border-left: none !important;
                   border-right: none !important;
                   box-shadow: none !important;
+                  box-sizing: border-box !important;
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
                 }
-              ` : `
+              `) : `
                 .printable-receipt {
                   page-break-inside: avoid !important;
                   break-inside: avoid !important;
@@ -162,7 +204,7 @@ export function printElementUsingIframe(
 }
 
 /**
- * Generates an ultra-high resolution (600 DPI equivalent) 80mm thermal PDF directly from
+ * Generates an ultra-high resolution (600 DPI equivalent) 80mm / 80x80 thermal PDF directly from
  * a rendered DOM element. Preserves exact Afghan Dari/Pashto fonts, table borders, and barcodes.
  */
 export async function generateThermalPdfFromElement(
@@ -172,14 +214,37 @@ export async function generateThermalPdfFromElement(
   fixedHeightMm?: number
 ): Promise<boolean> {
   try {
+    const isSquare = fixedHeightMm === 80 && widthMm === 80;
+
     const canvas = await html2canvas(element, {
       scale: 3, // 3x scale yields ~600 DPI crisp thermal printing
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      windowWidth: 320, // Forces narrow thermal layout calculation
+      scrollX: 0,
+      scrollY: 0,
     });
 
+    if (isSquare) {
+      // Create exact 80mm x 80mm PDF
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [80, 80],
+        compress: true,
+      });
+
+      // Scale to comfortably occupy the 80x80 page with 1.5mm padding
+      const targetDimension = 77;
+      const offset = (80 - targetDimension) / 2; // 1.5mm margin
+
+      const imgData = canvas.toDataURL('image/png');
+      doc.addImage(imgData, 'PNG', offset, offset, targetDimension, targetDimension);
+      doc.save(filename);
+      return true;
+    }
+
+    // Continuous 80mm Roll
     const printableWidthMm = widthMm - 4; // 76mm printable width on 80mm roll
     const calculatedHeightMm = (canvas.height * printableWidthMm) / canvas.width;
     const finalHeightMm = fixedHeightMm || Math.ceil(calculatedHeightMm) + 4;
@@ -192,7 +257,7 @@ export async function generateThermalPdfFromElement(
     });
 
     const xPos = (widthMm - printableWidthMm) / 2; // 2mm margin left
-    const yPos = fixedHeightMm ? Math.max(1, (fixedHeightMm - calculatedHeightMm) / 2) : 2;
+    const yPos = 2;
 
     const imgData = canvas.toDataURL('image/png');
     doc.addImage(imgData, 'PNG', xPos, yPos, printableWidthMm, calculatedHeightMm);
@@ -233,13 +298,25 @@ export async function generateA4PdfFromElement(
 
     const pageWidth = 210;
     const pageHeight = 297;
+    const marginX = 6;
+    const marginY = 6;
+    const maxUsableWidth = pageWidth - marginX * 2;
+    const maxUsableHeight = pageHeight - marginY * 2;
     
-    // Scale canvas to fit within A4
-    const imgWidth = pageWidth - 10; // 5mm margin on each side
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    // Scale canvas to strictly fit within 1 single A4 page
+    let renderWidth = maxUsableWidth;
+    let renderHeight = (canvas.height * renderWidth) / canvas.width;
+    
+    if (renderHeight > maxUsableHeight) {
+      renderHeight = maxUsableHeight;
+      renderWidth = (canvas.width * renderHeight) / canvas.height;
+    }
+    
+    const xPos = (pageWidth - renderWidth) / 2;
+    const yPos = marginY;
     
     const imgData = canvas.toDataURL('image/png');
-    doc.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
+    doc.addImage(imgData, 'PNG', xPos, yPos, renderWidth, renderHeight);
     doc.save(filename);
     return true;
   } catch (err) {
