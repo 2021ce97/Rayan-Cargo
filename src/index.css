@@ -107,14 +107,16 @@
   }
 
   .thermal-receipt-container {
-    width: 76mm !important;
-    max-width: 76mm !important;
-    min-width: 76mm !important;
+    width: 72mm !important;
+    max-width: 72mm !important;
+    min-width: 72mm !important;
     margin: 0 auto !important;
-    padding: 2mm 1.5mm !important;
+    padding: 1.5mm 1mm 4mm 1mm !important;
     box-sizing: border-box !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

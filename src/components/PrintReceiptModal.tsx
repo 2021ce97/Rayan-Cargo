@@ -13,7 +13,9 @@ import {
   Building2,
   Tag,
   Package,
-  Languages
+  Languages,
+  HelpCircle,
+  CheckCircle2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { BarcodeGenerator, QRCodeVisual } from './BarcodeGenerator';
@@ -56,6 +58,7 @@ export const PrintReceiptModal: React.FC = () => {
   const [language, setLanguage] = useState<'dari' | 'en'>('dari');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [showPrinterGuide, setShowPrinterGuide] = useState(false);
   
   // Sync if setting changes
   useEffect(() => {
@@ -186,6 +189,18 @@ export const PrintReceiptModal: React.FC = () => {
           
           <div className="flex items-center gap-2">
             <button 
+              onClick={() => setShowPrinterGuide(!showPrinterGuide)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                showPrinterGuide 
+                  ? 'bg-amber-500 text-white shadow-md' 
+                  : 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300'
+              }`}
+              title="Printer Setup Guide (MY-P80 / 80mm)"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span>{language === 'dari' ? 'راهنمای چاپ ۸۰' : '80mm Guide'}</span>
+            </button>
+            <button 
               onClick={() => setLanguage(lang => lang === 'dari' ? 'en' : 'dari')}
               className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors"
             >
@@ -205,10 +220,55 @@ export const PrintReceiptModal: React.FC = () => {
         {/* 1. THERMAL POS RECEIPT FORMAT (80MM CONTINUOUS ROLL)     */}
         {/* ======================================================== */}
         {printFormat === 'thermal_80mm' && (
-          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
+          <div className="p-4 bg-slate-200 dark:bg-slate-900 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
+            {/* 80mm Printer Setup Help Panel */}
+            {showPrinterGuide && (
+              <div className="w-full max-w-md bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-400 rounded-2xl p-4 mb-4 text-xs shadow-lg animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center justify-between font-black text-amber-900 dark:text-amber-200 text-sm border-b border-amber-300 pb-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Printer className="w-4 h-4 text-amber-700" />
+                    <span>{language === 'dari' ? 'تنظیمات پرینتر حرارتی ۸۰ میلی‌متر (MY-P80 / POS-80)' : 'Thermal Printer 80mm Setup (MY-P80)'}</span>
+                  </div>
+                  <button onClick={() => setShowPrinterGuide(false)} className="text-amber-700 hover:text-amber-950 font-bold p-1">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="space-y-2 text-neutral-800 dark:text-neutral-200">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">{language === 'dari' ? '۱. انتخاب پرینتر:' : '1. Destination:'}</span>{' '}
+                      {language === 'dari' ? 'نام پرینتر خود (مثل MY-P80 یا POS-80) را انتخاب کنید.' : 'Select your thermal printer (MY-P80 / POS-80).'}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">{language === 'dari' ? '۲. اندازه کاغذ (Paper Size):' : '2. Paper Size:'}</span>{' '}
+                      <span className="bg-amber-200 dark:bg-amber-900 px-1 py-0.5 rounded font-mono font-bold">80 x 297 mm</span> {language === 'dari' ? 'یا Roll Paper 80mm انتخاب شود (روی A4 نباشد).' : 'or 80mm Roll (do not use A4).'}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">{language === 'dari' ? '۳. حاشیه‌ها (Margins):' : '3. Margins:'}</span>{' '}
+                      <span className="bg-amber-200 dark:bg-amber-900 px-1 py-0.5 rounded font-mono font-bold">None (هیچ)</span> {language === 'dari' ? 'تا متن از دو طرف بریده نشود.' : 'to prevent clipping.'}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">{language === 'dari' ? '۴. گرافیک پس‌زمینه (Background Graphics):' : '4. Background Graphics:'}</span>{' '}
+                      {language === 'dari' ? 'تیک آن را روشن (فعال) کنید تا خطوط و کادرها با وضوح چاپ شوند.' : 'Turn ON to ensure crisp borders.'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
               <span className="w-8 h-px bg-slate-300"></span>
-              Print Preview (80mm)
+              {language === 'dari' ? 'پیش‌نمایش چاپ رول حرارتی (۷۲mm / ۸۰mm)' : 'Print Preview (80mm Roll)'}
               <span className="w-8 h-px bg-slate-300"></span>
             </div>
             
@@ -216,9 +276,10 @@ export const PrintReceiptModal: React.FC = () => {
               ref={thermal80mmRef} 
               className="thermal-receipt-container bg-white text-black font-sans text-xs leading-normal space-y-2 mx-auto shadow-xl select-text print:shadow-none print:border-none"
               style={{ 
-                width: '76mm', 
-                maxWidth: '76mm',
-                padding: '8px 6px',
+                width: '72mm', 
+                maxWidth: '72mm',
+                minWidth: '72mm',
+                padding: '6px 4px 18px 4px',
                 boxSizing: 'border-box'
               }}
               dir={language === 'dari' ? 'rtl' : 'ltr'}
@@ -226,24 +287,24 @@ export const PrintReceiptModal: React.FC = () => {
               {/* Header */}
               <div className="text-center space-y-0.5 pb-1.5 border-b-2 border-black">
                 <div className="text-[13px] font-black tracking-tight uppercase text-black" dir="ltr">ARMAGHAN SADEQ TRANSFERS</div>
-                <div className="text-[12.5px] font-bold text-black">{l('Armaghan Sadeq Transfer Services', 'خدمات انتقالات ارمغان صادق')}</div>
-                <div className="text-[10.5px] font-semibold text-neutral-800" dir="ltr">Central Hub Kabul</div>
-                <div className="text-[10px] font-black pt-1 border-t border-dashed border-black tracking-wider uppercase">
-                  {l('*** OFFICIAL RECEIPT ***', '*** رسید رسمی محموله ***')}
+                <div className="text-[12.5px] font-bold text-black">{l('Armaghan Sadeq Transfer Services', 'انتقالات ارمغان صادق')}</div>
+                <div className="text-[10px] font-bold text-black" dir="ltr">Kabul Central Logistics Hub</div>
+                <div className="text-[9.5px] font-black pt-1 border-t border-dashed border-black tracking-wider uppercase">
+                  {l('*** OFFICIAL CARGO RECEIPT ***', '*** بارنامه و رسید رسمی محموله ***')}
                 </div>
               </div>
 
               {/* CN & Date */}
               <div className="space-y-0.5 text-xs pb-1.5 border-b border-black">
                 <div className="flex justify-between items-baseline font-bold">
-                  <span className="text-[11px] text-neutral-800">{l('Consignment No:', 'نمبر بارنامه (CN):')}</span>
+                  <span className="text-[11px] text-black">{l('Consignment No:', 'نمبر بارنامه (CN):')}</span>
                   <span className="text-[15px] font-black font-mono tracking-wider text-black">{shipment.cnNumber}</span>
                 </div>
-                <div className="flex justify-between text-[11px] text-neutral-900">
+                <div className="flex justify-between text-[11px] text-black">
                   <span className="font-semibold">{l('Date:', 'تاریخ:')}</span>
-                  <span dir="ltr">{new Date(shipment.bookedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                  <span dir="ltr" className="font-bold">{new Date(shipment.bookedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
                 </div>
-                <div className="flex justify-between text-[11px] text-neutral-900">
+                <div className="flex justify-between text-[11px] text-black">
                   <span className="font-semibold">{l('Type:', 'نوعیت:')}</span>
                   <span className="uppercase font-black">{shipment.packageInfo.serviceType.replace('_', ' ')}</span>
                 </div>
@@ -259,7 +320,7 @@ export const PrintReceiptModal: React.FC = () => {
                   <div><span className="font-black">{l('Phone:', 'تماس:')}</span> <span className="font-mono font-bold" dir="ltr">{shipment.sender.phone}</span></div>
                   <div><span className="font-semibold">{l('City:', 'شهر:')}</span> {shipment.sender.city} ({originBranch?.name || 'Main'})</div>
                 </div>
-                <div className="text-[11px] space-y-0.5 pt-1 border-t border-dashed border-neutral-300 text-black">
+                <div className="text-[11px] space-y-0.5 pt-1 border-t border-dashed border-black text-black">
                   <div><span className="font-black">{l('Receiver:', 'گیرنده:')}</span> <span className="font-bold">{shipment.receiver.name}</span></div>
                   <div><span className="font-black">{l('Phone:', 'تماس:')}</span> <span className="font-mono font-bold" dir="ltr">{shipment.receiver.phone}</span></div>
                   {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
@@ -319,7 +380,7 @@ export const PrintReceiptModal: React.FC = () => {
                       </div>
                     )}
                     <div className="p-1.5 bg-neutral-100 border-2 border-black mt-1 text-center">
-                      <div className="text-[11px] font-bold uppercase text-neutral-800" dir="ltr">NET PAYOUT TO SELLER</div>
+                      <div className="text-[11px] font-bold uppercase text-black" dir="ltr">NET PAYOUT TO SELLER</div>
                       <div className="text-[17px] font-black font-mono text-black">{payoutVal.toLocaleString()} AFN</div>
                     </div>
                   </div>
@@ -329,9 +390,9 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="text-[19px] font-black font-mono text-black">{totalDueVal.toLocaleString()} AFN</div>
                   </div>
                 )}
-                <div className="flex justify-between font-black text-[12px] pt-1 border-t border-dashed border-neutral-300">
+                <div className="flex justify-between font-black text-[12px] pt-1 border-t border-dashed border-black">
                   <span>{l('Payment Status:', 'وضعیت پرداخت:')}</span>
-                  <span className="uppercase" dir="ltr">
+                  <span className="uppercase font-mono font-bold" dir="ltr">
                     {isPaid ? 'PAID' : 'COD (COLLECT AT DEST)'}
                   </span>
                 </div>
@@ -356,9 +417,10 @@ export const PrintReceiptModal: React.FC = () => {
                 <div className="flex justify-between"><span className="font-bold">{l('Complaints:', 'شکایات:')}</span><span className="font-black font-mono text-[11px]" dir="ltr">0711299680</span></div>
               </div>
 
-              <div className="text-center space-y-1 pt-2 pb-2">
-                <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={36} />
-                <div className="text-[9px] font-bold text-neutral-800" dir="ltr">www.armaghansadeq.af</div>
+              {/* Barcode and website with sufficient bottom space for physical printer cutter */}
+              <div className="text-center space-y-1 pt-2 pb-4">
+                <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={34} />
+                <div className="text-[9px] font-bold text-black" dir="ltr">www.armaghansadeq.af</div>
               </div>
             </div>
           </div>

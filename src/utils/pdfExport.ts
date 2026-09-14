@@ -70,7 +70,7 @@ export function printElementUsingIframe(
       .map(node => node.outerHTML)
       .join('\n');
 
-    // For 80mm thermal printers, size must be exactly 80mm with 0 margin so browser doesn't add headers/footers
+    // For 80mm thermal printers, size: 80mm auto allows continuous printing without forced page breaks
     const pageSizeCss = isThermal
       ? (isSquare80 ? 'size: 80mm 80mm !important;' : 'size: 80mm auto !important;')
       : 'size: A4 portrait !important;';
@@ -101,11 +101,16 @@ export function printElementUsingIframe(
               margin: 0 !important;
               padding: 0 !important;
               ${isThermal ? `
-                width: 80mm !important;
-                max-width: 80mm !important;
-                min-width: 80mm !important;
-                ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : 'overflow-x: hidden !important;'}
+                width: 72mm !important;
+                max-width: 72mm !important;
+                min-width: 72mm !important;
+                margin: 0 auto !important;
+                ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : 'overflow: hidden !important;'}
                 font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
               ` : `
                 font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 padding: 4px;
@@ -118,14 +123,18 @@ export function printElementUsingIframe(
               }
               html, body {
                 ${isThermal ? `
-                  width: 80mm !important;
-                  max-width: 80mm !important;
-                  min-width: 80mm !important;
+                  width: 72mm !important;
+                  max-width: 72mm !important;
+                  min-width: 72mm !important;
                   ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : ''}
-                  margin: 0 !important;
+                  margin: 0 auto !important;
                   padding: 0 !important;
                   background: #ffffff !important;
                   color: #000000 !important;
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                  page-break-after: avoid !important;
+                  break-after: avoid !important;
                 ` : `
                   height: 100% !important;
                   margin: 0 !important;
@@ -153,17 +162,19 @@ export function printElementUsingIframe(
                 }
               ` : `
                 .thermal-receipt-container {
-                  width: 78mm !important;
-                  max-width: 78mm !important;
-                  min-width: 78mm !important;
+                  width: 72mm !important;
+                  max-width: 72mm !important;
+                  min-width: 72mm !important;
                   margin: 0 auto !important;
-                  padding: 2mm 1.5mm !important;
+                  padding: 1.5mm 1mm 4mm 1mm !important;
                   border-left: none !important;
                   border-right: none !important;
                   box-shadow: none !important;
                   box-sizing: border-box !important;
                   page-break-inside: avoid !important;
                   break-inside: avoid !important;
+                  page-break-after: avoid !important;
+                  break-after: avoid !important;
                 }
               `) : `
                 .printable-receipt {
