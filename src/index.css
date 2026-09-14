@@ -102,35 +102,35 @@
 }
 
 @media print {
-  @page thermal-roll {
-    size: 80mm auto;
-    margin: 0;
+  @page {
+    margin: 0 !important;
   }
 
   .thermal-receipt-container {
-    width: 80mm !important;
-    max-width: 80mm !important;
-    margin: 0 !important;
-    padding: 4mm !important;
+    width: 76mm !important;
+    max-width: 76mm !important;
+    min-width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 2mm 1.5mm !important;
     box-sizing: border-box !important;
-    /* Use transform to fit within 80mm printable width, most 80mm printers have ~72mm printable width */
-    transform: scale(0.95) !important;
-    transform-origin: top center !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .thermal-label-container {
-    width: 80mm !important;
-    height: 80mm !important;
-    max-width: 80mm !important;
-    max-height: 80mm !important;
-    margin: 0 !important;
+    width: 78mm !important;
+    height: 78mm !important;
+    max-width: 78mm !important;
+    max-height: 78mm !important;
+    min-height: 78mm !important;
+    margin: 0 auto !important;
     padding: 2mm !important;
     box-sizing: border-box !important;
-    transform: scale(0.95) !important;
-    transform-origin: top center !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

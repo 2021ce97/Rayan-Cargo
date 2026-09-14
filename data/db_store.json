@@ -160,6 +160,52 @@
         "created_at": "2026-09-06T12:38:36.896Z",
         "tazkira_number": "1400-0500-56950"
       }
+    ],
+    [
+      "br_tak08_7293",
+      {
+        "id": "br_tak08_7293",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
+        "name_ps": "masood",
+        "code": "TAK-08",
+        "province": "Takhar",
+        "city": "تالقان",
+        "address": "تالقان,کوچه مدرسه",
+        "phone": "+93700966414",
+        "email": "takhar@armaghansadeq.af",
+        "manager_name": "مسعود",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-14T07:13:07.293Z",
+        "tazkira_number": "1400-0300-80776"
+      }
+    ],
+    [
+      "br_bad09_9209",
+      {
+        "id": "br_bad09_9209",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
+        "name_ps": "Transfers sadeq",
+        "code": "BAD-09",
+        "province": "Badakhshan",
+        "city": "فیض آباد",
+        "address": "شهر جدید,مقابل مسجد مومن آباد",
+        "phone": "+93 79",
+        "email": "badakhshan@armaghansadeq.af",
+        "manager_name": "عبدالمصور سیرت",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-14T07:23:59.209Z",
+        "tazkira_number": "1399-1000-95276"
+      }
     ]
   ],
   "users": [
@@ -272,7 +318,98 @@
       }
     ]
   ],
-  "shipments": [],
+  "shipments": [
+    [
+      "shp_pr_251861",
+      {
+        "id": "shp_pr_251861",
+        "cn_number": "ARM-1500",
+        "origin_branch_id": "br_hrt_03",
+        "destination_branch_id": "br_kdh_04",
+        "current_branch_id": "br_hrt_03",
+        "sender": {
+          "city": "Herat City",
+          "name": "Akmal",
+          "email": "akmal@gmail.com",
+          "phone": "0771234567",
+          "address": "Aino mena",
+          "province": "Herat"
+        },
+        "receiver": {
+          "city": "Kandahar City",
+          "name": "Aslam",
+          "phone": "0778888888",
+          "address": "Gulha chawk",
+          "province": "Kandahar",
+          "nationalId": "2345178935472"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "foodstuff",
+          "weightKg": 0.1,
+          "isFragile": false,
+          "description": "foodstuff - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 20000
+        },
+        "financials": {
+          "tax": 0,
+          "baseRate": 0,
+          "amountDue": 2000,
+          "amountPaid": 0,
+          "serviceFee": 80,
+          "weightCost": 0,
+          "totalAmount": 2000,
+          "discountType": "fixed",
+          "productPrice": 2000,
+          "sellerPayout": 1860,
+          "discountValue": 0,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "transportationFee": 0,
+          "originRemittanceDue": 0,
+          "destBranchCommission": 70
+        },
+        "status": "verified",
+        "status_history": [
+          {
+            "id": "st_1789028588159",
+            "note": "Consignment pre-booked online by customer Akmal. Awaiting physical drop-off at Herat Western Gateway for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-10T08:23:08.158Z",
+            "updatedBy": "Customer Akmal",
+            "branchName": "Herat Western Gateway"
+          },
+          {
+            "id": "st_1789290875035",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 0.1 kg, 1 pcs (Product Price: 2000 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 2000 AFN (TO_PAY). Status: VERIFIED",
+            "status": "verified",
+            "location": "Herat Western Gateway (Herat City)",
+            "timestamp": "2026-09-13T09:14:35.035Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Herat Western Gateway"
+          }
+        ],
+        "booked_at": "2026-09-10T08:23:08.158Z",
+        "estimated_delivery": "2026-09-13T08:23:08.159Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "1930",
+        "is_customer_prebooked": true,
+        "is_pre_booking": true,
+        "customer_user_id": "usr_cust_939773",
+        "created_at": "2026-09-10T08:23:08.158Z"
+      }
+    ]
+  ],
   "branch_expenses": [
     [
       "exp_599236",

@@ -214,52 +214,52 @@ export const PrintReceiptModal: React.FC = () => {
             
             <div 
               ref={thermal80mmRef} 
-              className="thermal-receipt-container bg-white text-black font-sans text-sm leading-tight space-y-2.5 mx-auto shadow-xl select-text print:shadow-none print:border-none"
+              className="thermal-receipt-container bg-white text-black font-sans text-xs leading-normal space-y-2 mx-auto shadow-xl select-text print:shadow-none print:border-none"
               style={{ 
-                width: '80mm', 
-                maxWidth: '80mm',
-                padding: '12px 10px',
+                width: '76mm', 
+                maxWidth: '76mm',
+                padding: '8px 6px',
                 boxSizing: 'border-box'
               }}
               dir={language === 'dari' ? 'rtl' : 'ltr'}
             >
               {/* Header */}
-              <div className="text-center space-y-1 pb-1.5 border-b-2 border-black">
-                <div className="text-[14px] font-black tracking-tight uppercase text-black" dir="ltr">ARMAGHAN SADEQ TRANSFERS</div>
-                <div className="text-[13px] font-bold text-black">{l('Armaghan Sadeq Transfer Services', 'خدمات انتقالات ارمغان صادق')}</div>
-                <div className="text-[11px] font-semibold text-neutral-800" dir="ltr">Central Hub Kabul</div>
-                <div className="text-[11px] font-black pt-1 border-t border-dashed border-black tracking-wider uppercase">
+              <div className="text-center space-y-0.5 pb-1.5 border-b-2 border-black">
+                <div className="text-[13px] font-black tracking-tight uppercase text-black" dir="ltr">ARMAGHAN SADEQ TRANSFERS</div>
+                <div className="text-[12.5px] font-bold text-black">{l('Armaghan Sadeq Transfer Services', 'خدمات انتقالات ارمغان صادق')}</div>
+                <div className="text-[10.5px] font-semibold text-neutral-800" dir="ltr">Central Hub Kabul</div>
+                <div className="text-[10px] font-black pt-1 border-t border-dashed border-black tracking-wider uppercase">
                   {l('*** OFFICIAL RECEIPT ***', '*** رسید رسمی محموله ***')}
                 </div>
               </div>
 
               {/* CN & Date */}
-              <div className="space-y-0.5 text-sm pb-1.5 border-b border-black">
+              <div className="space-y-0.5 text-xs pb-1.5 border-b border-black">
                 <div className="flex justify-between items-baseline font-bold">
-                  <span className="text-[12px] text-neutral-800">{l('Consignment No:', 'نمبر بارنامه (CN):')}</span>
-                  <span className="text-[16px] font-black font-mono tracking-wider text-black">{shipment.cnNumber}</span>
+                  <span className="text-[11px] text-neutral-800">{l('Consignment No:', 'نمبر بارنامه (CN):')}</span>
+                  <span className="text-[15px] font-black font-mono tracking-wider text-black">{shipment.cnNumber}</span>
                 </div>
-                <div className="flex justify-between text-[12px] text-neutral-900">
+                <div className="flex justify-between text-[11px] text-neutral-900">
                   <span className="font-semibold">{l('Date:', 'تاریخ:')}</span>
                   <span dir="ltr">{new Date(shipment.bookedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
                 </div>
-                <div className="flex justify-between text-[12px] text-neutral-900">
+                <div className="flex justify-between text-[11px] text-neutral-900">
                   <span className="font-semibold">{l('Type:', 'نوعیت:')}</span>
                   <span className="uppercase font-black">{shipment.packageInfo.serviceType.replace('_', ' ')}</span>
                 </div>
               </div>
 
               {/* Route */}
-              <div className="space-y-1.5 py-1 border-b border-black">
-                <div className="font-black text-[13px] uppercase text-center bg-black text-white py-1 px-2 rounded-xs tracking-wide" dir="ltr">
+              <div className="space-y-1 py-1 border-b border-black">
+                <div className="font-black text-[12px] uppercase text-center bg-black text-white py-0.5 px-1.5 rounded-xs tracking-wide" dir="ltr">
                   {originBranch?.city?.toUpperCase() || 'ORIGIN'} ➔ {destBranch?.city?.toUpperCase() || 'DESTINATION'}
                 </div>
-                <div className="text-[12px] space-y-0.5 text-black">
+                <div className="text-[11px] space-y-0.5 text-black">
                   <div><span className="font-black">{l('Sender:', 'فرستنده:')}</span> <span className="font-bold">{shipment.sender.name}</span></div>
                   <div><span className="font-black">{l('Phone:', 'تماس:')}</span> <span className="font-mono font-bold" dir="ltr">{shipment.sender.phone}</span></div>
                   <div><span className="font-semibold">{l('City:', 'شهر:')}</span> {shipment.sender.city} ({originBranch?.name || 'Main'})</div>
                 </div>
-                <div className="text-[12px] space-y-0.5 pt-1 border-t border-dashed border-neutral-300 text-black">
+                <div className="text-[11px] space-y-0.5 pt-1 border-t border-dashed border-neutral-300 text-black">
                   <div><span className="font-black">{l('Receiver:', 'گیرنده:')}</span> <span className="font-bold">{shipment.receiver.name}</span></div>
                   <div><span className="font-black">{l('Phone:', 'تماس:')}</span> <span className="font-mono font-bold" dir="ltr">{shipment.receiver.phone}</span></div>
                   {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
@@ -270,7 +270,7 @@ export const PrintReceiptModal: React.FC = () => {
               </div>
 
               {/* Cargo Specs */}
-              <div className="space-y-0.5 py-1 border-b border-black text-[12px] text-black">
+              <div className="space-y-0.5 py-1 border-b border-black text-[11px] text-black">
                 <div className="flex justify-between">
                   <span className="font-semibold">{l('Category:', 'دسته بندی:')}</span>
                   <span className="font-black">{shipment.packageInfo.category}</span>
@@ -284,7 +284,7 @@ export const PrintReceiptModal: React.FC = () => {
                   <span className="font-black">{shipment.packageInfo.pieces} PKG(S)</span>
                 </div>
                 {shipment.packageInfo.isFragile && (
-                  <div className="text-center font-black text-[11px] border border-black py-0.5 mt-1 bg-neutral-100">
+                  <div className="text-center font-black text-[10.5px] border border-black py-0.5 mt-1 bg-neutral-100">
                     {l('* FRAGILE - HANDLE WITH CARE *', '* جنس شکستنی - با احتیاط انتقال یابد *')}
                   </div>
                 )}
@@ -357,7 +357,7 @@ export const PrintReceiptModal: React.FC = () => {
               </div>
 
               <div className="text-center space-y-1 pt-2 pb-2">
-                <BarcodeGenerator value={shipment.cnNumber} width={1.8} height={40} />
+                <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={36} />
                 <div className="text-[9px] font-bold text-neutral-800" dir="ltr">www.armaghansadeq.af</div>
               </div>
             </div>
@@ -395,7 +395,7 @@ export const PrintReceiptModal: React.FC = () => {
               <div className="flex justify-between items-start border-b-2 border-black pb-1">
                 <div>
                   <div className="text-[11.5px] font-black tracking-tight leading-none uppercase" dir="ltr">ARMAGHAN SADEQ</div>
-                  <div className="text-[9.5px] font-bold text-neutral-700 leading-tight">{l('Cargo & Express Services', 'خدمات باربری و انتقال')}</div>
+                  <div className="text-[9.5px] font-bold text-neutral-700 leading-tight">{l('Express Transfer Services', 'خدمات انتقال')}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-[13px] font-black font-mono leading-none">{shipment.cnNumber}</div>
@@ -482,7 +482,7 @@ export const PrintReceiptModal: React.FC = () => {
                   <div className="flex items-center gap-3 text-red-700">
                     <Building2 className="w-9 h-9 shrink-0" />
                     <div>
-                      <h1 className="text-2xl font-black tracking-tight">{l('Armaghan Sadeq', 'ارمغان صادق')}</h1>
+                      <h1 className="text-2xl font-black tracking-tight">{l('Armaghan Sadeq Transfers', 'انتقالات ارمغان صادق')}</h1>
                       <div className="text-xs font-bold tracking-widest text-red-600/80 uppercase" dir="ltr">Armaghan Sadeq Transfers</div>
                     </div>
                   </div>
