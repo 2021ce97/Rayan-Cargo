@@ -5,6 +5,52 @@ import { Shipment, Branch } from '../types';
 const PRINT_IFRAME_ID = 'rayan_print_iframe';
 let isPrintInProgress = false;
 
+function drawPageBorder(doc: jsPDF, pageWidth: number, pageHeight: number, inset = 4): void {
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.35);
+  doc.rect(inset, inset, pageWidth - inset * 2, pageHeight - inset * 2, 'S');
+}
+
+async function waitForRenderedElement(element: HTMLElement): Promise<void> {
+  if (document.fonts?.ready) {
+    await document.fonts.ready;
+  }
+
+  await Promise.all(Array.from(element.querySelectorAll('img')).map(image => {
+    if (image.complete) return Promise.resolve();
+    return new Promise<void>(resolve => {
+      image.addEventListener('load', () => resolve(), { once: true });
+      image.addEventListener('error', () => resolve(), { once: true });
+    });
+  }));
+
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
+async function waitForPrintDocument(doc: Document): Promise<void> {
+  const stylesheets = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'));
+  await Promise.all(stylesheets.map(link => new Promise<void>(resolve => {
+    if ((link as HTMLLinkElement).sheet) {
+      resolve();
+      return;
+    }
+    link.addEventListener('load', () => resolve(), { once: true });
+    link.addEventListener('error', () => resolve(), { once: true });
+    window.setTimeout(resolve, 2000);
+  })));
+
+  if (doc.fonts?.ready) await doc.fonts.ready;
+  await Promise.all(Array.from(doc.images).map(image => {
+    if (image.complete) return Promise.resolve();
+    return new Promise<void>(resolve => {
+      image.addEventListener('load', () => resolve(), { once: true });
+      image.addEventListener('error', () => resolve(), { once: true });
+    });
+  }));
+
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+
 /**
  * Thermal drivers cannot reliably use `@page { size: 80mm auto }`.  `auto`
  * makes the driver fall back to its own (often 80 x 80mm) page size, which
@@ -37,7 +83,11 @@ export function printElementUsingIframe(
 
   isPrintInProgress = true;
 
-  try {
+  void (async () => {
+    try {
+      await waitForRenderedElement(element);
+      if (!element.isConnected) throw new Error('Printable element is no longer connected');
+
     // Robust detection even if arguments are passed in reverse order (targetRef, format, title)
     let title = titleOrFormat;
     let format: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' = formatArg;
@@ -240,8 +290,8 @@ export function printElementUsingIframe(
 
     iframe.contentWindow?.addEventListener('afterprint', cleanup, { once: true });
 
-    // Trigger printing once content and fonts are ready.
-    setTimeout(() => {
+    // Trigger printing only after the isolated document has finished laying out.
+    void waitForPrintDocument(doc).then(() => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
@@ -250,19 +300,19 @@ export function printElementUsingIframe(
         cleanup();
         window.print();
       }
-    }, 450);
+    });
 
     // Some browser/driver combinations do not dispatch `afterprint` for an
     // iframe. Keep the duplicate-print guard from getting stuck in that case.
     window.setTimeout(cleanup, 60_000);
+    } catch (err) {
+      console.error('Direct print failed, using window.print fallback:', err);
+      isPrintInProgress = false;
+      window.print();
+    }
+  })();
 
-    return true;
-  } catch (err) {
-    console.error('Direct print failed, using window.print fallback:', err);
-    isPrintInProgress = false;
-    window.print();
-    return false;
-  }
+  return true;
 }
 
 /**
@@ -276,6 +326,7 @@ export async function generateThermalPdfFromElement(
   fixedHeightMm?: number
 ): Promise<boolean> {
   try {
+    await waitForRenderedElement(element);
     const isSquare = fixedHeightMm === 80 && widthMm === 80;
 
     const canvas = await html2canvas(element, {
@@ -301,7 +352,18 @@ export async function generateThermalPdfFromElement(
       const offset = (80 - targetDimension) / 2; // 1.5mm margin
 
       const imgData = canvas.toDataURL('image/png');
-      doc.addImage(imgData, 'PNG', offset, offset, targetDimension, targetDimension);
+      const sourceRatio = canvas.width / canvas.height;
+      const targetWidth = sourceRatio >= 1 ? targetDimension : targetDimension * sourceRatio;
+      const targetHeight = sourceRatio >= 1 ? targetDimension / sourceRatio : targetDimension;
+      doc.addImage(
+        imgData,
+        'PNG',
+        (80 - targetWidth) / 2,
+        (80 - targetHeight) / 2,
+        targetWidth,
+        targetHeight
+      );
+      drawPageBorder(doc, 80, 80, 1.5);
       doc.save(filename);
       return true;
     }
@@ -323,6 +385,7 @@ export async function generateThermalPdfFromElement(
 
     const imgData = canvas.toDataURL('image/png');
     doc.addImage(imgData, 'PNG', xPos, yPos, printableWidthMm, calculatedHeightMm);
+    drawPageBorder(doc, widthMm, finalHeightMm, 1.5);
     doc.save(filename);
     return true;
   } catch (err) {
@@ -343,12 +406,14 @@ export async function generateA4PdfFromElement(
   filename: string
 ): Promise<boolean> {
   try {
+    await waitForRenderedElement(element);
     const canvas = await html2canvas(element, {
       scale: 3, // 3x scale yields ~600 DPI crisp A4 printing
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
       windowWidth: 1024,
+      windowHeight: element.scrollHeight,
     });
 
     const doc = new jsPDF({
@@ -379,6 +444,7 @@ export async function generateA4PdfFromElement(
     
     const imgData = canvas.toDataURL('image/png');
     doc.addImage(imgData, 'PNG', xPos, yPos, renderWidth, renderHeight);
+    drawPageBorder(doc, pageWidth, pageHeight, 4);
     doc.save(filename);
     return true;
   } catch (err) {
@@ -721,6 +787,7 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 60, y);
 
     const filename = `Receiver_Receipt_${shipment.cnNumber}.pdf`;
+    drawPageBorder(doc, 210, 297);
     doc.save(filename);
     return true;
   } catch (err) {
@@ -1070,6 +1137,7 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 60, y);
 
     const filename = `Seller_Receipt_${shipment.cnNumber}.pdf`;
+    drawPageBorder(doc, 210, 297);
     doc.save(filename);
     return true;
   } catch (err) {
@@ -1222,6 +1290,7 @@ export function generateDispatchManifestPdf(
     doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 140, y);
 
     const filename = `Armaghan_Sadeq_Manifest_${manifestNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+    drawPageBorder(doc, 297, 210);
     doc.save(filename);
     return true;
   } catch (err) {
@@ -1461,6 +1530,7 @@ export function generateCombinedCustomerPdf(
     doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 60, y);
 
     const filename = `Armaghan_Sadeq_Combined_${customer.name.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    drawPageBorder(doc, 210, 297);
     doc.save(filename);
     return true;
   } catch (err) {
@@ -1584,6 +1654,7 @@ export function generateExecutiveReportPdf(
     doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 70, y);
 
     const filename = `Armaghan_Sadeq_Executive_Report_${dateRange}_${new Date().toISOString().split('T')[0]}.pdf`;
+    drawPageBorder(doc, 210, 297);
     doc.save(filename);
     return true;
   } catch (err) {
@@ -1798,6 +1869,7 @@ export function generateThermalLabelPdf(
       doc.text(`Printed: ${new Date().toLocaleDateString()} | Rayan Tech Solutions`, margin + contentWidth / 2, y + 7, { align: 'center' });
 
       const filename = `Thermal_Receipt_${shipment.cnNumber}_80mm.pdf`;
+      drawPageBorder(doc, pageWidth, pageHeight, 1.5);
       doc.save(filename);
       return true;
     }
@@ -1904,6 +1976,7 @@ export function generateThermalLabelPdf(
       doc.text(`Helpline: 0774144004 | Track: www.armaghansadeq.af`, margin + contentWidth / 2, y, { align: 'center' });
 
       const filename = `Thermal_Label_${shipment.cnNumber}_80x80.pdf`;
+      drawPageBorder(doc, size, size, 1.5);
       doc.save(filename);
       return true;
     }
@@ -2065,6 +2138,7 @@ export function generateThermalLabelPdf(
     doc.text('Armaghan Sadeq Transfers • Thermal Shipping Label', margin, y + 4);
 
     const filename = `Thermal_Label_${shipment.cnNumber}.pdf`;
+    drawPageBorder(doc, pageWidth, 150, 2.5);
     doc.save(filename);
     return true;
   } catch (err) {
