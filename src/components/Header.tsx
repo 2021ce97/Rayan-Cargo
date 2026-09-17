@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  Package, 
   Search, 
-  Languages, 
   Building2, 
-  ShieldCheck, 
-  Wifi, 
   ChevronDown,
   Sparkles,
   LogOut,
@@ -16,18 +12,18 @@ import {
   Database
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Language, UserRole, Branch } from '../types';
+import { UserRole, Branch } from '../types';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { ArmaghanLogo } from './ArmaghanLogo';
 import { SupabaseGuideModal } from './SupabaseGuideModal';
 import { SystemSettingsModal } from './SystemSettingsModal';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { Settings as SettingsIcon } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { 
     t, 
     language, 
-    setLanguage, 
     currentUser, 
     setCurrentUser,
     users,
@@ -47,7 +43,6 @@ export const Header: React.FC = () => {
 
   const [searchCn, setSearchCn] = useState('');
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
-  const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isDbModalOpen, setIsDbModalOpen] = useState(false);
@@ -161,7 +156,6 @@ export const Header: React.FC = () => {
                   <button
                     onClick={() => {
                       setShowBranchDropdown(!showBranchDropdown);
-                      setShowLangDropdown(false);
                     }}
                     className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                     title={t('current_branch')}
@@ -248,47 +242,8 @@ export const Header: React.FC = () => {
                 <span className={`w-2 h-2 rounded-full shrink-0 ${realtimeStatus === 'SUBSCRIBED' ? 'bg-emerald-500 animate-pulse' : dbStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               </button>
 
-              {/* Language Switcher */}
-              <div className="relative">
-                <button
-                  onClick={() => {
-                    setShowLangDropdown(!showLangDropdown);
-                    setShowBranchDropdown(false);
-                  }}
-                  className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-                  title={t('theme_toggle')}
-                >
-                  <Languages className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="uppercase font-bold text-[11px] sm:text-xs">{language}</span>
-                  <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
-                </button>
-
-                {showLangDropdown && (
-                  <div className="absolute end-0 mt-2 w-44 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-50">
-                    <button
-                      onClick={() => { setLanguage('en'); setShowLangDropdown(false); }}
-                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${language === 'en' ? 'text-blue-600 font-bold bg-blue-50/50 dark:bg-blue-950/30' : 'text-slate-700 dark:text-slate-300'}`}
-                    >
-                      <span>English (US)</span>
-                      <span className="text-[10px] text-slate-400 font-mono">LTR</span>
-                    </button>
-                    <button
-                      onClick={() => { setLanguage('fa'); setShowLangDropdown(false); }}
-                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${language === 'fa' ? 'text-blue-600 font-bold bg-blue-50/50 dark:bg-blue-950/30' : 'text-slate-700 dark:text-slate-300'}`}
-                    >
-                      <span>دری (Afghanistan)</span>
-                      <span className="text-[10px] text-slate-400 font-mono">RTL</span>
-                    </button>
-                    <button
-                      onClick={() => { setLanguage('ps'); setShowLangDropdown(false); }}
-                      className={`w-full text-start px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer ${language === 'ps' ? 'text-blue-600 font-bold bg-blue-50/50 dark:bg-blue-950/30' : 'text-slate-700 dark:text-slate-300'}`}
-                    >
-                      <span>پښتو (Pashto)</span>
-                      <span className="text-[10px] text-slate-400 font-mono">RTL</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+              {/* Dedicated Trilingual Language Switcher */}
+              <LanguageSwitcher />
 
               {/* Branch Password Self-Change Button (for Branch Accounts) */}
               {currentUser.role !== 'super_admin' && (

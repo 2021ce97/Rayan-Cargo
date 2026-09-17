@@ -1539,6 +1539,454 @@ export function generateCombinedCustomerPdf(
   }
 }
 
+export interface BranchBulkDispatchInfo {
+  batchNumber: string;
+  originBranch?: Branch;
+  destinationBranch?: Branch;
+  driverName?: string;
+  driverPhone?: string;
+  vehiclePlate?: string;
+  sealNumber?: string;
+  notes?: string;
+  dispatchDate?: string;
+}
+
+/**
+ * Direct Vector jsPDF generator for Official Branch Bulk Parcel Dispatch Manifest (Waybill).
+ * Generated when dispatching multiple parcels from origin branch to a target destination branch.
+ */
+export function generateBranchBulkDispatchPdf(
+  dispatchInfo: BranchBulkDispatchInfo,
+  shipments: Shipment[],
+  branches: Branch[] = []
+): boolean {
+  try {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    const pageWidth = 210;
+    const margin = 12;
+    const contentWidth = pageWidth - margin * 2; // 186mm
+
+    // Header Background Accent (Slate-900 with Crimson Top Stripe)
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin, margin, contentWidth, 24, 'F');
+    doc.setFillColor(225, 29, 72);
+    doc.rect(margin, margin, contentWidth, 3, 'F');
+
+    // Header Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('ARMAGHAN SADEQ TRANSFERS', margin + 6, margin + 11);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text('BRANCH BULK PARCEL DISPATCH MANIFEST (بارنامه رسمی ارسال تجمیعی به نمایندگی)', margin + 6, margin + 16.5);
+    doc.text('Helplines: 0711299680 / 0774144004 / 0799001122 | Inter-Branch Highway Logistics Network', margin + 6, margin + 21.5);
+
+    // Dispatch Batch Voucher Box
+    const batchNo = dispatchInfo.batchNumber || `AST-DSP-${Date.now().toString().slice(-6)}`;
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(margin + contentWidth - 62, margin + 5.5, 58, 15, 2, 2, 'F');
+    doc.setTextColor(225, 29, 72);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('DISPATCH BATCH #', margin + contentWidth - 60, margin + 10);
+    doc.setFontSize(10.5);
+    doc.text(batchNo, margin + contentWidth - 60, margin + 17);
+
+    let y = margin + 27;
+
+    // ROUTING & VEHICLE HANDOVER INFO CARD
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 23, 2, 2, 'FD');
+
+    doc.setFillColor(225, 29, 72);
+    doc.rect(margin, y, contentWidth, 5.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('BRANCH ROUTE & VEHICLE TRANSIT MANIFEST (مشخصات مسیر و موتر انتقال)', margin + 4, y + 4);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(`Origin Branch: ${dispatchInfo.originBranch?.name || 'Kabul Central HQ'} (${dispatchInfo.originBranch?.code || 'HQ'})`, margin + 4, y + 10.5);
+    doc.text(`Destination Branch: ${dispatchInfo.destinationBranch?.name || 'Target Branch'} (${dispatchInfo.destinationBranch?.code || 'DEST'})`, margin + 4, y + 15.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`Dispatch Date: ${dispatchInfo.dispatchDate || new Date().toLocaleString()}`, margin + 4, y + 20.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Driver / Courier: ${dispatchInfo.driverName || 'Designated Driver'}`, margin + 100, y + 10.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Vehicle / Plate: ${dispatchInfo.vehiclePlate || 'Transit Vehicle'}`, margin + 100, y + 15.5);
+    doc.text(`Seal / Bag No: ${dispatchInfo.sealNumber || 'N/A'}`, margin + 100, y + 20.5);
+
+    y += 26;
+
+    // CONSOLIDATED TOTALS BAR
+    const totalPcs = shipments.reduce((sum, s) => sum + (s.packageInfo.pieces || 1), 0);
+    const totalWeight = shipments.reduce((sum, s) => sum + (s.packageInfo.weightKg || 0), 0);
+    const totalFreight = shipments.reduce((sum, s) => sum + (s.financials.totalAmount || 0), 0);
+    const totalProductVal = shipments.reduce((sum, s) => sum + (s.packageInfo.declaredValueAfn || 0), 0);
+    const totalPaid = shipments.reduce((sum, s) => sum + (s.financials.paymentStatus === 'paid' ? s.financials.totalAmount : (s.financials.amountPaid || 0)), 0);
+    const totalCodDue = shipments.reduce((sum, s) => sum + (s.financials.paymentStatus === 'to_pay' ? s.financials.totalAmount : (s.financials.amountDue || 0)), 0);
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(margin, y, contentWidth, 12, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(margin, y, contentWidth, 12, 'S');
+
+    doc.setTextColor(51, 65, 85);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text(`Total Parcels: ${shipments.length} Pkgs`, margin + 4, y + 4.5);
+    doc.text(`Total Pieces: ${totalPcs} Boxes`, margin + 46, y + 4.5);
+    doc.text(`Total Scale Wt: ${totalWeight} KG`, margin + 92, y + 4.5);
+    doc.text(`Product Value: ${totalProductVal.toLocaleString()} AFN`, margin + 138, y + 4.5);
+
+    doc.setFontSize(8.5);
+    doc.text(`Freight Fee: ${totalFreight.toLocaleString()} AFN`, margin + 4, y + 9.5);
+    doc.setTextColor(22, 163, 74);
+    doc.text(`Prepaid (Origin): ${totalPaid.toLocaleString()} AFN`, margin + 46, y + 9.5);
+    doc.setTextColor(225, 29, 72);
+    doc.text(`TOTAL COD TO COLLECT (DEST): ${totalCodDue.toLocaleString()} AFN`, margin + 102, y + 9.5);
+
+    y += 15;
+
+    // ITEMIZATION TABLE HEADER
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin, y, contentWidth, 6.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('#', margin + 2, y + 4.5);
+    doc.text('CN Number', margin + 8, y + 4.5);
+    doc.text('Sender (Origin)', margin + 34, y + 4.5);
+    doc.text('Receiver (Destination)', margin + 74, y + 4.5);
+    doc.text('Description / Pcs / Wt', margin + 118, y + 4.5);
+    doc.text('Freight Fee', margin + 154, y + 4.5);
+    doc.text('Payment', margin + 172, y + 4.5);
+
+    y += 6.5;
+
+    // ITEMIZATION ROWS
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(15, 23, 42);
+
+    shipments.slice(0, 16).forEach((s, idx) => {
+      const isCod = s.financials.paymentStatus === 'to_pay';
+
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin, y, contentWidth, 6, 'F');
+      }
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(margin, y, contentWidth, 6, 'S');
+
+      doc.text(`${idx + 1}`, margin + 2, y + 4.2);
+      doc.setFont('helvetica', 'bold');
+      doc.text(s.cnNumber, margin + 8, y + 4.2);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${s.sender.name.substring(0, 16)} (${s.sender.phone.slice(-7)})`, margin + 34, y + 4.2);
+      doc.text(`${s.receiver.name.substring(0, 16)} (${s.receiver.phone.slice(-7)})`, margin + 74, y + 4.2);
+      doc.text(`${(s.packageInfo.description || s.packageInfo.category).substring(0, 15)} • ${s.packageInfo.pieces}p/${s.packageInfo.weightKg}k`, margin + 118, y + 4.2);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${s.financials.totalAmount} AFN`, margin + 154, y + 4.2);
+      doc.setTextColor(isCod ? 225 : 22, isCod ? 29 : 163, isCod ? 72 : 74);
+      doc.text(isCod ? 'TO PAY' : 'PAID', margin + 172, y + 4.2);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'normal');
+
+      y += 6;
+    });
+
+    if (shipments.length > 16) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`... and ${shipments.length - 16} more parcels included in this consolidated batch manifest.`, margin + 4, y + 4);
+      y += 6;
+    }
+
+    // OFFICIAL 3 SIGNATURES & HANDOVER AUDIT
+    y = Math.max(y + 3, 218);
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 38, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text('OFFICIAL THREE-PARTY CUSTODY & HANDOVER VERIFICATION (تأییدیه تسلیمی سه‌جانبه)', margin + 3, y + 4.5);
+
+    // 3 Columns: Origin Dispatcher, Driver Transit, Destination Receiver
+    const colW = (contentWidth - 6) / 3;
+
+    // Col 1: Origin Dispatcher
+    doc.setFillColor(255, 255, 255);
+    doc.rect(margin + 2, y + 7, colW, 28, 'FD');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('1. Origin Dispatch Officer', margin + 4, y + 11.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.text(`Hub: ${dispatchInfo.originBranch?.name || 'Origin Hub'}`, margin + 4, y + 16);
+    doc.text('Sign / Stamp: ___________________', margin + 4, y + 31);
+
+    // Col 2: Driver
+    doc.rect(margin + 2 + colW + 1, y + 7, colW, 28, 'FD');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('2. Highway Driver / Courier', margin + 2 + colW + 3, y + 11.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.text(`Name: ${dispatchInfo.driverName || 'Designated Driver'}`, margin + 2 + colW + 3, y + 16);
+    doc.text(`Vehicle: ${dispatchInfo.vehiclePlate || 'Highway Van'}`, margin + 2 + colW + 3, y + 20.5);
+    doc.text('Sign / Thumb: ___________________', margin + 2 + colW + 3, y + 31);
+
+    // Col 3: Dest Receiver
+    doc.rect(margin + 2 + colW * 2 + 2, y + 7, colW, 28, 'FD');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('3. Destination Receiving Officer', margin + 2 + colW * 2 + 4, y + 11.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.text(`Terminal: ${dispatchInfo.destinationBranch?.name || 'Dest Terminal'}`, margin + 2 + colW * 2 + 4, y + 16);
+    doc.text('Received in Good Condition: [ ]', margin + 2 + colW * 2 + 4, y + 20.5);
+    doc.text('Sign / Stamp: ___________________', margin + 2 + colW * 2 + 4, y + 31);
+
+    // Footer Credits
+    y = 268;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق | Nationwide Inter-Branch Cargo Network', margin + 4, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(51, 65, 85);
+    doc.text('Developed by Rayan tech solutions | Rayan-Tech-Solution.tech (سیستم توسعه یافته توسط خدمات تکنالوژی رایان)', margin + 60, y);
+
+    const filename = `Branch_Dispatch_${batchNo}_${new Date().toISOString().split('T')[0]}.pdf`;
+    drawPageBorder(doc, 210, 297);
+    doc.save(filename);
+    return true;
+  } catch (err) {
+    console.error('Error generating branch bulk dispatch PDF:', err);
+    return false;
+  }
+}
+
+/**
+ * Direct Vector jsPDF generator for Stickable Master Bag / Carton Label.
+ * High-contrast, bold formatting to paste or stick directly on the master shipment sack/pallet.
+ */
+export function generateBranchBagStickerPdf(
+  dispatchInfo: BranchBulkDispatchInfo,
+  shipments: Shipment[]
+): boolean {
+  try {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    const pageWidth = 210;
+    const margin = 12;
+    const contentWidth = pageWidth - margin * 2; // 186mm
+
+    // STICKER CONTAINER CARD (With High-Visibility Thick Border)
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(1.2);
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(margin, margin, contentWidth, 260, 3, 3, 'FD');
+
+    // Bold Top Header
+    doc.setFillColor(225, 29, 72); // Crimson Red
+    doc.rect(margin, margin, contentWidth, 24, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('ARMAGHAN SADEQ TRANSFERS • خدمات انتقالات ارمغان صادق', margin + 6, margin + 10);
+    doc.setFontSize(9);
+    doc.text('CONSOLIDATED MASTER SHIPMENT BAG / PALLET STICKER (برچسب بوجی و بسته تجمیعی)', margin + 6, margin + 17);
+
+    // GIANT DESTINATION BRANCH BANNER (Super High Visibility)
+    let y = margin + 26;
+    doc.setFillColor(15, 23, 42); // Deep Slate
+    doc.rect(margin + 2, y, contentWidth - 4, 30, 'F');
+
+    doc.setTextColor(248, 250, 252);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('DESTINATION TERMINAL / نمایندگی مقصد:', margin + 6, y + 8);
+
+    const destName = dispatchInfo.destinationBranch?.name || 'DESTINATION BRANCH';
+    const destCode = dispatchInfo.destinationBranch?.code || 'DEST';
+    const destCity = dispatchInfo.destinationBranch?.city || '';
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text(`${destName.toUpperCase()} (${destCode})`, margin + 6, y + 20);
+
+    doc.setFontSize(11);
+    doc.setTextColor(253, 224, 71); // Yellow accent
+    doc.text(`PROVINCE / CITY: ${destCity.toUpperCase()}`, margin + 6, y + 26);
+
+    y += 34;
+
+    // ORIGIN & BATCH BARCODE CARD
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(margin + 2, y, contentWidth - 4, 26, 2, 2, 'FD');
+
+    const batchNo = dispatchInfo.batchNumber || `AST-DSP-${Date.now().toString().slice(-6)}`;
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(`ORIGIN HUB: ${dispatchInfo.originBranch?.name || 'Kabul Central HQ'}`, margin + 6, y + 7);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text(`Driver / Courier: ${dispatchInfo.driverName || 'Designated Driver'} (${dispatchInfo.vehiclePlate || 'Transit Van'})`, margin + 6, y + 13);
+    doc.text(`Date & Time: ${dispatchInfo.dispatchDate || new Date().toLocaleString()}`, margin + 6, y + 19);
+    doc.text(`Master Seal / Bag #: ${dispatchInfo.sealNumber || 'SEAL-OK'}`, margin + 6, y + 24);
+
+    // Batch Badge on right
+    doc.setFillColor(225, 29, 72);
+    doc.roundedRect(margin + contentWidth - 65, y + 3, 60, 20, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('BATCH REFERENCE #', margin + contentWidth - 62, y + 9);
+    doc.setFontSize(11);
+    doc.text(batchNo, margin + contentWidth - 62, y + 17);
+
+    y += 30;
+
+    // KEY BULK METRICS HIGHLIGHT BOX (Huge Bold Numbers)
+    const totalPcs = shipments.reduce((sum, s) => sum + (s.packageInfo.pieces || 1), 0);
+    const totalWeight = shipments.reduce((sum, s) => sum + (s.packageInfo.weightKg || 0), 0);
+    const totalCodDue = shipments.reduce((sum, s) => sum + (s.financials.paymentStatus === 'to_pay' ? s.financials.totalAmount : (s.financials.amountDue || 0)), 0);
+
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(margin + 2, y, contentWidth - 4, 28, 2, 2, 'FD');
+
+    const mColW = (contentWidth - 4) / 3;
+
+    // Metric 1: Parcels
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('TOTAL CONSIGNMENTS', margin + 6, y + 7);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(16);
+    doc.text(`${shipments.length} PARCELS`, margin + 6, y + 18);
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`(${totalPcs} Total Boxes / Packages)`, margin + 6, y + 24);
+
+    // Metric 2: Weight
+    doc.setTextColor(71, 85, 105);
+    doc.setFontSize(8);
+    doc.text('TOTAL SCALE WEIGHT', margin + 2 + mColW + 4, y + 7);
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(16);
+    doc.text(`${totalWeight} KG`, margin + 2 + mColW + 4, y + 18);
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Weighed at Origin Scale', margin + 2 + mColW + 4, y + 24);
+
+    // Metric 3: COD
+    doc.setTextColor(71, 85, 105);
+    doc.setFontSize(8);
+    doc.text('TOTAL COD TO COLLECT', margin + 2 + mColW * 2 + 4, y + 7);
+    doc.setTextColor(225, 29, 72);
+    doc.setFontSize(15);
+    doc.text(`${totalCodDue.toLocaleString()} AFN`, margin + 2 + mColW * 2 + 4, y + 18);
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Settlement at Destination', margin + 2 + mColW * 2 + 4, y + 24);
+
+    y += 33;
+
+    // INVENTORY CHECKLIST TABLE INSIDE BAG
+    doc.setFillColor(15, 23, 42);
+    doc.rect(margin + 2, y, contentWidth - 4, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('CONTAINED PARCEL CHECKLIST (لیست بارنامه‌های داخل بوجی)', margin + 4, y + 4.2);
+
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(15, 23, 42);
+
+    shipments.slice(0, 14).forEach((s, idx) => {
+      const isCod = s.financials.paymentStatus === 'to_pay';
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(margin + 2, y, contentWidth - 4, 5.5, 'F');
+      }
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(margin + 2, y, contentWidth - 4, 5.5, 'S');
+
+      doc.text(`[ ] #${idx + 1}`, margin + 4, y + 4);
+      doc.setFont('helvetica', 'bold');
+      doc.text(s.cnNumber, margin + 16, y + 4);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Rec: ${s.receiver.name.substring(0, 18)} (${s.receiver.phone.slice(-7)})`, margin + 48, y + 4);
+      doc.text(`${(s.packageInfo.description || s.packageInfo.category).substring(0, 18)} • ${s.packageInfo.pieces}p/${s.packageInfo.weightKg}k`, margin + 110, y + 4);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(isCod ? 225 : 22, isCod ? 29 : 163, isCod ? 72 : 74);
+      doc.text(isCod ? `COD: ${s.financials.totalAmount} AFN` : 'PAID', margin + 152, y + 4);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'normal');
+
+      y += 5.5;
+    });
+
+    // Warning & Instructions footer inside sticker
+    y = Math.max(y + 2, 242);
+    doc.setFillColor(254, 242, 242);
+    doc.setDrawColor(252, 165, 165);
+    doc.roundedRect(margin + 2, y, contentWidth - 4, 18, 2, 2, 'FD');
+
+    doc.setTextColor(153, 27, 27);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('IMPORTANT SECURITY NOTICE & HANDLING INSTRUCTIONS (دستورالعمل مهم حمل و نقل)', margin + 5, y + 4.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.text('• Do not open or tear master seal until arrival and verification at destination branch terminal.', margin + 5, y + 8.5);
+    doc.text('• In case of seal breakage, count contained CN parcels against this manifest immediately and contact Central HQ.', margin + 5, y + 12.5);
+    doc.text('• Hotline: 0711299680 / 0774144004 | Developed by Rayan tech solutions (Rayan-Tech-Solution.tech)', margin + 5, y + 16.5);
+
+    const filename = `Bag_Sticker_${destCode}_${batchNo}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+    return true;
+  } catch (err) {
+    console.error('Error generating branch bag sticker PDF:', err);
+    return false;
+  }
+}
+
 /**
  * Direct Vector jsPDF generator for Executive Financial & Volume Reports.
  */

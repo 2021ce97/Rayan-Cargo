@@ -37,7 +37,8 @@ import {
   RefreshCw,
   PhoneOff,
   MessageSquareWarning,
-  Edit3
+  Edit3,
+  Truck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
@@ -46,6 +47,7 @@ import { BarcodeGenerator } from './BarcodeGenerator';
 import { CombinedCustomerReceiptModal } from './CombinedCustomerReceiptModal';
 import { ShipmentStatusTimeline } from './ShipmentStatusTimeline';
 import { EditShipmentModal } from './EditShipmentModal';
+import { CombinedBranchReceiptModal } from './CombinedBranchReceiptModal';
 
 type SortField = 'date' | 'weight' | 'amount' | 'cn' | 'status';
 type SortOrder = 'asc' | 'desc';
@@ -191,8 +193,8 @@ export const ParcelInventory: React.FC = () => {
   const [manifestPdfSuccess, setManifestPdfSuccess] = useState(false);
   const manifestRef = useRef<HTMLDivElement>(null);
 
-  // Combined Customer Multi-Parcel PDF Modal state
-  const [isCombinedCustomerOpen, setIsCombinedCustomerOpen] = useState(false);
+  // Combined Branch Bulk Dispatch & Bag Sticker PDF Modal state
+  const [isCombinedBranchOpen, setIsCombinedBranchOpen] = useState(false);
 
   // Admin Edit Parcel Modal state
   const [editModalShipment, setEditModalShipment] = useState<Shipment | null>(null);
@@ -617,28 +619,25 @@ export const ParcelInventory: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setIsCombinedCustomerOpen(true)}
-            id="btn-combined-customer-pdf"
-            className="px-3.5 py-2.5 bg-sky-700 hover:bg-sky-800 text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-            title="Generate Combined PDF for a single customer receiving multiple parcels"
+            onClick={() => setIsCombinedBranchOpen(true)}
+            id="btn-combined-branch-pdf"
+            className="px-3.5 py-2.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+            title={t('branch_bulk_dispatch_title', 'Branch Bulk Dispatch & Bag Tag')}
           >
-            <Users className="w-4 h-4 text-sky-200" />
-            <span>Combined Customer PDF (چند بسته)</span>
+            <Truck className="w-4 h-4 text-red-200" />
+            <span>{t('btn_combined_branch_pdf', 'Branch Bulk Dispatch (ارسال تجمیعی)')}</span>
           </button>
 
           {selectedParcelIds.size > 0 && (
             <button
               onClick={() => {
-                 const selectedShipments = processedParcels.filter(p => selectedParcelIds.has(p.id));
-                 generateCombinedCustomerPdf({ name: 'Selected Manifests / Customer', phone: 'N/A' }, selectedShipments, undefined, branches);
-                 showToast(`✓ Generated Combined PDF for ${selectedParcelIds.size} selected parcels.`);
-                 setSelectedParcelIds(new Set());
+                setIsCombinedBranchOpen(true);
               }}
-              className="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer animate-in fade-in"
-              title="Print Selected Manifests"
+              className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer animate-in fade-in"
+              title="Generate Combined Dispatch Manifest & Bag Sticker"
             >
-              <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('print_selected_count')?.replace('{count}', selectedParcelIds.size.toString()) || `Print Selected / چاپ (${selectedParcelIds.size})`}</span>
+              <Truck className="w-4 h-4 text-amber-400" />
+              <span>{t('btn_combined_branch_pdf', 'Branch Bulk Dispatch')} ({selectedParcelIds.size})</span>
             </button>
           )}
 
@@ -2333,10 +2332,11 @@ export const ParcelInventory: React.FC = () => {
         </div>
       )}
 
-      {/* Combined Customer Multi-Parcel PDF Modal */}
-      <CombinedCustomerReceiptModal
-        isOpen={isCombinedCustomerOpen}
-        onClose={() => setIsCombinedCustomerOpen(false)}
+      {/* Combined Branch Bulk Dispatch & Bag Tag Modal */}
+      <CombinedBranchReceiptModal
+        isOpen={isCombinedBranchOpen}
+        onClose={() => setIsCombinedBranchOpen(false)}
+        initialSelectedShipmentIds={Array.from(selectedParcelIds)}
       />
 
       {/* Admin Edit Parcel Modal */}
