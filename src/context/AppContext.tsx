@@ -1281,7 +1281,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const setActiveView = (view: ActiveViewType) => {
-    if (currentUser.role === 'customer' && view !== 'tracking' && view !== 'customer_portal') {
+    if (currentUser.role === 'customer' && view !== 'tracking' && view !== 'customer_portal' && view !== 'customer_history') {
       setActiveViewState('customer_portal');
       return;
     }
