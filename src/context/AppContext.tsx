@@ -1287,7 +1287,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     setActiveViewState(view);
   };
-  const activeView = (currentUser.role === 'customer' && activeViewState !== 'tracking') ? 'customer_portal' : activeViewState;
+  const activeView = (currentUser.role === 'customer' && activeViewState !== 'tracking' && activeViewState !== 'customer_history' && activeViewState !== 'customer_portal') ? 'customer_portal' : activeViewState;
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [selectedShipmentForReceipt, setSelectedShipmentForReceipt] = useState<Shipment | null>(null);
   const [trackedShipment, setTrackedShipment] = useState<Shipment | null>(null);
