@@ -43,7 +43,8 @@ export const Dashboard: React.FC = () => {
     setActiveBranchId,
     currentUser,
     setActiveView, 
-    setSelectedShipmentForReceipt
+    setSelectedShipmentForReceipt,
+    trackByCnNumber
   } = useApp();
 
   const isSuperAdmin = currentUser.role === 'super_admin';
@@ -683,7 +684,14 @@ export const Dashboard: React.FC = () => {
                     const dest = branches.find(b => b.id === s.destinationBranchId);
 
                     return (
-                      <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                      <tr 
+                        key={s.id} 
+                        className="hover:bg-slate-50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          trackByCnNumber(s.cnNumber);
+                          setActiveView('tracking');
+                        }}
+                      >
                         <td className="p-3 font-mono font-bold text-red-600">
                           {s.cnNumber}
                         </td>
@@ -706,7 +714,10 @@ export const Dashboard: React.FC = () => {
                         </td>
                         <td className="p-3 text-end">
                           <button
-                            onClick={() => setSelectedShipmentForReceipt(s)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedShipmentForReceipt(s);
+                            }}
                             className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
                           >
                             {t('btn_print_receipt')}

@@ -4,46 +4,46 @@
       "br_mzk_02",
       {
         "id": "br_mzk_02",
-        "name": "Mazar-i-Sharif Northern Terminal",
-        "name_fa": "ترمینل شمال مزار شریف",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
         "name_ps": "د مزار شریف شمالي څانګه",
         "code": "MZR-02",
         "province": "Balkh",
         "city": "Mazar-i-Sharif",
-        "address": "Kefayat Market, Rawza Square, Mazar",
-        "phone": "+93 78 811 2233",
+        "address": "مرکز شهر چهاراهی معارف",
+        "phone": "+۹۳۷۳۰۸۷۴۷۲۷",
         "email": "mazar@armaghansadeq.af",
-        "manager_name": "Noor Mohammad",
+        "manager_name": "احمدشاه رشیدی",
         "is_head_office": false,
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
         "created_at": "2026-09-05T09:51:54.829Z",
-        "tazkira_number": "1402-4910293-4"
+        "tazkira_number": "1403-0802-19536"
       }
     ],
     [
       "br_hrt_03",
       {
         "id": "br_hrt_03",
-        "name": "Herat Western Gateway",
-        "name_fa": "دروازه غربی هرات",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
         "name_ps": "د هرات لویدیځه څانګه",
         "code": "HRT-03",
         "province": "Herat",
-        "city": "Herat City",
-        "address": "Darwaza Qandahar, Main Ring Road, Herat",
-        "phone": "+93 70 022 3344",
+        "city": "هرات",
+        "address": "مرکز شهر ناحیه 5",
+        "phone": "+93791834022",
         "email": "herat@armaghansadeq.af",
-        "manager_name": "Farhad Rahimi",
+        "manager_name": "نصرت الله قانونی",
         "is_head_office": false,
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
         "created_at": "2026-09-05T09:51:54.898Z",
-        "tazkira_number": "1401-1928374-2"
+        "tazkira_number": "1403-0500-32418"
       }
     ],
     [
@@ -66,23 +66,23 @@
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
         "created_at": "2026-09-05T09:51:54.966Z",
-        "tazkira_number": "1403-9182736-5"
+        "tazkira_number": "1403-9182736-51"
       }
     ],
     [
       "br_kho06_0281",
       {
         "id": "br_kho06_0281",
-        "name": "Khost Regional Hub",
-        "name_fa": "Rayn Khost",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
         "name_ps": "Rayn Khost",
         "code": "KHO-06",
         "province": "Khost",
         "city": "Khost city",
-        "address": "Rayn Khost Main Commercial Cargo Hub",
-        "phone": "+93 79 2222222",
+        "address": "مرکز شهر",
+        "phone": "+93773195388",
         "email": "khost@armaghansadeq.af",
-        "manager_name": "Dalil",
+        "manager_name": "فضلی",
         "is_head_office": false,
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
@@ -96,23 +96,23 @@
       "br_far01_8916",
       {
         "id": "br_far01_8916",
-        "name": "Faryab Hub",
-        "name_fa": "Faryab Hub",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
         "name_ps": "Faryab Hub",
         "code": "FAR-01",
         "province": "Faryab",
         "city": "Maymana",
         "address": "Main Bazar",
-        "phone": "+93 79 123 4567",
+        "phone": "+93 789545944",
         "email": "faryab@armaghansadeq.af",
-        "manager_name": "Basir",
+        "manager_name": "ذبیح الله",
         "is_head_office": false,
         "active_shipments_count": 0,
         "total_parcels_dispatched": 0,
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
         "created_at": "2026-09-05T09:49:00.836Z",
-        "tazkira_number": "1401-1234567-8"
+        "tazkira_number": "1400-0500-56950"
       }
     ],
     [
@@ -135,7 +135,7 @@
         "total_parcels_received": 0,
         "total_revenue_afn": "0.00",
         "created_at": "2026-01-01T00:00:00.000Z",
-        "tazkira_number": "1401-8829102-1"
+        "tazkira_number": "1401-8829102-11"
       }
     ],
     [
@@ -205,6 +205,121 @@
         "total_revenue_afn": "0.00",
         "created_at": "2026-09-14T07:23:59.209Z",
         "tazkira_number": "1399-1000-95276"
+      }
+    ],
+    [
+      "br_gzn12_8926",
+      {
+        "id": "br_gzn12_8926",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
+        "name_ps": "Transfers sadeq",
+        "code": "GZN-12",
+        "province": "Ghazni",
+        "city": "Ghazni City",
+        "address": "مرکز شهر رو به روی مارکیت صرافی خراسان,نبش مارکیت عثمانی دکان نمبر اول",
+        "phone": "+93793261286",
+        "email": "ghazni@armaghansadeq.af",
+        "manager_name": "احمد شعیب اختری",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-16T05:37:28.926Z",
+        "tazkira_number": "1403-010235664"
+      }
+    ],
+    [
+      "br_nan014_3445",
+      {
+        "id": "br_nan014_3445",
+        "name": "Nangarhar Regional Hub",
+        "name_fa": "Transfers sadeq",
+        "name_ps": "Nangarhar Regional Hub",
+        "code": "NAN-014",
+        "province": "Nangarhar",
+        "city": "مرکز جلاآباد",
+        "address": "مرکز شهر ناحیه ۸",
+        "phone": "+۹۳۷۸۱۵۸۳۷۹۳",
+        "email": "nangarhar@armaghansadeq.af",
+        "manager_name": "زبیر عرب",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-16T06:20:23.445Z",
+        "tazkira_number": "1402-0802-44630"
+      }
+    ],
+    [
+      "br_kun010_8767",
+      {
+        "id": "br_kun010_8767",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
+        "name_ps": "Transfers sadeq",
+        "code": "KUN-010",
+        "province": "Kunduz",
+        "city": "مرکز شهر",
+        "address": "چوک کند,سرای کنجاره",
+        "phone": "+93775253358",
+        "email": "kunduz@armaghansadeq.af",
+        "manager_name": "حبیب الله شمس",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-16T05:19:38.767Z",
+        "tazkira_number": "1401-0102-95736"
+      }
+    ],
+    [
+      "br_nim013_1433",
+      {
+        "id": "br_nim013_1433",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
+        "name_ps": "Transfers sadeq",
+        "code": "NIM-013",
+        "province": "Nimruz",
+        "city": "مرکز نیمروز",
+        "address": "مرکز شهر",
+        "phone": "+93779908014",
+        "email": "nimruz@armaghansadeq.af",
+        "manager_name": "بهرام حقمل",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-16T05:47:41.433Z",
+        "tazkira_number": "1399-070068392"
+      }
+    ],
+    [
+      "br_sar011_2621",
+      {
+        "id": "br_sar011_2621",
+        "name": "Transfers sadeq",
+        "name_fa": "انتقالات صادق",
+        "name_ps": "Transfers sadeq",
+        "code": "SAR-011",
+        "province": "Sar-e Pol",
+        "city": "مرکز شهر",
+        "address": "مرکز شهر",
+        "phone": "+93 79",
+        "email": "sarepol@armaghansadeq.af",
+        "manager_name": "ذبیح الله",
+        "is_head_office": false,
+        "active_shipments_count": 0,
+        "total_parcels_dispatched": 0,
+        "total_parcels_received": 0,
+        "total_revenue_afn": "0.00",
+        "created_at": "2026-09-16T05:23:52.621Z",
+        "tazkira_number": "1400-0500-56950"
       }
     ]
   ],
@@ -407,6 +522,820 @@
         "is_pre_booking": true,
         "customer_user_id": "usr_cust_939773",
         "created_at": "2026-09-10T08:23:08.158Z"
+      }
+    ],
+    [
+      "shp_pr_721373",
+      {
+        "id": "shp_pr_721373",
+        "cn_number": "ARM-1519",
+        "origin_branch_id": "br_admin_hq",
+        "destination_branch_id": "br_kun010_8767",
+        "current_branch_id": "br_admin_hq",
+        "sender": {
+          "city": "Kabul City",
+          "name": "احمد",
+          "email": "0775216326@customer.armaghansadeq.af",
+          "phone": "0775216326",
+          "address": "Kabul City Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "مرکز شهر",
+          "name": "شفیق",
+          "phone": "0789955696",
+          "address": "مرکز شهر کندز",
+          "province": "Kunduz"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1000
+        },
+        "financials": {
+          "amountDue": 1000,
+          "amountPaid": 0,
+          "serviceFee": 80,
+          "totalAmount": 1000,
+          "productPrice": 1000,
+          "sellerPayout": 860,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "destBranchCommission": 70
+        },
+        "status": "verified",
+        "status_history": [
+          {
+            "id": "st_1789621807290",
+            "note": "Consignment pre-booked online by customer احمد. Awaiting physical drop-off at Head Office (Kabul) for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-17T05:10:07.279Z",
+            "updatedBy": "Customer احمد",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1789621963733",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Product Price: 1000 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 1000 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Head Office (Kabul) (Kabul City)",
+            "timestamp": "2026-09-17T05:12:43.733Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1789622057342",
+            "note": "Status updated to out for_delivery by Central System Admin (Branch)",
+            "status": "out_for_delivery",
+            "location": "Transit Station",
+            "timestamp": "2026-09-17T05:14:17.342Z",
+            "updatedBy": "Central System Admin (Branch)",
+            "branchName": "Transfers sadeq"
+          },
+          {
+            "id": "st_1789622922112",
+            "note": "Status updated to out for_delivery by Central System Admin (Branch)",
+            "status": "out_for_delivery",
+            "location": "Transit Station",
+            "timestamp": "2026-09-17T05:28:42.112Z",
+            "updatedBy": "Central System Admin (Branch)",
+            "branchName": "Transfers sadeq"
+          },
+          {
+            "id": "st_1789622991351",
+            "note": "Status updated to verified by Central System Admin (Branch)",
+            "status": "verified",
+            "location": "Transit Station",
+            "timestamp": "2026-09-17T05:29:51.351Z",
+            "updatedBy": "Central System Admin (Branch)",
+            "branchName": "Transfers sadeq"
+          }
+        ],
+        "booked_at": "2026-09-17T05:10:07.279Z",
+        "estimated_delivery": "2026-09-20T05:10:07.290Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "930",
+        "is_customer_prebooked": true,
+        "is_pre_booking": true,
+        "customer_user_id": "usr_cust_463939",
+        "created_at": "2026-09-17T05:10:07.279Z"
+      }
+    ],
+    [
+      "shp_pr_696858",
+      {
+        "id": "shp_pr_696858",
+        "cn_number": "ARM-1506",
+        "origin_branch_id": "br_admin_hq",
+        "destination_branch_id": "br_nan014_3445",
+        "current_branch_id": "br_admin_hq",
+        "sender": {
+          "city": "Kabul City",
+          "name": "میر میرزا",
+          "email": "0793763477@customer.armaghansadeq.af",
+          "phone": "0793763477",
+          "address": "Kabul City Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "مرکز جلاآباد",
+          "name": "میر",
+          "phone": "0793763477",
+          "address": "جلال آباد مرکز",
+          "province": "Nangarhar"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1500
+        },
+        "financials": {
+          "amountDue": 1500,
+          "amountPaid": 0,
+          "serviceFee": 150,
+          "totalAmount": 1500,
+          "productPrice": 1500,
+          "sellerPayout": 1290,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1789555146616",
+            "note": "Consignment pre-booked online by customer میر میرزا. Awaiting physical drop-off at Head Office (Kabul) for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-16T10:39:06.606Z",
+            "updatedBy": "Customer میر میرزا",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1789561702952",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Product Price: 1500 AFN, Service: 150 AFN, Dest Comm: 70 AFN). Total: 1500 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Transfers sadeq (Mazar-i-Sharif)",
+            "timestamp": "2026-09-16T12:28:22.952Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Transfers sadeq"
+          },
+          {
+            "id": "st_edit_1789561796911_gfzh",
+            "note": "[Admin Edit] Admin corrected parcel ARM-1506 records and pricing",
+            "status": "booked",
+            "location": "Head Office Admin",
+            "timestamp": "2026-09-16T12:29:56.911Z",
+            "updatedBy": "Central System Admin (Super Admin)",
+            "branchName": "Head Office Admin"
+          }
+        ],
+        "booked_at": "2026-09-16T10:39:06.606Z",
+        "estimated_delivery": "2026-09-19T10:39:06.616Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "1430",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_591060",
+        "created_at": "2026-09-16T10:39:06.606Z"
+      }
+    ],
+    [
+      "shp_pr_431062",
+      {
+        "id": "shp_pr_431062",
+        "cn_number": "ARM-1520",
+        "origin_branch_id": "br_admin_hq",
+        "destination_branch_id": "br_tak08_7293",
+        "current_branch_id": "br_admin_hq",
+        "sender": {
+          "city": "Kabul City",
+          "name": "احمد",
+          "email": "0775216326@customer.armaghansadeq.af",
+          "phone": "0775216326",
+          "address": "Kabul City Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "تالقان",
+          "name": "Hmmm",
+          "phone": "0785256696",
+          "address": "City ",
+          "province": "Takhar"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1588
+        },
+        "financials": {
+          "amountDue": 800,
+          "amountPaid": 0,
+          "serviceFee": 80,
+          "totalAmount": 800,
+          "productPrice": 800,
+          "sellerPayout": 660,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1789624309101",
+            "note": "Consignment pre-booked online by customer احمد. Awaiting physical drop-off at Head Office (Kabul) for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-17T05:51:49.072Z",
+            "updatedBy": "Customer احمد",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1789630563390",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Product Price: 800 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 800 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Head Office (Kabul) (Kabul City)",
+            "timestamp": "2026-09-17T07:36:03.390Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Head Office (Kabul)"
+          }
+        ],
+        "booked_at": "2026-09-17T05:51:49.072Z",
+        "estimated_delivery": "2026-09-20T05:51:49.101Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "730",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_463939",
+        "created_at": "2026-09-17T05:51:49.072Z"
+      }
+    ],
+    [
+      "shp_pr_669118",
+      {
+        "id": "shp_pr_669118",
+        "cn_number": "ARM-1508",
+        "origin_branch_id": "br_bad09_9209",
+        "destination_branch_id": "br_admin_hq",
+        "current_branch_id": "br_bad09_9209",
+        "sender": {
+          "city": "Kabul",
+          "name": "Shukoor Ayan",
+          "email": "0706668650@customer.armaghansadeq.af",
+          "phone": "0706668650",
+          "address": "Kabul Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "Herat",
+          "name": "مشتری",
+          "phone": "0795259301",
+          "address": "بدخشان فیض آباد",
+          "province": "Herat"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 0.1,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 800
+        },
+        "financials": {
+          "amountDue": 800,
+          "amountPaid": 0,
+          "serviceFee": 80,
+          "totalAmount": 800,
+          "productPrice": 800,
+          "sellerPayout": 650,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 0,
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1789555876159",
+            "note": "Consignment pre-booked online by customer Shukoor Ayan. Awaiting physical drop-off at Transfers sadeq for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-16T10:51:16.159Z",
+            "updatedBy": "Customer Shukoor Ayan",
+            "branchName": "Transfers sadeq"
+          },
+          {
+            "id": "st_1789556097788",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 0.1 kg, 1 pcs (Product Price: 800 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 800 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Transfers sadeq (فیض آباد)",
+            "timestamp": "2026-09-16T10:54:57.788Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Transfers sadeq"
+          }
+        ],
+        "booked_at": "2026-09-16T10:51:16.159Z",
+        "estimated_delivery": "2026-09-19T10:51:16.159Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "730",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_699954",
+        "created_at": "2026-09-16T10:51:16.159Z"
+      }
+    ],
+    [
+      "shp_pr_804910",
+      {
+        "id": "shp_pr_804910",
+        "cn_number": "ARM-1507",
+        "origin_branch_id": "br_tak08_7293",
+        "destination_branch_id": "br_admin_hq",
+        "current_branch_id": "br_tak08_7293",
+        "sender": {
+          "city": "Kabul",
+          "name": "Shukoor Ayan",
+          "email": "0706668650@customer.armaghansadeq.af",
+          "phone": "0706668650",
+          "address": "Kabul Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "تخار",
+          "name": "مشتری",
+          "phone": "0729007988",
+          "address": "شهر کندز پیش هوتل تاج کانتیننتال",
+          "province": "Herat"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 5,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1100
+        },
+        "financials": {
+          "amountDue": 1100,
+          "amountPaid": 0,
+          "serviceFee": 80,
+          "totalAmount": 1100,
+          "productPrice": 1100,
+          "sellerPayout": 950,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 0,
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1789555669887",
+            "note": "Consignment pre-booked online by customer Shukoor Ayan. Awaiting physical drop-off at Transfers sadeq for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-16T10:47:49.884Z",
+            "updatedBy": "Customer Shukoor Ayan",
+            "branchName": "Transfers sadeq"
+          },
+          {
+            "id": "st_1789556293989",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 5 kg, 1 pcs (Product Price: 1500 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 1500 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Transfers sadeq (تالقان)",
+            "timestamp": "2026-09-16T10:58:13.989Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Transfers sadeq"
+          },
+          {
+            "id": "st_edit_1789556419255_yu26",
+            "note": "[Admin Edit] Admin corrected parcel ARM-1507 records and pricing",
+            "status": "booked",
+            "location": "Head Office Admin",
+            "timestamp": "2026-09-16T11:00:19.255Z",
+            "updatedBy": "Central System Admin (Super Admin)",
+            "branchName": "Head Office Admin"
+          }
+        ],
+        "booked_at": "2026-09-16T10:47:49.884Z",
+        "estimated_delivery": "2026-09-19T10:47:49.887Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "1030",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_699954",
+        "created_at": "2026-09-16T10:47:49.884Z"
+      }
+    ],
+    [
+      "shp_pr_604552",
+      {
+        "id": "shp_pr_604552",
+        "cn_number": "ARM-1517",
+        "origin_branch_id": "br_admin_hq",
+        "destination_branch_id": "br_mzk_02",
+        "current_branch_id": "br_admin_hq",
+        "sender": {
+          "city": "Kabul City",
+          "name": "صبغت الله عالمی",
+          "email": "0764167902@customer.armaghansadeq.af",
+          "phone": "0764167902",
+          "address": "Kabul City Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "Mazar-i-Sharif",
+          "name": "مشتری",
+          "phone": "0798005050",
+          "address": "مرکز شهر",
+          "province": "Balkh"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1500
+        },
+        "financials": {
+          "amountDue": 1500,
+          "amountPaid": 0,
+          "serviceFee": 80,
+          "totalAmount": 1500,
+          "productPrice": 1500,
+          "sellerPayout": 1360,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1789563791673",
+            "note": "Consignment pre-booked online by customer صبغت الله عالمی. Awaiting physical drop-off at Head Office (Kabul) for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-16T13:03:11.670Z",
+            "updatedBy": "Customer صبغت الله عالمی",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1789564087662",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Product Price: 1500 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 1500 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Head Office (Kabul) (Kabul City)",
+            "timestamp": "2026-09-16T13:08:07.662Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Head Office (Kabul)"
+          }
+        ],
+        "booked_at": "2026-09-16T13:03:11.670Z",
+        "estimated_delivery": "2026-09-19T13:03:11.673Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "1430",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_575373",
+        "created_at": "2026-09-16T13:03:11.670Z"
+      }
+    ],
+    [
+      "shp_280988",
+      {
+        "id": "shp_280988",
+        "cn_number": "ARM-1518",
+        "origin_branch_id": "br_admin_hq",
+        "destination_branch_id": "br_kdh_04",
+        "current_branch_id": "br_admin_hq",
+        "sender": {
+          "city": "Kabul City",
+          "name": "مهران",
+          "email": "",
+          "phone": "0793531038",
+          "address": "Direct Branch Dropoff",
+          "province": "Kabul",
+          "nationalId": ""
+        },
+        "receiver": {
+          "city": "Kandahar City",
+          "name": "مشتری",
+          "phone": "0707700426",
+          "address": "مرکز شهر",
+          "altPhone": "",
+          "province": "Kandahar"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 1,
+          "isFragile": false,
+          "dimensions": "30x25x20 cm",
+          "description": "1 package(s) of general",
+          "serviceType": "standard",
+          "declaredValueAfn": 7500
+        },
+        "financials": {
+          "amountDue": 7500,
+          "amountPaid": 0,
+          "serviceFee": 200,
+          "totalAmount": 7500,
+          "productPrice": 7500,
+          "sellerPayout": 7240,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "discountReason": "",
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1789564617299",
+            "note": "Shipment registered by Central System Admin. Payment status: to_pay.",
+            "status": "booked",
+            "location": "Head Office (Kabul) (Kabul City)",
+            "timestamp": "2026-09-16T13:16:57.299Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_edit_1789564707439_14a8",
+            "note": "[Admin Edit] Admin corrected parcel ARM-1518 records and pricing",
+            "status": "booked",
+            "location": "Head Office Admin",
+            "timestamp": "2026-09-16T13:18:27.439Z",
+            "updatedBy": "Central System Admin (Super Admin)",
+            "branchName": "Head Office Admin"
+          }
+        ],
+        "booked_at": "2026-09-16T13:16:57.299Z",
+        "estimated_delivery": null,
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "7430",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": null,
+        "created_at": "2026-09-16T13:16:57.299Z"
+      }
+    ],
+    [
+      "shp_pr_819099",
+      {
+        "id": "shp_pr_819099",
+        "cn_number": "ARM-1501",
+        "origin_branch_id": "br_bad09_9209",
+        "destination_branch_id": "br_tak08_7293",
+        "current_branch_id": "br_bad09_9209",
+        "sender": {
+          "city": "Kabul",
+          "name": "Shukoor Ayan",
+          "email": "0706668650@customer.armaghansadeq.af",
+          "phone": "0706668650",
+          "address": "Kabul Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "تخار",
+          "name": "مشتری",
+          "phone": "0777007675",
+          "address": "تالقان مرکز شهر",
+          "province": "Herat"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1100
+        },
+        "financials": {
+          "amountDue": 1100,
+          "amountPaid": 0,
+          "serviceFee": 80,
+          "totalAmount": 1100,
+          "productPrice": 1100,
+          "sellerPayout": 950,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 0,
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1789555057966",
+            "note": "Consignment pre-booked online by customer Shukoor Ayan. Awaiting physical drop-off at Transfers sadeq for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-16T10:37:37.965Z",
+            "updatedBy": "Customer Shukoor Ayan",
+            "branchName": "Transfers sadeq"
+          },
+          {
+            "id": "st_edit_1789555567521_6qp5",
+            "note": "[Admin Edit] Admin corrected parcel ARM-1501 records and pricing",
+            "status": "pre_booked",
+            "location": "Head Office Admin",
+            "timestamp": "2026-09-16T10:46:07.521Z",
+            "updatedBy": "Central System Admin (Super Admin)",
+            "branchName": "Head Office Admin"
+          },
+          {
+            "id": "st_edit_1789555632096_v075",
+            "note": "[Admin Edit] Admin corrected parcel ARM-1501 records and pricing",
+            "status": "pre_booked",
+            "location": "Head Office Admin",
+            "timestamp": "2026-09-16T10:47:12.095Z",
+            "updatedBy": "Central System Admin (Super Admin)",
+            "branchName": "Head Office Admin"
+          },
+          {
+            "id": "st_1789555735307",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Product Price: 1100 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 1100 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Transfers sadeq (فیض آباد)",
+            "timestamp": "2026-09-16T10:48:55.306Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Transfers sadeq"
+          }
+        ],
+        "booked_at": "2026-09-16T10:37:37.965Z",
+        "estimated_delivery": "2026-09-19T10:37:37.966Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "1030",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_699954",
+        "created_at": "2026-09-16T10:37:37.965Z"
+      }
+    ],
+    [
+      "shp_pr_121814",
+      {
+        "id": "shp_pr_121814",
+        "cn_number": "ARM-1516",
+        "origin_branch_id": "br_admin_hq",
+        "destination_branch_id": "br_tak08_7293",
+        "current_branch_id": "br_admin_hq",
+        "sender": {
+          "city": "Kabul City",
+          "name": "احمد",
+          "email": "0775216326@customer.armaghansadeq.af",
+          "phone": "0775216326",
+          "address": "Kabul City Central",
+          "province": "Kabul"
+        },
+        "receiver": {
+          "city": "تالقان",
+          "name": "احمد",
+          "phone": "0786648668",
+          "address": "مرکز شهر ",
+          "province": "Takhar"
+        },
+        "package_info": {
+          "pieces": 1,
+          "category": "general",
+          "weightKg": 1,
+          "isFragile": false,
+          "description": "general - 1 item(s)",
+          "serviceType": "standard",
+          "declaredValueAfn": 1500
+        },
+        "financials": {
+          "amountDue": 1500,
+          "amountPaid": 0,
+          "serviceFee": 80,
+          "totalAmount": 1500,
+          "productPrice": 1500,
+          "sellerPayout": 1360,
+          "paymentMethod": "cod",
+          "paymentStatus": "to_pay",
+          "discountAmount": 10,
+          "destBranchCommission": 70
+        },
+        "status": "booked",
+        "status_history": [
+          {
+            "id": "st_1789560905647",
+            "note": "Consignment pre-booked online by customer احمد. Awaiting physical drop-off at Head Office (Kabul) for weighing and price determination.",
+            "status": "pre_booked",
+            "location": "Customer Online Portal",
+            "timestamp": "2026-09-16T12:15:05.624Z",
+            "updatedBy": "Customer احمد",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1789560960139",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Product Price: 1500 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 1500 AFN (TO_PAY). Status: VERIFIED",
+            "status": "verified",
+            "location": "Head Office (Kabul) (Kabul City)",
+            "timestamp": "2026-09-16T12:16:00.139Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Head Office (Kabul)"
+          },
+          {
+            "id": "st_1789560991451",
+            "note": "Customer pre-booking verified by Central System Admin (Central HQ Super Admin). Verified weight: 1 kg, 1 pcs (Product Price: 1500 AFN, Service: 80 AFN, Dest Comm: 70 AFN). Total: 1500 AFN (TO_PAY). Status: BOOKED",
+            "status": "booked",
+            "location": "Head Office (Kabul) (Kabul City)",
+            "timestamp": "2026-09-16T12:16:31.451Z",
+            "updatedBy": "Central System Admin",
+            "branchName": "Head Office (Kabul)"
+          }
+        ],
+        "booked_at": "2026-09-16T12:15:05.624Z",
+        "estimated_delivery": "2026-09-19T12:15:05.647Z",
+        "actual_delivery": null,
+        "pod_signature": null,
+        "receiver_id_proof": null,
+        "delivery_notes": "",
+        "booked_by_user_id": "usr_admin",
+        "booked_by_user_name": "Central System Admin",
+        "dest_branch_commission": "70",
+        "remittance_status": "pending",
+        "origin_remittance_due": "1430",
+        "is_customer_prebooked": false,
+        "is_pre_booking": false,
+        "customer_user_id": "usr_cust_463939",
+        "created_at": "2026-09-16T12:15:05.624Z"
       }
     ]
   ],
