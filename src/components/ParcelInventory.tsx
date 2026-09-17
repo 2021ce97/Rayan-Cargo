@@ -41,6 +41,7 @@ import {
   Truck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../context/I18nContext';
 import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
 import { generateDispatchManifestPdf, printElementUsingIframe, generateThermalLabelPdf, generateCombinedCustomerPdf } from '../utils/pdfExport';
 import { BarcodeGenerator } from './BarcodeGenerator';
@@ -54,8 +55,8 @@ type SortOrder = 'asc' | 'desc';
 type InventoryTab = 'all' | 'inbound' | 'outbound' | 'warehouse' | 'prebooked' | 'submitted' | 'settlement';
 
 export const ParcelInventory: React.FC = () => {
+  const { language, t } = useI18n();
   const { 
-    t, 
     filteredShipments, 
     partnerShipments,
     branches, 
@@ -622,10 +623,10 @@ export const ParcelInventory: React.FC = () => {
             onClick={() => setIsCombinedBranchOpen(true)}
             id="btn-combined-branch-pdf"
             className="px-3.5 py-2.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-            title={t('branch_bulk_dispatch_title', 'Branch Bulk Dispatch & Bag Tag')}
+            title={language === 'fa' ? 'چاپ استیکر کارتن و بسته‌بندی تجمیعی' : language === 'ps' ? 'د کارټن استیکر چاپ' : 'Print Carton & Packing Sticker'}
           >
-            <Truck className="w-4 h-4 text-red-200" />
-            <span>{t('btn_combined_branch_pdf', 'Branch Bulk Dispatch (ارسال تجمیعی)')}</span>
+            <Boxes className="w-4 h-4 text-red-200" />
+            <span>{language === 'fa' ? 'استیکر کارتن (Carton Sticker)' : language === 'ps' ? 'د کارټن استیکر' : 'Carton Sticker'}</span>
           </button>
 
           {selectedParcelIds.size > 0 && (
@@ -634,10 +635,10 @@ export const ParcelInventory: React.FC = () => {
                 setIsCombinedBranchOpen(true);
               }}
               className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer animate-in fade-in"
-              title="Generate Combined Dispatch Manifest & Bag Sticker"
+              title={language === 'fa' ? 'چاپ استیکر کارتن بسته‌های انتخاب‌شده' : 'Print Carton Sticker for selected parcels'}
             >
-              <Truck className="w-4 h-4 text-amber-400" />
-              <span>{t('btn_combined_branch_pdf', 'Branch Bulk Dispatch')} ({selectedParcelIds.size})</span>
+              <Boxes className="w-4 h-4 text-amber-400" />
+              <span>{language === 'fa' ? 'استیکر کارتن' : 'Carton Sticker'} ({selectedParcelIds.size})</span>
             </button>
           )}
 

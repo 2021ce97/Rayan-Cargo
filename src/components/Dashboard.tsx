@@ -292,8 +292,11 @@ export const Dashboard: React.FC = () => {
       <DashboardSummaryCards />
 
       {/* Pre-Booking Overview Component */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/40 dark:to-slate-900 border border-purple-100 dark:border-purple-900 shadow-xs flex items-center justify-between transition-colors">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cursor-pointer">
+        <div 
+          onClick={() => setActiveView('customer_history')}
+          className="p-5 rounded-2xl bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/40 dark:to-slate-900 border border-purple-100 dark:border-purple-900 shadow-xs flex items-center justify-between transition-all hover:shadow-md hover:scale-[1.01]"
+        >
           <div className="space-y-1">
             <div className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
               <Clock className="w-4 h-4" />
@@ -313,7 +316,10 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-slate-900 border border-emerald-100 dark:border-emerald-900 shadow-xs flex items-center justify-between transition-colors">
+        <div 
+          onClick={() => setActiveView('customer_history')}
+          className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-slate-900 border border-emerald-100 dark:border-emerald-900 shadow-xs flex items-center justify-between transition-all hover:shadow-md hover:scale-[1.01]"
+        >
           <div className="space-y-1">
             <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />

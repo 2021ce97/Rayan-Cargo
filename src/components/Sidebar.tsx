@@ -446,16 +446,28 @@ export const Sidebar: React.FC = () => {
           <>
             <button
               onClick={() => handleNavClick('customer_portal')}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
                 activeView === 'customer_portal' ? 'text-red-500 font-bold' : 'hover:text-slate-200'
               }`}
             >
-              <Package className="w-5 h-5 mb-0.5" />
-              <span>{t('portal_tab')}</span>
+              <PackagePlus className="w-5 h-5 mb-0.5" />
+              <span>{language === 'fa' ? 'ثبت بسته' : language === 'ps' ? 'د بار ثبت' : 'Pre-Book'}</span>
+            </button>
+            <button
+              onClick={() => handleNavClick('customer_history')}
+              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer relative ${
+                activeView === 'customer_history' ? 'text-red-500 font-bold' : 'hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-5 h-5 mb-0.5" />
+              <span>{language === 'fa' ? 'لیست بسته‌ها' : language === 'ps' ? 'د بارونو لیست' : 'Orders'}</span>
+              {customerShipments.length > 0 && (
+                <span className="absolute top-0 end-1.5 w-2 h-2 rounded-full bg-red-500" />
+              )}
             </button>
             <button
               onClick={() => handleNavClick('tracking')}
-              className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer ${
                 activeView === 'tracking' ? 'text-red-500 font-bold' : 'hover:text-slate-200'
               }`}
             >
@@ -464,7 +476,7 @@ export const Sidebar: React.FC = () => {
             </button>
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="flex flex-col items-center justify-center py-1 px-3 rounded-lg text-[10px] font-medium text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="flex flex-col items-center justify-center py-1 px-2.5 rounded-lg text-[10px] font-medium text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <Menu className="w-5 h-5 mb-0.5" />
               <span>{t('menu_tab')}</span>
