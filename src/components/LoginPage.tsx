@@ -701,6 +701,58 @@ export const LoginPage: React.FC = () => {
                 </button>
               </form>
 
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 text-center">
+                  {language === 'fa' ? 'ورود سریع به عنوان کارمند یا مدیر شعبه (Quick Login):' : language === 'ps' ? 'چټک ننوتل د مدیر یا کارمند په توګه:' : 'Quick Terminal Demo Accounts:'}
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('admin@armaghan.af');
+                      setPassword('admin123');
+                      login('admin@armaghan.af', 'admin123', 'staff');
+                    }}
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-700 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold transition-all text-start border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    👑 {language === 'fa' ? 'ادمین عمومی (HQ)' : 'Head Office Admin'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('herat@armaghan.af');
+                      setPassword('branch123');
+                      login('herat@armaghan.af', 'branch123', 'staff');
+                    }}
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-700 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold transition-all text-start border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    🏢 {language === 'fa' ? 'شعبه هرات' : 'Herat Branch'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('mazar@armaghan.af');
+                      setPassword('branch123');
+                      login('mazar@armaghan.af', 'branch123', 'staff');
+                    }}
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-700 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold transition-all text-start border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    🏢 {language === 'fa' ? 'شعبه مزار شریف' : 'Mazar Hub'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIdentifier('kandahar@armaghan.af');
+                      setPassword('branch123');
+                      login('kandahar@armaghan.af', 'branch123', 'staff');
+                    }}
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-700 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold transition-all text-start border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    🏢 {language === 'fa' ? 'شعبه کندهار' : 'Kandahar Hub'}
+                  </button>
+                </div>
+              </div>
+
               <div className="pt-1 text-center">
                 <p className="text-[11px] text-slate-400 dark:text-slate-500">
                   {t('staff_login_help') || 'Head Office Admin can create new branches and branch manager accounts in the Branches menu.'}

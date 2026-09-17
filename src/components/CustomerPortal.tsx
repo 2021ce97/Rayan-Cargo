@@ -6,7 +6,6 @@ import {
   MapPin, 
   ArrowRight, 
   CheckCircle2, 
-  AlertCircle, 
   Truck, 
   Calendar, 
   User, 
@@ -18,10 +17,12 @@ import {
   Info,
   ShieldCheck,
   Scale,
-  DollarSign
+  DollarSign,
+  ChevronRight,
+  MousePointerClick
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { CustomerPreBookingInput, ParcelCategory, Shipment, ShipmentStatus } from '../types';
+import { CustomerPreBookingInput, ParcelCategory } from '../types';
 
 export const CustomerPortal: React.FC = () => {
   const { 
@@ -30,12 +31,11 @@ export const CustomerPortal: React.FC = () => {
     branches, 
     customerShipments, 
     createCustomerPreBooking, 
-    setSelectedShipmentForReceipt,
-    language 
+    setActiveView,
+    language,
+    isRTL
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'history' | 'prebook'>('history');
-  const [searchTerm, setSearchTerm] = useState('');
   const [submittedCn, setSubmittedCn] = useState<string | null>(null);
 
   // Pre-booking form state
@@ -111,38 +111,11 @@ export const CustomerPortal: React.FC = () => {
       productPriceAfn: Number(productPriceAfn) || 0,
       description: description || `${category} - ${pieces} item(s)`,
       isFragile,
-      paymentPreference
+      paymentPreference: paymentPreference === 'pay_on_delivery' ? 'to_pay' : 'pay_at_branch'
     };
 
     const newBooking = createCustomerPreBooking(input);
     setSubmittedCn(newBooking.cnNumber);
-    setActiveTab('history');
-  };
-
-  const filteredHistory = customerShipments.filter(s => 
-    s.cnNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.receiver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.receiver.phone.includes(searchTerm) ||
-    s.packageInfo.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getStatusBadge = (status: ShipmentStatus) => {
-    switch (status) {
-      case 'pre_booked':
-        return 'bg-purple-100 text-purple-800 border-purple-300';
-      case 'booked':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'in_transit':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-300';
-      case 'received_at_branch':
-        return 'bg-cyan-100 text-cyan-800 border-cyan-300';
-      case 'out_for_delivery':
-        return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'delivered':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      default:
-        return 'bg-slate-100 text-slate-700 border-slate-300';
-    }
   };
 
   const categoryOptions: { value: ParcelCategory; label: string }[] = [
@@ -156,7 +129,7 @@ export const CustomerPortal: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12 font-sans" id="customer-portal-main">
       
       {/* Top Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 p-6 sm:p-8 text-white shadow-xl shadow-red-600/15">
@@ -164,7 +137,7 @@ export const CustomerPortal: React.FC = () => {
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Customer Self-Service Terminal</span>
+              <span>{language === 'fa' ? 'سیستم ثبت بار و پیش‌خرید آنلاین' : language === 'ps' ? 'د بار ثبت او پرلیکه سیستم' : 'Customer Self-Service Terminal'}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
               {t('customer_portal_title')}
@@ -174,28 +147,23 @@ export const CustomerPortal: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
-              onClick={() => setActiveTab('prebook')}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md ${
-                activeTab === 'prebook'
-                  ? 'bg-white text-red-600 shadow-white/20'
-                  : 'bg-red-800/60 hover:bg-red-800 text-white'
-              }`}
+              onClick={() => setActiveView('customer_history')}
+              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-white text-red-600 hover:bg-red-50 flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-black/10"
+              title={language === 'fa' ? 'مشاهده تاریخچه تمام بسته‌ها' : 'View all parcel history'}
             >
-              <Plus className="w-4 h-4" />
-              <span>{t('prebook_new_parcel')}</span>
+              <FileText className="w-4 h-4 text-red-600" />
+              <span>{language === 'fa' ? 'مشاهده تاریخچه تمام بسته‌ها' : language === 'ps' ? 'د ټولو بارونو تاریخچه' : 'View All Orders & History'} ({customerShipments.length})</span>
+              <ChevronRight className="w-4 h-4 rtl:rotate-180" />
             </button>
+            
             <button
-              onClick={() => setActiveTab('history')}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-md ${
-                activeTab === 'history'
-                  ? 'bg-white text-red-600 shadow-white/20'
-                  : 'bg-red-800/60 hover:bg-red-800 text-white'
-              }`}
+              onClick={() => setActiveView('tracking')}
+              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-red-800/60 hover:bg-red-800 text-white flex items-center gap-2 transition-all cursor-pointer shadow-md border border-red-400/30"
             >
-              <FileText className="w-4 h-4" />
-              <span>{t('customer_shipment_history')} ({customerShipments.length})</span>
+              <Search className="w-4 h-4 text-amber-300" />
+              <span>{t('quick_track') || 'Live Tracking'}</span>
             </button>
           </div>
         </div>
@@ -233,36 +201,56 @@ export const CustomerPortal: React.FC = () => {
         </div>
       </div>
 
+      {/* Submission Success Alert with direct redirect to History */}
       {submittedCn && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+        <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-300 text-emerald-900 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
             <div>
-              <div className="text-xs font-bold">{t('order_confirmed_success')}</div>
-              <div className="text-[11px] text-emerald-700">
-                {t('your_cn_lbl') || 'CN'}: <span className="font-mono font-bold text-slate-900">{submittedCn}</span>. {t('origin_drop_prompt')}
+              <div className="text-sm font-black text-emerald-950">
+                {t('order_confirmed_success') || 'Pre-Booking Successfully Registered!'}
+              </div>
+              <div className="text-xs text-emerald-800 mt-0.5">
+                {t('your_cn_lbl') || 'Waybill CN'}: <span className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded-md border border-emerald-300">{submittedCn}</span>. {t('origin_drop_prompt')}
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setSubmittedCn(null)}
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline cursor-pointer"
-          >
-            {t('btn_close')}
-          </button>
+          
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              onClick={() => setActiveView('customer_history')}
+              className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              <span>{language === 'fa' ? 'مشاهده در تاریخچه بسته‌ها' : language === 'ps' ? 'په تاریخچه کې کتل' : 'View in Parcel History'} ➔</span>
+            </button>
+            <button
+              onClick={() => setSubmittedCn(null)}
+              className="px-3 py-2 rounded-xl bg-white hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300 cursor-pointer"
+            >
+              {t('btn_close') || 'Close'}
+            </button>
+          </div>
         </div>
       )}
 
-      {/* RECTANGULAR TABLE: CUSTOMER FINANCIAL & PARCEL SUMMARY */}
+      {/* RECTANGULAR TABLE: CUSTOMER FINANCIAL & PARCEL SUMMARY (CLICKABLE TO OPEN HISTORY) */}
       {(() => {
-        const totalMoneySpent = customerShipments.reduce((sum, s) => sum + (s.financials.totalAmount || 0), 0);
+        const totalMoneySpent = customerShipments.reduce((sum, s) => sum + (s.financials?.totalAmount || 0), 0);
         const totalParcelsCount = customerShipments.length;
-        const totalParcelsValue = customerShipments.reduce((sum, s) => sum + (s.financials.productPrice || 0), 0);
+        const totalParcelsValue = customerShipments.reduce((sum, s) => sum + (s.financials?.productPrice || 0), 0);
         const deliveredCount = customerShipments.filter(s => s.status === 'delivered').length;
         const activeCount = customerShipments.filter(s => s.status !== 'delivered' && s.status !== 'cancelled').length;
 
         return (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-md overflow-hidden space-y-0 transition-all hover:shadow-lg">
+          <div 
+            onClick={() => setActiveView('customer_history')}
+            className="group relative bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-md hover:shadow-xl hover:border-red-500 dark:hover:border-red-600 transition-all cursor-pointer overflow-hidden transform active:scale-[0.99]"
+            id="all-orders-summary-table"
+            title={language === 'fa' ? 'برای مشاهده صفحه تاریخچه تمام بسته‌ها کلیک کنید' : 'Click to open all parcels history'}
+          >
             {/* Attractive Colored Top Header Bar */}
             <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-indigo-900/50">
               <div className="flex items-center gap-2.5">
@@ -271,21 +259,18 @@ export const CustomerPortal: React.FC = () => {
                 </div>
                 <div>
                   <span className="font-black text-xs uppercase tracking-wider text-amber-300 block">
-                    {t('customer_stats_table_title')}
+                    {t('customer_stats_table_title') || 'All Orders & Financial Matrix'}
                   </span>
-                  <span className="text-[10px] text-slate-400 block -mt-0.5">
-                    خلاصه وضعیت مالی، تعداد بسته‌ها و ارزش اظهاری محموله‌ها
+                  <span className="text-[10px] text-slate-300 block -mt-0.5">
+                    {language === 'fa' ? 'خلاصه وضعیت مالی، تعداد بسته‌ها و ارزش اظهاری محموله‌ها (جهت مشاهده جزئیات کلیک کنید)' : language === 'ps' ? 'د ټولو فرمایشونو او بارونو لنډیز (د تفصیل لپاره کلیک کړئ)' : 'Summary of all orders, freight expenditure & cargo value (Click to open full archive)'}
                   </span>
                 </div>
               </div>
+
               <div className="flex items-center gap-2 text-xs">
-                <span className="px-3 py-1 rounded-full bg-slate-800/90 text-slate-200 font-mono text-[11px] border border-slate-700 flex items-center gap-1.5">
-                  <User className="w-3 h-3 text-red-400" />
-                  <span>{currentUser.name} ({currentUser.phone || 'Customer'})</span>
-                </span>
-                <span className="px-3 py-1 rounded-full bg-emerald-950/80 text-emerald-300 font-bold text-[10.5px] border border-emerald-800 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>{activeCount} {t('customer_stats_active_count')} • {deliveredCount} {t('customer_stats_delivered_count')}</span>
+                <span className="px-3 py-1 rounded-full bg-red-600 text-white font-bold text-[11px] shadow-sm flex items-center gap-1.5 group-hover:bg-red-500 transition-colors">
+                  <MousePointerClick className="w-3.5 h-3.5 animate-bounce" />
+                  <span>{language === 'fa' ? 'کلیک کنید: مشاهده تمام بسته‌ها' : language === 'ps' ? 'کلیک وکړئ: د ټولو بارونو لیست' : 'Click to View All Orders'} ➔</span>
                 </span>
               </div>
             </div>
@@ -318,17 +303,17 @@ export const CustomerPortal: React.FC = () => {
                 <tbody>
                   <tr>
                     {/* 1. Emerald Cell: Total Money Spent */}
-                    <td className="py-5 px-6 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white border-r border-emerald-200/70">
+                    <td className="py-5 px-6 bg-gradient-to-br from-emerald-50/70 via-teal-50/30 to-white dark:from-emerald-950/20 dark:to-slate-900 border-r border-emerald-200/70">
                       <div className="flex items-center gap-3.5">
-                        <div className="p-3 rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20 shrink-0">
+                        <div className="p-3 rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20 shrink-0 group-hover:scale-110 transition-transform">
                           <DollarSign className="w-6 h-6" />
                         </div>
                         <div>
-                          <div className="text-2xl font-black text-emerald-800 font-mono tracking-tight flex items-baseline gap-1.5">
+                          <div className="text-2xl font-black text-emerald-800 dark:text-emerald-300 font-mono tracking-tight flex items-baseline gap-1.5">
                             <span>{totalMoneySpent.toLocaleString()}</span>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-200">AFN</span>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border border-emerald-200">AFN</span>
                           </div>
-                          <div className="text-[11px] font-medium text-emerald-900/80 mt-1">
+                          <div className="text-[11px] font-medium text-emerald-900/80 dark:text-emerald-400 mt-1">
                             {language === 'fa' ? 'مجموع مبالغ کرایه پرداخت‌شده و در انتظار وصول' : language === 'ps' ? 'ټول لګښت شوي پیسې د باربري لپاره' : 'Total freight expenditure across all bookings'}
                           </div>
                         </div>
@@ -336,32 +321,32 @@ export const CustomerPortal: React.FC = () => {
                     </td>
 
                     {/* 2. Indigo Cell: Total Parcels Count */}
-                    <td className="py-5 px-6 bg-gradient-to-br from-indigo-50/70 via-blue-50/30 to-white border-r border-indigo-200/70 text-center">
+                    <td className="py-5 px-6 bg-gradient-to-br from-indigo-50/70 via-blue-50/30 to-white dark:from-indigo-950/20 dark:to-slate-900 border-r border-indigo-200/70 text-center">
                       <div className="inline-flex flex-col items-center">
-                        <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20 mb-1.5">
+                        <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20 mb-1.5 group-hover:scale-110 transition-transform">
                           <Package className="w-5 h-5" />
                         </div>
-                        <div className="text-2xl font-black text-indigo-950 font-mono tracking-tight flex items-baseline justify-center gap-1.5">
+                        <div className="text-2xl font-black text-indigo-950 dark:text-indigo-200 font-mono tracking-tight flex items-baseline justify-center gap-1.5">
                           <span>{totalParcelsCount}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 border border-indigo-200">{t('pcs_unit') || 'Parcels'}</span>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 border border-indigo-200">{t('pcs_unit') || 'Parcels'}</span>
                         </div>
-                        <div className="text-[11px] font-medium text-indigo-900/80 mt-1">
+                        <div className="text-[11px] font-medium text-indigo-900/80 dark:text-indigo-400 mt-1">
                           {language === 'fa' ? `${deliveredCount} تسلیم‌شده • ${activeCount} در جریان انتقال` : language === 'ps' ? `${deliveredCount} سپارل شوی • ${activeCount} په لاره` : `${deliveredCount} Delivered • ${activeCount} In-transit`}
                         </div>
                       </div>
                     </td>
 
                     {/* 3. Amber Cell: Declared Cargo Value */}
-                    <td className="py-5 px-6 bg-gradient-to-br from-amber-50/70 via-orange-50/30 to-white text-end">
+                    <td className="py-5 px-6 bg-gradient-to-br from-amber-50/70 via-orange-50/30 to-white dark:from-amber-950/20 dark:to-slate-900 text-end">
                       <div className="flex flex-col items-end">
-                        <div className="p-2.5 rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20 mb-1.5">
+                        <div className="p-2.5 rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20 mb-1.5 group-hover:scale-110 transition-transform">
                           <ShieldCheck className="w-5 h-5" />
                         </div>
-                        <div className="text-2xl font-black text-amber-800 font-mono tracking-tight flex items-baseline justify-end gap-1.5">
+                        <div className="text-2xl font-black text-amber-800 dark:text-amber-300 font-mono tracking-tight flex items-baseline justify-end gap-1.5">
                           <span>{totalParcelsValue.toLocaleString()}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200">AFN</span>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-200">AFN</span>
                         </div>
-                        <div className="text-[11px] font-medium text-amber-900/80 mt-1">
+                        <div className="text-[11px] font-medium text-amber-900/80 dark:text-amber-400 mt-1">
                           {language === 'fa' ? 'مجموع ارزش اجناس برای دریافت' : language === 'ps' ? 'د توکو ټول ارزښت د ترلاسه کولو لپاره' : 'Total expected payout for sold products'}
                         </div>
                       </div>
@@ -371,596 +356,319 @@ export const CustomerPortal: React.FC = () => {
               </table>
             </div>
 
-            {/* Official 3 Legal Roles Strip inside Customer Portal with Attractive Colorful Cards */}
-            <div className="p-4 sm:p-5 bg-gradient-to-b from-slate-50 to-slate-100/80 border-t border-slate-200 space-y-3 text-right" dir="rtl">
-              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
-                <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-md bg-red-100 text-red-600">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <span className="font-black text-xs text-slate-900">
-                    {t('official_rules_title')}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 font-mono bg-white px-2.5 py-0.5 rounded-md border border-slate-200" dir="ltr">
-                  ARMAGHAN SADEQ TRANSFERS • 34 PROVINCES
-                </span>
+            {/* Click CTA banner below table */}
+            <div className="p-3 bg-gradient-to-r from-red-50 via-slate-50 to-amber-50 dark:from-slate-800 dark:to-slate-850 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
+              <div className="flex items-center gap-2 text-red-600">
+                <MousePointerClick className="w-4 h-4 animate-pulse" />
+                <span>{language === 'fa' ? 'جهت مشاهده، چاپ بارنامه و پیگیری تمام سفارشات خود، روی این جدول کلیک کنید' : language === 'ps' ? 'د خپلو ټولو بارونو د چاپ او تعقیب لپاره دلته کلیک وکړئ' : 'Click anywhere on this table to open your comprehensive parcel archive & print waybills'}</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs leading-relaxed text-slate-700">
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/70 via-white to-blue-50/30 border border-blue-200/80 shadow-xs hover:border-blue-300 transition-colors">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center">۱</span>
-                    <span className="text-blue-950 font-black text-[11px]">ماده اول (مدت اعتبار و صحت معلومات)</span>
-                  </div>
-                  <strong className="text-slate-900 block font-normal text-[11px] leading-relaxed">
-                    {t('official_rule_1')}
-                  </strong>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/70 via-white to-amber-50/30 border border-amber-200/80 shadow-xs hover:border-amber-300 transition-colors">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-black text-[10px] flex items-center justify-center">۲</span>
-                    <span className="text-amber-950 font-black text-[11px]">ماده دوم (ممنوعیت و حوادث طبیعی)</span>
-                  </div>
-                  <strong className="text-slate-900 block font-normal text-[11px] leading-relaxed">
-                    {t('official_rule_2')}
-                  </strong>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/70 via-white to-emerald-50/30 border border-emerald-200/80 shadow-xs hover:border-emerald-300 transition-colors">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center">۳</span>
-                    <span className="text-emerald-950 font-black text-[11px]">ماده سوم (نگهداری و تسلیمی اصل بل)</span>
-                  </div>
-                  <strong className="text-slate-900 block font-normal text-[11px] leading-relaxed">
-                    {t('official_rule_3')}
-                  </strong>
-                </div>
-              </div>
-              
-              {/* Helpline Contacts */}
-              <div className="flex flex-wrap items-center justify-between pt-1 text-[11px] text-slate-600 border-t border-slate-200/60" dir="ltr">
-                <div className="flex items-center gap-4">
-                  <span>1. Origin Branch: <strong>Assigned at Drop-off</strong></span>
-                  <span>2. Complaints Hotline (شکایات): <strong className="font-mono text-amber-700">0711299680</strong></span>
-                  <span>3. Main Office (دفتر مرکزی): <strong className="font-mono text-blue-800">0774144004</strong></span>
-                </div>
-                <span className="text-[10px] text-slate-400">
-                  Developed by Rayan tech solutions | Rayan-Tech-Solution.tech
-                </span>
-              </div>
+              <span className="text-red-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                <span>{language === 'fa' ? 'مشاهده صفحه تاریخچه' : 'Open History'}</span>
+                <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+              </span>
             </div>
-
           </div>
         );
       })()}
 
-      {/* TAB 1: PRE-BOOKING FORM */}
-      {activeTab === 'prebook' && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+      {/* PRE-BOOKING FORM (DIRECTLY ON MAIN PAGE) */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Package className="w-5 h-5 text-red-600" />
+              <span>{t('prebook_new_parcel')}</span>
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {t('prebooking_notice')}
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs">
+            <Scale className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{t('branch_eval_prompt')}</span>
+          </div>
+        </div>
+
+        <form onSubmit={handlePreBookSubmit} className="space-y-6">
+          
+          {/* 1. Branch Routing Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
             <div>
-              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <Package className="w-5 h-5 text-red-600" />
-                <span>{t('prebook_new_parcel')}</span>
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {t('prebooking_notice')}
-              </p>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-red-600" />
+                <span>{t('origin_branch_drop')}</span>
+              </label>
+              <select
+                value={originBranchId}
+                onChange={(e) => handleOriginChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-red-500 focus:outline-none"
+              >
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({b.city} - {b.province})
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs">
-              <Scale className="w-4 h-4 text-amber-600 shrink-0" />
-              <div className="text-start">
-                <div className="font-bold text-[11px]">{t('pricing_policy_branch_title')}</div>
-                <div className="text-[10px] text-amber-700">{t('pricing_policy_branch_desc')}</div>
-              </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{t('destination_branch_dest')}</span>
+              </label>
+              <select
+                value={destinationBranchId}
+                onChange={(e) => handleDestChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-red-500 focus:outline-none"
+              >
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.name} ({b.city} - {b.province})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <span className="font-bold">{t('customer_pricing_policy_info')}</span> {t('origin_drop_prompt')}
-            </div>
-          </div>
-
-          <form onSubmit={handlePreBookSubmit} className="space-y-6">
+          {/* 2. Sender & Receiver Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* 1. Branch Routing Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {t('origin_cargo_branch_lbl')}
-                </label>
-                <select
-                  value={originBranchId}
-                  onChange={(e) => handleOriginChange(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                >
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.name} ({b.city} Hub) - {b.code}
-                    </option>
-                  ))}
-                </select>
+            {/* Sender */}
+            <div className="space-y-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-blue-600" />
+                <span>{t('sender_details')}</span>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {t('dest_cargo_branch_lbl')}
-                </label>
-                <select
-                  value={destinationBranchId}
-                  onChange={(e) => handleDestChange(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                >
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id} disabled={b.id === originBranchId}>
-                      {b.name} ({b.city} Hub) - {b.code} {b.id === originBranchId ? '(Origin)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 2. Sender & Receiver Contacts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Sender Info */}
-              <div className="space-y-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
-                <div className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5" />
-                  <span>{t('sender_info_you')}</span>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('your_full_name')}</label>
-                  <input
-                    type="text"
-                    required
-                    value={senderName}
-                    onChange={(e) => setSenderName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('phone_number')}</label>
-                    <input
-                      type="text"
-                      required
-                      value={senderPhone}
-                      onChange={(e) => setSenderPhone(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('email_optional')}</label>
-                    <input
-                      type="email"
-                      value={senderEmail}
-                      onChange={(e) => setSenderEmail(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('sender_address_lbl')}</label>
-                  <input
-                    type="text"
-                    value={senderAddress}
-                    onChange={(e) => setSenderAddress(e.target.value)}
-                    placeholder="e.g. Shahr-e-Naw, Street 4"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Receiver Info */}
-              <div className="space-y-3 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
-                <div className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{t('receiver_info_dest')}</span>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('receiver_full_name')}</label>
-                  <input
-                    type="text"
-                    required
-                    value={receiverName}
-                    onChange={(e) => setReceiverName(e.target.value)}
-                    placeholder="e.g. Ghulam Farooq"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('receiver_phone_lbl')}</label>
-                  <input
-                    type="text"
-                    required
-                    value={receiverPhone}
-                    onChange={(e) => setReceiverPhone(e.target.value)}
-                    placeholder="0700 987 654"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold text-slate-600">
-                      {t('receiver_tazkira_optional') || 'Receiver Tazkira / National ID (نمبر تذکره گیرنده)'}
-                    </label>
-                    <span className="text-[10px] text-slate-400 font-semibold">(Optional / اختیاری)</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={receiverNationalId}
-                    onChange={(e) => setReceiverNationalId(e.target.value)}
-                    placeholder="e.g. 1402-0987-12345"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('receiver_address_lbl')}</label>
-                  <input
-                    type="text"
-                    value={receiverAddress}
-                    onChange={(e) => setReceiverAddress(e.target.value)}
-                    placeholder="e.g. Chowk Gulha, Herat City"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-            </div>
-
-            {/* 3. Parcel Details */}
-            <div className="space-y-4 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
-              <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                {t('parcel_specs_product_val') || 'Product Details & Selling Price'}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('category_lbl')}</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as ParcelCategory)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  >
-                    {categoryOptions.map(c => (
-                      <option key={c.value} value={c.value}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('estimated_weight_kg')}</label>
-                  <input
-                    type="number"
-                    min="0.5"
-                    step="0.5"
-                    required
-                    value={estimatedWeightKg}
-                    onChange={(e) => setEstimatedWeightKg(parseFloat(e.target.value) || 1)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('pieces_boxes_count')}</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={pieces}
-                    onChange={(e) => setPieces(parseInt(e.target.value) || 1)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('goods_selling_price_afn') || 'Product Price (AFN)'}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={productPriceAfn}
-                    onChange={(e) => setProductPriceAfn(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('contents_desc_notes')}</label>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('sender_name')}</label>
                 <input
                   type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. 5 boxes of men's clothing items, high quality fabric"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
+                  required
+                  value={senderName}
+                  onChange={(e) => setSenderName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('sender_phone')}</label>
                   <input
-                    type="checkbox"
-                    checked={isFragile}
-                    onChange={(e) => setIsFragile(e.target.checked)}
-                    className="w-4 h-4 rounded text-red-600 focus:ring-red-500"
+                    type="tel"
+                    required
+                    value={senderPhone}
+                    onChange={(e) => setSenderPhone(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
-                  <span>{t('fragile_cargo_notice')}</span>
-                </label>
-
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-bold text-slate-700">{t('payment_preference_lbl')}:</span>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="paypref"
-                      checked={paymentPreference === 'pay_at_branch'}
-                      onChange={() => setPaymentPreference('pay_at_branch')}
-                      className="text-red-600"
-                    />
-                    <span>{t('pay_at_origin_branch')}</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="paypref"
-                      checked={paymentPreference === 'pay_on_delivery'}
-                      onChange={() => setPaymentPreference('pay_on_delivery')}
-                      className="text-red-600"
-                    />
-                    <span>{t('receiver_pays_cod')}</span>
-                  </label>
                 </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('sender_city')}</label>
+                  <input
+                    type="text"
+                    value={senderCity}
+                    onChange={(e) => setSenderCity(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('sender_address')}</label>
+                <input
+                  type="text"
+                  value={senderAddress}
+                  onChange={(e) => setSenderAddress(e.target.value)}
+                  placeholder="e.g. Mandawi Market, Kabul"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+                />
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-            >
-              <Package className="w-4 h-4" />
-              <span>{t('submit_prebook_btn')}</span>
-            </button>
+            {/* Receiver */}
+            <div className="space-y-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+              <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{t('receiver_details')}</span>
+              </div>
 
-          </form>
-        </div>
-      )}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('receiver_name')}</label>
+                <input
+                  type="text"
+                  required
+                  value={receiverName}
+                  onChange={(e) => setReceiverName(e.target.value)}
+                  placeholder="Receiver's full name"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+                />
+              </div>
 
-      {/* TAB 2: SHIPMENT HISTORY & RECORDS */}
-      {activeTab === 'history' && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-          
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100">
-            <div>
-              <h2 className="text-lg font-black text-slate-900">
-                {t('customer_shipment_history')}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {t('customer_history_subtitle')}
-              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('receiver_phone')}</label>
+                  <input
+                    type="tel"
+                    required
+                    value={receiverPhone}
+                    onChange={(e) => setReceiverPhone(e.target.value)}
+                    placeholder="07xxxxxxxx"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('receiver_city')}</label>
+                  <input
+                    type="text"
+                    value={receiverCity}
+                    onChange={(e) => setReceiverCity(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  {t('receiver_tazkira_nid') || 'Receiver Tazkira / National ID (Optional)'}
+                </label>
+                <input
+                  type="text"
+                  value={receiverNationalId}
+                  onChange={(e) => setReceiverNationalId(e.target.value)}
+                  placeholder="e.g. 1402-0987-12345"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('receiver_address_lbl')}</label>
+                <input
+                  type="text"
+                  value={receiverAddress}
+                  onChange={(e) => setReceiverAddress(e.target.value)}
+                  placeholder="e.g. Chowk Gulha, Herat City"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+                />
+              </div>
             </div>
 
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
+          </div>
+
+          {/* 3. Parcel Details */}
+          <div className="space-y-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+            <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              {t('parcel_specs_product_val') || 'Product Details & Selling Price'}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('category_lbl')}</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as ParcelCategory)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
+                >
+                  {categoryOptions.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('estimated_weight_kg')}</label>
+                <input
+                  type="number"
+                  min="0.5"
+                  step="0.5"
+                  required
+                  value={estimatedWeightKg}
+                  onChange={(e) => setEstimatedWeightKg(parseFloat(e.target.value) || 1)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('pieces_boxes_count')}</label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={pieces}
+                  onChange={(e) => setPieces(parseInt(e.target.value) || 1)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('goods_selling_price_afn') || 'Product Price (AFN)'}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={productPriceAfn}
+                  onChange={(e) => setProductPriceAfn(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('contents_desc_notes')}</label>
               <input
                 type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search CN #, receiver..."
-                className="w-full ps-9 pe-3 py-1.5 text-xs rounded-xl border border-slate-300 bg-slate-50 text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. 5 boxes of men's clothing items, high quality fabric"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
               />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={isFragile}
+                  onChange={(e) => setIsFragile(e.target.checked)}
+                  className="w-4 h-4 rounded text-red-600 focus:ring-red-500"
+                />
+                <span>{t('fragile_cargo_notice')}</span>
+              </label>
+
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{t('payment_preference_lbl')}:</span>
+                <label className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paypref"
+                    checked={paymentPreference === 'pay_at_branch'}
+                    onChange={() => setPaymentPreference('pay_at_branch')}
+                    className="text-red-600"
+                  />
+                  <span>{t('pay_at_origin_branch')}</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paypref"
+                    checked={paymentPreference === 'pay_on_delivery'}
+                    onChange={() => setPaymentPreference('pay_on_delivery')}
+                    className="text-red-600"
+                  />
+                  <span>{t('receiver_pays_cod')}</span>
+                </label>
+              </div>
             </div>
           </div>
 
-          {/* Customer Pre-Booking Live Status Tracker */}
-          {(() => {
-            const prebookList = customerShipments.filter(s => s.isPreBooking || s.isCustomerPrebooked || s.status === 'pre_booked' || s.status === 'verified');
-            if (prebookList.length === 0) return null;
+          <button
+            type="submit"
+            className="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <Package className="w-4 h-4" />
+            <span>{t('submit_prebook_btn')}</span>
+          </button>
 
-            return (
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-white border border-purple-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-xs">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-xs text-purple-950 uppercase tracking-wider">
-                        My Pre-Bookings Status Tracker
-                      </h3>
-                      <p className="text-[11px] text-purple-700">
-                        Live status of your submitted pre-bookings ('pending' ➔ 'verified' ➔ 'booked')
-                      </p>
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full bg-purple-200 text-purple-900 font-black text-xs font-mono">
-                    {prebookList.length} Active
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {prebookList.map(pb => {
-                    const originBr = branches.find(b => b.id === pb.originBranchId);
-                    const statusText = pb.status === 'pre_booked' ? 'Pending (Awaiting Branch Drop-off & Weighing)' : pb.status === 'verified' ? 'Verified & Priced' : 'Booked & Dispatched';
-                    const statusColor = pb.status === 'pre_booked' ? 'bg-amber-100 text-amber-800 border-amber-300' : pb.status === 'verified' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-blue-100 text-blue-800 border-blue-300';
-                    
-                    return (
-                      <div key={pb.id} className="p-3.5 rounded-xl bg-white border border-purple-100 shadow-xs space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-black text-slate-900 text-xs">
-                            {pb.cnNumber}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor}`}>
-                            {pb.status.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-600 space-y-0.5">
-                          <div><strong>To:</strong> {pb.receiver.name} ({pb.receiver.city})</div>
-                          <div><strong>Branch:</strong> {originBr?.name || 'Origin Hub'}</div>
-                          {pb.financials.totalAmount > 0 && (
-                            <div className="text-emerald-700 font-bold font-mono">
-                              Price: {pb.financials.totalAmount.toLocaleString()} AFN
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-purple-600 font-semibold italic">
-                          ℹ️ {statusText}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
-          {filteredHistory.length === 0 ? (
-            <div className="p-12 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                <Package className="w-6 h-6" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-700">{t('no_shipments_found_customer')}</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                {t('no_shipments_found_customer_desc')}
-              </p>
-              <button
-                onClick={() => setActiveTab('prebook')}
-                className="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t('prebook_first_parcel_btn')}</span>
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredHistory.map(shipment => {
-                const originBr = branches.find(b => b.id === shipment.originBranchId);
-                const destBr = branches.find(b => b.id === shipment.destinationBranchId);
-                const isPrebookedAwaitingPrice = shipment.status === 'pre_booked' || shipment.financials.totalAmount === 0;
-
-                return (
-                  <div 
-                    key={shipment.id}
-                    className="p-4 sm:p-5 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-red-200 hover:shadow-md transition-all space-y-3"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-mono font-black text-slate-900 text-sm sm:text-base">
-                          {shipment.cnNumber}
-                        </span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase border ${getStatusBadge(shipment.status)}`}>
-                          {t(`status_${shipment.status}` as any) || shipment.status.replace(/_/g, ' ')}
-                        </span>
-                        {isPrebookedAwaitingPrice && (
-                          <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold flex items-center gap-1 border border-amber-300">
-                            <Clock className="w-3 h-3 text-amber-600" />
-                            <span>{t('price_pending_branch_weighing')}</span>
-                          </span>
-                        )}
-                        {!isPrebookedAwaitingPrice && shipment.isCustomerPrebooked && (
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold flex items-center gap-1 border border-emerald-300">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>{t('price_verified_by_branch')}</span>
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {isPrebookedAwaitingPrice ? (
-                          <div className="text-end">
-                            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 inline-flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              <span>{t('price_awaiting_branch_eval')}</span>
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="text-end">
-                            <div className="text-[10px] text-emerald-700 font-bold uppercase flex items-center gap-1 justify-end">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>{t('price_set_notice')}</span>
-                            </div>
-                            <span className="text-xs font-mono font-black text-slate-900">
-                              {shipment.financials.totalAmount.toLocaleString()} AFN ({shipment.financials.paymentStatus === 'to_pay' ? 'COD' : shipment.financials.paymentStatus.toUpperCase()})
-                            </span>
-                          </div>
-                        )}
-                        <button
-                          onClick={() => setSelectedShipmentForReceipt(shipment)}
-                          className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-red-500 hover:text-red-600 text-slate-700 text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer transition-colors"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>{t('btn_print')}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Route & Cargo details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1 border-t border-slate-200">
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">{t('route_lbl')}</span>
-                        <div className="font-bold text-slate-900 mt-0.5 flex items-center gap-1.5">
-                          <span>{originBr?.city || 'Origin'}</span>
-                          <ArrowRight className="w-3 h-3 text-slate-400" />
-                          <span>{destBr?.city || 'Destination'}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500">{t('receiver')}: {shipment.receiver.name} ({shipment.receiver.phone})</div>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">{t('cargo_specs_lbl')}</span>
-                        <div className="font-bold text-slate-900 mt-0.5">
-                          {shipment.packageInfo.category} • {shipment.packageInfo.weightKg} KG • {shipment.packageInfo.pieces} {t('pcs_unit')}
-                        </div>
-                        <div className="text-[11px] text-slate-500">{shipment.packageInfo.description || 'Standard Consignment'}</div>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-semibold">{t('latest_status_note_lbl')}</span>
-                        <div className="font-bold text-slate-900 mt-0.5 text-[11px] leading-tight">
-                          {shipment.statusHistory[shipment.statusHistory.length - 1]?.note || 'In system'}
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-1">
-                          {new Date(shipment.bookedAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-
-                    {isPrebookedAwaitingPrice && (
-                      <div className="p-2.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-800 text-[11px] flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <Info className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span>{t('origin_drop_prompt')} (<strong>{originBr?.name || 'Origin Branch'} - {originBr?.city}</strong>)</span>
-                        </div>
-                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">{originBr?.code || 'ORIG'}</span>
-                      </div>
-                    )}
-
-                    {!isPrebookedAwaitingPrice && shipment.isCustomerPrebooked && (
-                      <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200 text-emerald-800 text-[11px] flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>Product Verified at <strong>{originBr?.name || 'Origin Branch'}</strong>: Product Price {shipment.financials.productPrice} AFN - Service Fee {shipment.financials.serviceFee} AFN = Seller Payout <strong>{shipment.financials.sellerPayout} AFN</strong></span>
-                        </div>
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">{shipment.financials.paymentStatus.toUpperCase()}</span>
-                      </div>
-                    )}
-
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-        </div>
-      )}
+        </form>
+      </div>
 
     </div>
   );

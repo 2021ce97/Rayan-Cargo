@@ -26,7 +26,8 @@ import {
   ArrowDownRight,
   Scale,
   ShieldCheck,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { generateExecutiveReportPdf, printElementUsingIframe } from '../utils/pdfExport';
@@ -138,7 +139,7 @@ export const AnalyticsReports: React.FC = () => {
       other: 0
     };
     scopedExpenses.forEach(e => {
-      const catKey = (e.category === 'transport' ? 'fuel_transport' : e.category === 'food_tea' ? 'food' : e.category) || 'other';
+      const catKey = ((e.category as string) === 'transport' ? 'fuel_transport' : (e.category as string) === 'food_tea' ? 'food' : e.category) || 'other';
       cats[catKey] = (cats[catKey] || 0) + e.amount;
     });
     return Object.keys(cats).map(k => ({

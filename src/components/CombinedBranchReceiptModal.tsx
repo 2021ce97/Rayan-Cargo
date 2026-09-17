@@ -162,7 +162,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
     const count = selectedShipments.length;
     const pieces = selectedShipments.reduce((sum, s) => sum + (s.packageInfo.pieces || 1), 0);
     const weight = selectedShipments.reduce((sum, s) => sum + (s.packageInfo.weightKg || 0), 0);
-    const productValue = selectedShipments.reduce((sum, s) => sum + (s.financials.baseFare || s.packageInfo.declaredValue || 0), 0);
+    const productValue = selectedShipments.reduce((sum, s) => sum + (s.financials.productPrice || s.packageInfo.declaredValueAfn || 0), 0);
     const freightFee = selectedShipments.reduce((sum, s) => sum + (s.financials.totalAmount || 0), 0);
     const prepaid = selectedShipments.reduce((sum, s) => sum + (s.financials.paymentStatus === 'paid' ? s.financials.totalAmount : (s.financials.amountPaid || 0)), 0);
     const codToCollect = selectedShipments.reduce((sum, s) => sum + (s.financials.paymentStatus === 'to_pay' ? s.financials.totalAmount : (s.financials.amountDue || 0)), 0);

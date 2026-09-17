@@ -41,7 +41,7 @@ export const ExpenseManager: React.FC = () => {
   // Form State
   const defaultBranch = currentUser.role === 'super_admin' ? (activeBranchId !== 'all' ? activeBranchId : branches[0]?.id) : currentUser.branchId;
   const [formBranchId, setFormBranchId] = useState(defaultBranch || branches[0]?.id || '');
-  const [category, setCategory] = useState<ExpenseCategory>('food_tea');
+  const [category, setCategory] = useState<ExpenseCategory>('food');
   const [amount, setAmount] = useState<number>(500);
   const [description, setDescription] = useState('');
   const [paidTo, setPaidTo] = useState('');

@@ -89,23 +89,24 @@ export const Dashboard: React.FC = () => {
       events.push({
         id: `book-${s.id}`,
         type: 'booking',
-        date: s.bookedAt,
+        date: s.bookedAt || new Date().toISOString(),
         title: `New Booking: ${s.cnNumber}`,
-        subtitle: `${s.sender.city} to ${s.receiver.city} (${s.packageInfo.weightKg}kg)`,
+        subtitle: `${s.sender?.city || ''} to ${s.receiver?.city || ''} (${s.packageInfo?.weightKg || 1}kg)`,
         user: s.bookedByUserName || 'System',
         iconType: 'package'
       });
 
       if (s.statusHistory && Array.isArray(s.statusHistory)) {
         s.statusHistory.forEach((h, idx) => {
-          if (h.status === 'booked' && new Date(h.date).getTime() === new Date(s.bookedAt).getTime()) return;
+          const itemDate = h.timestamp || (h as any).date || s.bookedAt;
+          if (h.status === 'booked' && itemDate && new Date(itemDate).getTime() === new Date(s.bookedAt).getTime()) return;
           events.push({
             id: `hist-${s.id}-${idx}`,
             type: 'status',
-            date: h.date,
+            date: itemDate || new Date().toISOString(),
             title: `Status Updated: ${s.cnNumber}`,
             subtitle: `Changed to ${getLocalizedStatusName(h.status)} ${h.location ? `at ${h.location}` : ''}`,
-            user: h.updatedByUserName || 'System',
+            user: h.updatedBy || (h as any).updatedByUserName || 'System',
             iconType: 'truck'
           });
         });
@@ -118,16 +119,16 @@ export const Dashboard: React.FC = () => {
         events.push({
           id: `exp-${e.id}`,
           type: 'expense',
-          date: e.createdAt || e.expenseDate,
+          date: e.createdAt || e.expenseDate || new Date().toISOString(),
           title: `Expense Logged: ${e.category}`,
-          subtitle: `Amount: ${e.amount.toLocaleString()} AFN - ${e.description || 'No description'}`,
-          user: e.submittedByName || 'System',
+          subtitle: `Amount: ${(e.amount || 0).toLocaleString()} AFN - ${e.description || 'No description'}`,
+          user: e.createdByName || (e as any).submittedByName || 'System',
           iconType: 'dollar'
         });
       });
     }
 
-    return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+    return events.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, 10);
   }, [shipments, expenses, isSuperAdmin, currentUser.branchId]);
 
   // Branch revenue & operations matrix for Admin

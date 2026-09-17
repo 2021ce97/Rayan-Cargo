@@ -348,7 +348,8 @@ export type ActiveView =
   | 'users' 
   | 'reports' 
   | 'remittances' 
-  | 'customer_portal';
+  | 'customer_portal'
+  | 'customer_history';
 
 export interface StatusPermissionResult {
   allowed: boolean;

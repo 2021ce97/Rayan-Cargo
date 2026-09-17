@@ -6,6 +6,7 @@ import {
   Branch, 
   Shipment, 
   ShipmentStatus, 
+  PaymentStatus,
   UserRole,
   AnalyticsSummary,
   BranchExpense,
@@ -21,6 +22,7 @@ import {
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
+import { useI18n } from './I18nContext';
 import { 
   getSupabase, 
   isSupabaseReady, 
@@ -70,13 +72,15 @@ export type ActiveViewType =
   | 'users' 
   | 'reports' 
   | 'expenses'
-  | 'customer_portal';
+  | 'remittances'
+  | 'customer_portal'
+  | 'customer_history';
 
 interface AppContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   isRTL: boolean;
-  t: (key: string) => string;
+  t: (key: string, defaultText?: string) => string;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   isAuthenticated: boolean;
@@ -118,7 +122,11 @@ interface AppContextType {
     serviceFee?: number;
     discountAmount?: number;
     destBranchCommission?: number;
-    paymentStatus?: 'paid' | 'to_pay';
+    paymentStatus?: PaymentStatus;
+    status?: ShipmentStatus;
+    originBranchId?: string;
+    destinationBranchId?: string;
+    note?: string;
   }) => boolean;
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
   adminEditShipment: (shipmentId: string, input: AdminEditShipmentInput) => Promise<boolean>;
@@ -244,22 +252,8 @@ export const sanitizeShipmentFinancials = (s: Shipment): Shipment => {
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Language & RTL
-  const [language, setLanguageState] = useState<Language>(() => {
-    return (localStorage.getItem(STORAGE_KEYS.LANGUAGE) as Language) || 'en';
-  });
-
-  const isRTL = language === 'fa' || language === 'ps';
-
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    localStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
-  };
-
-  useEffect(() => {
-    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
-    document.documentElement.lang = language;
-  }, [isRTL, language]);
+  // Language, Direction & Translations (Unified Single Source of Truth via I18nProvider)
+  const { language, setLanguage, isRTL, t } = useI18n();
 
   const [isDarkMode] = useState<boolean>(false);
   const toggleDarkMode = () => {};
@@ -1299,10 +1293,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [trackedShipment, setTrackedShipment] = useState<Shipment | null>(null);
   const [isOfflineCached] = useState<boolean>(true);
 
-  const t = (key: string): string => {
-    return translations[language]?.[key] || translations['en']?.[key] || key;
-  };
-
   // Track by CN Number function
   const trackByCnNumber = (cn: string): Shipment | null => {
     const cleaned = cn.trim().toUpperCase();
@@ -2045,7 +2035,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       serviceFee?: number;
       discountAmount?: number;
       destBranchCommission?: number; 
-      paymentStatus?: 'paid' | 'to_pay';
+      paymentStatus?: PaymentStatus;
       status?: ShipmentStatus;
       originBranchId?: string;
       destinationBranchId?: string;
@@ -2077,7 +2067,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let serviceFee = 150;
     let discountAmount = 0;
     let destBranchCommission = 70;
-    let paymentStatus: 'paid' | 'to_pay' = 'to_pay';
+    let paymentStatus: PaymentStatus = 'to_pay';
 
     if (typeof arg2 === 'object' && arg2 !== null) {
       actualWeightKg = Number(arg2.weightKg) || 1;

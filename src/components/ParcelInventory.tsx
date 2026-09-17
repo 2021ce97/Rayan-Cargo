@@ -1076,7 +1076,6 @@ export const ParcelInventory: React.FC = () => {
                               s.status === 'out_for_delivery' ? 'bg-amber-600 text-white hover:bg-amber-700' :
                               s.status === 'received_at_branch' ? 'bg-blue-600 text-white hover:bg-blue-700' :
                               s.status === 'in_transit' ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
-                              s.status === 'verified' ? 'bg-teal-600 text-white hover:bg-teal-700' :
                               'bg-slate-600 text-white hover:bg-slate-700'
                             }`}
                           >
@@ -2040,7 +2039,7 @@ export const ParcelInventory: React.FC = () => {
               <ShipmentStatusTimeline 
                 history={detailsModalShipment.statusHistory}
                 currentStatus={detailsModalShipment.status}
-                bookedAt={detailsModalShipment.createdAt || detailsModalShipment.created_at}
+                bookedAt={detailsModalShipment.bookedAt}
               />
             </div>
 

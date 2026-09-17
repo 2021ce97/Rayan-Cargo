@@ -253,6 +253,7 @@ export const NewBookingModal: React.FC = () => {
       },
       bookedByUserId: currentUser.id,
       bookedByUserName: currentUser.name,
+      estimatedDelivery: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       status: 'booked'
     });
 

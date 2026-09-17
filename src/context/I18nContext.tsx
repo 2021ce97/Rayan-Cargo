@@ -28,7 +28,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const isRTL = language === 'fa' || language === 'ps';
-  const dir = isRTL ? 'rtl' : 'ltr';
+  const dir: 'rtl' | 'ltr' = isRTL ? 'rtl' : 'ltr';
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);

@@ -4,7 +4,9 @@ interface BarcodeProps {
   value: string;
   className?: string;
   showText?: boolean;
+  displayValue?: boolean;
   height?: number;
+  width?: number;
 }
 
 export const BarcodeGenerator: React.FC<BarcodeProps> = ({

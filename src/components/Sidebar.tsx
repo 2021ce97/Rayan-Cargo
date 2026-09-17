@@ -61,8 +61,15 @@ export const Sidebar: React.FC = () => {
   const navItems = isCustomer ? [
     {
       id: 'customer_portal' as const,
-      label: t('nav_customer_portal'),
-      icon: Package,
+      label: language === 'fa' ? 'ثبت آنلاین بسته' : (language === 'ps' ? 'د بار آنلاین ثبت' : 'Pre-Book Parcel'),
+      icon: PackagePlus,
+      badge: null,
+      visible: true
+    },
+    {
+      id: 'customer_history' as const,
+      label: language === 'fa' ? 'تاریخچه و لیست بسته‌ها' : (language === 'ps' ? 'د بارونو تاریخچه' : 'Parcel History & Orders'),
+      icon: FileText,
       badge: customerShipments.length,
       visible: true
     },
