@@ -713,7 +713,7 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
 
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Track live online at www.armaghansadeq.af using Consignment Note (CN #).', margin + 85, y + 4.5);
+    doc.text('Track live online using Consignment Note (CN #).', margin + 85, y + 4.5);
     const senderHubPhone = originBranch?.phone ? originBranch.phone : 'Hub Contact';
     doc.text(`Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 85, y + 8.5);
 
@@ -1072,7 +1072,7 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
 
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Seller portal tracking & payment status available at www.armaghansadeq.af', margin + 85, y + 4.5);
+    doc.text('Seller portal tracking & payment status available.', margin + 85, y + 4.5);
     const senderHubPhone = originBranch?.phone ? originBranch.phone : 'Hub Contact';
     doc.text(`Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 85, y + 8.5);
 
@@ -2316,7 +2316,7 @@ export function generateThermalLabelPdf(
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
       doc.text('Helplines: +93 79 900 1122 | Complaints: 0711299680', margin + contentWidth / 2, y, { align: 'center' });
-      doc.text('Main Kabul: 0774144004 | Track: www.armaghansadeq.af', margin + contentWidth / 2, y + 4.5, { align: 'center' });
+      doc.text('Main Kabul: 0774144004', margin + contentWidth / 2, y + 4.5, { align: 'center' });
       
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6);
@@ -2424,7 +2424,7 @@ export function generateThermalLabelPdf(
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
       doc.text(`Helplines: +93 79 900 1122 | complaints: 0711299680`, margin + contentWidth / 2, y, { align: 'center' });
-      doc.text('Receipt valid 30 days. www.armaghansadeq.af', margin + contentWidth / 2, y + 3.5, { align: 'center' });
+      doc.text('Receipt valid 30 days.', margin + contentWidth / 2, y + 3.5, { align: 'center' });
 
       const filename = `Thermal_Label_${shipment.cnNumber}_80x80.pdf`;
       doc.save(filename);

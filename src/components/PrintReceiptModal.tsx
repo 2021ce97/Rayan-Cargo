@@ -377,10 +377,10 @@ export const PrintReceiptModal: React.FC = () => {
               {/* Footer with Contacts */}
               <div className="text-center pt-1 border-t border-dotted border-black/30 space-y-1">
                 <div className="text-[8.5px] font-black leading-tight">
-                  {l('Helplines: +93 79 900 1122 | Complaints: 0711299680', 'شماره تماس: ۰۷۹۹۰۰۱۱۲۲ | شکایات: ۰۷۱۱۲۹۹۶۸۰')}
+                  {l('Helplines: +93 79 900 1122 | Complaints: 0711299680', 'شماره تماس: 0799001122 | شکایات: 0711299680')}
                 </div>
                 <div className="text-[8.5px] font-black leading-tight">
-                  {l('Main Kabul: 0774144004 | Track: www.armaghansadeq.af', 'مرکز کابل: ۰۷۷۴۱۴۴۰۰۴ | رهگیری: www.armaghansadeq.af')}
+                  {l('Main Kabul: 0774144004', 'مرکز کابل: 0774144004')}
                 </div>
                 <div className="text-[7.5px] text-slate-500 mt-1">
                   Printed: {new Date().toLocaleDateString()} | Rayan Tech Solutions
@@ -470,10 +470,10 @@ export const PrintReceiptModal: React.FC = () => {
               {/* Footer: Contacts & Conditions */}
               <div className="pt-1 border-t border-black mt-1 space-y-0.5 text-center">
                 <div className="text-[7.5px] font-black leading-tight">
-                  {l('Helplines: +93 79 900 1122 | complaints: 0711299680', 'تماس: ۰۷۹۹۰۰۱۱۲۲ | شکایات: ۰۷۱۱۲۹۹۶۸۰')}
+                  {l('Helplines: +93 79 900 1122 | complaints: 0711299680', 'تماس: 0799001122 | شکایات: 0711299680')}
                 </div>
                 <div className="text-[7px] italic text-neutral-600 leading-tight">
-                  {l('Receipt valid 30 days. www.armaghansadeq.af', 'بل تا ۳۰ روز معتبر است. www.armaghansadeq.af')}
+                  {l('Receipt valid 30 days.', 'بل تا ۳۰ روز معتبر است.')}
                 </div>
               </div>
             </div>
@@ -519,9 +519,6 @@ export const PrintReceiptModal: React.FC = () => {
                   <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{l('Consignment Number (CN)', 'نمبر بارنامه (CN)')}</div>
                   <div className="text-3xl font-black font-mono tracking-tighter text-slate-900 bg-slate-100 px-3 py-0.5 rounded-lg border border-slate-200">
                     {shipment.cnNumber}
-                  </div>
-                  <div className="mt-2">
-                    <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={34} />
                   </div>
                 </div>
               </div>
@@ -699,13 +696,10 @@ export const PrintReceiptModal: React.FC = () => {
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200 mt-2">
                     <div className="text-[9px] text-slate-500 font-medium">
                       <p>{l('Kabul HQ: 0774144004 | Support: 0711299680', 'مرکز کابل: 0774144004 | شکایات: 0711299680')}</p>
-                      <p className="font-mono text-slate-400 text-[8px]">www.armaghansadeq.af</p>
+                      <p>{l('Helplines: +93 79 900 1122', 'شماره تماس: +93 79 900 1122')}</p>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <div className="text-[8px] font-bold text-slate-400 text-end">
-                        SCAN<br/>TRACK
-                      </div>
-                      <QRCodeVisual value={`https://armaghansadeq.af/track/${shipment.cnNumber}`} size={42} />
+                    <div className="text-[8px] font-bold text-slate-400 text-end">
+                      OFFICIAL<br/>RECEIPT
                     </div>
                   </div>
                 </div>

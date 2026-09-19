@@ -127,10 +127,10 @@ export const NewBookingModal: React.FC = () => {
   const [isFragile, setIsFragile] = useState<boolean>(false);
 
   // Billing & Discounts (Product COD Model)
-  const [productPriceAfn, setProductPriceAfn] = useState<number>(5000);
-  const [serviceFee, setServiceFee] = useState<number>(150);
-  const [destCommission, setDestCommission] = useState<number>(70);
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [productPriceAfn, setProductPriceAfn] = useState<number | "">("");
+  const [serviceFee, setServiceFee] = useState<number | "">("");
+  const [destCommission, setDestCommission] = useState<number | "">("");
+  const [discountAmount, setDiscountAmount] = useState<number | "">("");
   const [discountReason, setDiscountReason] = useState<string>('');
 
   // Initialize and sync origin and destination details
@@ -165,12 +165,17 @@ export const NewBookingModal: React.FC = () => {
 
   // Calculations
   const fragileFee = isFragile ? 50 : 0;
-  const totalServiceFee = serviceFee + fragileFee;
-  const sellerPayout = productPriceAfn - destCommission - totalServiceFee + discountAmount;
+  const pPriceVal = typeof productPriceAfn === 'number' ? productPriceAfn : 0;
+  const sFeeVal = typeof serviceFee === 'number' ? serviceFee : 0;
+  const dCommVal = typeof destCommission === 'number' ? destCommission : 0;
+  const discVal = typeof discountAmount === 'number' ? discountAmount : 0;
+
+  const totalServiceFee = sFeeVal + fragileFee;
+  const sellerPayout = pPriceVal - dCommVal - totalServiceFee + discVal;
   
-  const grandTotal = productPriceAfn;
+  const grandTotal = pPriceVal;
   const amountPaid = 0; // Collected on delivery
-  const amountDue = productPriceAfn;
+  const amountDue = pPriceVal;
 
   const originBranchObj = branches.find(b => b.id === originBranchId);
   const destBranchObj = branches.find(b => b.id === destBranchId);
@@ -224,8 +229,10 @@ export const NewBookingModal: React.FC = () => {
     setDescription('');
     setWeightKg(5);
     setPieces(1);
-    setProductPriceAfn(0);
-    setDiscountAmount(0);
+    setProductPriceAfn("");
+    setServiceFee("");
+    setDestCommission("");
+    setDiscountAmount("");
   };
 
   const handleSubmit = (andPrint: boolean) => {
@@ -275,10 +282,10 @@ export const NewBookingModal: React.FC = () => {
         isFragile
       },
       financials: {
-        productPrice: productPriceAfn,
+        productPrice: Number(productPriceAfn) || 0,
         serviceFee: totalServiceFee,
-        destBranchCommission: destCommission,
-        discountAmount: discountAmount,
+        destBranchCommission: Number(destCommission) || 0,
+        discountAmount: Number(discountAmount) || 0,
         sellerPayout: sellerPayout,
         totalAmount: grandTotal,
         amountPaid,
@@ -784,7 +791,7 @@ export const NewBookingModal: React.FC = () => {
                     min="0"
                     step="100"
                     value={productPriceAfn}
-                    onChange={(e) => setProductPriceAfn(Math.max(0, parseInt(e.target.value) || 0))}
+                    onChange={(e) => setProductPriceAfn(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-full h-9 pl-3 pr-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                   />
                   <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
@@ -805,7 +812,7 @@ export const NewBookingModal: React.FC = () => {
                     min="0"
                     step="10"
                     value={destCommission}
-                    onChange={(e) => setDestCommission(Math.max(0, parseInt(e.target.value) || 0))}
+                    onChange={(e) => setDestCommission(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-full h-9 pl-3 pr-16 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                   />
                   <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
@@ -826,7 +833,7 @@ export const NewBookingModal: React.FC = () => {
                     min="0"
                     step="10"
                     value={serviceFee}
-                    onChange={(e) => setServiceFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    onChange={(e) => setServiceFee(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0))}
                     className="w-full h-9 pl-3 pr-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                   />
                   <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
@@ -845,17 +852,17 @@ export const NewBookingModal: React.FC = () => {
 
               <div className="flex items-center justify-between text-slate-300">
                 <span>{t('product_selling_price_lbl') || 'Product Price (To Collect)'}:</span>
-                <span className="font-mono font-bold text-white">{productPriceAfn} AFN</span>
+                <span className="font-mono font-bold text-white">{pPriceVal} AFN</span>
               </div>
 
               <div className="flex items-center justify-between text-red-300">
                 <span>{t('dest_commission_lbl') || 'Dest. Commission'}:</span>
-                <span className="font-mono font-bold">-{destCommission} AFN</span>
+                <span className="font-mono font-bold">-{dCommVal} AFN</span>
               </div>
 
               <div className="flex items-center justify-between text-red-300">
                 <span>{t('service_handling_fee')}:</span>
-                <span className="font-mono font-bold">-{serviceFee} AFN</span>
+                <span className="font-mono font-bold">-{totalServiceFee} AFN</span>
               </div>
 
               {isFragile && (
@@ -865,10 +872,10 @@ export const NewBookingModal: React.FC = () => {
                 </div>
               )}
 
-              {discountAmount > 0 && (
+              {discVal > 0 && (
                 <div className="flex items-center justify-between text-emerald-400 font-bold">
                   <span>{t('applied_discount_lbl')}:</span>
-                  <span className="font-mono">+{discountAmount} AFN</span>
+                  <span className="font-mono">+{discVal} AFN</span>
                 </div>
               )}
 
@@ -889,7 +896,7 @@ export const NewBookingModal: React.FC = () => {
                   type="number"
                   min="0"
                   value={discountAmount}
-                  onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setDiscountAmount(e.target.value === "" ? "" : parseFloat(e.target.value) || 0)}
                   placeholder="Discount Amount in AFN"
                   className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono font-bold"
                 />
