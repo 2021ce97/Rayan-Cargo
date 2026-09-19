@@ -15,6 +15,7 @@ import {
   Package,
   Languages,
   HelpCircle,
+  ArrowRight,
   CheckCircle2
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -188,6 +189,20 @@ export const PrintReceiptModal: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2">
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mr-2">
+              <button 
+                onClick={() => setReceiptRole('buyer')}
+                className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all ${receiptRole === 'buyer' ? 'bg-white dark:bg-slate-700 text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                {l('Receiver Copy', 'کاپی گیرنده')}
+              </button>
+              <button 
+                onClick={() => setReceiptRole('seller')}
+                className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all ${receiptRole === 'seller' ? 'bg-white dark:bg-slate-700 text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                {l('Sender Copy', 'کاپی فرستنده')}
+              </button>
+            </div>
             <button 
               onClick={() => setShowPrinterGuide(!showPrinterGuide)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
@@ -274,155 +289,105 @@ export const PrintReceiptModal: React.FC = () => {
             
             <div 
               ref={thermal80mmRef} 
-              className="thermal-receipt-container bg-white text-black font-sans text-xs leading-normal space-y-2 mx-auto shadow-xl select-text print:shadow-none print:border-none"
+              className="thermal-receipt-container bg-white text-black font-sans text-xs leading-normal space-y-1 mx-auto shadow-xl select-text print:shadow-none print:border-none p-1"
               style={{ 
                 width: '72mm', 
                 maxWidth: '72mm',
                 minWidth: '72mm',
-                padding: '6px 4px 18px 4px',
+                padding: '4mm 3mm',
                 boxSizing: 'border-box'
               }}
               dir={language === 'dari' ? 'rtl' : 'ltr'}
             >
-              {/* Header */}
-              <div className="text-center space-y-0.5 pb-1.5 border-b-2 border-black">
-                <div className="text-[13px] font-black tracking-tight uppercase text-black" dir="ltr">ARMAGHAN SADEQ TRANSFERS</div>
-                <div className="text-[12.5px] font-bold text-black">{l('Armaghan Sadeq Transfer Services', 'انتقالات ارمغان صادق')}</div>
-                <div className="text-[10px] font-bold text-black" dir="ltr">Kabul Central Logistics Hub</div>
-                <div className="text-[9.5px] font-black pt-1 border-t border-dashed border-black tracking-wider uppercase">
-                  {l('*** OFFICIAL CARGO RECEIPT ***', '*** بارنامه و رسید رسمی محموله ***')}
+              {/* Tight Header */}
+              <div className="text-center bg-[#0f172a] text-white p-2 mb-1.5">
+                <h2 className="text-[13px] font-black leading-none uppercase tracking-tighter">{l('ARMAGHAN SADEQ TRANSFERS', 'انتقالات ارمغان صادق')}</h2>
+                <p className="text-[7.5px] font-bold mt-1 uppercase tracking-widest">{l('CENTRAL LOGISTICS HUB KABUL • OFFICIAL POS SLIP', 'مرکز لوجستیکی کابل • فیش رسمی')}</p>
+              </div>
+
+              {/* CN Number Box */}
+              <div className="border border-black p-1.5 mb-1.5">
+                <div className="text-[8.5px] font-bold text-slate-500 uppercase">{l('CONSIGNMENT NOTE (CN #)', 'نمبر بارنامه (CN)')}</div>
+                <div className="text-[18px] font-black font-mono leading-none mt-1">{shipment.cnNumber}</div>
+                <div className="text-[8px] font-bold mt-1 text-center border-t border-black/10 pt-1 tracking-[0.2em]">*{shipment.cnNumber}*</div>
+              </div>
+
+              {/* Compact Route Info */}
+              <div className="text-center bg-black text-white font-black py-1 text-[11px] mb-1.5 uppercase tracking-wider" dir="ltr">
+                {originBranch?.city?.toUpperCase() || 'KABUL'} ➔ {destBranch?.city?.toUpperCase() || 'DESTINATION'}
+              </div>
+
+              {/* Sender & Receiver Side-by-Side Table */}
+              <div className="grid grid-cols-2 gap-1 mb-1.5">
+                <div className="border border-black p-1.5 flex flex-col justify-between min-h-[45px]">
+                  <div className="text-[8.5px] font-bold border-b border-black/10 pb-0.5 mb-1 text-slate-500 uppercase">{l('FROM (SENDER):', 'فرستنده:')}</div>
+                  <div className="font-black text-[11px] leading-tight break-words">{shipment.sender.name}</div>
+                  <div className="text-[9px] font-medium mt-0.5">{l('Tel:', 'تلفن:')} <span className="font-mono">{shipment.sender.phone}</span></div>
+                  <div className="text-[8px] text-slate-600 mt-0.5">{l('Origin:', 'مبدأ:')} {originBranch?.city} ({originBranch?.name})</div>
+                </div>
+                <div className="border border-black p-1.5 flex flex-col justify-between min-h-[45px]">
+                  <div className="text-[8.5px] font-bold border-b border-black/10 pb-0.5 mb-1 text-slate-500 uppercase">{l('TO (CONSIGNEE):', 'گیرنده:')}</div>
+                  <div className="font-black text-[11px] leading-tight break-words">{shipment.receiver.name}</div>
+                  <div className="text-[9px] font-medium mt-0.5">{l('Tel:', 'تلفن:')} <span className="font-mono">{shipment.receiver.phone}</span></div>
+                  <div className="text-[8px] text-slate-600 mt-0.5">{l('Dest:', 'مقصد:')} {destBranch?.city} ({destBranch?.name})</div>
                 </div>
               </div>
 
-              {/* CN & Date */}
-              <div className="space-y-0.5 text-xs pb-1.5 border-b border-black">
-                <div className="flex justify-between items-baseline font-bold">
-                  <span className="text-[11px] text-black">{l('Consignment No:', 'نمبر بارنامه (CN):')}</span>
-                  <span className="text-[15px] font-black font-mono tracking-wider text-black">{shipment.cnNumber}</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-black">
-                  <span className="font-semibold">{l('Date:', 'تاریخ:')}</span>
-                  <span dir="ltr" className="font-bold">{new Date(shipment.bookedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-black">
-                  <span className="font-semibold">{l('Type:', 'نوعیت:')}</span>
-                  <span className="uppercase font-black">{shipment.packageInfo.serviceType.replace('_', ' ')}</span>
-                </div>
-              </div>
-
-              {/* Route */}
-              <div className="space-y-1 py-1 border-b border-black">
-                <div className="font-black text-[12px] uppercase text-center bg-black text-white py-0.5 px-1.5 rounded-xs tracking-wide" dir="ltr">
-                  {originBranch?.city?.toUpperCase() || 'ORIGIN'} ➔ {destBranch?.city?.toUpperCase() || 'DESTINATION'}
-                </div>
-                <div className="text-[11px] space-y-0.5 text-black">
-                  <div><span className="font-black">{l('Sender:', 'فرستنده:')}</span> <span className="font-bold">{shipment.sender.name}</span></div>
-                  <div><span className="font-black">{l('Phone:', 'تماس:')}</span> <span className="font-mono font-bold" dir="ltr">{shipment.sender.phone}</span></div>
-                  <div><span className="font-semibold">{l('City:', 'شهر:')}</span> {shipment.sender.city} ({originBranch?.name || 'Main'})</div>
-                </div>
-                <div className="text-[11px] space-y-0.5 pt-1 border-t border-dashed border-black text-black">
-                  <div><span className="font-black">{l('Receiver:', 'گیرنده:')}</span> <span className="font-bold">{shipment.receiver.name}</span></div>
-                  <div><span className="font-black">{l('Phone:', 'تماس:')}</span> <span className="font-mono font-bold" dir="ltr">{shipment.receiver.phone}</span></div>
-                  {(shipment.receiver.nationalId || shipment.sender.receiverTazkira) && (
-                    <div><span className="font-black">{l('ID:', 'تذکره:')}</span> <span className="font-bold">{shipment.receiver.nationalId || shipment.sender.receiverTazkira}</span></div>
-                  )}
-                  <div><span className="font-semibold">{l('Dest:', 'مقصد:')}</span> {shipment.receiver.city} ({destBranch?.name || 'Destination'})</div>
-                </div>
-              </div>
-
-              {/* Cargo Specs */}
-              <div className="space-y-0.5 py-1 border-b border-black text-[11px] text-black">
+              {/* Package Specs */}
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1 border border-black p-1.5 mb-1.5 font-bold text-[9.5px]">
                 <div className="flex justify-between">
-                  <span className="font-semibold">{l('Category:', 'دسته بندی:')}</span>
-                  <span className="font-black">{shipment.packageInfo.category}</span>
+                  <span className="text-slate-500">{l('Weight:', 'وزن:')}</span>
+                  <span>{shipment.packageInfo.weightKg} KG</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-semibold">{l('Weight:', 'وزن:')}</span>
-                  <span className="font-black">{shipment.packageInfo.weightKg} KG</span>
+                  <span className="text-slate-500">{l('Pieces:', 'تعداد:')}</span>
+                  <span>{shipment.packageInfo.pieces} PKG</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-semibold">{l('Pieces:', 'تعداد:')}</span>
-                  <span className="font-black">{shipment.packageInfo.pieces} PKG(S)</span>
+                  <span className="text-slate-500">{l('Category:', 'نوعیت:')}</span>
+                  <span className="truncate">{shipment.packageInfo.category}</span>
                 </div>
-                {shipment.packageInfo.isFragile && (
-                  <div className="text-center font-black text-[10.5px] border border-black py-0.5 mt-1 bg-neutral-100">
-                    {l('* FRAGILE - HANDLE WITH CARE *', '* جنس شکستنی - با احتیاط انتقال یابد *')}
-                  </div>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-slate-500">{l('Service:', 'خدمات:')}</span>
+                  <span>{shipment.packageInfo.serviceType.toUpperCase()}</span>
+                </div>
               </div>
 
-              {/* Charges Breakdown */}
-              <div className="space-y-1.5 py-1 border-b border-black text-[12px]">
-                {shipment.status === 'pre_booked' && (
-                  <div className="text-center py-1 bg-neutral-100 border border-black text-black mb-1">
-                    <div className="font-black text-[11px] uppercase">{l('* PRE-BOOKING ESTIMATE *', '* تخمین پیش‌ثبت‌نام *')}</div>
-                    <div className="text-[10px]">{l('Final weight and price confirmed at drop-off.', 'وزن و قیمت نهایی پس از تحویل در نمایندگی تایید می‌گردد.')}</div>
-                  </div>
-                )}
-                {receiptRole === 'seller' ? (
-                  <div className="space-y-1 text-black">
-                    <div className="flex justify-between">
-                      <span className="font-semibold">{l('Item Value:', 'قیمت فروش جنس:')}</span>
-                      <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
+              {/* Financial Box */}
+              <div className="border border-black p-2 mb-2 bg-slate-50">
+                {receiptRole === 'buyer' ? (
+                  <>
+                    <div className="text-[9px] font-black text-slate-900 uppercase">{l('TOTAL PAYABLE (COD / RECEIVER COPY)', 'مجموع قابل تادیه (کاپی گیرنده)')}</div>
+                    <div className="text-[18px] font-black mt-0.5">{totalDueVal.toLocaleString()} AFN</div>
+                    <div className="text-[8.5px] font-bold text-red-600 uppercase mt-1">
+                      {isPaid ? l('PAID / DELIVERED', 'تحویل داده شد') : l('COD (TO PAY AT DESTINATION)', 'پرداخت در مقصد (COD)')}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-semibold">{l('Service Fee:', 'فیس خدمات (کسر شده):')}</span>
-                      <span className="font-bold">-{sFeeVal.toLocaleString()} AFN</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-semibold">{l('Dest Comm:', 'کمیسیون مقصد:')}</span>
-                      <span className="font-bold">-{dCommVal.toLocaleString()} AFN</span>
-                    </div>
-                    {discountVal > 0 && (
-                      <div className="flex justify-between">
-                        <span className="font-semibold">{l('Discount:', 'تخفیف:')}</span>
-                        <span className="font-bold">+{discountVal.toLocaleString()} AFN</span>
-                      </div>
-                    )}
-                    <div className="p-1.5 bg-neutral-100 border-2 border-black mt-1 text-center">
-                      <div className="text-[11px] font-bold uppercase text-black" dir="ltr">NET PAYOUT TO SELLER</div>
-                      <div className="text-[17px] font-black font-mono text-black">{payoutVal.toLocaleString()} AFN</div>
-                    </div>
-                  </div>
+                  </>
                 ) : (
-                  <div className="p-1.5 bg-neutral-100 border-2 border-black text-center space-y-0.5">
-                    <div className="text-[11px] font-black uppercase text-black">{l('TOTAL PAYABLE', 'TOTAL PAYABLE (مجموع قابل پرداخت)')}</div>
-                    <div className="text-[19px] font-black font-mono text-black">{totalDueVal.toLocaleString()} AFN</div>
-                  </div>
+                  <>
+                    <div className="text-[9px] font-black text-slate-900 uppercase">{l('SELLER PAYOUT (AFTER DEDUCTIONS)', 'پرداختی فروشنده (بعد از وضع مصارف)')}</div>
+                    <div className="text-[18px] font-black text-emerald-600 mt-0.5">{payoutVal.toLocaleString()} AFN</div>
+                    <div className="text-[8.5px] font-bold text-slate-500 mt-1">
+                      {l(`Item: ${priceVal} | Fee: ${sFeeVal} | Comm: ${dCommVal}`, `قیمت: ${priceVal} | محصول: ${sFeeVal} | کمیشن: ${dCommVal}`)}
+                    </div>
+                  </>
                 )}
-                <div className="flex justify-between font-black text-[12px] pt-1 border-t border-dashed border-black">
-                  <span>{l('Payment Status:', 'وضعیت پرداخت:')}</span>
-                  <span className="uppercase font-mono font-bold" dir="ltr">
-                    {isPaid ? 'PAID' : 'COD (COLLECT AT DEST)'}
-                  </span>
-                </div>
               </div>
 
-              {/* Rules & Footer */}
-              <div className="border-b border-black py-1.5 text-[10px] leading-snug space-y-1 text-black">
-                <div className="font-black text-center uppercase tracking-wider text-[10.5px] bg-neutral-100 py-0.5 border-y border-black mb-1">
-                  {l('Terms & Conditions', 'شرایط، قوانین و مقررات بارنامه')}
+              {/* Footer with Contacts */}
+              <div className="text-center pt-1 border-t border-dotted border-black/30 space-y-1">
+                <div className="text-[8.5px] font-black leading-tight">
+                  {l('Helplines: +93 79 900 1122 | Complaints: 0711299680', 'شماره تماس: ۰۷۹۹۰۰۱۱۲۲ | شکایات: ۰۷۱۱۲۹۹۶۸۰')}
                 </div>
-                <div className="space-y-1 font-sans pr-1">
-                  <div><span className="font-black">1. </span> {l('Receipt valid for 30 days. Sender is responsible for correct info.', 'بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات بر عهده فرستنده است.')}</div>
-                  <div><span className="font-black">2. </span> {l('Illegal items are strictly prohibited.', 'ارسال اموال غیرقانونی ممنوع است.')}</div>
-                  <div><span className="font-black">3. </span> {l('Original receipt required for payout.', 'هنگام دریافت پول، ارائه بل اصلی الزامی است.')}</div>
+                <div className="text-[8.5px] font-black leading-tight">
+                  {l('Main Kabul: 0774144004 | Track: www.armaghansadeq.af', 'مرکز کابل: ۰۷۷۴۱۴۴۰۰۴ | رهگیری: www.armaghansadeq.af')}
                 </div>
-              </div>
-
-              {/* Official Contacts */}
-              <div className="border-b border-black py-1.5 text-[11px] space-y-1 text-black">
-                <div className="font-black text-center uppercase tracking-wider text-[10.5px]">{l('Official Contacts', 'شماره‌های تماس رسمی')}</div>
-                <div className="flex justify-between"><span className="font-bold">{l('Origin:', 'مرکز مبدأ:')}</span><span className="font-black font-mono" dir="ltr">{originBranch?.phone || '0799123456'}</span></div>
-                <div className="flex justify-between"><span className="font-bold">{l('Complaints:', 'شکایات:')}</span><span className="font-black font-mono text-[11px]" dir="ltr">0711299680</span></div>
-              </div>
-
-              {/* Barcode and website with sufficient bottom space for physical printer cutter */}
-              <div className="text-center space-y-1 pt-2 pb-4">
-                <BarcodeGenerator value={shipment.cnNumber} width={1.4} height={34} />
-                <div className="text-[9px] font-bold text-black" dir="ltr">www.armaghansadeq.af</div>
+                <div className="text-[7.5px] text-slate-500 mt-1">
+                  Printed: {new Date().toLocaleDateString()} | Rayan Tech Solutions
+                </div>
               </div>
             </div>
+
           </div>
         )}
 
@@ -457,61 +422,58 @@ export const PrintReceiptModal: React.FC = () => {
               <div className="flex justify-between items-start border-b-2 border-black pb-1">
                 <div>
                   <div className="text-[11.5px] font-black tracking-tight leading-none uppercase" dir="ltr">ARMAGHAN SADEQ</div>
-                  <div className="text-[9.5px] font-bold text-neutral-700 leading-tight">{l('Express Transfer Services', 'خدمات انتقال')}</div>
+                  <div className="text-[8.5px] font-bold text-neutral-700 leading-tight mt-0.5 tracking-tighter uppercase">{l('EXPRESS TRANSFERS', 'انتقالات ارمغان صادق')}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[13px] font-black font-mono leading-none">{shipment.cnNumber}</div>
-                  <div className="text-[8.5px] font-bold text-neutral-600 mt-0.5" dir="ltr">{new Date(shipment.bookedAt).toLocaleDateString('en-GB')}</div>
+                  <div className="text-[12px] font-black font-mono leading-none">{shipment.cnNumber}</div>
+                  <div className="text-[8px] font-bold text-neutral-600 mt-0.5" dir="ltr">{new Date(shipment.bookedAt).toLocaleDateString('en-GB')}</div>
                 </div>
               </div>
               
               {/* Route Banner */}
-              <div className="text-center bg-black text-white font-black py-0.5 text-[12px] uppercase tracking-wide rounded-xs my-0.5" dir="ltr">
-                {(originBranch?.city || shipment.sender.city || 'ORIGIN').toUpperCase()} ➔ {(destBranch?.city || shipment.receiver.city || 'DEST').toUpperCase()}
+              <div className="text-center bg-black text-white font-black py-1 text-[11px] uppercase tracking-wide rounded-xs my-1" dir="ltr">
+                {(originBranch?.city || shipment.sender.city || 'KABUL').toUpperCase()} ➔ {(destBranch?.city || shipment.receiver.city || 'DESTINATION').toUpperCase()}
               </div>
               
-              {/* Parties Box */}
-              <div className="grid grid-cols-2 gap-1 text-[10.5px] leading-tight my-0.5">
+              {/* Parties Box Side-by-Side */}
+              <div className="grid grid-cols-2 gap-1.5 my-1">
                 {/* Sender */}
-                <div className="border border-neutral-400 p-1 rounded-xs bg-neutral-50/50">
-                  <div className="text-[8px] font-black text-neutral-600 uppercase border-b border-neutral-200 pb-0.5 mb-0.5">{l('FROM / SENDER', 'فرستنده')}</div>
-                  <div className="font-black text-[11px] truncate">{shipment.sender.name}</div>
-                  <div className="font-mono font-bold text-[9.5px]" dir="ltr">{shipment.sender.phone}</div>
-                  <div className="text-[8.5px] text-neutral-600 truncate">{shipment.sender.city}</div>
+                <div className="border border-black p-1.5 rounded-xs bg-neutral-50/50 min-h-[42px] flex flex-col justify-between">
+                  <div className="text-[7.5px] font-black text-neutral-500 uppercase border-b border-neutral-200 pb-0.5 mb-1">{l('FROM', 'فرستنده')}</div>
+                  <div className="font-black text-[10.5px] leading-tight truncate">{shipment.sender.name}</div>
+                  <div className="font-mono font-bold text-[8.5px]" dir="ltr">{shipment.sender.phone}</div>
                 </div>
                 {/* Receiver */}
-                <div className="border-2 border-black p-1 rounded-xs bg-neutral-100">
-                  <div className="text-[8px] font-black text-black uppercase border-b border-neutral-300 pb-0.5 mb-0.5">{l('TO / RECEIVER', 'گیرنده (مقصد)')}</div>
-                  <div className="font-black text-[11.5px] truncate">{shipment.receiver.name}</div>
-                  <div className="font-mono font-black text-[10px]" dir="ltr">{shipment.receiver.phone}</div>
-                  <div className="text-[9px] font-bold text-black truncate">{shipment.receiver.city}</div>
+                <div className="border-2 border-black p-1.5 rounded-xs bg-neutral-50 min-h-[42px] flex flex-col justify-between">
+                  <div className="text-[7.5px] font-black text-black uppercase border-b border-neutral-300 pb-0.5 mb-1">{l('TO', 'گیرنده')}</div>
+                  <div className="font-black text-[10.5px] leading-tight truncate">{shipment.receiver.name}</div>
+                  <div className="font-mono font-black text-[8.5px]" dir="ltr">{shipment.receiver.phone}</div>
                 </div>
               </div>
 
               {/* Cargo Specs & Payment Status Strip */}
-              <div className="flex items-center justify-between border border-black px-1.5 py-0.5 text-[10px] bg-neutral-50 font-bold">
+              <div className="flex items-center justify-between border border-black px-2 py-1.5 text-[9px] bg-neutral-100 font-bold">
                 <div>
                   <span>{shipment.packageInfo.pieces} PKG</span>
-                  <span className="mx-1">•</span>
+                  <span className="mx-1.5">•</span>
                   <span>{shipment.packageInfo.weightKg} KG</span>
                 </div>
-                <div className="text-right uppercase font-black text-[10.5px]">
-                  {isPaid ? (
-                    <span className="text-black bg-neutral-200 px-1 rounded-xs">PAID / تحویل</span>
+                <div className="text-right uppercase font-black text-[9.5px]">
+                  {receiptRole === 'buyer' ? (
+                    isPaid ? <span className="text-black">{l('PAID', 'تحویل')}</span> : <span className="text-black">COD: {totalDueVal.toLocaleString()}</span>
                   ) : (
-                    <span className="text-black">COD: {totalDueVal.toLocaleString()} AFN</span>
+                    <span className="text-emerald-600">PAYOUT: {payoutVal.toLocaleString()}</span>
                   )}
                 </div>
               </div>
               
-              {/* Barcode Footer */}
-              <div className="flex justify-between items-center pt-0.5 border-t border-black mt-0.5">
-                <div className="text-[8px] font-semibold text-neutral-600 leading-tight">
-                  <div>HQ: 0774144004</div>
-                  <div>www.armaghansadeq.af</div>
+              {/* Footer: Contacts & Conditions */}
+              <div className="pt-1 border-t border-black mt-1 space-y-0.5 text-center">
+                <div className="text-[7.5px] font-black leading-tight">
+                  {l('Helplines: +93 79 900 1122 | complaints: 0711299680', 'تماس: ۰۷۹۹۰۰۱۱۲۲ | شکایات: ۰۷۱۱۲۹۹۶۸۰')}
                 </div>
-                <div className="text-right">
-                  <BarcodeGenerator value={shipment.cnNumber} width={1.25} height={22} />
+                <div className="text-[7px] italic text-neutral-600 leading-tight">
+                  {l('Receipt valid 30 days. www.armaghansadeq.af', 'بل تا ۳۰ روز معتبر است. www.armaghansadeq.af')}
                 </div>
               </div>
             </div>

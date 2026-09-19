@@ -92,9 +92,52 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const getLocalizedBranchName = useCallback((branch: Branch | undefined): string => {
     if (!branch) return t('all_branches', 'All Branches');
-    if (language === 'fa' && branch.nameFa) return branch.nameFa;
-    if (language === 'ps' && branch.namePs) return branch.namePs;
-    return branch.name;
+
+    // Clean branch dictionary with simple city names (no extra text)
+    const cleanDict: Record<string, { en: string; fa: string; ps: string }> = {
+      'br_admin_hq': { en: 'Kabul', fa: 'کابل', ps: 'کابل' },
+      'br_mzk_02': { en: 'Mazar-i-Sharif', fa: 'مزار شریف', ps: 'مزار شریف' },
+      'br_hrt_03': { en: 'Herat', fa: 'هرات', ps: 'هرات' },
+      'br_kdh_04': { en: 'Kandahar', fa: 'کندهار', ps: 'کندهار' },
+      'br_kho06_0281': { en: 'Khost', fa: 'خوست', ps: 'خوست' },
+      'br_far01_8916': { en: 'Maymana', fa: 'میمنه', ps: 'میمنه' },
+      'br_jaw08_6896': { en: 'Sheberghan', fa: 'شبرغان', ps: 'شبرغان' },
+      'br_tak08_7293': { en: 'Taloqan', fa: 'تالقان', ps: 'تالقان' },
+      'br_bad09_9209': { en: 'Faizabad', fa: 'فیض آباد', ps: 'فیض آباد' },
+      'br_gzn12_8926': { en: 'Ghazni', fa: 'غزنی', ps: 'غزنی' },
+      'br_nan014_3445': { en: 'Jalalabad', fa: 'جلال‌آباد', ps: 'جلال اباد' },
+      'br_kun010_8767': { en: 'Kunduz', fa: 'کندز', ps: 'کندز' },
+      'br_nim013_1433': { en: 'Nimroz', fa: 'نیمروز', ps: 'نیمروز' },
+      'br_sar011_2621': { en: 'Sar-e Pol', fa: 'سرپل', ps: 'سرپل' }
+    };
+
+    // By ID or Code lookup
+    if (branch.id && cleanDict[branch.id]) {
+      const entry = cleanDict[branch.id];
+      if (language === 'fa') return entry.fa;
+      if (language === 'ps') return entry.ps;
+      return entry.en;
+    }
+
+    // Main / Kabul branch fallback
+    if (branch.isHeadOffice || branch.code === 'KBL-HQ' || branch.id === 'br_admin_hq') {
+      return (language === 'fa' || language === 'ps') ? 'کابل' : 'Kabul';
+    }
+
+    // Clean any unwanted terms if dynamic
+    const isGenericFa = branch.nameFa === 'انتقالات صادق' || branch.nameFa?.toLowerCase().includes('sadeq') || branch.nameFa?.includes('ارمغان');
+    const isGenericEn = branch.name === 'Transfers sadeq' || branch.name?.toLowerCase().includes('sadeq') || branch.name?.toLowerCase().includes('armaghan');
+
+    if (language === 'fa') {
+      if (branch.nameFa && !isGenericFa) return branch.nameFa.replace(/\s*\(.*?\)/g, '').trim();
+      return (branch.city || branch.province || branch.name || '').replace(/\s*\(.*?\)/g, '').trim();
+    }
+    if (language === 'ps') {
+      if (branch.namePs && !isGenericFa) return branch.namePs.replace(/\s*\(.*?\)/g, '').trim();
+      return (branch.city || branch.province || branch.name || '').replace(/\s*\(.*?\)/g, '').trim();
+    }
+    if (branch.name && !isGenericEn) return branch.name.replace(/\s*\(.*?\)/g, '').trim();
+    return (branch.city || branch.province || 'Branch').replace(/\s*\(.*?\)/g, '').trim();
   }, [language, t]);
 
   const getLocalizedStatusName = useCallback((status: ShipmentStatus | string | undefined): string => {

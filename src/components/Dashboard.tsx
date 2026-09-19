@@ -51,11 +51,35 @@ export const Dashboard: React.FC = () => {
   const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
   const currentBranchObj = branches.find(b => b.id === (isSuperAdmin ? activeBranchId : currentUser.branchId));
 
-  const getLocalizedBranchName = (b: Branch | undefined) => {
+  const getLocalizedBranchName = (b: any | undefined) => {
     if (!b) return t('all_branches');
-    if (language === 'fa' && b.nameFa) return b.nameFa;
-    if (language === 'ps' && b.namePs) return b.namePs;
-    return b.name;
+    const cleanMap: Record<string, { en: string; fa: string; ps: string }> = {
+      'br_admin_hq': { en: 'Kabul', fa: 'کابل', ps: 'کابل' },
+      'br_mzk_02': { en: 'Mazar-i-Sharif', fa: 'مزار شریف', ps: 'مزار شریف' },
+      'br_hrt_03': { en: 'Herat', fa: 'هرات', ps: 'هرات' },
+      'br_kdh_04': { en: 'Kandahar', fa: 'کندهار', ps: 'کندهار' },
+      'br_kho06_0281': { en: 'Khost', fa: 'خوست', ps: 'خوست' },
+      'br_far01_8916': { en: 'Maymana', fa: 'میمنه', ps: 'میمنه' },
+      'br_jaw08_6896': { en: 'Sheberghan', fa: 'شبرغان', ps: 'شبرغان' },
+      'br_tak08_7293': { en: 'Taloqan', fa: 'تالقان', ps: 'تالقان' },
+      'br_bad09_9209': { en: 'Faizabad', fa: 'فیض آباد', ps: 'فیض آباد' },
+      'br_gzn12_8926': { en: 'Ghazni', fa: 'غزنی', ps: 'غزنی' },
+      'br_nan014_3445': { en: 'Jalalabad', fa: 'جلال‌آباد', ps: 'جلال اباد' },
+      'br_kun010_8767': { en: 'Kunduz', fa: 'کندز', ps: 'کندز' },
+      'br_nim013_1433': { en: 'Nimroz', fa: 'نیمروز', ps: 'نیمروز' },
+      'br_sar011_2621': { en: 'Sar-e Pol', fa: 'سرپل', ps: 'سرپل' }
+    };
+    if (b.id && cleanMap[b.id]) {
+      const entry = cleanMap[b.id];
+      if (language === 'fa') return entry.fa;
+      if (language === 'ps') return entry.ps;
+      return entry.en;
+    }
+    if (b.isHeadOffice || b.code === 'KBL-HQ' || b.id === 'br_admin_hq') {
+      return (language === 'fa' || language === 'ps') ? 'کابل' : 'Kabul';
+    }
+    const rawName = (language === 'fa' && b.nameFa) ? b.nameFa : ((language === 'ps' && b.namePs) ? b.namePs : b.name);
+    return (rawName || b.city || '').replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
   };
 
   const getLocalizedStatusName = (status: string) => {
@@ -288,448 +312,99 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Pre-Booking Overview Component */}
-      {/* 1. Aggregated Analytics Summary Cards */}
-      <DashboardSummaryCards />
-
-      {/* Pre-Booking Overview Component */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 cursor-pointer">
-        <div 
-          onClick={() => setActiveView('customer_history')}
-          className="p-5 rounded-2xl bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/40 dark:to-slate-900 border border-purple-100 dark:border-purple-900 shadow-xs flex items-center justify-between transition-all hover:shadow-md hover:scale-[1.01]"
-        >
-          <div className="space-y-1">
-            <div className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Clock className="w-4 h-4" />
-              <span>{t('pending_pre_bookings') || 'Pending Pre-Bookings'}</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-              {isSuperAdmin 
-                ? shipments.filter(s => s.status === 'pre_booked').length 
-                : shipments.filter(s => s.status === 'pre_booked' && s.originBranchId === currentUser.branchId).length}
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              {t('awaiting_verification_origin') || 'Awaiting verification at origin branch'}
-            </p>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center shrink-0">
-            <Package className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setActiveView('customer_history')}
-          className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/40 dark:to-slate-900 border border-emerald-100 dark:border-emerald-900 shadow-xs flex items-center justify-between transition-all hover:shadow-md hover:scale-[1.01]"
-        >
-          <div className="space-y-1">
-            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{t('verified_pre_bookings') || 'Verified Pre-Bookings'}</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-              {isSuperAdmin 
-                ? shipments.filter(s => s.isPreBooking && s.status !== 'pre_booked').length 
-                : shipments.filter(s => s.isPreBooking && s.status !== 'pre_booked' && s.originBranchId === currentUser.branchId).length}
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              {t('processed_active_fleet') || 'Processed and integrated into active fleet'}
-            </p>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-          </div>
-        </div>
-      </div>
-
-      {/* Verification Required Section for Branch Staff & Super Admins */}
-      {(() => {
-        const pendingPreBookings = shipments.filter(s => 
-          s.status === 'pre_booked' && 
-          (isSuperAdmin ? (activeBranchId === 'all' || s.originBranchId === activeBranchId) : s.originBranchId === currentUser.branchId)
-        );
-
-        if (pendingPreBookings.length === 0) return null;
-
-        return (
-          <div className="p-6 rounded-3xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white shadow-xl space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-500/30 border border-purple-400/40 flex items-center justify-center text-purple-300 font-bold">
-                  <UserCheck className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <h2 className="text-base font-black text-white flex items-center gap-2">
-                    <span>{t('verification_required_title') || 'Verification Required: Online Pre-Bookings'}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-purple-500 text-white text-xs font-mono">
-                      {pendingPreBookings.length} {t('prebook_pending_badge') || 'Pending'}
-                    </span>
-                  </h2>
-                  <p className="text-xs text-purple-200">
-                    {t('verification_required_desc') || 'Customer-submitted pre-bookings waiting at origin branch for weighing, physical inspection & official pricing'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveView('parcels')}
-                className="px-4 py-2 rounded-xl bg-white text-purple-950 font-bold text-xs hover:bg-purple-100 transition-colors shadow-sm cursor-pointer"
-              >
-                {t('view_all_inventory') || 'View All in Inventory ➔'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pendingPreBookings.map(s => {
-                const originBr = branches.find(b => b.id === s.originBranchId);
-                const destBr = branches.find(b => b.id === s.destinationBranchId);
-                return (
-                  <div key={s.id} className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-black text-amber-300 text-sm">
-                        {s.cnNumber}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-purple-500/30 text-purple-200 text-[10px] font-bold">
-                        {s.packageInfo.category}
-                      </span>
-                    </div>
-
-                    <div className="text-xs space-y-1 text-slate-200">
-                      <div><strong>{t('sender_lbl') || 'Sender'}:</strong> {s.sender.name} ({s.sender.phone})</div>
-                      <div><strong>{t('receiver_lbl') || 'Receiver'}:</strong> {s.receiver.name} ({s.receiver.phone})</div>
-                      <div className="text-purple-300">
-                        <strong>{t('route_lbl') || 'Route'}:</strong> {originBr ? getLocalizedBranchName(originBr) : 'Origin'} ➔ {destBr ? getLocalizedBranchName(destBr) : 'Dest'}
-                      </div>
-                      <div className="text-amber-200">
-                        <strong>{t('est_weight_lbl') || 'Est. Weight'}:</strong> {s.packageInfo.weightKg} KG ({s.packageInfo.pieces} pcs)
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-                      <span className="text-[10px] text-purple-300 font-mono">
-                        {new Date(s.bookedAt).toLocaleString()}
-                      </span>
-                      <button
-                        onClick={() => setActiveView('parcels')}
-                        className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs shadow-md hover:from-amber-400 hover:to-yellow-400 transition-all cursor-pointer"
-                      >
-                        {t('verify_and_price') || 'Verify & Price ➔'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Core Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Metric 1: Financials */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {isSuperAdmin ? t('admin_owner_revenue_overview', 'Business Revenue') : t('metric_total_revenue')}
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <DollarSign className="w-5 h-5" />
-            </div>
-          </div>
+      {/* Recent Cargo Consignments Table (Full Width Focus) */}
+      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
           <div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              {`${analytics.totalRevenue.toLocaleString()} ${t('currency_symbol')}`}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {isSuperAdmin 
-                ? (activeBranchId === 'all' ? `${branches.length} ${t('all_branches')} (Consolidated HQ)` : `${getLocalizedBranchName(currentBranchObj)}`)
-                : `${getLocalizedBranchName(currentBranchObj)} (${t('branch_isolated_revenue_badge', 'Isolated')})`}
-            </p>
-          </div>
-        </div>
-
-        {/* Metric 2: Volume / Dispatched */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {isSuperAdmin ? t('metric_total_bookings') : t('inv_tab_outbound')}
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-              <Boxes className="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              {isSuperAdmin ? analytics.totalParcels : filteredShipments.filter(s => s.originBranchId === currentUser.branchId).length}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {isSuperAdmin ? `${branches.length} ${t('all_branches')}` : `Dispatched from ${getLocalizedBranchName(currentBranchObj)}`}
-            </p>
-          </div>
-        </div>
-
-        {/* Metric 3: Active in Transit */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {t('active_in_transit_metric')}
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Truck className="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              {analytics.inProgressParcels}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <h2 className="text-sm font-bold text-slate-900">
+              {t('recent_shipments')}
+            </h2>
+            <p className="text-xs text-slate-500">
               {t('afghan_highway_fleet')}
             </p>
           </div>
+          <button
+            onClick={() => setActiveView('parcels')}
+            className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>{t('view_all')} ({filteredShipments.length})</span>
+            <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+          </button>
         </div>
 
-        {/* Metric 4: Branch Terminals for Admin / Warehouse for Branch Manager */}
-        <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {isSuperAdmin ? t('nav_branches') : t('received_at_hub_metric')}
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              {isSuperAdmin ? <Building2 className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              {isSuperAdmin ? `${branches.length}` : analytics.receivedParcels}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              {isSuperAdmin ? t('online_terminals_badge') : t('inv_tab_warehouse')}
-            </p>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Visual Charts & Network Balance */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Hub Volume Bar Chart (2 Cols) */}
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">
-                {t('chart_branch_volume')}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {t('chart_revenue_trends')}
-              </p>
-            </div>
-            <div className="flex items-center gap-3 text-xs font-semibold">
-              <span className="flex items-center gap-1 text-red-600">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-600" /> {t('inv_tab_outbound')}
-              </span>
-              <span className="flex items-center gap-1 text-blue-600">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> {t('inv_tab_inbound')}
-              </span>
-            </div>
-          </div>
-
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={branchBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
-                <YAxis stroke="#94a3b8" fontSize={11} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px' }}
-                />
-                <Bar dataKey="outbound" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="inbound" fill="#2563eb" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Milestone Distribution Pie Chart (1 Col) */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-          <div className="pb-2 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-slate-900">
-              {t('chart_status_distribution')}
-            </h2>
-            <p className="text-xs text-slate-500">
-              {t('milestone_timeline')}
-            </p>
-          </div>
-
-          <div className="h-44 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={statusPieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={45}
-                  outerRadius={70}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  {statusPieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', fontSize: '12px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="space-y-1.5 text-xs">
-            {statusPieData.map((item) => (
-              <div key={item.name} className="flex items-center justify-between text-slate-700">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span>{item.name}</span>
-                </div>
-                <span className="font-mono font-bold">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Activity & Recent Consignments Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Recent Activity Feed (1 Col) */}
-        <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Recent Activity</h2>
-              <p className="text-xs text-slate-500">Live system updates</p>
-            </div>
-            <Activity className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="space-y-4 overflow-y-auto max-h-[400px] pe-2">
-            {recentActivity.map(activity => (
-              <div key={activity.id} className="flex gap-3 relative">
-                <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-                  {activity.iconType === 'package' && <Package className="w-4 h-4 text-blue-600" />}
-                  {activity.iconType === 'truck' && <Truck className="w-4 h-4 text-amber-600" />}
-                  {activity.iconType === 'dollar' && <DollarSign className="w-4 h-4 text-emerald-600" />}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-xs font-bold text-slate-900">{activity.title}</p>
-                  <p className="text-[11px] text-slate-500">{activity.subtitle}</p>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                    <span>{activity.user}</span>
-                    <span>{new Date(activity.date).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {recentActivity.length === 0 && (
-              <div className="text-center py-8 text-slate-400">
-                <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                <p className="text-xs">No recent activity</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Cargo Consignments Table (2 Cols) */}
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">
-                {t('recent_shipments')}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {t('afghan_highway_fleet')}
-              </p>
-            </div>
-            <button
-              onClick={() => setActiveView('parcels')}
-              className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <span>{t('view_all')} ({filteredShipments.length})</span>
-              <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-start text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50">
-                  <th className="p-3 text-start">{t('col_cn_number')}</th>
-                  <th className="p-3 text-start">{t('col_route')}</th>
-                  <th className="p-3 text-start">{t('col_sender')}</th>
-                  <th className="p-3 text-start">{t('col_receiver')}</th>
-                  <th className="p-3 text-center">{t('weight_kg')}</th>
-                  <th className="p-3 text-center">{t('col_status')}</th>
-                  <th className="p-3 text-end">{t('col_actions')}</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-start text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50">
+                <th className="p-3 text-start">{t('col_cn_number')}</th>
+                <th className="p-3 text-start">{t('col_route')}</th>
+                <th className="p-3 text-start">{t('col_sender')}</th>
+                <th className="p-3 text-start">{t('col_receiver')}</th>
+                <th className="p-3 text-center">{t('weight_kg')}</th>
+                <th className="p-3 text-center">{t('col_status')}</th>
+                <th className="p-3 text-end">{t('col_actions')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredShipments.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
+                    <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p className="text-xs text-slate-500">{t('no_shipments_registered')}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{t('system_ready_booking')}</p>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredShipments.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
-                      <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                      <p className="text-xs text-slate-500">{t('no_shipments_registered')}</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{t('system_ready_booking')}</p>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredShipments.slice(0, 5).map((s) => {
-                    const orig = branches.find(b => b.id === s.originBranchId);
-                    const dest = branches.find(b => b.id === s.destinationBranchId);
+              ) : (
+                filteredShipments.slice(0, 10).map((s) => {
+                  const orig = branches.find(b => b.id === s.originBranchId);
+                  const dest = branches.find(b => b.id === s.destinationBranchId);
 
-                    return (
-                      <tr 
-                        key={s.id} 
-                        className="hover:bg-slate-50 transition-colors cursor-pointer"
-                        onClick={() => {
-                          trackByCnNumber(s.cnNumber);
-                          setActiveView('tracking');
-                        }}
-                      >
-                        <td className="p-3 font-mono font-bold text-red-600">
-                          {s.cnNumber}
-                        </td>
-                        <td className="p-3 font-medium text-slate-900">
-                          {getLocalizedBranchName(orig) || s.sender.city} ➔ {getLocalizedBranchName(dest) || s.receiver.city}
-                        </td>
-                        <td className="p-3 text-slate-800 font-medium">
-                          {s.sender.name}
-                        </td>
-                        <td className="p-3 text-slate-800 font-medium">
-                          {s.receiver.name}
-                        </td>
-                        <td className="p-3 text-center font-mono font-bold text-slate-800">
-                          {s.packageInfo.weightKg} KG
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                            {getLocalizedStatusName(s.status)}
-                          </span>
-                        </td>
-                        <td className="p-3 text-end">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedShipmentForReceipt(s);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-                          >
-                            {t('btn_print_receipt')}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                  return (
+                    <tr 
+                      key={s.id} 
+                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        trackByCnNumber(s.cnNumber);
+                        setActiveView('tracking');
+                      }}
+                    >
+                      <td className="p-3 font-mono font-bold text-red-600">
+                        {s.cnNumber}
+                      </td>
+                      <td className="p-3 font-medium text-slate-900">
+                        {getLocalizedBranchName(orig) || s.sender.city} ➔ {getLocalizedBranchName(dest) || s.receiver.city}
+                      </td>
+                      <td className="p-3 text-slate-800 font-medium">
+                        {s.sender.name}
+                      </td>
+                      <td className="p-3 text-slate-800 font-medium">
+                        {s.receiver.name}
+                      </td>
+                      <td className="p-3 text-center font-mono font-bold text-slate-800">
+                        {s.packageInfo.weightKg} KG
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                          {getLocalizedStatusName(s.status)}
+                        </span>
+                      </td>
+                      <td className="p-3 text-end">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedShipmentForReceipt(s);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                        >
+                          {t('btn_print_receipt')}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

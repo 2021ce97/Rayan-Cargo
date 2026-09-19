@@ -3,8 +3,8 @@ import { Language } from '../types';
 export const translations: Record<Language, Record<string, string>> = {
   en: {
     // Brand & Header
-    app_title: 'Armaghan Sadeq Transfers',
-    app_subtitle: 'Armaghan Sadeq Express Cargo & Transfers System',
+    app_title: 'Kabul Cargo Transfers',
+    app_subtitle: 'Express Cargo & National Logistics System',
     track_shipment: 'Track Shipment',
     enter_cn_placeholder: 'Enter Your CN Number (e.g. AST-894201)',
     track_btn: 'Track',
@@ -16,7 +16,7 @@ export const translations: Record<Language, Record<string, string>> = {
     offline_mode: 'Offline Caching Active',
     encrypted_badge: 'E2E Encrypted Data',
     system_secured_badge: 'Secure DB',
-    cargo_network_badge: 'ARMAGHAN SADEQ TRANSFERS • خدمات انتقالات ارمغان صادق',
+    cargo_network_badge: 'CARGO LOGISTICS NETWORK • خدمات انتقالات و باربری',
     secure_logistics_system: 'Secure Logistics Network & Parcel Management System',
     
     // Navigation
@@ -1213,8 +1213,8 @@ export const translations: Record<Language, Record<string, string>> = {
   
   fa: {
     // Dari / Farsi (دری)
-    app_title: 'خدمات انتقالات ارمغان صادق (Armaghan Sadeq Transfers)',
-    app_subtitle: 'سیستم سراسری باربری، کارگو و انتقالات اموال ارمغان صادق',
+    app_title: 'خدمات انتقالات کابل کارگو (Kabul Cargo Transfers)',
+    app_subtitle: 'سیستم سراسری باربری، کارگو و انتقالات اموال کابل کارگو',
     track_shipment: 'پیگیری و تعقیب محموله',
     enter_cn_placeholder: 'شماره بارنامه (CN) را وارد کنید (مثلاً AST-894201)',
     track_btn: 'جستجو و تعقیب',
@@ -1226,8 +1226,8 @@ export const translations: Record<Language, Record<string, string>> = {
     offline_mode: 'حافظه آفلاین فعال است',
     encrypted_badge: 'رمزنگاری سراسری داده‌ها',
     system_secured_badge: 'دیتابیس امن',
-    cargo_network_badge: 'شبکه ملی باربری و خدمات انتقالات ارمغان صادق',
-    secure_logistics_system: 'سیستم مدیریت باربری و خدمات انتقالات ارمغان صادق در سراسر افغانستان',
+    cargo_network_badge: 'شبکه ملی باربری و خدمات انتقالات کابل کارگو',
+    secure_logistics_system: 'سیستم مدیریت باربری و خدمات انتقالات کابل کارگو در سراسر افغانستان',
     
     // Navigation
     nav_dashboard: 'داشبورد و آمار',
@@ -2423,8 +2423,8 @@ export const translations: Record<Language, Record<string, string>> = {
   
   ps: {
     // Pashto (پښتو)
-    app_title: 'د ارمغان صادق د انتقال خدمات (Armaghan Sadeq Transfers)',
-    app_subtitle: 'د ارمغان صادق بار وړلو، لیږد او د ترانزیټ مالونو د انتقال سیسټم',
+    app_title: 'د کابل کارګو د انتقال خدمات (Kabul Cargo Transfers)',
+    app_subtitle: 'د کابل کارګو بار وړلو، لیږد او د ترانزیټ مالونو د انتقال سیسټم',
     track_shipment: 'د بار تعقیب او پلټنه',
     enter_cn_placeholder: 'د بارنامې شمېره (CN) دننه کړئ (لکه AST-894201)',
     track_btn: 'پلټل او تعقیب',
@@ -2436,12 +2436,12 @@ export const translations: Record<Language, Record<string, string>> = {
     offline_mode: 'آفلاین یادښت فعال دی',
     encrypted_badge: 'بشپړ محرم او خوندي معلومات',
     system_secured_badge: 'خوندي ډیټابیس',
-    cargo_network_badge: 'د ارمغان صادق د انتقال خدماتو سراسري شبکه',
-    secure_logistics_system: 'د افغانستان د بار وړلو او د ارمغان صادق د انتقال خدماتو سیسټم',
+    cargo_network_badge: 'د کابل کارګو د انتقال خدماتو سراسري شبکه',
+    secure_logistics_system: 'د افغانستان د بار وړلو او د کابل کارګو د انتقال خدماتو سیسټم',
     
     // Navigation
     nav_dashboard: 'ډشبورډ او احصائیه',
-    nav_parcels: 'د بارونو لیست او ګودام',
+    nav_parcels: 'د بارونو لیست او ګدام',
     nav_new_booking: 'د نوي بار ثبتول',
     nav_expenses: 'د څانګې لګښتونه',
     nav_customer_portal: 'د پیرودونکي پورټل',
@@ -2540,7 +2540,7 @@ export const translations: Record<Language, Record<string, string>> = {
     rate_per_kg_desc: 'د لویې لارې د ټرانزیټ لګښت د وزن له مخې',
     weight_charge_lbl: 'د وزن کرایه',
     service_handling_fee_lbl: 'د بارګیرۍ او خدماتو لګښت (افغانۍ)',
-    service_handling_fee_desc: 'بارول، خالي کول، په ګودام کې ساتنه او ځانګړې پاملرنه',
+    service_handling_fee_desc: 'بارول، خالي کول، په ګدام کې ساتنه او ځانګړې پاملرنه',
     fragile_extra_lbl: 'د ماتېدونکي مال ځانګړې پاملرنه (+۱۵۰ افغانۍ)',
     applied_discount_lbl: 'ورکړل شوی تخفیف',
     grand_total_lbl: 'ټوله نهایي د ورکړې وړ کرایه',
@@ -2567,7 +2567,7 @@ export const translations: Record<Language, Record<string, string>> = {
     // Statuses
     status_pre_booked: 'مخکې ثبت شوی (د انلاین پیرودونکي لخوا)',
     status_verified: 'تایید او وزن شوی (لېږلو ته چمتو)',
-    status_booked: 'ثبت شوی / په مبدأ ګودام کې',
+    status_booked: 'ثبت شوی / په مبدأ ګدام کې',
     status_in_transit: 'د ولایتونو ترمنځ په لاره کې',
     status_received_at_branch: 'مقصد څانګې ته ورسېد',
     status_received: 'څانګې ته ورسېد',
@@ -2609,7 +2609,7 @@ export const translations: Record<Language, Record<string, string>> = {
     srv_heavy_cargo: 'دروند او لوی حجم لرونکی کارګو',
     
     // Inventory & Table
-    inventory_title: 'د بارونو او محمولاتو عمومي ګودام',
+    inventory_title: 'د بارونو او محمولاتو عمومي ګدام',
     inventory_subtitle: 'د بارونو سمبالښت، د ترانزیټ مانیفستونه او د بار د مرحلو بدلول',
     search_placeholder: 'د بارنامې شمېره، استوونکی، ترلاسه کوونکی، شمېره یا ښار وپلټئ...',
     filter_all_status: 'ټول حالتونه',
@@ -2678,7 +2678,7 @@ export const translations: Record<Language, Record<string, string>> = {
     ph_sarafi_bank: 'لکه: صرافي شمسي / عزیزي بانک',
     ph_search_expense: 'د تفصیل، ترلاسه کوونکي، بېل شمیره پلټل...',
     title_delete_expense: 'لګښت ړنګول',
-    ph_expense_desc: 'لکه: د ګودام میاشتنۍ کرایه یا د کارګرانو د غرمې ډوډۍ',
+    ph_expense_desc: 'لکه: د ګدام میاشتنۍ کرایه یا د کارګرانو د غرمې ډوډۍ',
     ph_expense_recipient: 'لکه: حاجي قادر (د کور خاوند) یا احمد (کارګر)',
     ph_expense_bill: 'لکه: BL-8492 یا Inv-002',
     ph_branch_code: 'لکه: GZN-07',
@@ -2725,7 +2725,7 @@ export const translations: Record<Language, Record<string, string>> = {
     branch_code_lbl: 'ځانګړی کوډ (لکه HRT-03) *',
     branch_province_lbl: 'ولایت *',
     branch_city_lbl: 'ښار / ولسوالي *',
-    branch_address_lbl: 'د ګودام او څانګې پته *',
+    branch_address_lbl: 'د ګدام او څانګې پته *',
     branch_phone_lbl: 'رسمي ټلیفون شمېره / واټساپ *',
     branch_manager_name_lbl: 'د څانګې د مدیر بشپړ نوم *',
     branch_tazkira_lbl: 'د مدیر تذکره / شناخت کارت شمېره *',
@@ -2805,7 +2805,7 @@ export const translations: Record<Language, Record<string, string>> = {
     price_set_notice: 'رسمي کرایه ثبت شوه',
     btn_weigh_and_set_price: 'تلل او د رسمي کرایې ټاکل',
     customer_shipment_history: 'زما د استول شویو بارونو تاریخچه',
-    confirm_and_accept_order: 'کتل، تلل او ګودام ته اضافه کول',
+    confirm_and_accept_order: 'کتل، تلل او ګدام ته اضافه کول',
     actual_measured_weight: 'اصلي تلل شوی وزن (کیلو)',
     transport_cargo_fee: 'د بار وړلو او ترانزیټ کرایه (افغانۍ)',
     dest_commission_fee: 'د مقصود څانګې کمیشن (افغانۍ)',
@@ -2819,7 +2819,7 @@ export const translations: Record<Language, Record<string, string>> = {
     tab_all_parcels: 'ټول فعال بارونه',
     tab_outbound_sent: 'صادره (لېږل شوي)',
     tab_inbound_incoming: 'وارده (را رسیدونکي)',
-    tab_in_warehouse: 'په ګودام کې شتون لري',
+    tab_in_warehouse: 'په ګدام کې شتون لري',
     tab_prebooked: 'د پیرودونکو مخکیني ثبتونه',
     showing_label: 'ښودل کیږي',
     of_label: 'له',
@@ -2834,7 +2834,7 @@ export const translations: Record<Language, Record<string, string>> = {
     
     // Modals
     modal_weigh_title: 'تلل، ارزونه او د رسمي بارنامې صادرول',
-    modal_weigh_desc: 'پیرودونکي دا مخکینی ثبت آنلاین کړی. بار وڅېړئ او اصلي وزن او کرایه وټاکئ او ګودام ته یې شامل کړئ.',
+    modal_weigh_desc: 'پیرودونکي دا مخکینی ثبت آنلاین کړی. بار وڅېړئ او اصلي وزن او کرایه وټاکئ او ګدام ته یې شامل کړئ.',
     inspected_weight_lbl: 'دقیق تلل شوی وزن (کیلو) *',
     payment_collection_lbl: 'د پیسو ترلاسه کولو طریقه',
     paid_at_origin: 'په مبدأ څانګه کې تادیه شوې (نغدې)',
@@ -2869,7 +2869,7 @@ export const translations: Record<Language, Record<string, string>> = {
     dossier_financial_box: 'مالي او کرایې لنډیز',
     btn_close: 'بندول',
     btn_cancel: 'لغوه کول',
-    order_confirmed_success: 'بارنامه په بریالیتوب سره وڅېړل شوه، وتلل شوه او په ګودام کې شامله شوه!',
+    order_confirmed_success: 'بارنامه په بریالیتوب سره وڅېړل شوه، وتلل شوه او په ګدام کې شامله شوه!',
     remittance_settled_toast: 'د څانګو ترمنځ مالي تسویه په بریالیتوب سره ثبت شوه!',
     perm_customer_no_status: 'د پیرودونکي حسابونه یوازې د سوابقو لید او مخکینی ثبت کولی شي. د بار مراحل د څانګو له خوا ثبتېږي.',
     perm_super_admin_all: 'عمومي مشر: ټولو ولایتونو او څانګو ته بشپړ اداري لاسرسی.',
@@ -2892,7 +2892,7 @@ export const translations: Record<Language, Record<string, string>> = {
     no_parcel_found_msg: 'له دې بارنامې سره هیڅ بار ونه موندل شو',
     verify_cn_prompt: 'مهرباني وکړئ د رسید پر مخ د بارنامې شمېره بیا وګورئ.',
     branch_terminal_signin_title: 'د څانګې ترمینال ته ننوتل',
-    branch_terminal_signin_desc: 'د خپلې څانګې په ایمیل یا ټلیفون شمېره ننوځئ ترڅو د ګودام بارونه، د بار ثبت او د وضعیت بدلون ترسره کړئ.',
+    branch_terminal_signin_desc: 'د خپلې څانګې په ایمیل یا ټلیفون شمېره ننوځئ ترڅو د ګدام بارونه، د بار ثبت او د وضعیت بدلون ترسره کړئ.',
     sign_in_to_terminal_btn: 'ترمینال ته ننوتل',
 
     // Expenses
@@ -2907,7 +2907,7 @@ export const translations: Record<Language, Record<string, string>> = {
     expense_date: 'د لګښت نېټه',
     total_branch_expenses: 'د څانګې ټول لګښتونه',
     net_operating_profit: 'خالص عملیاتي ګټه',
-    cat_rent: 'د دوکان یا ګودام کرایه',
+    cat_rent: 'د دوکان یا ګدام کرایه',
     cat_salary: 'د کارکوونکو او کارګرانو معاشونه',
     cat_food: 'ډوډۍ، چای او اعاشه',
     cat_fuel_transport: 'د موټر تېل او د لارې محصول',
@@ -3029,7 +3029,7 @@ export const translations: Record<Language, Record<string, string>> = {
     afghan_highway_fleet: 'په لویو لارو کې د کارګو موټر',
     delivered_metric: 'تسلیم شوي بارونه',
     received_at_hub_metric: 'څانګې ته را رسېدلي',
-    parcels_title: 'د بارونو مدیریت او د ګودام ثبت',
+    parcels_title: 'د بارونو مدیریت او د ګدام ثبت',
     parcels_subtitle: 'د څانګو ترمنځ د بارونو مدیریت، د مبدأ او مقصد سپارل، حساب پاکول او مانېفستونه',
     new_booking_btn: 'د نوي بار ثبتول',
     manifest_title: 'د بار لېږد مانېفست',
@@ -3065,7 +3065,7 @@ export const translations: Record<Language, Record<string, string>> = {
     editable_by_manager: 'د څانګې مدیر لخوا د بدلون وړ',
     fixed_intake_fee: 'د ثبت لومړنی ثابت نرخ',
     highway_freight_kg: 'د لویې لارې کرایه / هر کیلوګرام',
-    loading_storage_fee: 'بارول او ګودام ساتنه',
+    loading_storage_fee: 'بارول او ګدام ساتنه',
     calc_invoice_math: 'د کرایې تفصیلي حساب',
     live_auto_update: 'خپلکاره او ژوندی حساب',
     base_booking_rate_row: 'د جنس بیه:',
@@ -3464,7 +3464,7 @@ export const translations: Record<Language, Record<string, string>> = {
     input_total_cash_collected_sub: 'په څانګه کې د پارسلونو ټوله نغده وصولي',
     inv_tab_inbound: 'څانګې ته راغلي بارونه',
     inv_tab_outbound: 'له دې څانګې لیږل شوي بارونه',
-    inv_tab_warehouse: 'په ګودام کې شته',
+    inv_tab_warehouse: 'په ګدام کې شته',
     invalid_product_price: 'مهرباني وکړئ د جنس باوري بیه ولیکئ',
     issue_custom_note: 'د ستونزې تفصیلي یادښت',
     issue_custom_placeholder: 'د نه تسلیمیدو دقیق لامل دلته ولیکئ...',

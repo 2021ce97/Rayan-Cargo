@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { Shipment, Branch } from '../types';
 
 const PRINT_IFRAME_ID = 'rayan_print_iframe';
@@ -61,8 +61,8 @@ function getThermalReceiptHeightMm(element: HTMLElement): number {
   const heightPx = Math.max(element.getBoundingClientRect().height, element.scrollHeight);
   const heightMm = (heightPx * 25.4) / 96;
 
-  // Leave a small feed allowance for the printer's non-printable bottom edge.
-  return Math.max(100, Math.ceil(heightMm + 3));
+  // Leave an adequate feed allowance for the printer's non-printable bottom edge and paper cut line.
+  return Math.max(100, Math.ceil(heightMm + 10));
 }
 
 /**
@@ -73,7 +73,7 @@ function getThermalReceiptHeightMm(element: HTMLElement): number {
 export function printElementUsingIframe(
   element: HTMLElement, 
   titleOrFormat: string = 'Print Document', 
-  formatArg: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' = 'standard'
+  formatArg: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' | 'thermal_4x6' = 'standard'
 ): boolean {
   if (isPrintInProgress) {
     // Ignore double-clicks while the native print dialog is opening. They
@@ -90,13 +90,14 @@ export function printElementUsingIframe(
 
     // Robust detection even if arguments are passed in reverse order (targetRef, format, title)
     let title = titleOrFormat;
-    let format: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' = formatArg;
+    let format: 'standard' | 'thermal' | 'thermal_80mm' | 'thermal_80x80' | 'thermal_4x6' = formatArg;
 
     if (
       titleOrFormat === 'standard' || 
       titleOrFormat === 'thermal' || 
       titleOrFormat === 'thermal_80mm' || 
-      titleOrFormat === 'thermal_80x80'
+      titleOrFormat === 'thermal_80x80' ||
+      titleOrFormat === 'thermal_4x6'
     ) {
       format = titleOrFormat;
       title = 'Print Document';
@@ -105,6 +106,8 @@ export function printElementUsingIframe(
         format = 'thermal_80x80';
       } else if (titleOrFormat.includes('80mm')) {
         format = 'thermal_80mm';
+      } else if (titleOrFormat.includes('4x6')) {
+        format = 'thermal_4x6';
       }
     }
 
@@ -116,7 +119,8 @@ export function printElementUsingIframe(
 
     const isThermal = format.startsWith('thermal');
     const isSquare80 = format === 'thermal_80x80';
-    const thermalReceiptHeightMm = isThermal && !isSquare80
+    const is4x6 = format === 'thermal_4x6';
+    const thermalReceiptHeightMm = isThermal && !isSquare80 && !is4x6
       ? getThermalReceiptHeightMm(element)
       : undefined;
 
@@ -126,10 +130,12 @@ export function printElementUsingIframe(
     iframe.style.position = 'fixed';
     iframe.style.top = '0';
     iframe.style.left = '0';
-    iframe.style.width = isThermal ? '80mm' : '210mm';
-    iframe.style.height = isThermal
-      ? (isSquare80 ? '80mm' : `${thermalReceiptHeightMm}mm`)
-      : '297mm';
+    iframe.style.width = is4x6 ? '100mm' : (isThermal ? '80mm' : '210mm');
+    iframe.style.height = is4x6 
+      ? '150mm' 
+      : (isThermal
+        ? (isSquare80 ? '80mm' : `${thermalReceiptHeightMm}mm`)
+        : '297mm');
     iframe.style.opacity = '0';
     iframe.style.pointerEvents = 'none';
     iframe.style.border = '0';
@@ -153,11 +159,13 @@ export function printElementUsingIframe(
 
     // A concrete height avoids the printer driver's short-page fallback and
     // produces one continuous 80mm receipt.
-    const pageSizeCss = isThermal
-      ? (isSquare80
-        ? 'size: 80mm 80mm !important;'
-        : `size: 80mm ${thermalReceiptHeightMm}mm !important;`)
-      : 'size: A4 portrait !important;';
+    const pageSizeCss = is4x6
+      ? 'size: 100mm 150mm !important;'
+      : (isThermal
+        ? (isSquare80
+          ? 'size: 80mm 80mm !important;'
+          : `size: 80mm ${thermalReceiptHeightMm}mm !important;`)
+        : 'size: A4 portrait !important;');
 
     const pageMarginCss = isThermal ? 'margin: 0mm !important;' : 'margin: 4mm 6mm !important;';
 
@@ -184,17 +192,21 @@ export function printElementUsingIframe(
               color: #000000 !important;
               margin: 0 !important;
               padding: 0 !important;
-              ${isThermal ? `
+              ${is4x6 ? `
+                width: 96mm !important;
+                max-width: 96mm !important;
+                min-width: 96mm !important;
+                margin: 0 auto !important;
+                font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              ` : isThermal ? `
                 width: 72mm !important;
                 max-width: 72mm !important;
                 min-width: 72mm !important;
                 margin: 0 auto !important;
-                ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : 'overflow: hidden !important;'}
+                ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : 'height: auto !important; overflow: visible !important;'}
                 font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                page-break-after: avoid !important;
-                break-after: avoid !important;
+                page-break-inside: auto !important;
+                break-inside: auto !important;
               ` : `
                 font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 padding: 4px;
@@ -206,19 +218,25 @@ export function printElementUsingIframe(
                 ${pageMarginCss}
               }
               html, body {
-                ${isThermal ? `
+                ${is4x6 ? `
+                  width: 96mm !important;
+                  max-width: 96mm !important;
+                  min-width: 96mm !important;
+                  margin: 0 auto !important;
+                  padding: 2mm !important;
+                  background: #ffffff !important;
+                  color: #000000 !important;
+                ` : isThermal ? `
                   width: 72mm !important;
                   max-width: 72mm !important;
                   min-width: 72mm !important;
-                  ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : ''}
+                  ${isSquare80 ? 'height: 80mm !important; max-height: 80mm !important; overflow: hidden !important;' : 'height: auto !important; overflow: visible !important;'}
                   margin: 0 auto !important;
                   padding: 0 !important;
                   background: #ffffff !important;
                   color: #000000 !important;
-                  page-break-inside: avoid !important;
-                  break-inside: avoid !important;
-                  page-break-after: avoid !important;
-                  break-after: avoid !important;
+                  page-break-inside: auto !important;
+                  break-inside: auto !important;
                 ` : `
                   height: 100% !important;
                   margin: 0 !important;
@@ -255,11 +273,20 @@ export function printElementUsingIframe(
                   border-right: none !important;
                   box-shadow: none !important;
                   box-sizing: border-box !important;
-                  /* This is one measured continuous-roll page. Avoiding a
-                     break here can make a short-page driver reprint the top
-                     of an over-height receipt. */
                   page-break-inside: auto !important;
                   break-inside: auto !important;
+                }
+                .carton-sticker-80mm {
+                  width: 72mm !important;
+                  max-width: 72mm !important;
+                  min-width: 72mm !important;
+                  margin: 0 auto !important;
+                  padding: 2mm !important;
+                  border: 1.5px solid #000000 !important;
+                  box-shadow: none !important;
+                  box-sizing: border-box !important;
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
                 }
               `) : `
                 .printable-receipt {
@@ -291,8 +318,9 @@ export function printElementUsingIframe(
     iframe.contentWindow?.addEventListener('afterprint', cleanup, { once: true });
 
     // Trigger printing only after the isolated document has finished laying out.
-    void waitForPrintDocument(doc).then(() => {
+    void waitForPrintDocument(doc).then(async () => {
       try {
+        await new Promise(r => setTimeout(r, 150));
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
       } catch (err) {
@@ -2137,9 +2165,9 @@ export function generateThermalLabelPdf(
     // ==========================================
     if (thermalSize === '80mm') {
       const pageWidth = 80;
-      const margin = 3;
-      const contentWidth = pageWidth - margin * 2; // 74mm printable area
-      const pageHeight = 165;
+      const margin = 4;
+      const contentWidth = pageWidth - margin * 2; // 72mm printable area
+      const pageHeight = 155; // Slightly taller to fit all info
 
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -2150,174 +2178,152 @@ export function generateThermalLabelPdf(
 
       let y = margin;
 
-      // Header Banner
-      doc.setFillColor(15, 23, 42); // Black / Dark Slate
+      // Header Banner (Black)
+      doc.setFillColor(15, 23, 42); // Navy/Black
       doc.rect(margin, y, contentWidth, 12, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.text('ARMAGHAN SADEQ TRANSFERS', margin + contentWidth / 2, y + 5, { align: 'center' });
-      doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.text('CENTRAL LOGISTICS HUB KABUL • OFFICIAL POS SLIP', margin + contentWidth / 2, y + 9.5, { align: 'center' });
 
       y += 14;
 
-      // CN Number Box
-      doc.setDrawColor(15, 23, 42);
+      // CN Number Box (Bordered)
+      doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.4);
-      doc.rect(margin, y, contentWidth, 22);
-
+      doc.rect(margin, y, contentWidth, 20);
+      
       doc.setTextColor(100, 116, 139);
-      doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
       doc.text('CONSIGNMENT NOTE (CN #)', margin + 3, y + 4.5);
+      
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(14);
+      doc.text(shipment.cnNumber, margin + 3, y + 12);
+      
+      doc.setFontSize(7);
+      doc.text(`*${shipment.cnNumber}*`, margin + contentWidth / 2, y + 18, { align: 'center' });
 
-      doc.setTextColor(15, 23, 42);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.text(shipment.cnNumber, margin + 3, y + 11);
+      y += 22;
 
-      // Barcode lines
-      const barcodeX = margin + 3;
-      const barcodeY = y + 13;
+      // Route Box (Black)
       doc.setFillColor(0, 0, 0);
-      const barPattern = [2, 1, 1, 2, 3, 1, 2, 1, 1, 3, 2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 3, 2, 1, 1, 3, 1, 2, 1];
-      let bx = barcodeX;
-      barPattern.forEach((w, i) => {
-        if (i % 2 === 0) {
-          doc.rect(bx, barcodeY, w * 0.95, 5.5, 'F');
-        }
-        bx += w * 0.95 + 0.8;
-      });
-
-      doc.setFont('courier', 'bold');
-      doc.setFontSize(6.5);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`*${shipment.cnNumber}*`, margin + contentWidth / 2, y + 21, { align: 'center' });
-
-      y += 24;
-
-      // Route Box
-      doc.setFillColor(15, 23, 42);
       doc.rect(margin, y, contentWidth, 9, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9.5);
+      doc.setFontSize(10);
       doc.text(`${originName.toUpperCase()} ➔ ${destName.toUpperCase()}`, margin + contentWidth / 2, y + 6, { align: 'center' });
 
       y += 11;
 
-      // SENDER & RECEIVER
-      const partyBoxH = 19;
-      doc.rect(margin, y, contentWidth, partyBoxH);
-      doc.setFillColor(241, 245, 249);
-      doc.rect(margin, y, contentWidth, 4.5, 'F');
-      doc.setTextColor(15, 23, 42);
+      // SENDER & RECEIVER SIDE-BY-SIDE
+      const colW = contentWidth / 2 - 1.5;
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.2);
+      
+      // Sender Box
+      doc.rect(margin, y, colW, 22);
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y, colW, 4, 'F');
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(6.5);
+      doc.text('FROM (SENDER):', margin + 1.5, y + 3);
+      
+      doc.setFontSize(8.5);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.text('FROM (SENDER):', margin + 2, y + 3.2);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.text(shipment.sender.name.substring(0, 32), margin + 2, y + 8);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.text(`Tel: ${shipment.sender.phone}`, margin + 2, y + 12);
-      doc.text(`Origin: ${shipment.sender.city} (${originBranch?.name || 'Central'})`, margin + 2, y + 16);
-
-      y += partyBoxH + 2;
-
-      doc.rect(margin, y, contentWidth, partyBoxH);
-      doc.setFillColor(241, 245, 249);
-      doc.rect(margin, y, contentWidth, 4.5, 'F');
-      doc.setTextColor(15, 23, 42);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.text('TO (CONSIGNEE):', margin + 2, y + 3.2);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.text(shipment.receiver.name.substring(0, 32), margin + 2, y + 8);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.text(`Tel: ${shipment.receiver.phone} ${shipment.receiver.altPhone ? `/ ${shipment.receiver.altPhone}` : ''}`, margin + 2, y + 12);
-      doc.text(`Dest: ${shipment.receiver.city} (${destBranch?.name || 'Dest Branch'})`, margin + 2, y + 16);
-
-      y += partyBoxH + 2;
-
-      // PARCEL SPECS
-      doc.rect(margin, y, contentWidth, 12);
-      doc.setFont('helvetica', 'bold');
+      doc.text(shipment.sender.name.substring(0, 20), margin + 1.5, y + 8);
       doc.setFontSize(7.5);
-      doc.text(`Weight: ${shipment.packageInfo.weightKg} KG`, margin + 2, y + 4.5);
-      doc.text(`Pieces: ${shipment.packageInfo.pieces || 1} PKG`, margin + 40, y + 4.5);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.text(`Category: ${shipment.packageInfo.category || 'General'}`, margin + 2, y + 9.5);
-      doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase()}`, margin + 40, y + 9.5);
+      doc.text(`Tel: ${shipment.sender.phone}`, margin + 1.5, y + 13);
+      doc.setFontSize(6.5);
+      doc.text(`Origin: ${originName}`, margin + 1.5, y + 18);
+
+      // Receiver Box
+      doc.rect(margin + colW + 3, y, colW, 22);
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin + colW + 3, y, colW, 4, 'F');
+      doc.setFontSize(6.5);
+      doc.text('TO (CONSIGNEE):', margin + colW + 4.5, y + 3);
+      
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(shipment.receiver.name.substring(0, 20), margin + colW + 4.5, y + 8);
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Tel: ${shipment.receiver.phone}`, margin + colW + 4.5, y + 13);
+      doc.setFontSize(6.5);
+      doc.text(`Dest: ${destName}`, margin + colW + 4.5, y + 18);
+
+      y += 24;
+
+      // SPECS (Weight, Pieces, Category, Service)
+      doc.setLineWidth(0.2);
+      doc.rect(margin, y, contentWidth, 12);
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Weight: ${shipment.packageInfo.weightKg} KG`, margin + 2, y + 4.5);
+      doc.text(`Pieces: ${shipment.packageInfo.pieces} PKG`, margin + 38, y + 4.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Category: ${shipment.packageInfo.category}`, margin + 2, y + 9.5);
+      doc.text(`Service: ${shipment.packageInfo.serviceType.toUpperCase()}`, margin + 38, y + 9.5);
 
       y += 14;
 
-      // FINANCIAL SUMMARY BOX
+      // FINANCIAL BOX
       doc.setFillColor(248, 250, 252);
-      doc.rect(margin, y, contentWidth, 16, 'FD');
-
+      doc.rect(margin, y, contentWidth, 18, 'FD');
+      
       if (receiptRole === 'seller') {
-        doc.setTextColor(100, 116, 139);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.5);
-        doc.text('SELLER PAYOUT (AFTER DEDUCTIONS)', margin + 2, y + 4.5);
-
-        doc.setTextColor(16, 185, 129); // Emerald
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.text(`${thermalPayout.toLocaleString()} AFN`, margin + 2, y + 10.5);
-
-        doc.setTextColor(100, 116, 139);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6);
-        doc.text(`Item: ${thermalPrice.toLocaleString()} | Fee: ${thermalServiceFee} | Comm: ${thermalDestComm}`, margin + 2, y + 14.5);
-      } else {
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7);
-        doc.text('TOTAL PAYABLE (COD / RECEIVER COPY)', margin + 2, y + 4.5);
-
         doc.setTextColor(0, 0, 0);
+        doc.setFontSize(7);
         doc.setFont('helvetica', 'bold');
+        doc.text('SELLER PAYOUT (AFTER DEDUCTIONS)', margin + 3, y + 5);
+        
+        doc.setTextColor(22, 163, 74); // Emerald-600
         doc.setFontSize(12);
-        doc.text(`${thermalPrice.toLocaleString()} AFN`, margin + 2, y + 10.5);
-
-        const statusLabel = shipment.financials.paymentStatus === 'paid' ? 'PAID / COLLECTED' : 'COD (TO PAY AT DESTINATION)';
+        doc.text(`${thermalPayout.toLocaleString()} AFN`, margin + 3, y + 11.5);
+        
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Item: ${thermalPrice} | Fee: ${thermalServiceFee} | Comm: ${thermalDestComm}`, margin + 3, y + 15.5);
+      } else {
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(7);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(6.5);
-        doc.setTextColor(shipment.financials.paymentStatus === 'paid' ? 22 : 180, shipment.financials.paymentStatus === 'paid' ? 163 : 30, 74);
-        doc.text(statusLabel, margin + 2, y + 14.5);
+        doc.text('TOTAL PAYABLE (COD / RECEIVER COPY)', margin + 3, y + 5);
+        
+        doc.setFontSize(13);
+        doc.text(`${thermalPrice.toLocaleString()} AFN`, margin + 3, y + 12);
+        
+        doc.setTextColor(220, 38, 38); // Red-600
+        doc.setFontSize(7);
+        const statusText = shipment.financials.paymentStatus === 'paid' ? 'PAID / COLLECTED' : 'COD (TO PAY AT DESTINATION)';
+        doc.text(statusText, margin + 3, y + 16);
       }
 
-      y += 18;
+      y += 21;
 
-      // HELPLINES & FOOTER
+      // FOOTER
       doc.setDrawColor(203, 213, 225);
       doc.setLineDashPattern([1, 1], 0);
       doc.line(margin, y, margin + contentWidth, y);
       doc.setLineDashPattern([], 0);
 
-      y += 3;
-      doc.setTextColor(15, 23, 42);
+      y += 4;
+      doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
-      doc.text(`Helplines: ${originBranch?.phone || '0799123456'} | Complaints: 0711299680`, margin + contentWidth / 2, y, { align: 'center' });
-      doc.text('Main Kabul: 0774144004 | Track: www.armaghansadeq.af', margin + contentWidth / 2, y + 3.5, { align: 'center' });
+      doc.setFontSize(7.5);
+      doc.text('Helplines: +93 79 900 1122 | Complaints: 0711299680', margin + contentWidth / 2, y, { align: 'center' });
+      doc.text('Main Kabul: 0774144004 | Track: www.armaghansadeq.af', margin + contentWidth / 2, y + 4.5, { align: 'center' });
       
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.5);
+      doc.setFontSize(6);
       doc.setTextColor(100, 116, 139);
-      doc.text(`Printed: ${new Date().toLocaleDateString()} | Rayan Tech Solutions`, margin + contentWidth / 2, y + 7, { align: 'center' });
+      doc.text(`Printed: ${new Date().toLocaleDateString()} | Rayan Tech Solutions`, margin + contentWidth / 2, y + 9, { align: 'center' });
 
       const filename = `Thermal_Receipt_${shipment.cnNumber}_80mm.pdf`;
-      drawPageBorder(doc, pageWidth, pageHeight, 1.5);
       doc.save(filename);
       return true;
     }
@@ -2327,8 +2333,8 @@ export function generateThermalLabelPdf(
     // ==========================================
     if (thermalSize === '80x80') {
       const size = 80;
-      const margin = 2.5;
-      const contentWidth = size - margin * 2; // 75mm
+      const margin = 3;
+      const contentWidth = size - margin * 2; // 74mm
 
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -2341,90 +2347,86 @@ export function generateThermalLabelPdf(
 
       // Header
       doc.setFillColor(15, 23, 42);
+      doc.rect(margin, y, contentWidth, 8, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('ARMAGHAN SADEQ TRANSFERS', margin + contentWidth / 2, y + 5, { align: 'center' });
+
+      y += 10;
+
+      // CN & Date Info Strip
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(`CN: ${shipment.cnNumber}`, margin, y + 3);
+      doc.setFontSize(8);
+      doc.text(new Date(shipment.bookedAt).toLocaleDateString(), margin + contentWidth, y + 3, { align: 'right' });
+
+      y += 6;
+
+      // Route Banner
+      doc.setFillColor(0, 0, 0);
       doc.rect(margin, y, contentWidth, 7, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
       doc.setFontSize(8.5);
-      doc.text('ARMAGHAN SADEQ EXPRESS', margin + contentWidth / 2, y + 4.8, { align: 'center' });
+      doc.text(`${originName.toUpperCase()} ➔ ${destName.toUpperCase()}`, margin + contentWidth / 2, y + 4.8, { align: 'center' });
 
-      y += 8.5;
+      y += 10;
 
-      // CN & Route
-      doc.setTextColor(15, 23, 42);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text(`CN: ${shipment.cnNumber}`, margin + 1, y + 3);
-
-      doc.setFillColor(15, 23, 42);
-      doc.rect(margin + 42, y - 0.5, 32, 5.5, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(7);
-      doc.text(`${originName.substring(0, 8)} ➔ ${destName.substring(0, 8)}`, margin + 58, y + 3.2, { align: 'center' });
-
-      y += 7.5;
-
-      // Barcode
-      const barcodeX = margin + 1;
-      const barcodeY = y;
-      doc.setFillColor(0, 0, 0);
-      const barPattern = [2, 1, 1, 2, 3, 1, 2, 1, 1, 3, 2, 1, 3, 1, 1, 2, 4, 1, 2, 1, 3, 2, 1, 1, 3, 1, 2, 1];
-      let bx = barcodeX;
-      barPattern.forEach((w, i) => {
-        if (i % 2 === 0) {
-          doc.rect(bx, barcodeY, w * 0.95, 5, 'F');
-        }
-        bx += w * 0.95 + 0.8;
-      });
-
-      y += 7.5;
-
-      // From & To Compact Box
-      doc.setDrawColor(15, 23, 42);
-      doc.setLineWidth(0.3);
-      doc.rect(margin, y, contentWidth, 18);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(6.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text('FROM:', margin + 1.5, y + 3.5);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${shipment.sender.name.substring(0, 24)} • ${shipment.sender.phone}`, margin + 12, y + 3.5);
+      // SENDER & RECEIVER SIDE-BY-SIDE
+      const colW = contentWidth / 2 - 1.5;
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.2);
+      
+      // Borders for parties
+      doc.rect(margin, y, colW, 20);
+      doc.rect(margin + colW + 3, y, colW, 20);
 
       doc.setTextColor(100, 116, 139);
-      doc.text('TO:', margin + 1.5, y + 8);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${shipment.receiver.name.substring(0, 24)} • ${shipment.receiver.phone}`, margin + 12, y + 8);
+      doc.setFontSize(6);
+      doc.text('SENDER:', margin + 1.5, y + 4);
+      doc.text('RECEIVER:', margin + colW + 4.5, y + 4);
 
-      doc.setTextColor(100, 116, 139);
-      doc.text('DEST:', margin + 1.5, y + 12.5);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${destName} Hub (${destBranch?.phone || '0799123456'})`, margin + 12, y + 12.5);
-
-      doc.text(`SPECS: ${shipment.packageInfo.weightKg} KG | ${shipment.packageInfo.pieces || 1} Pcs | ${shipment.packageInfo.serviceType}`, margin + 1.5, y + 16.5);
-
-      y += 20;
-
-      // Highlighted COD Box
-      doc.setFillColor(241, 245, 249);
-      doc.rect(margin, y, contentWidth, 9, 'FD');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
       doc.setTextColor(0, 0, 0);
+      doc.setFontSize(8.5);
+      doc.text(shipment.sender.name.substring(0, 16), margin + 1.5, y + 9);
+      doc.text(shipment.receiver.name.substring(0, 16), margin + colW + 4.5, y + 9);
 
+      doc.setFontSize(7.5);
+      doc.text(shipment.sender.phone, margin + 1.5, y + 14);
+      doc.text(shipment.receiver.phone, margin + colW + 4.5, y + 14);
+
+      y += 23;
+
+      // Specs & COD
+      doc.setFillColor(245, 245, 245);
+      doc.rect(margin, y, contentWidth, 8, 'F');
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(7.5);
+      doc.text(`${shipment.packageInfo.pieces} PKG | ${shipment.packageInfo.weightKg} KG`, margin + 2, y + 5.2);
+      
+      doc.setFontSize(9);
       const isPaid = shipment.financials.paymentStatus === 'paid';
-      const codText = isPaid ? `PAID / DELIVER` : `COLLECT COD: ${thermalPrice.toLocaleString()} AFN`;
-      doc.text(codText, margin + contentWidth / 2, y + 5.8, { align: 'center' });
+      
+      let amountText = '';
+      if (receiptRole === 'buyer') {
+        amountText = isPaid ? 'PAID' : `COD: ${thermalPrice.toLocaleString()}`;
+      } else {
+        amountText = `PAYOUT: ${thermalPayout.toLocaleString()}`;
+      }
+      doc.text(amountText, margin + contentWidth - 2, y + 5.2, { align: 'right' });
 
-      y += 11;
+      y += 12;
 
-      // Footer line
-      doc.setFontSize(5.5);
+      // Footer
+      doc.setFontSize(6);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
-      doc.text(`Helpline: 0774144004 | Track: www.armaghansadeq.af`, margin + contentWidth / 2, y, { align: 'center' });
+      doc.text(`Helplines: +93 79 900 1122 | complaints: 0711299680`, margin + contentWidth / 2, y, { align: 'center' });
+      doc.text('Receipt valid 30 days. www.armaghansadeq.af', margin + contentWidth / 2, y + 3.5, { align: 'center' });
 
       const filename = `Thermal_Label_${shipment.cnNumber}_80x80.pdf`;
-      drawPageBorder(doc, size, size, 1.5);
       doc.save(filename);
       return true;
     }
@@ -2451,7 +2453,7 @@ export function generateThermalLabelPdf(
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text('ARMAGHAN SADEQ EXPRESS', margin + 4, y + 6);
+    doc.text('KABUL CARGO EXPRESS', margin + 4, y + 6);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.text('AFGHANISTAN NATIONWIDE LOGISTICS NETWORK', margin + 4, y + 11);

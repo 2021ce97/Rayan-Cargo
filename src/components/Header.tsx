@@ -242,8 +242,13 @@ export const Header: React.FC = () => {
                 <span className={`w-2 h-2 rounded-full shrink-0 ${realtimeStatus === 'SUBSCRIBED' ? 'bg-emerald-500 animate-pulse' : dbStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               </button>
 
-              {/* Dedicated Trilingual Language Switcher */}
-              <LanguageSwitcher />
+              {/* Dedicated Global Trilingual Language Switcher */}
+              <div className="hidden sm:block">
+                <LanguageSwitcher variant="segmented" />
+              </div>
+              <div className="sm:hidden">
+                <LanguageSwitcher variant="dropdown" />
+              </div>
 
               {/* Branch Password Self-Change Button (for Branch Accounts) */}
               {currentUser.role !== 'super_admin' && (

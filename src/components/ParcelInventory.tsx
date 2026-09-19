@@ -38,12 +38,13 @@ import {
   PhoneOff,
   MessageSquareWarning,
   Edit3,
-  Truck
+  Truck,
+  CheckSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
-import { generateDispatchManifestPdf, printElementUsingIframe, generateThermalLabelPdf, generateCombinedCustomerPdf } from '../utils/pdfExport';
+import { printElementUsingIframe, generateThermalLabelPdf, generateCombinedCustomerPdf } from '../utils/pdfExport';
 import { BarcodeGenerator } from './BarcodeGenerator';
 import { CombinedCustomerReceiptModal } from './CombinedCustomerReceiptModal';
 import { ShipmentStatusTimeline } from './ShipmentStatusTimeline';
@@ -87,10 +88,10 @@ export const ParcelInventory: React.FC = () => {
     // 1. Immediate sync on entering parcel inventory
     syncWithDatabase();
 
-    // 2. Fast auto-polling every 4 seconds so all new parcels appear in real time without refreshing
+    // 2. Periodic sync fallback every 25 seconds (real-time websocket & storage events handle instant updates)
     const pollInterval = setInterval(() => {
       syncWithDatabase();
-    }, 4000);
+    }, 25000);
 
     // 3. Cross-tab storage synchronization
     const handleStorage = (e: StorageEvent) => {
@@ -186,15 +187,7 @@ export const ParcelInventory: React.FC = () => {
   const [issueType, setIssueType] = useState<string>('no_answer');
   const [issueCustomNote, setIssueCustomNote] = useState<string>('');
 
-  // Manifest modal state
-  const [isManifestOpen, setIsManifestOpen] = useState(false);
-  const [manifestDriver, setManifestDriver] = useState('Ghulam Nabi (Driver ID #402)');
-  const [manifestVehicle, setManifestVehicle] = useState('KBL-24901 (Isuzu 5-Ton)');
-  const [isGeneratingManifestPdf, setIsGeneratingManifestPdf] = useState(false);
-  const [manifestPdfSuccess, setManifestPdfSuccess] = useState(false);
-  const manifestRef = useRef<HTMLDivElement>(null);
-
-  // Combined Branch Bulk Dispatch & Bag Sticker PDF Modal state
+  // Combined Branch Bulk Dispatch & Carton Sticker Modal state
   const [isCombinedBranchOpen, setIsCombinedBranchOpen] = useState(false);
 
   // Admin Edit Parcel Modal state
@@ -497,50 +490,6 @@ export const ParcelInventory: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Manifest PDF Handler
-  const handleDownloadManifestPdf = () => {
-    setIsGeneratingManifestPdf(true);
-    setManifestPdfSuccess(false);
-
-    try {
-      const origBranch = currentUser.role !== 'super_admin' 
-        ? branches.find(b => b.id === currentUser.branchId) 
-        : branches.find(b => b.id === activeBranchId);
-
-      const manifestNumber = `MNF-${new Date().getFullYear()}-${processedParcels.length.toString().padStart(3, '0')}`;
-      const branchName = origBranch?.name || 'Armaghan Sadeq Transfers HQ';
-
-      const ok = generateDispatchManifestPdf(
-        manifestNumber,
-        branchName,
-        manifestDriver,
-        manifestVehicle,
-        processedParcels,
-        branches
-      );
-      if (ok) {
-        setManifestPdfSuccess(true);
-        setTimeout(() => setManifestPdfSuccess(false), 4000);
-      }
-    } catch (err) {
-      console.error('Error creating manifest PDF:', err);
-    } finally {
-      setIsGeneratingPdfFalse();
-    }
-  };
-
-  const setIsGeneratingPdfFalse = () => {
-    setIsGeneratingManifestPdf(false);
-  };
-
-  const handlePrintManifest = () => {
-    if (manifestRef.current) {
-      printElementUsingIframe(manifestRef.current, `Manifest_${new Date().toISOString().slice(0, 10)}`);
-    } else {
-      window.print();
-    }
-  };
-
   const handlePrintThermalLabel = (s: Shipment) => {
     const originB = branches.find(b => b.id === s.originBranchId);
     const destB = branches.find(b => b.id === s.destinationBranchId);
@@ -611,34 +560,23 @@ export const ParcelInventory: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setIsManifestOpen(true)}
-            className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Generate Dispatch Cargo Sheet"
-          >
-            <FileText className="w-4 h-4 text-amber-400" />
-            <span>{t('manifest_title')}</span>
-          </button>
-
-          <button
             onClick={() => setIsCombinedBranchOpen(true)}
             id="btn-combined-branch-pdf"
-            className="px-3.5 py-2.5 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
-            title={language === 'fa' ? 'چاپ استیکر کارتن و بسته‌بندی تجمیعی' : language === 'ps' ? 'د کارټن استیکر چاپ' : 'Print Carton & Packing Sticker'}
+            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
+            title={language === 'fa' ? 'ارسال تجمیعی به نمایندگی، چاپ استیکر کارتن و صدور بارنامه تجمیعی' : 'Branch Bulk Dispatch, Master Stickers & Waybills'}
           >
-            <Boxes className="w-4 h-4 text-red-200" />
-            <span>{language === 'fa' ? 'استیکر کارتن (Carton Sticker)' : language === 'ps' ? 'د کارټن استیکر' : 'Carton Sticker'}</span>
+            <Boxes className="w-4 h-4 text-amber-400" />
+            <span>{language === 'fa' ? 'ارسال تجمیعی و استیکر کارتن' : language === 'ps' ? 'څانګې ته ټولیز لېږل او استیکر' : 'Branch Bulk Dispatch & Stickers'}</span>
           </button>
 
           {selectedParcelIds.size > 0 && (
             <button
-              onClick={() => {
-                setIsCombinedBranchOpen(true);
-              }}
-              className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer animate-in fade-in"
-              title={language === 'fa' ? 'چاپ استیکر کارتن بسته‌های انتخاب‌شده' : 'Print Carton Sticker for selected parcels'}
+              onClick={() => setIsCombinedBranchOpen(true)}
+              className="px-3.5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer animate-in fade-in"
+              title={language === 'fa' ? 'ارسال تجمیعی بسته‌های انتخاب‌شده' : 'Dispatch selected parcels'}
             >
-              <Boxes className="w-4 h-4 text-amber-400" />
-              <span>{language === 'fa' ? 'استیکر کارتن' : 'Carton Sticker'} ({selectedParcelIds.size})</span>
+              <CheckSquare className="w-4 h-4 text-white" />
+              <span>{language === 'fa' ? 'ارسال بسته‌های منتخب' : 'Dispatch Selected'} ({selectedParcelIds.size})</span>
             </button>
           )}
 
@@ -2086,172 +2024,6 @@ export const ParcelInventory: React.FC = () => {
                 >
                   {t('btn_close') || 'Close'}
                 </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 5: CARGO MANIFEST MODAL */}
-      {isManifestOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-5xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95">
-            
-            <div className="no-print p-4 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-red-600" />
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900">
-                    {t('manifest_title') || 'Inter-Branch Cargo Dispatch Manifest'}
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    {processedParcels.length} Consignments in this Cargo Sheet
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <input
-                  type="text"
-                  value={manifestDriver}
-                  onChange={(e) => setManifestDriver(e.target.value)}
-                  placeholder={t('manifest_driver_id') || 'Driver Name & ID'}
-                  className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs font-medium w-44"
-                />
-                <input
-                  type="text"
-                  value={manifestVehicle}
-                  onChange={(e) => setManifestVehicle(e.target.value)}
-                  placeholder={t('manifest_vehicle_plate') || 'Vehicle Plate #'}
-                  className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 text-xs font-medium w-40"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleDownloadManifestPdf}
-                  disabled={isGeneratingManifestPdf}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  {isGeneratingManifestPdf ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Generating PDF...</span>
-                    </>
-                  ) : manifestPdfSuccess ? (
-                    <>
-                      <FileCheck className="w-4 h-4 text-emerald-200" />
-                      <span>PDF Downloaded!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-4 h-4" />
-                      <span>{t('manifest_btn_pdf') || 'Download PDF'}</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={handlePrintManifest}
-                  className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>{t('manifest_btn_print') || 'Print Sheet'}</span>
-                </button>
-
-                <button
-                  onClick={() => setIsManifestOpen(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Manifest Document Preview */}
-            <div className="p-6 max-h-[75vh] overflow-y-auto bg-slate-50">
-              <div 
-                ref={manifestRef} 
-                className="bg-white p-8 rounded-xl border border-slate-300 shadow-sm max-w-4xl mx-auto text-slate-900 font-sans"
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4 mb-4">
-                  <div>
-                    <h2 className="text-xl font-black tracking-tight text-slate-900">
-                      RAYAN CARGO LOGISTICS DB
-                    </h2>
-                    <p className="text-xs text-slate-600 font-medium">
-                      Afghanistan Inter-Branch Consignment Dispatch Sheet
-                    </p>
-                    <p className="text-xs text-slate-500 font-mono mt-1">
-                      Terminal: {currentBranchName} | Date: {new Date().toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-end">
-                    <span className="text-xs font-mono font-bold bg-slate-100 px-3 py-1 rounded border border-slate-300">
-                      MNF-{new Date().getFullYear()}-{processedParcels.length.toString().padStart(3, '0')}
-                    </span>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Carrier: {manifestDriver} ({manifestVehicle})
-                    </p>
-                  </div>
-                </div>
-
-                {/* Table */}
-                <table className="w-full text-start text-xs border-collapse border border-slate-300">
-                  <thead>
-                    <tr className="bg-slate-100 border-b border-slate-300 font-bold text-slate-800">
-                      <th className="p-2 border border-slate-300 text-start">#</th>
-                      <th className="p-2 border border-slate-300 text-start">CN Number</th>
-                      <th className="p-2 border border-slate-300 text-start">{t('table_destination') || 'Destination'}</th>
-                      <th className="p-2 border border-slate-300 text-start">Receiver & Contact</th>
-                      <th className="p-2 border border-slate-300 text-center">{t('table_weight') || 'Weight'}</th>
-                      <th className="p-2 border border-slate-300 text-center">{t('table_pcs') || 'Pcs'}</th>
-                      <th className="p-2 border border-slate-300 text-center">{t('table_payment') || 'Payment'}</th>
-                      <th className="p-2 border border-slate-300 text-center">{t('table_sign') || 'Sign'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {processedParcels.map((p, idx) => {
-                      const dest = branches.find(b => b.id === p.destinationBranchId);
-                      return (
-                        <tr key={p.id} className="border-b border-slate-200">
-                          <td className="p-2 border border-slate-300 font-mono text-[11px]">{idx + 1}</td>
-                          <td className="p-2 border border-slate-300 font-mono font-bold">{p.cnNumber}</td>
-                          <td className="p-2 border border-slate-300 font-bold">{dest?.city || p.receiver.city}</td>
-                          <td className="p-2 border border-slate-300">
-                            <div className="font-semibold">{p.receiver.name}</div>
-                            <div className="font-mono text-[10px] text-slate-500">{p.receiver.phone}</div>
-                          </td>
-                          <td className="p-2 border border-slate-300 text-center font-mono">{p.packageInfo.weightKg} KG</td>
-                          <td className="p-2 border border-slate-300 text-center font-mono">{p.packageInfo.pieces}</td>
-                          <td className="p-2 border border-slate-300 text-center font-bold text-[10px]">
-                            {p.financials.paymentStatus.toUpperCase()}
-                          </td>
-                          <td className="p-2 border border-slate-300 w-24"></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-
-                {/* Footer signatures */}
-                <div className="grid grid-cols-3 gap-6 pt-10 mt-6 border-t border-slate-300 text-xs text-center text-slate-600">
-                  <div>
-                    <div className="border-b border-slate-400 pb-8 mb-1"></div>
-                    <p className="font-bold">{t('manifest_dispatching_sign') || 'Dispatching Officer Sign'}</p>
-                  </div>
-                  <div>
-                    <div className="border-b border-slate-400 pb-8 mb-1"></div>
-                    <p className="font-bold">Highway Carrier / Driver Sign</p>
-                  </div>
-                  <div>
-                    <div className="border-b border-slate-400 pb-8 mb-1"></div>
-                    <p className="font-bold">{t('manifest_dest_sign') || 'Destination Receiving Officer Sign'}</p>
-                  </div>
-                </div>
-
               </div>
             </div>
 

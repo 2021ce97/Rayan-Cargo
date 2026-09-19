@@ -39,15 +39,51 @@ export const NewBookingModal: React.FC = () => {
     showToast 
   } = useApp();
 
-  const getLocalizedBranchName = (b: { name: string; nameFa?: string; namePs?: string } | undefined) => {
+  const getLocalizedBranchName = (b: any | undefined) => {
     if (!b) return '';
-    if (language === 'fa' && b.nameFa) return b.nameFa;
-    if (language === 'ps' && b.namePs) return b.namePs;
-    return b.name;
+    const cleanMap: Record<string, { en: string; fa: string; ps: string }> = {
+      'br_admin_hq': { en: 'Kabul', fa: 'کابل', ps: 'کابل' },
+      'br_mzk_02': { en: 'Mazar-i-Sharif', fa: 'مزار شریف', ps: 'مزار شریف' },
+      'br_hrt_03': { en: 'Herat', fa: 'هرات', ps: 'هرات' },
+      'br_kdh_04': { en: 'Kandahar', fa: 'کندهار', ps: 'کندهار' },
+      'br_kho06_0281': { en: 'Khost', fa: 'خوست', ps: 'خوست' },
+      'br_far01_8916': { en: 'Maymana', fa: 'میمنه', ps: 'میمنه' },
+      'br_jaw08_6896': { en: 'Sheberghan', fa: 'شبرغان', ps: 'شبرغان' },
+      'br_tak08_7293': { en: 'Taloqan', fa: 'تالقان', ps: 'تالقان' },
+      'br_bad09_9209': { en: 'Faizabad', fa: 'فیض آباد', ps: 'فیض آباد' },
+      'br_gzn12_8926': { en: 'Ghazni', fa: 'غزنی', ps: 'غزنی' },
+      'br_nan014_3445': { en: 'Jalalabad', fa: 'جلال‌آباد', ps: 'جلال اباد' },
+      'br_kun010_8767': { en: 'Kunduz', fa: 'کندز', ps: 'کندز' },
+      'br_nim013_1433': { en: 'Nimroz', fa: 'نیمروز', ps: 'نیمروز' },
+      'br_sar011_2621': { en: 'Sar-e Pol', fa: 'سرپل', ps: 'سرپل' }
+    };
+    if (b.id && cleanMap[b.id]) {
+      const entry = cleanMap[b.id];
+      if (language === 'fa') return entry.fa;
+      if (language === 'ps') return entry.ps;
+      return entry.en;
+    }
+    if (b.isHeadOffice || b.code === 'KBL-HQ' || b.id === 'br_admin_hq') {
+      return (language === 'fa' || language === 'ps') ? 'کابل' : 'Kabul';
+    }
+    if (language === 'fa') return (b.nameFa || b.city || b.name || '').replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
+    if (language === 'ps') return (b.namePs || b.city || b.name || '').replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
+    return (b.name || b.city || '').replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
   };
 
+  // Deduplicate and filter out any stray or duplicate branches
+  const sanitizedBranches = React.useMemo(() => {
+    const seen = new Set<string>();
+    return branches.filter(b => {
+      const key = b.id || b.code;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [branches]);
+
   const isBranchUser = currentUser.role !== 'super_admin';
-  const mainBranch = branches.find(b => b.isHeadOffice) || branches[0];
+  const mainBranch = sanitizedBranches.find(b => b.isHeadOffice || b.id === 'br_admin_hq') || sanitizedBranches[0];
   const defaultOrigin = isBranchUser 
     ? currentUser.branchId 
     : (activeBranchId && activeBranchId !== 'all' ? activeBranchId : (mainBranch?.id || 'br_admin_hq'));
@@ -55,12 +91,12 @@ export const NewBookingModal: React.FC = () => {
   // Origin Branch is defaulted & locked to current branch
   const [originBranchId, setOriginBranchId] = useState<string>(defaultOrigin);
 
-  // Available destination branches (the other 5 branches)
-  const availableDestinations = branches.filter(b => b.id !== originBranchId);
+  // Available destination branches (the other branches)
+  const availableDestinations = sanitizedBranches.filter(b => b.id !== originBranchId);
 
   // Selected Destination Branch
   const [destBranchId, setDestBranchId] = useState<string>(
-    availableDestinations[0]?.id || (branches.find(b => b.id !== defaultOrigin)?.id || 'br_hrt_02')
+    availableDestinations[0]?.id || (sanitizedBranches.find(b => b.id !== defaultOrigin)?.id || 'br_hrt_03')
   );
 
   // Sender Info
@@ -393,42 +429,27 @@ export const NewBookingModal: React.FC = () => {
 
                 {isBranchUser ? (
                   <div className="w-full h-11 px-3.5 flex items-center justify-between text-xs font-bold bg-slate-100 border border-slate-300 rounded-xl text-slate-900">
-                    <span className="truncate">🏢 {getLocalizedBranchName(originBranchObj)}</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200">
-                      {originBranchObj?.code}
-                    </span>
+                    <span className="truncate">{getLocalizedBranchName(originBranchObj)}</span>
                   </div>
                 ) : (
                   <select
                     value={originBranchId}
                     onChange={(e) => handleOriginChange(e.target.value)}
-                    className="w-full h-11 px-3 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none"
+                    className="w-full h-11 px-3.5 text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none cursor-pointer"
                   >
-                    {branches.map(b => (
+                    {sanitizedBranches.map(b => (
                       <option key={b.id} value={b.id}>
-                        {b.isHeadOffice ? `👑 [${t('admin_main_office_badge', 'Main Branch (Admin HQ)')}] ` : '📍 '}
-                        {getLocalizedBranchName(b)} ({b.city} - {b.code})
+                        {getLocalizedBranchName(b)}
                       </option>
                     ))}
                   </select>
                 )}
-                <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
-                  {originBranchObj?.isHeadOffice && (
-                    <span className="font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded text-[10px] border border-amber-200">
-                      👑 {t('admin_main_office_badge', 'Main Branch (Admin HQ)')}
-                    </span>
-                  )}
-                  <span>{t('located_in_prefix')} {originBranchObj?.city}, {originBranchObj?.province}</span>
-                </div>
               </div>
 
               {/* Destination Branch (Dropdown of other branches) */}
               <div>
                 <label className="block text-xs font-bold text-red-600 mb-1.5 flex items-center justify-between">
                   <span>{t('dest_branch_lbl')}</span>
-                  <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
-                    {t('select_target_hub')}
-                  </span>
                 </label>
                 <select
                   value={destBranchId}
@@ -437,13 +458,10 @@ export const NewBookingModal: React.FC = () => {
                 >
                   {availableDestinations.map(b => (
                     <option key={b.id} value={b.id}>
-                      📍 {getLocalizedBranchName(b)} ({b.city}, {b.province} - {b.code})
+                      {getLocalizedBranchName(b)}
                     </option>
                   ))}
                 </select>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  {t('receiver_terminal_prefix')} {destBranchObj?.city}, {destBranchObj?.province}
-                </p>
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 {
-  "name": "Armaghan Sadeq Transfers",
-  "description": "Enterprise multi-branch cargo and parcel tracking database system for Armaghan Sadeq Transfers (خدمات انتقالات ارمغان صادق) with consignment note (CN) tracking, branch dispatching, discount calculation, printable waybills, analytics, and trilingual support in English, Dari, and Pashto. Developed by Rayan tech solutions (Rayan-Tech-Solution.tech).",
+  "name": "Kabul Cargo Transfers",
+  "description": "Enterprise multi-branch cargo and parcel tracking database system for Kabul Cargo Transfers (خدمات انتقالات کابل کارگو) with consignment note (CN) tracking, branch dispatching, discount calculation, printable waybills, analytics, and trilingual support in English, Dari, and Pashto.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

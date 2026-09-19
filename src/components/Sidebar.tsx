@@ -48,11 +48,35 @@ export const Sidebar: React.FC = () => {
   const isCustomer = currentUser.role === 'customer';
   const currentBranch = branches.find(b => b.id === currentUser.branchId);
 
-  const getLocalizedBranchName = (b: Branch | undefined) => {
+  const getLocalizedBranchName = (b: any | undefined) => {
     if (!b) return t('all_branches');
-    if (language === 'fa' && b.nameFa) return b.nameFa;
-    if (language === 'ps' && b.namePs) return b.namePs;
-    return b.name;
+    const cleanMap: Record<string, { en: string; fa: string; ps: string }> = {
+      'br_admin_hq': { en: 'Kabul', fa: 'کابل', ps: 'کابل' },
+      'br_mzk_02': { en: 'Mazar-i-Sharif', fa: 'مزار شریف', ps: 'مزار شریف' },
+      'br_hrt_03': { en: 'Herat', fa: 'هرات', ps: 'هرات' },
+      'br_kdh_04': { en: 'Kandahar', fa: 'کندهار', ps: 'کندهار' },
+      'br_kho06_0281': { en: 'Khost', fa: 'خوست', ps: 'خوست' },
+      'br_far01_8916': { en: 'Maymana', fa: 'میمنه', ps: 'میمنه' },
+      'br_jaw08_6896': { en: 'Sheberghan', fa: 'شبرغان', ps: 'شبرغان' },
+      'br_tak08_7293': { en: 'Taloqan', fa: 'تالقان', ps: 'تالقان' },
+      'br_bad09_9209': { en: 'Faizabad', fa: 'فیض آباد', ps: 'فیض آباد' },
+      'br_gzn12_8926': { en: 'Ghazni', fa: 'غزنی', ps: 'غزنی' },
+      'br_nan014_3445': { en: 'Jalalabad', fa: 'جلال‌آباد', ps: 'جلال اباد' },
+      'br_kun010_8767': { en: 'Kunduz', fa: 'کندز', ps: 'کندز' },
+      'br_nim013_1433': { en: 'Nimroz', fa: 'نیمروز', ps: 'نیمروز' },
+      'br_sar011_2621': { en: 'Sar-e Pol', fa: 'سرپل', ps: 'سرپل' }
+    };
+    if (b.id && cleanMap[b.id]) {
+      const entry = cleanMap[b.id];
+      if (language === 'fa') return entry.fa;
+      if (language === 'ps') return entry.ps;
+      return entry.en;
+    }
+    if (b.isHeadOffice || b.code === 'KBL-HQ' || b.id === 'br_admin_hq') {
+      return (language === 'fa' || language === 'ps') ? 'کابل' : 'Kabul';
+    }
+    const rawName = (language === 'fa' && b.nameFa) ? b.nameFa : ((language === 'ps' && b.namePs) ? b.namePs : b.name);
+    return (rawName || b.city || '').replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
   };
 
   // Other branches to trade/exchange with
@@ -150,6 +174,7 @@ export const Sidebar: React.FC = () => {
   ].filter(item => item.visible);
 
   const handleNavClick = (viewId: ActiveView) => {
+    console.log('[Sidebar] handleNavClick called with viewId:', viewId, 'currentUser.role:', currentUser.role);
     setActiveView(viewId);
     setIsMobileSidebarOpen(false);
   };
@@ -157,27 +182,27 @@ export const Sidebar: React.FC = () => {
   const renderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-4">
-        {/* Armaghan Sadeq Transfers Official Brand Header (All Roles) */}
-        <div className="p-3 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 rounded-2xl border border-amber-500/20 shadow-md">
+        {/* Kabul Cargo Transfers Official Brand Header (All Roles) */}
+        <div className="p-3 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 rounded-2xl border border-red-500/20 shadow-md">
           <div className="flex items-center gap-3">
-            <div className="shrink-0 p-1.5 bg-white rounded-xl shadow-xs border border-amber-500/30 flex items-center justify-center">
+            <div className="shrink-0 p-1.5 bg-white rounded-xl shadow-xs border border-red-500/30 flex items-center justify-center">
               <img
                 src="/logo.jpg"
-                alt="Armaghan Sadeq Transfers - خدمات انتقالات ارمغان صادق"
+                alt="Kabul Cargo Transfers - خدمات انتقالات کابل کارگو"
                 className="w-10 h-10 object-contain rounded-lg"
               />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-black text-sm text-white tracking-tight leading-tight">
-                  Armaghan Sadeq
+                  Kabul Cargo
                 </span>
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wider">
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 uppercase tracking-wider">
                   Transfers
                 </span>
               </div>
-              <p className="text-[11px] font-bold text-amber-400 mt-0.5 truncate">
-                خدمات انتقالات ارمغان صادق
+              <p className="text-[11px] font-bold text-red-400 mt-0.5 truncate">
+                خدمات انتقالات کابل کارگو
               </p>
               <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -219,6 +244,7 @@ export const Sidebar: React.FC = () => {
             return (
               <button
                 key={item.id}
+                id={`nav-${item.id}`}
                 onClick={() => handleNavClick(item.id)}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                   isActive

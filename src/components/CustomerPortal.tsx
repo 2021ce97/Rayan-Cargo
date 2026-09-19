@@ -22,6 +22,7 @@ import {
   MousePointerClick
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../context/I18nContext';
 import { CustomerPreBookingInput, ParcelCategory } from '../types';
 
 export const CustomerPortal: React.FC = () => {
@@ -32,9 +33,23 @@ export const CustomerPortal: React.FC = () => {
     customerShipments, 
     createCustomerPreBooking, 
     setActiveView,
+    setSelectedShipmentForReceipt,
     language,
     isRTL
   } = useApp();
+
+  const { getLocalizedBranchName } = useI18n();
+
+  // Deduplicate and sanitize branches
+  const sanitizedBranches = React.useMemo(() => {
+    const seen = new Set<string>();
+    return branches.filter(b => {
+      const key = b.id || b.code;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [branches]);
 
   const [submittedCn, setSubmittedCn] = useState<string | null>(null);
 
@@ -246,7 +261,10 @@ export const CustomerPortal: React.FC = () => {
 
         return (
           <div 
-            onClick={() => setActiveView('customer_history')}
+            onClick={() => {
+              console.log('[CustomerPortal] Clicked Financial & Parcel Activity Overview table -> switching to customer_history');
+              setActiveView('customer_history');
+            }}
             className="group relative bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-md hover:shadow-xl hover:border-red-500 dark:hover:border-red-600 transition-all cursor-pointer overflow-hidden transform active:scale-[0.99]"
             id="all-orders-summary-table"
             title={language === 'fa' ? 'برای مشاهده صفحه تاریخچه تمام بسته‌ها کلیک کنید' : 'Click to open all parcels history'}
@@ -371,6 +389,117 @@ export const CustomerPortal: React.FC = () => {
         );
       })()}
 
+      {/* ALL ORDERS TABLE (DIRECTLY ON DASHBOARD, FULLY INTERACTIVE & CLICKABLE) */}
+      {customerShipments.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden" id="customer-dashboard-all-orders">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/50">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-black text-sm text-slate-900 dark:text-white">
+                  {language === 'fa' ? 'سفارشات و بسته‌های شما (برای مشاهده جزئیات یا چاپ کلیک کنید)' : language === 'ps' ? 'ستاسو ټول فرمایشونه او بارونه' : 'All Customer Orders & Parcels'}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {language === 'fa' ? 'جهت مشاهده جزئیات، بارنامه یا پیگیری وضعیت، روی هر سطر کلیک نمایید' : 'Click on any row to open receipt, view details, or track shipment'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                console.log('[CustomerPortal] Clicked "View Complete History" link -> switching to customer_history');
+                setActiveView('customer_history');
+              }}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>{language === 'fa' ? 'مشاهده آرشیو کامل' : 'Open Parcel History'}</span>
+              <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-start">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                  <th className="py-3 px-4 text-start">#</th>
+                  <th className="py-3 px-4 text-start">{t('your_cn_lbl') || 'Waybill CN'}</th>
+                  <th className="py-3 px-4 text-start">{language === 'fa' ? 'گیرنده' : 'Receiver'}</th>
+                  <th className="py-3 px-4 text-start">{language === 'fa' ? 'مسیر (مبدأ ➔ مقصد)' : 'Route'}</th>
+                  <th className="py-3 px-4 text-center">{t('table_weight') || 'Weight'}</th>
+                  <th className="py-3 px-4 text-end">{language === 'fa' ? 'مبلغ کرایه' : 'Freight'}</th>
+                  <th className="py-3 px-4 text-center">{language === 'fa' ? 'وضعیت' : 'Status'}</th>
+                  <th className="py-3 px-4 text-center">{language === 'fa' ? 'عملیات' : 'Action'}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {customerShipments.map((s, idx) => {
+                  const destBranch = branches.find(b => b.id === s.destinationBranchId);
+                  const origBranch = branches.find(b => b.id === s.originBranchId);
+                  return (
+                    <tr
+                      key={s.id}
+                      onClick={() => {
+                        console.log('[CustomerPortal] Clicked All Orders row for CN:', s.cnNumber, s);
+                        setSelectedShipmentForReceipt(s);
+                      }}
+                      className="hover:bg-red-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
+                      title={language === 'fa' ? 'کلیک جهت مشاهده بارنامه و جزئیات' : 'Click to view receipt & details'}
+                    >
+                      <td className="py-3 px-4 font-mono text-slate-400 font-bold">{idx + 1}</td>
+                      <td className="py-3 px-4">
+                        <span className="font-mono font-black text-red-600 dark:text-red-400 group-hover:underline">
+                          {s.cnNumber}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                        {s.receiver?.name}
+                        <span className="block text-[10px] font-normal text-slate-400 font-mono">{s.receiver?.phone}</span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-1 font-medium">
+                          <span>{getLocalizedBranchName(origBranch) || s.sender?.city}</span>
+                          <ArrowRight className="w-3 h-3 text-red-500 rtl:rotate-180" />
+                          <span className="font-bold text-slate-900 dark:text-white">{getLocalizedBranchName(destBranch) || s.receiver?.city}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {s.packageInfo?.weightKg} kg
+                      </td>
+                      <td className="py-3 px-4 text-end font-mono font-bold text-slate-900 dark:text-white">
+                        {(s.financials?.totalAmount || 0).toLocaleString()} AFN
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          {s.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              console.log('[CustomerPortal] Clicked Print Receipt for CN:', s.cnNumber);
+                              setSelectedShipmentForReceipt(s);
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-600 hover:text-white text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                            title={language === 'fa' ? 'چاپ بارنامه' : 'Print Waybill'}
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* PRE-BOOKING FORM (DIRECTLY ON MAIN PAGE) */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
@@ -403,9 +532,9 @@ export const CustomerPortal: React.FC = () => {
                 onChange={(e) => handleOriginChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-red-500 focus:outline-none"
               >
-                {branches.map(b => (
+                {sanitizedBranches.map(b => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.city} - {b.province})
+                    {getLocalizedBranchName(b)}
                   </option>
                 ))}
               </select>
@@ -421,9 +550,9 @@ export const CustomerPortal: React.FC = () => {
                 onChange={(e) => handleDestChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-red-500 focus:outline-none"
               >
-                {branches.map(b => (
+                {sanitizedBranches.map(b => (
                   <option key={b.id} value={b.id}>
-                    {b.name} ({b.city} - {b.province})
+                    {getLocalizedBranchName(b)}
                   </option>
                 ))}
               </select>

@@ -117,7 +117,7 @@ export const TrackingPortal: React.FC = () => {
           
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-wider mb-4">
             <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
-            <span>Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق</span>
+            <span>Kabul Cargo Transfers • خدمات انتقالات کابل کارگو</span>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight mb-2">

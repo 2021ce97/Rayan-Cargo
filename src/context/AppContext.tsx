@@ -542,9 +542,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (directData.shipments && Array.isArray(directData.shipments)) {
                 setShipments(prev => {
                   const map = new Map(prev.map(s => [s.id, sanitizeShipmentFinancials(s)]));
+                  let hasChanges = false;
                   directData.shipments!.forEach((inc: Shipment) => {
-                    map.set(inc.id, sanitizeShipmentFinancials(inc));
+                    const existing = map.get(inc.id);
+                    const sanitized = sanitizeShipmentFinancials(inc);
+                    if (!existing || existing.status !== sanitized.status || existing.financials?.paymentStatus !== sanitized.financials?.paymentStatus) {
+                      hasChanges = true;
+                    }
+                    map.set(inc.id, sanitized);
                   });
+                  if (!hasChanges && map.size === prev.length) {
+                    return prev;
+                  }
                   const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
                   try {
                     localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(merged));
@@ -604,9 +613,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (shipData.success && Array.isArray(shipData.shipments)) {
               setShipments(prev => {
                 const map = new Map(prev.map(s => [s.id, sanitizeShipmentFinancials(s)]));
+                let hasChanges = false;
                 shipData.shipments.forEach((inc: Shipment) => {
-                  map.set(inc.id, sanitizeShipmentFinancials(inc));
+                  const existing = map.get(inc.id);
+                  const sanitized = sanitizeShipmentFinancials(inc);
+                  if (!existing || existing.status !== sanitized.status || existing.financials?.paymentStatus !== sanitized.financials?.paymentStatus) {
+                    hasChanges = true;
+                  }
+                  map.set(inc.id, sanitized);
                 });
+                if (!hasChanges && map.size === prev.length) {
+                  return prev;
+                }
                 const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
                 try {
                   localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(merged));

@@ -45,7 +45,33 @@ export function loadStoreFromDisk(): boolean {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, 'utf-8');
       const data = JSON.parse(raw);
-      if (Array.isArray(data.branches)) memoryStore.branches = new Map(data.branches);
+      if (Array.isArray(data.branches)) {
+        memoryStore.branches = new Map(data.branches);
+        const cleanBranchMap: Record<string, { name: string; nameFa: string; namePs?: string }> = {
+          'br_admin_hq': { name: 'Kabul', nameFa: 'کابل', namePs: 'کابل' },
+          'br_mzk_02': { name: 'Mazar-i-Sharif', nameFa: 'مزار شریف', namePs: 'مزار شریف' },
+          'br_hrt_03': { name: 'Herat', nameFa: 'هرات', namePs: 'هرات' },
+          'br_kdh_04': { name: 'Kandahar', nameFa: 'کندهار', namePs: 'کندهار' },
+          'br_kho06_0281': { name: 'Khost', nameFa: 'خوست', namePs: 'خوست' },
+          'br_far01_8916': { name: 'Maymana', nameFa: 'میمنه', namePs: 'میمنه' },
+          'br_jaw08_6896': { name: 'Sheberghan', nameFa: 'شبرغان', namePs: 'شبرغان' },
+          'br_tak08_7293': { name: 'Taloqan', nameFa: 'تالقان', namePs: 'تالقان' },
+          'br_bad09_9209': { name: 'Faizabad', nameFa: 'فیض آباد', namePs: 'فیض آباد' },
+          'br_gzn12_8926': { name: 'Ghazni', nameFa: 'غزنی', namePs: 'غزنی' },
+          'br_nan014_3445': { name: 'Jalalabad', nameFa: 'جلال‌آباد', namePs: 'جلال اباد' },
+          'br_kun010_8767': { name: 'Kunduz', nameFa: 'کندز', namePs: 'کندز' },
+          'br_nim013_1433': { name: 'Nimroz', nameFa: 'نیمروز', namePs: 'نیمروز' },
+          'br_sar011_2621': { name: 'Sar-e Pol', nameFa: 'سرپل', namePs: 'سرپل' }
+        };
+        for (const [id, b] of memoryStore.branches.entries()) {
+          if (cleanBranchMap[id]) {
+            Object.assign(b, cleanBranchMap[id]);
+          } else if (b.name === 'Transfers sadeq' || b.nameFa === 'انتقالات صادق') {
+            b.name = b.city || b.province || 'Branch';
+            b.nameFa = b.city || b.province || 'نمایندگی';
+          }
+        }
+      }
       if (Array.isArray(data.users)) memoryStore.users = new Map(data.users);
       if (Array.isArray(data.shipments)) memoryStore.shipments = new Map(data.shipments);
       if (Array.isArray(data.branch_expenses)) memoryStore.branch_expenses = new Map(data.branch_expenses);

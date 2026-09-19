@@ -187,26 +187,57 @@ api.get('/branches', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { rows } = await db.query('SELECT * FROM branches ORDER BY is_head_office DESC, name ASC');
-    const formatted = rows.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      nameFa: r.name_fa || r.name,
-      namePs: r.name_ps || r.name,
-      code: r.code,
-      province: r.province,
-      city: r.city,
-      address: r.address,
-      phone: r.phone,
-      email: r.email,
-      managerName: r.manager_name,
-      tazkiraNumber: r.tazkira_number || r.tazkiraNumber || '',
-      isHeadOffice: r.is_head_office,
-      activeShipmentsCount: parseInt(r.active_shipments_count || '0', 10),
-      totalParcelsDispatched: parseInt(r.total_parcels_dispatched || '0', 10),
-      totalParcelsReceived: parseInt(r.total_parcels_received || '0', 10),
-      totalRevenueAfn: parseFloat(r.total_revenue_afn || '0'),
-      createdAt: r.created_at
-    }));
+    const cleanBranchMap: Record<string, { name: string; nameFa: string; namePs?: string }> = {
+      'br_admin_hq': { name: 'Kabul', nameFa: 'کابل', namePs: 'کابل' },
+      'br_mzk_02': { name: 'Mazar-i-Sharif', nameFa: 'مزار شریف', namePs: 'مزار شریف' },
+      'br_hrt_03': { name: 'Herat', nameFa: 'هرات', namePs: 'هرات' },
+      'br_kdh_04': { name: 'Kandahar', nameFa: 'کندهار', namePs: 'کندهار' },
+      'br_kho06_0281': { name: 'Khost', nameFa: 'خوست', namePs: 'خوست' },
+      'br_far01_8916': { name: 'Maymana', nameFa: 'میمنه', namePs: 'میمنه' },
+      'br_jaw08_6896': { name: 'Sheberghan', nameFa: 'شبرغان', namePs: 'شبرغان' },
+      'br_tak08_7293': { name: 'Taloqan', nameFa: 'تالقان', namePs: 'تالقان' },
+      'br_bad09_9209': { name: 'Faizabad', nameFa: 'فیض آباد', namePs: 'فیض آباد' },
+      'br_gzn12_8926': { name: 'Ghazni', nameFa: 'غزنی', namePs: 'غزنی' },
+      'br_nan014_3445': { name: 'Jalalabad', nameFa: 'جلال‌آباد', namePs: 'جلال اباد' },
+      'br_kun010_8767': { name: 'Kunduz', nameFa: 'کندز', namePs: 'کندز' },
+      'br_nim013_1433': { name: 'Nimroz', nameFa: 'نیمروز', namePs: 'نیمروز' },
+      'br_sar011_2621': { name: 'Sar-e Pol', nameFa: 'سرپل', namePs: 'سرپل' }
+    };
+
+    const formatted = rows.map((r: any) => {
+      const clean = cleanBranchMap[r.id];
+      let bName = clean?.name || r.name;
+      let bNameFa = clean?.nameFa || r.name_fa || r.name;
+      let bNamePs = clean?.namePs || r.name_ps || r.name;
+
+      if (bName === 'Transfers sadeq' || bName.toLowerCase().includes('sadeq')) {
+        bName = clean?.name || r.city || r.province || 'Branch';
+      }
+      if (bNameFa === 'انتقالات صادق' || bNameFa === 'Transfers sadeq') {
+        bNameFa = clean?.nameFa || r.city || r.province || 'نمایندگی';
+      }
+
+      return {
+        id: r.id,
+        name: bName,
+        nameFa: bNameFa,
+        namePs: bNamePs,
+        code: r.code,
+        province: r.province,
+        city: r.city,
+        address: r.address,
+        phone: r.phone,
+        email: r.email,
+        managerName: r.manager_name,
+        tazkiraNumber: r.tazkira_number || r.tazkiraNumber || '',
+        isHeadOffice: r.is_head_office,
+        activeShipmentsCount: parseInt(r.active_shipments_count || '0', 10),
+        totalParcelsDispatched: parseInt(r.total_parcels_dispatched || '0', 10),
+        totalParcelsReceived: parseInt(r.total_parcels_received || '0', 10),
+        totalRevenueAfn: parseFloat(r.total_revenue_afn || '0'),
+        createdAt: r.created_at
+      };
+    });
     res.json({ success: true, branches: formatted });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

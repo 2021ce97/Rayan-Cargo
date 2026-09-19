@@ -28,7 +28,7 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
       <div className={`relative shrink-0 flex items-center justify-center ${className}`}>
         <img
           src="/logo.jpg"
-          alt="Armaghan Sadeq Transfers"
+          alt="Kabul Cargo Transfers"
           className={`${currentSize.img} object-contain rounded-xl shadow-xs transition-transform hover:scale-105`}
           loading="eager"
         />
@@ -39,10 +39,10 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
   if (variant === 'badge') {
     return (
       <div className={`flex items-center gap-2.5 ${className}`}>
-        <div className="relative shrink-0 p-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-amber-500/20 dark:border-amber-500/30 flex items-center justify-center">
+        <div className="relative shrink-0 p-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-red-500/20 dark:border-red-500/30 flex items-center justify-center">
           <img
             src="/logo.jpg"
-            alt="Armaghan Sadeq Transfers - خدمات انتقالات ارمغان صادق"
+            alt="Kabul Cargo Transfers - خدمات انتقالات کابل کارگو"
             className={`${currentSize.img} object-contain`}
             loading="eager"
           />
@@ -50,15 +50,15 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
         <div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`font-extrabold tracking-tight text-slate-900 dark:text-white ${currentSize.text}`}>
-              Armaghan Sadeq
+              Kabul Cargo
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 uppercase tracking-wider">
               Transfers
             </span>
           </div>
           {showSubtitle && (
             <p className={`font-medium text-slate-500 dark:text-slate-400 ${currentSize.sub}`}>
-              خدمات انتقالات ارمغان صادق
+              خدمات انتقالات و باربری کابل کارگو
             </p>
           )}
         </div>
@@ -69,19 +69,19 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
   // Full centered variant (e.g. for login page or splash)
   return (
     <div className={`flex flex-col items-center text-center ${className}`}>
-      <div className="relative p-2 bg-white rounded-3xl shadow-lg border-2 border-amber-400/40 mb-3 hover:shadow-amber-500/10 transition-shadow">
+      <div className="relative p-2 bg-white rounded-3xl shadow-lg border-2 border-red-400/40 mb-3 hover:shadow-red-500/10 transition-shadow">
         <img
           src="/logo.jpg"
-          alt="خدمات انتقالات ارمغان صادق - Armaghan Sadeq Transfers"
+          alt="خدمات انتقالات کابل کارگو - Kabul Cargo Transfers"
           className={`${currentSize.img} object-contain rounded-2xl`}
           loading="eager"
         />
       </div>
       <h1 className={`font-black tracking-tight text-slate-900 dark:text-white ${currentSize.text}`}>
-        Armaghan Sadeq Transfers
+        Kabul Cargo Transfers
       </h1>
-      <p className="text-amber-700 dark:text-amber-400 font-bold text-sm sm:text-base mt-0.5">
-        خدمات انتقالات ارمغان صادق
+      <p className="text-red-700 dark:text-red-400 font-bold text-sm sm:text-base mt-0.5">
+        خدمات انتقالات کابل کارگو
       </p>
       {showSubtitle && (
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
