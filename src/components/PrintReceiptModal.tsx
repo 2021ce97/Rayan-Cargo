@@ -374,16 +374,23 @@ export const PrintReceiptModal: React.FC = () => {
                 )}
               </div>
 
-              {/* Footer with Contacts */}
+              {/* Footer with Contacts & Rules */}
               <div className="text-center pt-1 border-t border-dotted border-black/30 space-y-1">
-                <div className="text-[8.5px] font-black leading-tight">
-                  {l('Helplines: +93 79 900 1122 | Complaints: 0711299680', 'شماره تماس: 0799001122 | شکایات: 0711299680')}
+                <div className="text-[7.5px] text-slate-700 space-y-0.5 leading-tight px-1 text-right dir-rtl">
+                  <p>{l('1. Bill valid 1 month. Info accuracy is sender duty.', '۱. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درجشده در آن بر عهده فرستنده است.')}</p>
+                  <p>{l('2. Illegal items forbidden. No liability for fire or accidents.', '۲. ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده میباشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتشسوزی و تصادم مسئول نیست.')}</p>
+                  <p>{l('3. Returned items kept 1 month. Receipt required for payment.', '۳. اجناس مستردشده حداکثر یک ماه نگهداری میشود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمیگیرد.')}</p>
                 </div>
-                <div className="text-[8.5px] font-black leading-tight">
-                  {l('Main Kabul: 0774144004', 'مرکز کابل: 0774144004')}
-                </div>
-                <div className="text-[7.5px] text-slate-500 mt-1">
-                  Printed: {new Date().toLocaleDateString()} | Rayan Tech Solutions
+                <div className="pt-1 border-t border-black/10">
+                  <div className="text-[8.5px] font-black leading-tight">
+                    {l('Helplines: +93 79 900 1122 | Complaints: 0711299680', 'شماره تماس: 0799001122 | شکایات: 0711299680')}
+                  </div>
+                  <div className="text-[8.5px] font-black leading-tight">
+                    {l('Main Kabul: 0774144004', 'مرکز کابل: 0774144004')}
+                  </div>
+                  <div className="text-[7px] text-slate-500 mt-1">
+                    Printed: {new Date().toLocaleDateString()} | Rayan Tech Solutions
+                  </div>
                 </div>
               </div>
             </div>
@@ -469,11 +476,15 @@ export const PrintReceiptModal: React.FC = () => {
               
               {/* Footer: Contacts & Conditions */}
               <div className="pt-1 border-t border-black mt-1 space-y-0.5 text-center">
-                <div className="text-[7.5px] font-black leading-tight">
-                  {l('Helplines: +93 79 900 1122 | complaints: 0711299680', 'تماس: 0799001122 | شکایات: 0711299680')}
+                <div className="text-[6.5px] text-slate-700 leading-[1.1] mb-1 px-1 text-right dir-rtl">
+                  <p>۱. بل پس از یک ماه فاقد اعتبار است.</p>
+                  <p>۲. مسئولیت اموال بر عهده فرستنده است.</p>
+                  <p>۳. بل اصلی برای دریافت پول الزامی است.</p>
                 </div>
-                <div className="text-[7px] italic text-neutral-600 leading-tight">
-                  {l('Receipt valid 30 days.', 'بل تا ۳۰ روز معتبر است.')}
+                <div className="pt-1 border-t border-black/10">
+                  <div className="text-[7.5px] font-black leading-tight">
+                    {l('Helplines: +93 79 900 1122 | complaints: 0711299680', 'تماس: 0799001122 | شکایات: 0711299680')}
+                  </div>
                 </div>
               </div>
             </div>
@@ -686,10 +697,10 @@ export const PrintReceiptModal: React.FC = () => {
                       <span>{l('Terms & Conditions:', 'شرایط و مقررات:')}</span>
                       <span className="text-[10px] text-red-600 font-mono font-bold">ARMAGHAN SADEQ</span>
                     </div>
-                    <div className="text-[10px] text-slate-600 space-y-1 leading-relaxed">
-                      <p>{l('1. Receipt is valid for 1 month. Shipper is responsible for cargo accuracy.', '۱. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات بر عهده فرستنده است.')}</p>
-                      <p>{l('2. Illegal items strictly prohibited; company not liable for force majeure.', '۲. ارسال اموال غیرقانونی ممنوع است؛ شرکت در برابر حوادث طبیعی مسئول نمی‌باشد.')}</p>
-                      <p>{l('3. Original receipt mandatory for collecting payment.', '۳. هنگام دریافت پول، ارائه بل اصلی الزامی است.')}</p>
+                    <div className="text-[10px] text-slate-600 space-y-1.5 leading-tight">
+                      <p className="font-bold">{l('1. Bill is valid for 1 month. Information accuracy is sender responsibility.', '۱. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درجشده در آن بر عهده فرستنده است.')}</p>
+                      <p>{l('2. Illegal items prohibited. No liability for natural disasters or accidents.', '۲. ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده میباشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتشسوزی و تصادم مسئول نیست.')}</p>
+                      <p>{l('3. Returned items kept for 1 month. Original receipt required for payment.', '۳. اجناس مستردشده حداکثر یک ماه نگهداری میشود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمیگیرد.')}</p>
                     </div>
                   </div>
 
