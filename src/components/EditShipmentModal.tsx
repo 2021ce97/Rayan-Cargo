@@ -50,10 +50,10 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
   const isSuperAdmin = currentUser.role === 'super_admin';
 
   // Form states
-  const [productPrice, setProductPrice] = useState<number>(0);
-  const [serviceFee, setServiceFee] = useState<number>(150);
-  const [destBranchCommission, setDestBranchCommission] = useState<number>(70);
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [productPrice, setProductPrice] = useState<number | "">("");
+  const [serviceFee, setServiceFee] = useState<number | "">("");
+  const [destBranchCommission, setDestBranchCommission] = useState<number | "">("");
+  const [discountAmount, setDiscountAmount] = useState<number | "">("");
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('to_pay');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
 
@@ -98,11 +98,11 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
       const s = shipment.sender || ({} as any);
       const r = shipment.receiver || ({} as any);
 
-      const pPrice = Number(f.productPrice) || Number(f.totalAmount) || Number(pkg.declaredValueAfn) || 0;
+      const pPrice = Number(f.productPrice) || Number(f.totalAmount) || Number(pkg.declaredValueAfn) || "";
       setProductPrice(pPrice);
       setServiceFee(typeof f.serviceFee === 'number' ? f.serviceFee : (pkg.isFragile ? 200 : 150));
       setDestBranchCommission(typeof f.destBranchCommission === 'number' ? f.destBranchCommission : (shipment.destBranchCommission || 70));
-      setDiscountAmount(Number(f.discountAmount) || 0);
+      setDiscountAmount(Number(f.discountAmount) || "");
       setPaymentStatus(f.paymentStatus || 'to_pay');
       setPaymentMethod(f.paymentMethod || 'cod');
 
@@ -138,11 +138,17 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
 
   // Live financial calculations
   const sellerPayout = useMemo(() => {
-    return Math.max(0, productPrice - serviceFee - destBranchCommission + discountAmount);
+    const p = Number(productPrice) || 0;
+    const s = Number(serviceFee) || 0;
+    const c = Number(destBranchCommission) || 0;
+    const d = Number(discountAmount) || 0;
+    return Math.max(0, p - s - c + d);
   }, [productPrice, serviceFee, destBranchCommission, discountAmount]);
 
   const originRemittance = useMemo(() => {
-    return Math.max(0, productPrice - destBranchCommission);
+    const p = Number(productPrice) || 0;
+    const c = Number(destBranchCommission) || 0;
+    return Math.max(0, p - c);
   }, [productPrice, destBranchCommission]);
 
   if (!isOpen || !shipment) return null;
@@ -154,7 +160,7 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
       return;
     }
 
-    if (productPrice < 0) {
+    if (Number(productPrice) < 0) {
       setErrorMsg(t('invalid_product_price') || 'Product price cannot be negative.');
       return;
     }
@@ -173,10 +179,10 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
     setErrorMsg('');
 
     const input: AdminEditShipmentInput = {
-      productPrice,
-      serviceFee,
-      destBranchCommission,
-      discountAmount,
+      productPrice: Number(productPrice) || 0,
+      serviceFee: Number(serviceFee) || 0,
+      destBranchCommission: Number(destBranchCommission) || 0,
+      discountAmount: Number(discountAmount) || 0,
       paymentStatus,
       paymentMethod,
       weightKg,
@@ -357,7 +363,7 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
                     step="1"
                     disabled={!isSuperAdmin}
                     value={productPrice}
-                    onChange={(e) => setProductPrice(Math.max(0, Number(e.target.value) || 0))}
+                    onChange={(e) => setProductPrice(e.target.value === "" ? "" : Math.max(0, Number(e.target.value)))}
                     className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                     required
                   />
@@ -378,7 +384,7 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
                     step="1"
                     disabled={!isSuperAdmin}
                     value={serviceFee}
-                    onChange={(e) => setServiceFee(Math.max(0, Number(e.target.value) || 0))}
+                    onChange={(e) => setServiceFee(e.target.value === "" ? "" : Math.max(0, Number(e.target.value)))}
                     className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   />
                   <span className="absolute inset-y-0 right-3 flex items-center text-xs font-bold text-slate-400">
@@ -398,7 +404,7 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
                     step="1"
                     disabled={!isSuperAdmin}
                     value={destBranchCommission}
-                    onChange={(e) => setDestBranchCommission(Math.max(0, Number(e.target.value) || 0))}
+                    onChange={(e) => setDestBranchCommission(e.target.value === "" ? "" : Math.max(0, Number(e.target.value)))}
                     className="w-full px-3 py-2 text-sm font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   />
                   <span className="absolute inset-y-0 right-3 flex items-center text-xs font-bold text-slate-400">
@@ -418,7 +424,7 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
                     step="1"
                     disabled={!isSuperAdmin}
                     value={discountAmount}
-                    onChange={(e) => setDiscountAmount(Math.max(0, Number(e.target.value) || 0))}
+                    onChange={(e) => setDiscountAmount(e.target.value === "" ? "" : Math.max(0, Number(e.target.value)))}
                     className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   />
                   <span className="absolute inset-y-0 right-3 flex items-center text-xs font-bold text-slate-400">

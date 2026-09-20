@@ -38,6 +38,7 @@ import {
   PhoneOff,
   MessageSquareWarning,
   Edit3,
+  Trash2,
   Truck,
   CheckSquare
 } from 'lucide-react';
@@ -78,6 +79,7 @@ export const ParcelInventory: React.FC = () => {
     settleInterBranchRemittance,
     createSingleParcelRemittance,
     submitParcelForCollection,
+    deleteShipment,
     syncWithDatabase,
     isSyncing,
     showToast
@@ -193,6 +195,10 @@ export const ParcelInventory: React.FC = () => {
   // Admin Edit Parcel Modal state
   const [editModalShipment, setEditModalShipment] = useState<Shipment | null>(null);
 
+  // Delete Confirmation state
+  const [deleteConfirmShipment, setDeleteConfirmShipment] = useState<Shipment | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Checkbox selection state
   const [selectedParcelIds, setSelectedParcelIds] = useState<Set<string>>(new Set());
 
@@ -211,6 +217,19 @@ export const ParcelInventory: React.FC = () => {
       setSelectedParcelIds(new Set());
     } else {
       setSelectedParcelIds(new Set(processedParcels.map(p => p.id)));
+    }
+  };
+
+  const handleDeleteShipment = async () => {
+    if (!deleteConfirmShipment) return;
+    setIsDeleting(true);
+    try {
+      const success = await deleteShipment(deleteConfirmShipment.id);
+      if (success) {
+        setDeleteConfirmShipment(null);
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1049,6 +1068,15 @@ export const ParcelInventory: React.FC = () => {
                               title={t('btn_edit_parcel') || 'Edit Parcel (Super Admin)'}
                             >
                               <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {currentUser.role === 'super_admin' && (
+                            <button
+                              onClick={() => setDeleteConfirmShipment(s)}
+                              className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 transition-colors cursor-pointer"
+                              title={t('btn_delete_parcel') || 'Delete Parcel (Permanent)'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                           <button
@@ -2117,6 +2145,58 @@ export const ParcelInventory: React.FC = () => {
         isOpen={!!editModalShipment}
         onClose={() => setEditModalShipment(null)}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmShipment && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-in fade-in zoom-in-95 space-y-6">
+            <div className="flex items-center gap-4 text-red-600">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg">{t('confirm_delete_title', 'Delete Parcel Permanently?')}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  This action cannot be undone. All records for waybill <span className="font-mono font-bold text-red-600">{deleteConfirmShipment.cnNumber}</span> will be permanently erased.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Sender:</span>
+                <span className="font-bold">{deleteConfirmShipment.sender.name}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Receiver:</span>
+                <span className="font-bold">{deleteConfirmShipment.receiver.name}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500">Booked Date:</span>
+                <span className="font-bold">{new Date(deleteConfirmShipment.bookedAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteShipment}
+                disabled={isDeleting}
+                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-lg shadow-red-600/20 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                <span>{t('btn_confirm_delete', 'Yes, Delete Permanently')}</span>
+              </button>
+              <button
+                onClick={() => setDeleteConfirmShipment(null)}
+                disabled={isDeleting}
+                className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {t('btn_cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

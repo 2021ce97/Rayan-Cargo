@@ -326,6 +326,27 @@ export async function directSupabaseWipeDummyData(): Promise<{ success: boolean;
 }
 
 /**
+ * Delete a single shipment from Supabase
+ */
+export async function directSupabaseDeleteShipment(shipmentId: string): Promise<{ success: boolean; error?: any }> {
+  const client = getSupabase();
+  if (!client) return { success: false, error: 'Supabase client not initialized' };
+
+  try {
+    const { error } = await client
+      .from('shipments')
+      .delete()
+      .eq('id', shipmentId);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error deleting shipment from Supabase:', err);
+    return { success: false, error: err };
+  }
+}
+
+/**
  * Fetch all records directly from Supabase tables
  */
 export async function directSupabaseFetchAll(): Promise<{

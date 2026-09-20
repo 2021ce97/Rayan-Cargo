@@ -730,7 +730,7 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
     doc.setTextColor(225, 29, 72);
-    doc.text('1. SENDER BRANCH PHONE:', margin + 3, y + 3.8);
+    doc.text('1. BRANCH CONTACT:', margin + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
@@ -1007,7 +1007,7 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     statY += 4.5;
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('2. Service & Handling Fee (فیس خدمات کسر شده):', margin + 3, statY);
+    doc.text('2. Service & Handling Fee (هزینه ارسال کسر شده):', margin + 3, statY);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(225, 29, 72);
     doc.text(`-${serviceFeeVal.toLocaleString()} AFN`, margin + 65, statY);
@@ -1089,7 +1089,7 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
     doc.setTextColor(225, 29, 72);
-    doc.text('1. SENDER BRANCH PHONE:', margin + 3, y + 3.8);
+    doc.text('1. BRANCH CONTACT:', margin + 3, y + 3.8);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);

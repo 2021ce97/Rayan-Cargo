@@ -368,7 +368,7 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="text-[9px] font-black text-slate-900 uppercase">{l('SELLER PAYOUT (AFTER DEDUCTIONS)', 'پرداختی فروشنده (بعد از وضع مصارف)')}</div>
                     <div className="text-[18px] font-black text-emerald-600 mt-0.5">{payoutVal.toLocaleString()} AFN</div>
                     <div className="text-[8.5px] font-bold text-slate-500 mt-1">
-                      {l(`Item: ${priceVal} | Fee: ${sFeeVal} | Comm: ${dCommVal}`, `قیمت: ${priceVal} | محصول: ${sFeeVal} | کمیشن: ${dCommVal}`)}
+                      {l(`Item: ${priceVal} | Fee: ${sFeeVal} | Comm: ${dCommVal}${discountVal > 0 ? ` | Disc: ${discountVal}` : ''}`, `قیمت: ${priceVal} | هزینه ارسال: ${sFeeVal} | کمیشن: ${dCommVal}${discountVal > 0 ? ` | تخفیف: ${discountVal}` : ''}`)}
                     </div>
                   </>
                 )}
@@ -383,7 +383,7 @@ export const PrintReceiptModal: React.FC = () => {
                 </div>
                 <div className="pt-1 border-t border-black/10">
                   <div className="text-[8.5px] font-black leading-tight">
-                    {l('Helplines: +93 79 900 1122 | Complaints: 0711299680', 'شماره تماس: 0799001122 | شکایات: 0711299680')}
+                    {l(`Branch contact: ${originBranch?.phone || 'Origin Hub'} | Complaints: 0711299680`, `تماس نمایندگی: ${originBranch?.phone || 'Origin Hub'} | شکایات: 0711299680`)}
                   </div>
                   <div className="text-[8.5px] font-black leading-tight">
                     {l('Main Kabul: 0774144004', 'مرکز کابل: 0774144004')}
@@ -483,7 +483,7 @@ export const PrintReceiptModal: React.FC = () => {
                 </div>
                 <div className="pt-1 border-t border-black/10">
                   <div className="text-[7.5px] font-black leading-tight">
-                    {l('Helplines: +93 79 900 1122 | complaints: 0711299680', 'تماس: 0799001122 | شکایات: 0711299680')}
+                    {l(`Branch contact: ${originBranch?.phone || 'Origin Hub'} | complaints: 0711299680`, `تماس نمایندگی: ${originBranch?.phone || 'Origin Hub'} | شکایات: 0711299680`)}
                   </div>
                 </div>
               </div>
@@ -707,7 +707,7 @@ export const PrintReceiptModal: React.FC = () => {
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200 mt-2">
                     <div className="text-[9px] text-slate-500 font-medium">
                       <p>{l('Kabul HQ: 0774144004 | Support: 0711299680', 'مرکز کابل: 0774144004 | شکایات: 0711299680')}</p>
-                      <p>{l('Helplines: +93 79 900 1122', 'شماره تماس: +93 79 900 1122')}</p>
+                      <p>{l(`Branch contact: ${originBranch?.phone || 'Origin Hub'}`, `تماس نمایندگی: ${originBranch?.phone || 'Origin Hub'}`)}</p>
                     </div>
                     <div className="text-[8px] font-bold text-slate-400 text-end">
                       OFFICIAL<br/>RECEIPT

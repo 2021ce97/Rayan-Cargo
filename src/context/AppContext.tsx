@@ -34,7 +34,8 @@ import {
   directSupabaseUpdateShipmentStatus,
   directSupabaseInsertExpense,
   directSupabaseInsertSettlement,
-  directSupabaseWipeDummyData
+  directSupabaseWipeDummyData,
+  directSupabaseDeleteShipment
 } from '../lib/supabase';
 
 export interface AddBranchInput {
@@ -130,6 +131,7 @@ interface AppContextType {
   }) => boolean;
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
   adminEditShipment: (shipmentId: string, input: AdminEditShipmentInput) => Promise<boolean>;
+  deleteShipment: (shipmentId: string) => Promise<boolean>;
   submitParcelForCollection: (shipmentId: string, reference?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
   reportDeliveryIssue: (shipmentId: string, issueType: string, customNote?: string) => boolean;
@@ -2367,6 +2369,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
+  const deleteShipment = async (shipmentId: string): Promise<boolean> => {
+    if (currentUser.role !== 'super_admin') {
+      showToast(t('unauthorized_admin_only') || 'Unauthorized: Only Super Admin can delete parcels.', 'error');
+      return false;
+    }
+
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) {
+      showToast('Shipment not found in records', 'error');
+      return false;
+    }
+
+    // Update state immediately
+    setShipments(prev => prev.filter(s => s.id !== target.id && s.cnNumber !== target.cnNumber));
+    
+    // Supabase Sync
+    if (isSupabaseReady()) {
+      await directSupabaseDeleteShipment(target.id);
+    }
+
+    // Try to notify backend if it exists
+    try {
+      await fetch(`/api/shipments/${target.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userRole: currentUser.role,
+          userName: currentUser.name
+        })
+      });
+    } catch (err) {
+      // Ignored
+    }
+
+    showToast(`${t('parcel_deleted_toast', 'Parcel Deleted Successfully')}: ${target.cnNumber}`, 'success');
+    return true;
+  };
+
   const submitParcelForCollection = (shipmentId: string, reference?: string): boolean => {
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) return false;
@@ -2739,6 +2779,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createCustomerPreBooking,
         confirmCustomerPreBooking,
         adminEditShipment,
+        deleteShipment,
         settleInterBranchRemittance,
         submitParcelForCollection,
         updateShipmentStatus,

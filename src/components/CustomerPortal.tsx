@@ -71,9 +71,9 @@ export const CustomerPortal: React.FC = () => {
   const [receiverProvince, setReceiverProvince] = useState('Herat');
 
   const [category, setCategory] = useState<ParcelCategory>('general');
-  const [estimatedWeightKg, setEstimatedWeightKg] = useState<number>(5);
-  const [pieces, setPieces] = useState<number>(1);
-  const [productPriceAfn, setProductPriceAfn] = useState<number>(3000);
+  const [estimatedWeightKg, setEstimatedWeightKg] = useState<number | "">("");
+  const [pieces, setPieces] = useState<number | "">("");
+  const [productPriceAfn, setProductPriceAfn] = useState<number | "">("");
   const [description, setDescription] = useState('');
   const [isFragile, setIsFragile] = useState(false);
   const [paymentPreference, setPaymentPreference] = useState<'pay_at_branch' | 'pay_on_delivery'>('pay_at_branch');
@@ -711,7 +711,7 @@ export const CustomerPortal: React.FC = () => {
                   step="0.5"
                   required
                   value={estimatedWeightKg}
-                  onChange={(e) => setEstimatedWeightKg(parseFloat(e.target.value) || 1)}
+                  onChange={(e) => setEstimatedWeightKg(e.target.value === "" ? "" : parseFloat(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                 />
               </div>
@@ -723,7 +723,7 @@ export const CustomerPortal: React.FC = () => {
                   min="1"
                   required
                   value={pieces}
-                  onChange={(e) => setPieces(parseInt(e.target.value) || 1)}
+                  onChange={(e) => setPieces(e.target.value === "" ? "" : parseInt(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                 />
               </div>
@@ -734,7 +734,7 @@ export const CustomerPortal: React.FC = () => {
                   type="number"
                   min="0"
                   value={productPriceAfn}
-                  onChange={(e) => setProductPriceAfn(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setProductPriceAfn(e.target.value === "" ? "" : parseFloat(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
                 />
               </div>
