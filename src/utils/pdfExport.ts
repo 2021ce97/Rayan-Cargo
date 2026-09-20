@@ -111,6 +111,9 @@ export function printElementUsingIframe(
       }
     }
 
+    // Capture the direction of the element or document
+    const elementDir = element.getAttribute('dir') || document.documentElement.dir || 'ltr';
+
     // Remove any existing print iframes
     const oldIframe = document.getElementById(PRINT_IFRAME_ID);
     if (oldIframe) {
@@ -153,9 +156,16 @@ export function printElementUsingIframe(
     const htmlContent = element.outerHTML;
     
     // Grab all styles from the current document so Tailwind works inside the iframe
-    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    // We combine captured styles from the DOM with a fallback to the Tailwind CDN and Google Fonts.
+    const capturedStyles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
       .map(node => node.outerHTML)
       .join('\n');
+
+    const styles = [
+      '<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet">',
+      '<script src="https://cdn.tailwindcss.com"></script>',
+      capturedStyles
+    ].join('\n');
 
     // A concrete height avoids the printer driver's short-page fallback and
     // produces one continuous 80mm receipt.
@@ -172,10 +182,11 @@ export function printElementUsingIframe(
     doc.open();
     doc.write(`
       <!DOCTYPE html>
-      <html>
+      <html dir="${elementDir}">
         <head>
           <title>${title}</title>
           <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
           ${styles}
           <style>
             @page {
@@ -186,12 +197,15 @@ export function printElementUsingIframe(
               box-sizing: border-box !important;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
+              color-adjust: exact !important;
             }
             html, body {
               background: #ffffff !important;
               color: #000000 !important;
               margin: 0 !important;
               padding: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
               ${is4x6 ? `
                 width: 96mm !important;
                 max-width: 96mm !important;
@@ -212,6 +226,29 @@ export function printElementUsingIframe(
                 padding: 4px;
               `}
             }
+            /* Explicit styles for containers inside the iframe */
+            .thermal-receipt-container {
+              width: 72mm !important;
+              max-width: 72mm !important;
+              min-width: 72mm !important;
+              margin: 0 auto !important;
+              padding: 1.5mm 1mm 4mm 1mm !important;
+              box-sizing: border-box !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+            }
+            .thermal-label-container {
+              width: 80mm !important;
+              height: 80mm !important;
+              max-width: 80mm !important;
+              max-height: 80mm !important;
+              margin: 0 auto !important;
+              padding: 2.5mm 3mm !important;
+              box-sizing: border-box !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+            }
+
             @media print {
               @page {
                 ${pageSizeCss}
@@ -320,7 +357,8 @@ export function printElementUsingIframe(
     // Trigger printing only after the isolated document has finished laying out.
     void waitForPrintDocument(doc).then(async () => {
       try {
-        await new Promise(r => setTimeout(r, 150));
+        // Wait longer for full rendering and font loading
+        await new Promise(r => setTimeout(r, 300));
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
       } catch (err) {

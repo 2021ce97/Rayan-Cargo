@@ -288,6 +288,7 @@ export const PrintReceiptModal: React.FC = () => {
             </div>
             
             <div 
+              id="printable-receipt"
               ref={thermal80mmRef} 
               className="thermal-receipt-container bg-white text-black font-sans text-xs leading-normal space-y-1 mx-auto shadow-xl select-text print:shadow-none print:border-none p-1"
               style={{ 
@@ -419,6 +420,7 @@ export const PrintReceiptModal: React.FC = () => {
             </div>
             
             <div 
+              id="printable-label"
               ref={thermal80x80Ref} 
               className="thermal-label-container bg-white text-black font-sans text-xs mx-auto shadow-xl select-text overflow-hidden relative print:shadow-none print:border-none"
               style={{ 
