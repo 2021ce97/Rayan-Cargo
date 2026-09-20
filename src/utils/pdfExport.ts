@@ -714,8 +714,15 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.text('Track live online using Consignment Note (CN #).', margin + 85, y + 4.5);
-    const senderHubPhone = originBranch?.phone ? originBranch.phone : 'Hub Contact';
-    doc.text(`Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 85, y + 8.5);
+    const formatPh = (p: string) => {
+      if (!p) return '';
+      const d = p.replace(/\D/g, '');
+      if (d.startsWith('93')) return '0' + d.substring(2);
+      if (d.startsWith('7') && d.length === 9) return '0' + d;
+      return p;
+    };
+    const bPhone = originBranch?.phone ? formatPh(originBranch.phone) : '07XXXXXXXX';
+    doc.text(`Sender Hub: ${bPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 85, y + 8.5);
 
     y += 14;
 
@@ -734,7 +741,7 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
-    const originContactStr = originBranch?.phone ? `${originBranch.phone} (${originBranch.city})` : 'Registered at Origin Hub';
+    const originContactStr = `${bPhone} (${originBranch?.city || 'Origin Hub'})`;
     doc.text(originContactStr, margin + 3, y + 8.2);
 
     doc.setFont('helvetica', 'bold');
@@ -1073,8 +1080,15 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.text('Seller portal tracking & payment status available.', margin + 85, y + 4.5);
-    const senderHubPhone = originBranch?.phone ? originBranch.phone : 'Hub Contact';
-    doc.text(`Sender Hub: ${senderHubPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 85, y + 8.5);
+    const formatPh = (p: string) => {
+      if (!p) return '';
+      const d = p.replace(/\D/g, '');
+      if (d.startsWith('93')) return '0' + d.substring(2);
+      if (d.startsWith('7') && d.length === 9) return '0' + d;
+      return p;
+    };
+    const bPhone = originBranch?.phone ? formatPh(originBranch.phone) : '07XXXXXXXX';
+    doc.text(`Sender Hub: ${bPhone} | Complaints: 0711299680 | Main HQ: 0774144004`, margin + 85, y + 8.5);
 
     y += 14;
 
@@ -1093,7 +1107,7 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
-    const originContactStr = originBranch?.phone ? `${originBranch.phone} (${originBranch.city})` : 'Registered at Origin Hub';
+    const originContactStr = `${bPhone} (${originBranch?.city || 'Origin Hub'})`;
     doc.text(originContactStr, margin + 3, y + 8.2);
 
     doc.setFont('helvetica', 'bold');
@@ -2311,12 +2325,20 @@ export function generateThermalLabelPdf(
       doc.line(margin, y, margin + contentWidth, y);
       doc.setLineDashPattern([], 0);
 
+      const formatPh = (p: string) => {
+        if (!p) return '';
+        const d = p.replace(/\D/g, '');
+        if (d.startsWith('93')) return '0' + d.substring(2);
+        if (d.startsWith('7') && d.length === 9) return '0' + d;
+        return p;
+      };
+      const bPhone = originBranch?.phone ? formatPh(originBranch.phone) : '07XXXXXXXX';
       y += 4;
       doc.setTextColor(0, 0, 0);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.text('Helplines: +93 79 900 1122 | Complaints: 0711299680', margin + contentWidth / 2, y, { align: 'center' });
-      doc.text('Main Kabul: 0774144004', margin + contentWidth / 2, y + 4.5, { align: 'center' });
+      doc.setFontSize(8);
+      doc.text(`Branch contact: ${bPhone} | Complaints: 0711299680`, margin + contentWidth / 2, y, { align: 'center' });
+      doc.text('Main Kabul HQ: 0774144004', margin + contentWidth / 2, y + 4.5, { align: 'center' });
       
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6);
