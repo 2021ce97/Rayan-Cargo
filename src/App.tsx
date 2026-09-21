@@ -18,6 +18,7 @@ import { PrintReceiptModal } from './components/PrintReceiptModal';
 import { LoginPage } from './components/LoginPage';
 import { ToastContainer } from './components/ToastContainer';
 import { PrintQueueFAB } from './components/PrintQueueFAB';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -147,6 +148,9 @@ const MainLayout: React.FC = () => {
 
       {/* Offline Print Queue FAB */}
       <PrintQueueFAB />
+
+      {/* Mobile Bottom Navigation Dock (sm/md screens) */}
+      <MobileBottomNav />
 
     </div>
   );

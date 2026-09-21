@@ -1768,13 +1768,14 @@ export const ParcelInventory: React.FC = () => {
                     >
                       {updatePerm.allowedStatuses.map(st => (
                         <option key={st} value={st}>
-                          {st === 'in_transit' && `➔ In Transit (Dispatch to Highway Carrier)`}
-                          {st === 'received_at_branch' && `✓ Received at Destination Hub Terminal`}
-                          {st === 'out_for_delivery' && `🚚 Out for Final Delivery to Consignee`}
-                          {st === 'delivered' && `★ Delivered & Handed Over to Client`}
-                          {st === 'booked' && `Booked at Origin`}
-                          {st === 'returned' && `Returned to Origin`}
-                          {st === 'cancelled' && `Cancelled`}
+                          {st === 'booked' && `📦 Booked at Origin (ثبت در مبدا)`}
+                          {st === 'in_transit' && `➔ In Transit (Dispatch to Carrier / در حال انتقال)`}
+                          {st === 'received_at_branch' && `✓ Received at Destination Hub (رسید به شعبه مقصد)`}
+                          {st === 'out_for_delivery' && `🚚 Out for Final Delivery (توزیع به گیرنده)`}
+                          {st === 'delivered' && `★ Delivered & Handed Over (تحویل داده شده)`}
+                          {st === 'verified' && `✓ Verified at Origin (تایید شده)`}
+                          {st === 'returned' && `↩ Returned to Origin (برگشت داده شده)`}
+                          {st === 'cancelled' && `✗ Cancelled (لغو شده)`}
                         </option>
                       ))}
                     </select>

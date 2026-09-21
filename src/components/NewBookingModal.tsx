@@ -22,7 +22,8 @@ import {
   ServiceType, 
   PaymentMethod, 
   PaymentStatus,
-  Shipment 
+  Shipment,
+  ShipmentStatus 
 } from '../types';
 import confetti from 'canvas-confetti';
 
@@ -125,6 +126,7 @@ export const NewBookingModal: React.FC = () => {
   const [description, setDescription] = useState<string>('');
   const [serviceType, setServiceType] = useState<ServiceType>('express');
   const [isFragile, setIsFragile] = useState<boolean>(false);
+  const [initialStatus, setInitialStatus] = useState<ShipmentStatus>('booked');
 
   // Billing & Discounts (Product COD Model)
   const [productPriceAfn, setProductPriceAfn] = useState<number | "">("");
@@ -233,6 +235,7 @@ export const NewBookingModal: React.FC = () => {
     setServiceFee("");
     setDestCommission("");
     setDiscountAmount("");
+    setInitialStatus('booked');
   };
 
   const handleSubmit = (andPrint: boolean) => {
@@ -297,7 +300,7 @@ export const NewBookingModal: React.FC = () => {
       bookedByUserId: currentUser.id,
       bookedByUserName: currentUser.name,
       estimatedDelivery: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      status: 'booked'
+      status: initialStatus
     });
 
     try {
@@ -483,6 +486,51 @@ export const NewBookingModal: React.FC = () => {
               </div>
               <div className="font-bold text-red-700">
                 {getLocalizedBranchName(destBranchObj)}
+              </div>
+            </div>
+
+            {/* Initial Consignment Status (Origin Branch Authority) */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                  <span>{t('booking_status_lbl') || 'Consignment Status on Booking'}</span>
+                </label>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-100 text-red-700">
+                  {t('origin_branch_authority') || 'Origin Branch Control'}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInitialStatus('booked')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
+                    initialStatus === 'booked'
+                      ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-600/20'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="text-lg">📦</span>
+                  <div className="text-start">
+                    <div className="leading-tight">1. Booked (ثبت شده)</div>
+                    <div className="text-[10px] opacity-80 font-normal">Held at origin branch hub</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInitialStatus('in_transit')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer ${
+                    initialStatus === 'in_transit'
+                      ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-600/20'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="text-lg">🚚</span>
+                  <div className="text-start">
+                    <div className="leading-tight">2. In Transit (در حال انتقال)</div>
+                    <div className="text-[10px] opacity-80 font-normal">Dispatched to highway transport</div>
+                  </div>
+                </button>
               </div>
             </div>
           </div>

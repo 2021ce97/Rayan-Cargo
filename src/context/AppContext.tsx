@@ -2488,9 +2488,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const isOrigin = isUserOriginBranch(shipment.originBranchId);
     const isDestination = isUserDestBranch(shipment.destinationBranchId);
-    const isCurrent = (currentUser.branchId && shipment.currentBranchId === currentUser.branchId) || (activeBranchId && shipment.currentBranchId === activeBranchId);
 
-    if (!isOrigin && !isDestination && !isCurrent) {
+    if (!isOrigin && !isDestination) {
       return {
         allowed: false,
         canUpdate: false,
@@ -2500,11 +2499,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
 
-    // Permission logic for Origin and Destination branches
+    // Permission logic strictly adhering to the workflow:
+    // Origin branch: Allowed to change status of the order to "booked" and "in_transit"
+    // Receiver branch: Allowed to change the subsequent statuses: "received_at_branch", "out_for_delivery", "delivered", "returned", "cancelled"
     let allowedStatuses: ShipmentStatus[] = [];
     
-    if (isOrigin || isCurrent) {
-      allowedStatuses.push('booked', 'in_transit');
+    if (isOrigin) {
+      if (shipment.status === 'pre_booked') {
+        allowedStatuses.push('verified', 'booked', 'in_transit');
+      } else {
+        allowedStatuses.push('booked', 'in_transit');
+      }
     }
     
     if (isDestination) {
@@ -2539,6 +2544,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const transportFee = shipmentData.transportationFee || 150;
     const commission = shipmentData.destBranchCommission || 120;
     const remittance = shipmentData.originRemittanceDue || (shipmentData.financials.totalAmount - commission);
+    const initialStatus: ShipmentStatus = shipmentData.status || 'booked';
 
     const newShipment: Shipment = {
       ...shipmentData,
@@ -2549,15 +2555,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       originRemittanceDue: remittance,
       remittanceStatus: 'pending',
       bookedAt: now,
-      status: 'booked',
+      status: initialStatus,
       statusHistory: [
         {
           id: `st_${Date.now()}`,
-          status: 'booked',
+          status: initialStatus,
           location: originBranch ? `${originBranch.name} (${originBranch.city})` : 'Origin Branch',
           branchName: originBranch ? originBranch.name : 'Origin Hub',
           timestamp: now,
-          note: `Shipment registered by ${currentUser.name}. Payment status: ${shipmentData.financials.paymentStatus}.`,
+          note: `Shipment registered as ${initialStatus.replace(/_/g, ' ')} by ${currentUser.name}. Payment status: ${shipmentData.financials.paymentStatus}.`,
           updatedBy: currentUser.name
         }
       ]
