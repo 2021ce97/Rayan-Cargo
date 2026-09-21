@@ -23,8 +23,11 @@ import {
   Cell, 
   BarChart, 
   Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
+  CartesianGrid,
   Tooltip
 } from 'recharts';
 import { Branch } from '../types';
@@ -194,6 +197,52 @@ export const Dashboard: React.FC = () => {
     };
   });
 
+  // Last 30 days parcel transit trends (Dispatched vs Delivered)
+  const transitTrendsData = useMemo(() => {
+    const daysMap = new Map<string, { dateStr: string; label: string; dispatched: number; delivered: number }>();
+    const now = new Date();
+    
+    // Initialize last 30 days
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const label = d.toLocaleDateString(language === 'fa' ? 'fa-IR' : language === 'ps' ? 'ps-AF' : 'en-GB', { month: 'short', day: 'numeric' });
+      daysMap.set(dateStr, { dateStr, label, dispatched: 0, delivered: 0 });
+    }
+
+    shipments.forEach(s => {
+      if (!isSuperAdmin && s.originBranchId !== currentUser.branchId && s.destinationBranchId !== currentUser.branchId && s.currentBranchId !== currentUser.branchId) return;
+
+      // Dispatched date (bookedAt)
+      if (s.bookedAt) {
+        const bDate = new Date(s.bookedAt).toISOString().split('T')[0];
+        if (daysMap.has(bDate)) {
+          daysMap.get(bDate)!.dispatched += 1;
+        }
+      }
+
+      // Delivered date
+      if (s.statusHistory && Array.isArray(s.statusHistory)) {
+        s.statusHistory.forEach(h => {
+          if (h.status === 'delivered' && h.timestamp) {
+            const dDate = new Date(h.timestamp).toISOString().split('T')[0];
+            if (daysMap.has(dDate)) {
+              daysMap.get(dDate)!.delivered += 1;
+            }
+          }
+        });
+      } else if (s.status === 'delivered' && s.bookedAt) {
+        const dDate = new Date(s.bookedAt).toISOString().split('T')[0];
+        if (daysMap.has(dDate)) {
+          daysMap.get(dDate)!.delivered += 1;
+        }
+      }
+    });
+
+    return Array.from(daysMap.values());
+  }, [shipments, isSuperAdmin, currentUser.branchId, language]);
+
   return (
     <div className="space-y-6 pb-12 font-sans" id="dashboard-root">
       
@@ -312,6 +361,59 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Real-Time Parcel Transit Trends (Last 30 Days) */}
+      <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4" id="transit-trends-section">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-red-600" />
+              <h2 className="text-base font-bold text-slate-900">
+                {language === 'fa' ? 'روند لحظه‌ای ترانزیت بسته‌ها (۳۰ روز گذشته)' : language === 'ps' ? 'د بارونو د ترانزیت او لیږد سیر (تیر ۳۰ ورځې)' : 'Real-Time Parcel Transit Trends (Last 30 Days)'}
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {language === 'fa' ? 'مقایسه تعداد بسته‌های ثبت/اعزام شده در برابر بسته‌های تحویل داده شده به گیرندگان' : 'Comparing daily volume of dispatched vs. successfully delivered consignments'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-bold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-red-50 text-red-700 border border-red-200">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+              <span>{language === 'fa' ? 'اعزام شده / ثبت' : 'Dispatched / Booked'}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+              <span>{language === 'fa' ? 'تحویل شده' : 'Delivered'}</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="h-72 w-full pt-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={transitTrendsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorDispatched" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#dc2626" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorDelivered" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} />
+              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
+                itemStyle={{ color: '#fff' }}
+              />
+              <Area type="monotone" dataKey="dispatched" name={language === 'fa' ? 'اعزام شده' : 'Dispatched'} stroke="#dc2626" strokeWidth={2.5} fillOpacity={1} fill="url(#colorDispatched)" />
+              <Area type="monotone" dataKey="delivered" name={language === 'fa' ? 'تحویل شده' : 'Delivered'} stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorDelivered)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
       {/* Recent Cargo Consignments Table (Full Width Focus) */}
       <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
