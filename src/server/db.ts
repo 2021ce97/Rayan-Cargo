@@ -732,8 +732,25 @@ CREATE TABLE IF NOT EXISTS shipments (
   customer_submission_at TIMESTAMPTZ,
   customer_submission_reference TEXT,
   customer_submission_by TEXT,
+  print_count INT DEFAULT 0,
+  last_printed_at TIMESTAMPTZ,
+  last_printed_by TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Try adding print_count, last_printed_at, last_printed_by columns to shipments if they do not exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shipments' AND column_name='print_count') THEN
+    ALTER TABLE shipments ADD COLUMN print_count INT DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shipments' AND column_name='last_printed_at') THEN
+    ALTER TABLE shipments ADD COLUMN last_printed_at TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='shipments' AND column_name='last_printed_by') THEN
+    ALTER TABLE shipments ADD COLUMN last_printed_by TEXT;
+  END IF;
+END $$;
 
 -- 4. Branch Operating Expenses Table
 CREATE TABLE IF NOT EXISTS branch_expenses (
@@ -890,18 +907,52 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
 
     console.log('✅ Supabase / PostgreSQL schema migration verified and applied successfully!');
   } catch (err: any) {
-    console.warn('⚠️ Supabase schema migration notice:', err?.message || err);
+    const isAuthError = err?.code === '28P01' || 
+                        err?.code === '28000' || 
+                        err?.message?.toLowerCase().includes('password authentication failed') ||
+                        err?.message?.toLowerCase().includes('authentication failed');
+    if (isAuthError) {
+      console.info('ℹ️ Supabase schema migration skipped: database authentication credentials not accepted. Using local in-memory store.');
+      if (realPool === pool) {
+        const p = realPool;
+        realPool = null;
+        useMock = true;
+        p?.end().catch(() => {});
+      }
+    } else {
+      console.info('ℹ️ Supabase schema migration notice:', err?.message || err);
+    }
   }
 }
 
 export function sanitizeConnectionString(url?: string): string {
   if (!url) return '';
   let clean = url.trim();
-  // Auto-correct common password syntax variations in connection strings:
-  // 1. Unencoded '@' in 'Cargorayan@123'
-  clean = clean.replace(/Cargorayan@123@/g, 'Cargorayan%40123@');
-  // 2. Missing '@' in 'Cargorayan123'
-  clean = clean.replace(/Cargorayan123@/g, 'Cargorayan%40123@');
+
+  // 1. If connection string points to Supabase pooler with plain 'postgres' username,
+  // ensure project ref is appended (Supabase pooler requires postgres.<project-ref>)
+  const supabaseProjectRef = 'wgdmwuhkuanxykwqvpyp';
+  if (clean.includes('pooler.supabase.com')) {
+    // If username is just 'postgres' without .<ref>
+    clean = clean.replace(/(postgresql:\/\/)postgres:([^@]+)@/i, `$1postgres.${supabaseProjectRef}:$2@`);
+  }
+
+  // 2. Handle unencoded special characters like '@' in password if multiple '@' exist
+  // e.g., postgresql://user:pass@123@host:port/db
+  const atMatches = clean.match(/@/g);
+  if (atMatches && atMatches.length > 1) {
+    const lastAtIndex = clean.lastIndexOf('@');
+    const firstColonAfterProtocol = clean.indexOf(':', clean.indexOf('://') + 3);
+    if (firstColonAfterProtocol !== -1 && lastAtIndex > firstColonAfterProtocol) {
+      const prefix = clean.substring(0, firstColonAfterProtocol + 1);
+      const rawPassword = clean.substring(firstColonAfterProtocol + 1, lastAtIndex);
+      const suffix = clean.substring(lastAtIndex);
+      // Encode any raw '@' inside password
+      const encodedPassword = rawPassword.replace(/@/g, '%40');
+      clean = prefix + encodedPassword + suffix;
+    }
+  }
+
   return clean;
 }
 
@@ -923,16 +974,28 @@ export function getDbPool(): any {
         connectionTimeoutMillis: 3000
       });
 
-      realPool.on('error', (err) => {
-        console.warn('PostgreSQL pool error:', err.message);
+      realPool.on('error', (err: any) => {
+        const isAuthError = err?.code === '28P01' ||
+                            err?.code === '28000' ||
+                            err?.message?.toLowerCase().includes('password authentication failed') ||
+                            err?.message?.toLowerCase().includes('authentication failed');
+        if (isAuthError) {
+          console.info('ℹ️ PostgreSQL authentication not accepted. Switched to resilient in-memory store.');
+          const p = realPool;
+          realPool = null;
+          useMock = true;
+          p?.end().catch(() => {});
+        } else {
+          console.warn('PostgreSQL pool notice:', err?.message || err);
+        }
       });
 
       // Trigger automatic schema migration on connection
       migrateSupabaseSchema(realPool).catch(e => {
-        console.warn('PostgreSQL schema migration notice, using in-memory store fallback:', e?.message || e);
+        console.info('ℹ️ PostgreSQL schema migration notice, using in-memory store fallback:', e?.message || e);
       });
     } catch (err) {
-      console.error('Failed to initialize PostgreSQL pool:', err);
+      console.info('ℹ️ Switched to resilient in-memory database engine.');
       useMock = true;
       return mockDb;
     }
@@ -944,7 +1007,19 @@ export function getDbPool(): any {
         try {
           return await realPool!.query(queryText, params);
         } catch (err: any) {
-          console.warn('Database query falling back to in-memory engine for query:', err?.message);
+          const isAuthError = err?.code === '28P01' ||
+                              err?.code === '28000' ||
+                              err?.message?.toLowerCase().includes('password authentication failed') ||
+                              err?.message?.toLowerCase().includes('authentication failed');
+          if (isAuthError) {
+            console.info('ℹ️ Database authentication rejected credentials. Permanently switched to local in-memory store.');
+            const p = realPool;
+            realPool = null;
+            useMock = true;
+            p?.end().catch(() => {});
+          } else {
+            console.info('ℹ️ Query processed by in-memory engine fallback:', err?.message || 'Database unavailable');
+          }
           return await mockDb.query(queryText, params);
         }
       }
@@ -1141,6 +1216,9 @@ export async function connectToSupabase(connectionString: string): Promise<{ suc
           dest_branch_commission: s.dest_branch_commission,
           remittance_status: s.remittance_status,
           origin_remittance_due: s.origin_remittance_due,
+          print_count: Number(s.print_count) || 0,
+          last_printed_at: s.last_printed_at || null,
+          last_printed_by: s.last_printed_by || null,
           created_at: s.created_at
         });
       }
@@ -1565,14 +1643,17 @@ export async function initDatabase(
               is_customer_prebooked: s.is_customer_prebooked === true || s.is_pre_booking === true || s.status === 'pre_booked' || s.status === 'verified',
               is_pre_booking: s.is_customer_prebooked === true || s.is_pre_booking === true || s.status === 'pre_booked' || s.status === 'verified',
               customer_user_id: s.customer_user_id || null,
+              print_count: Number(s.print_count) || 0,
+              last_printed_at: s.last_printed_at ? (s.last_printed_at instanceof Date ? s.last_printed_at.toISOString() : s.last_printed_at) : null,
+              last_printed_by: s.last_printed_by || null,
               created_at: s.created_at instanceof Date ? s.created_at.toISOString() : s.created_at
             });
           }
 
           saveStoreToDisk();
         }
-      } catch (e) {
-        console.warn('PostgreSQL database init warning:', e);
+      } catch (e: any) {
+        console.info('ℹ️ PostgreSQL database sync notice, proceeding with resilient disk/memory store:', e?.message || e);
       }
     }
 

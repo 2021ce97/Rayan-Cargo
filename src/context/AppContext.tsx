@@ -134,6 +134,7 @@ interface AppContextType {
   deleteShipment: (shipmentId: string) => Promise<boolean>;
   submitParcelForCollection: (shipmentId: string, reference?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
+  recordPrint: (shipmentId: string) => Promise<number>;
   reportDeliveryIssue: (shipmentId: string, issueType: string, customNote?: string) => boolean;
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
@@ -2741,6 +2742,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
+  // Record Print Count (Tracks each physical/PDF print to prevent confusion)
+  const recordPrint = async (shipmentId: string): Promise<number> => {
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) {
+      console.warn('recordPrint: Shipment not found:', shipmentId);
+      return 0;
+    }
+
+    const nextCount = (target.printCount || 0) + 1;
+    const now = new Date().toISOString();
+    const updatedShipment: Shipment = {
+      ...target,
+      printCount: nextCount,
+      lastPrintedAt: now,
+      lastPrintedBy: currentUser.name
+    };
+
+    setShipments(prev => prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s));
+
+    if (selectedShipmentForReceipt && (selectedShipmentForReceipt.id === target.id || selectedShipmentForReceipt.cnNumber === target.cnNumber)) {
+      setSelectedShipmentForReceipt(updatedShipment);
+    }
+
+    try {
+      fetch(`/api/shipments/${target.id}/print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printedBy: currentUser.name })
+      }).catch(err => console.warn('Could not persist print count to backend:', err));
+    } catch (e) {
+      console.warn('Could not persist print count:', e);
+    }
+
+    return nextCount;
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -2783,6 +2820,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         settleInterBranchRemittance,
         submitParcelForCollection,
         updateShipmentStatus,
+        recordPrint,
         reportDeliveryIssue,
         canUserUpdateStatus,
         changePassword,

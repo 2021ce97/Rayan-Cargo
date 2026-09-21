@@ -28,6 +28,7 @@ import {
 } from '../utils/pdfExport';
 import { usePrintQueue } from '../hooks/usePrintQueue';
 import { Save } from 'lucide-react';
+import { formatReceiptPhone } from '../types';
 
 export const PrintReceiptModal: React.FC = () => {
   const { 
@@ -37,7 +38,8 @@ export const PrintReceiptModal: React.FC = () => {
     t,
     showToast,
     receiptPrintMode,
-    currentUser
+    currentUser,
+    recordPrint
   } = useApp();
 
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -96,7 +98,7 @@ export const PrintReceiptModal: React.FC = () => {
     showToast('✓ Added to Offline Print Queue!');
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     let targetRef: HTMLElement | null = null;
     let formatArg: 'standard' | 'thermal_80mm' | 'thermal_80x80' = 'standard';
     
@@ -113,6 +115,16 @@ export const PrintReceiptModal: React.FC = () => {
 
     if (!targetRef) return;
     printElementUsingIframe(targetRef, `Receipt_${shipment.cnNumber}`, formatArg);
+
+    // Record print count to prevent confusion
+    const newCount = await recordPrint(shipment.id);
+    showToast(
+      newCount === 1 
+        ? `✓ Print #1 recorded (Original copy issued)` 
+        : `✓ Print #${newCount} recorded (Duplicate copy issued)`,
+      'success',
+      'Print Tracking'
+    );
   };
 
   const handleDownloadPdf = async () => {
@@ -124,6 +136,7 @@ export const PrintReceiptModal: React.FC = () => {
         if (receiptRef.current) {
           const ok = await generateA4PdfFromElement(receiptRef.current, `Receipt_${shipment.cnNumber}.pdf`);
           if (ok) {
+            await recordPrint(shipment.id);
             setDownloadSuccess(true);
             setTimeout(() => setDownloadSuccess(false), 4000);
           }
@@ -142,6 +155,7 @@ export const PrintReceiptModal: React.FC = () => {
             isSquare ? 80 : undefined
           );
           if (ok) {
+            await recordPrint(shipment.id);
             setDownloadSuccess(true);
             setTimeout(() => setDownloadSuccess(false), 4000);
             return;
@@ -157,6 +171,7 @@ export const PrintReceiptModal: React.FC = () => {
           isSquare ? '80x80' : '80mm'
         );
         if (ok) {
+          await recordPrint(shipment.id);
           setDownloadSuccess(true);
           setTimeout(() => setDownloadSuccess(false), 4000);
         }
@@ -228,6 +243,44 @@ export const PrintReceiptModal: React.FC = () => {
             <button onClick={() => setSelectedShipmentForReceipt(null)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors">
               <X className="w-6 h-6" />
             </button>
+          </div>
+        </div>
+
+        {/* Print Tracking & Verification Status Strip */}
+        <div className="bg-slate-100 dark:bg-slate-800/80 px-4 sm:px-6 py-2.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+              <Printer className="w-3.5 h-3.5 text-blue-600" />
+              {l('Print Status Tracking:', 'رهگیری و تعداد چاپ:')}
+            </span>
+            {(shipment.printCount || 0) === 0 ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                {l('0 prints logged • Ready for Print #1 (ORIGINAL)', '۰ چاپ ثبت شده • آماده برای چاپ اول (نسخه اصلی)')}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                {l(
+                  `Printed ${shipment.printCount} time${shipment.printCount > 1 ? 's' : ''} ${shipment.lastPrintedAt ? `(Last: ${new Date(shipment.lastPrintedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}`,
+                  `${shipment.printCount} بار چاپ شده ${shipment.lastPrintedAt ? `(آخرین چاپ: ${new Date(shipment.lastPrintedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}`
+                )}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-[11px]">
+            <span className="text-slate-500 font-medium">
+              {l('Active copy in preview:', 'نسخه در حال نمایش:')}
+            </span>
+            <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
+              (shipment.printCount || 0) === 0 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' 
+                : 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300'
+            }`}>
+              {(shipment.printCount || 0) === 0 
+                ? l('COPY #1 (ORIGINAL)', 'نسخه ۱ (اصلی)') 
+                : l(`COPY #${(shipment.printCount || 0) + 1} (RE-PRINT)`, `نسخه #${(shipment.printCount || 0) + 1} (کاپی مجدد)`)}
+            </span>
           </div>
         </div>
 
@@ -308,7 +361,12 @@ export const PrintReceiptModal: React.FC = () => {
 
               {/* CN Number Box */}
               <div className="border border-black p-1.5 mb-1.5">
-                <div className="text-[8.5px] font-bold text-slate-500 uppercase">{l('CONSIGNMENT NOTE (CN #)', 'نمبر بارنامه (CN)')}</div>
+                <div className="flex justify-between items-center text-[8.5px] font-bold text-slate-500 uppercase">
+                  <span>{l('CONSIGNMENT NOTE (CN #)', 'نمبر بارنامه (CN)')}</span>
+                  <span className="text-[7.5px] font-black px-1.5 py-0.5 rounded bg-black/10 text-slate-900">
+                    {(shipment.printCount || 0) === 0 ? 'ORIGINAL #1' : `RE-PRINT #${(shipment.printCount || 0) + 1}`}
+                  </span>
+                </div>
                 <div className="text-[18px] font-black font-mono leading-none mt-1">{shipment.cnNumber}</div>
                 <div className="text-[8px] font-bold mt-1 text-center border-t border-black/10 pt-1 tracking-[0.2em]">*{shipment.cnNumber}*</div>
               </div>
@@ -385,21 +443,22 @@ export const PrintReceiptModal: React.FC = () => {
                 <div className="pt-1 border-t border-black/10">
                   <div className="text-[9px] font-black leading-tight">
                     {(() => {
-                      const formatPh = (p: string) => {
-                        const d = p.replace(/\D/g, '');
-                        if (d.startsWith('93')) return '0' + d.substring(2);
-                        if (d.startsWith('7') && d.length === 9) return '0' + d;
-                        return p;
-                      };
-                      const bPhone = originBranch?.phone ? formatPh(originBranch.phone) : '07XXXXXXXX';
-                      return l(`Branch contact: ${bPhone} | Complaints: 0711299680`, `تماس نمایندگی: ${bPhone} | شکایات: 0711299680`);
+                      const destPhoneFormatted = formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XXXXXXXX';
+                      return l(`Destination (${destBranch?.city || 'Hub'}): ${destPhoneFormatted}`, `تماس نمایندگی مقصد (${destBranch?.city || 'نمایندگی'}): ${destPhoneFormatted}`);
                     })()}
                   </div>
-                  <div className="text-[8.5px] font-black leading-tight">
-                    {l('Main Kabul: 0774144004', 'مرکز کابل: 0774144004')}
+                  <div className="text-[8.5px] font-bold leading-tight mt-0.5">
+                    {(() => {
+                      const hqPhone = formatReceiptPhone('0774144004');
+                      const supPhone = formatReceiptPhone('0711299680');
+                      return l(`Kabul HQ: ${hqPhone} | Support: ${supPhone}`, `مرکز کابل: ${hqPhone} | شکایات و پشتیبانی: ${supPhone}`);
+                    })()}
                   </div>
-                  <div className="text-[7px] text-slate-500 mt-1">
-                    Printed: {new Date().toLocaleDateString()} | Rayan Tech Solutions
+                  <div className="text-[7px] text-slate-500 mt-1 flex justify-between">
+                    <span>Printed: {new Date().toLocaleDateString()} | Rayan Tech</span>
+                    <span className="font-bold font-mono">
+                      {(shipment.printCount || 0) === 0 ? 'COPY #1 (ORIGINAL)' : `COPY #${(shipment.printCount || 0) + 1} (RE-PRINT)`}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -444,7 +503,9 @@ export const PrintReceiptModal: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-[12px] font-black font-mono leading-none">{shipment.cnNumber}</div>
-                  <div className="text-[8px] font-bold text-neutral-600 mt-0.5" dir="ltr">{new Date(shipment.bookedAt).toLocaleDateString('en-GB')}</div>
+                  <div className="text-[7.5px] font-black mt-0.5 text-neutral-800" dir="ltr">
+                    {(shipment.printCount || 0) === 0 ? 'ORIGINAL #1' : `COPY #${(shipment.printCount || 0) + 1}`}
+                  </div>
                 </div>
               </div>
               
@@ -493,16 +554,15 @@ export const PrintReceiptModal: React.FC = () => {
                   <p>۳. بل اصلی برای دریافت پول الزامی است.</p>
                 </div>
                 <div className="pt-1 border-t border-black/10">
-                  <div className="text-[8.5px] font-black leading-tight">
+                  <div className="text-[8px] font-black leading-tight">
                     {(() => {
-                      const formatPh = (p: string) => {
-                        const d = p.replace(/\D/g, '');
-                        if (d.startsWith('93')) return '0' + d.substring(2);
-                        if (d.startsWith('7') && d.length === 9) return '0' + d;
-                        return p;
-                      };
-                      const bPhone = originBranch?.phone ? formatPh(originBranch.phone) : '07XXXXXXXX';
-                      return l(`Branch contact: ${bPhone} | complaints: 0711299680`, `تماس نمایندگی: ${bPhone} | شکایات: 0711299680`);
+                      const destPhoneFormatted = formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XXXXXXXX';
+                      const hqPhone = formatReceiptPhone('0774144004');
+                      const supPhone = formatReceiptPhone('0711299680');
+                      return l(
+                        `Dest: ${destPhoneFormatted} | HQ: ${hqPhone} | Support: ${supPhone}`,
+                        `مقصد: ${destPhoneFormatted} | کابل: ${hqPhone} | شکایات: ${supPhone}`
+                      );
                     })()}
                   </div>
                 </div>
@@ -550,6 +610,17 @@ export const PrintReceiptModal: React.FC = () => {
                   <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{l('Consignment Number (CN)', 'نمبر بارنامه (CN)')}</div>
                   <div className="text-3xl font-black font-mono tracking-tighter text-slate-900 bg-slate-100 px-3 py-0.5 rounded-lg border border-slate-200">
                     {shipment.cnNumber}
+                  </div>
+                  <div className="mt-1">
+                    {(shipment.printCount || 0) === 0 ? (
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        {l('PRINT #1 • ORIGINAL (نسخه اصلی)', 'چاپ اول • نسخه اصلی')}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                        {l(`PRINT #${(shipment.printCount || 0) + 1} • DUPLICATE (کاپی مجدد)`, `چاپ #${(shipment.printCount || 0) + 1} • کاپی مجدد`)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -725,21 +796,26 @@ export const PrintReceiptModal: React.FC = () => {
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-slate-200 mt-2">
-                    <div className="text-[9px] text-slate-500 font-medium">
-                      <p>{l('Kabul HQ: 0774144004 | Support: 0711299680', 'مرکز کابل: 0774144004 | شکایات: 0711299680')}</p>
-                      <p>{(() => {
-                        const formatPh = (p: string) => {
-                          const d = p.replace(/\D/g, '');
-                          if (d.startsWith('93')) return '0' + d.substring(2);
-                          if (d.startsWith('7') && d.length === 9) return '0' + d;
-                          return p;
-                        };
-                        const bPhone = originBranch?.phone ? formatPh(originBranch.phone) : '07XXXXXXXX';
-                        return l(`Branch contact: ${bPhone}`, `تماس نمایندگی: ${bPhone}`);
-                      })()}</p>
+                    <div className="text-[9.5px] text-slate-700 font-medium space-y-0.5">
+                      <p className="font-bold text-slate-900">
+                        {(() => {
+                          const destPhoneFormatted = formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XXXXXXXX';
+                          return l(`Destination Branch (${destBranch?.city || 'Dest Hub'}): ${destPhoneFormatted}`, `تماس نمایندگی مقصد (${destBranch?.city || 'مقصد'}): ${destPhoneFormatted}`);
+                        })()}
+                      </p>
+                      <p>
+                        {(() => {
+                          const hqPhone = formatReceiptPhone('0774144004');
+                          const supPhone = formatReceiptPhone('0711299680');
+                          return l(`Kabul Main HQ: ${hqPhone} | Complaints & Support: ${supPhone}`, `مرکز عمومی کابل: ${hqPhone} | شکایات و پشتیبانی: ${supPhone}`);
+                        })()}
+                      </p>
                     </div>
                     <div className="text-[8px] font-bold text-slate-400 text-end">
-                      OFFICIAL<br/>RECEIPT
+                      <span className="text-[9px] font-black text-slate-800 block">
+                        {(shipment.printCount || 0) === 0 ? 'PRINT #1 (ORIGINAL)' : `RE-PRINT #${(shipment.printCount || 0) + 1} (COPY)`}
+                      </span>
+                      OFFICIAL RECEIPT
                     </div>
                   </div>
                 </div>

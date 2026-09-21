@@ -917,6 +917,25 @@ export const ParcelInventory: React.FC = () => {
                         <div className="text-[10px] text-slate-400 font-normal">
                           {new Date(s.bookedAt).toLocaleDateString()}
                         </div>
+                        {/* Print Tracking Indicator */}
+                        <div className="mt-0.5">
+                          {s.printCount !== undefined && s.printCount > 0 ? (
+                            <span 
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-sans font-bold text-[8.5px] border border-blue-200 dark:border-blue-800"
+                              title={`Printed ${s.printCount} time(s). Last: ${s.lastPrintedAt ? new Date(s.lastPrintedAt).toLocaleTimeString() : 'N/A'}`}
+                            >
+                              <Printer className="w-2.5 h-2.5" />
+                              <span>{s.printCount === 1 ? 'Printed 1x' : `Printed ${s.printCount}x`}</span>
+                            </span>
+                          ) : (
+                            <span 
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 font-sans font-medium text-[8.5px]"
+                              title="Receipt not printed yet"
+                            >
+                              <span>Unprinted</span>
+                            </span>
+                          )}
+                        </div>
                         {isPrebooked ? (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-sans font-bold text-[9px] mt-0.5">
                             {t('online_pre_book_tag') || 'Online Pre-Book'}
@@ -1081,10 +1100,19 @@ export const ParcelInventory: React.FC = () => {
                           )}
                           <button
                             onClick={() => setSelectedShipmentForReceipt(s)}
-                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
-                            title="Print / Download Receipt (A4 or Thermal)"
+                            className={`p-1.5 rounded-lg relative transition-colors cursor-pointer ${
+                              (s.printCount || 0) > 0 
+                                ? 'bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
+                                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                            }`}
+                            title={`Print / Download Receipt (${s.printCount || 0} print${s.printCount === 1 ? '' : 's'} recorded)`}
                           >
                             <Printer className="w-3.5 h-3.5" />
+                            {(s.printCount || 0) > 0 && (
+                              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center shadow-xs">
+                                {s.printCount}
+                              </span>
+                            )}
                           </button>
                           <button
                             onClick={() => setDetailsModalShipment(s)}

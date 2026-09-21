@@ -74,6 +74,7 @@ export interface Branch {
   city: string;
   address: string;
   phone: string;
+  managerPhone?: string;
   email: string;
   managerName: string;
   tazkiraNumber: string; // Required CNIC or Tazkira national identity number
@@ -261,6 +262,23 @@ export interface Shipment {
   deliveryNotes?: string;
   bookedByUserId: string;
   bookedByUserName: string;
+  printCount?: number;
+  lastPrintedAt?: string;
+  lastPrintedBy?: string;
+}
+
+export function formatReceiptPhone(phone?: string): string {
+  if (!phone) return '';
+  let clean = phone.replace(/\D/g, '');
+  if (clean.startsWith('93') && clean.length >= 11) {
+    clean = '0' + clean.substring(2);
+  } else if (!clean.startsWith('0') && clean.startsWith('7') && clean.length === 9) {
+    clean = '0' + clean;
+  }
+  if (clean.length === 10) {
+    return `${clean.substring(0, 4)} ${clean.substring(4, 7)} ${clean.substring(7)}`;
+  }
+  return clean || phone;
 }
 
 export interface CustomerPreBookingInput {

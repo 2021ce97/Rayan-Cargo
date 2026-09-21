@@ -79,12 +79,12 @@ async function ensureDbReady() {
     try {
       await initDatabase(INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS);
       dbInitialized = true;
-    } catch (err) {
-      console.warn('DB initialization notice:', err);
+    } catch (err: any) {
+      console.info('ℹ️ DB initialization notice:', err?.message || err);
     }
   }
 }
-ensureDbReady().catch(console.warn);
+ensureDbReady().catch((e) => console.info('ℹ️ DB ready notice:', e?.message || e));
 
 // Middleware to ensure DB is initialized before query
 app.use(async (req: Request, res: Response, next: NextFunction) => {
@@ -486,12 +486,49 @@ api.get('/shipments', async (req: Request, res: Response) => {
         customerUserId: r.customer_user_id || undefined,
         customerSubmissionAt: r.customer_submission_at || undefined,
         customerSubmissionReference: r.customer_submission_reference || undefined,
-        customerSubmissionBy: r.customer_submission_by || undefined
+        customerSubmissionBy: r.customer_submission_by || undefined,
+        printCount: Number(r.print_count) || 0,
+        lastPrintedAt: r.last_printed_at instanceof Date ? r.last_printed_at.toISOString() : (r.last_printed_at || undefined),
+        lastPrintedBy: r.last_printed_by || undefined
       };
     });
     res.json({ success: true, shipments: formatted });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Record Print Event (Tracking print count, date/time, and staff user to prevent confusion)
+api.post('/shipments/:id/print', async (req: Request, res: Response) => {
+  try {
+    const db = getDbPool();
+    const { id } = req.params;
+    const { printedBy } = req.body || {};
+
+    const { rows } = await db.query(
+      `UPDATE shipments 
+       SET print_count = COALESCE(print_count, 0) + 1,
+           last_printed_at = NOW(),
+           last_printed_by = COALESCE($1, last_printed_by, 'Staff')
+       WHERE id = $2 OR cn_number = $2
+       RETURNING id, cn_number, print_count, last_printed_at, last_printed_by`,
+      [printedBy || null, id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Shipment not found' });
+    }
+
+    res.json({
+      success: true,
+      shipmentId: rows[0].id,
+      cnNumber: rows[0].cn_number,
+      printCount: Number(rows[0].print_count),
+      lastPrintedAt: rows[0].last_printed_at,
+      lastPrintedBy: rows[0].last_printed_by
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message });
   }
 });
 

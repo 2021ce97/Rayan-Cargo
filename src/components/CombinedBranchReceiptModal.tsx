@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
-import { Shipment, Branch, Language } from '../types';
+import { Shipment, Branch, Language, formatReceiptPhone } from '../types';
 import { printElementUsingIframe, generateBranchBulkDispatchPdf, generateThermalPdfFromElement } from '../utils/pdfExport';
 import { BarcodeGenerator } from './BarcodeGenerator';
 import jsPDF from 'jspdf';
@@ -54,7 +54,8 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
     currentUser, 
     activeBranchId, 
     showToast,
-    updateShipmentStatus 
+    updateShipmentStatus,
+    recordPrint
   } = useApp();
   const { language: globalLang } = useI18n();
   const { getLocalizedBranchName: i18nGetLocalizedBranchName } = useI18n();
@@ -324,6 +325,11 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
         `Carton_Sticker_${currentDestBranch?.code || 'DEST'}_${batchRefNumber}`,
         format
       );
+      // Record print count for all grouped shipments
+      selectedShipments.forEach(s => {
+        recordPrint(s.id);
+      });
+      showToast(`✓ Print count updated for ${selectedShipments.length} shipments`, 'success');
     }
   };
 
@@ -341,6 +347,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
       if (stickerFormat === 'thermal_80mm') {
         const ok = await generateThermalPdfFromElement(stickerPrintRef.current, filename, 80);
         if (ok) {
+          selectedShipments.forEach(s => recordPrint(s.id));
           showToast('✓ 80mm Carton Sticker PDF downloaded successfully');
         } else {
           showToast('❌ Failed to generate PDF');
@@ -378,6 +385,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
       }
 
       pdf.save(filename);
+      selectedShipments.forEach(s => recordPrint(s.id));
       showToast('✓ Carton Sticker PDF downloaded successfully');
     } catch (err) {
       console.error(err);
@@ -405,6 +413,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
         branches
       );
       if (ok) {
+        selectedShipments.forEach(s => recordPrint(s.id));
         showToast(
           modalLang === 'fa' 
             ? '✓ بارنامه رسمی تجمیعی ارسال با موفقیت دانلود شد' 
@@ -912,10 +921,24 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                     )}
                   </div>
 
-                  {/* 6. Contact Info Footer (Shortened) */}
-                  <div className="pt-1.5 border-t border-dashed border-black flex justify-between items-center text-[8.5px] font-bold">
-                    <span>{l('Origin:', 'مبدأ:')} <span className="font-mono">{currentSenderBranch?.phone || '0799001122'}</span></span>
-                    <span>{l('Complaints:', 'شکایات:')} <span className="font-mono">0711299680</span></span>
+                  {/* 6. Contact Info Footer (Origin removed; Destination, Kabul HQ, Support automatically formatted) */}
+                  <div className="pt-1.5 border-t border-dashed border-black text-[8px] font-bold text-center space-y-0.5">
+                    {(() => {
+                      const destPh = formatReceiptPhone(currentDestBranch?.phone || currentDestBranch?.managerPhone) || '07XXXXXXXX';
+                      const hqPh = formatReceiptPhone('0774144004');
+                      const supPh = formatReceiptPhone('0711299680');
+                      return (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span>{l('Dest Hub:', 'نمایندگی مقصد:')} <span className="font-mono">{destPh}</span></span>
+                            <span>{l('Kabul HQ:', 'مرکز کابل:')} <span className="font-mono">{hqPh}</span></span>
+                          </div>
+                          <div className="text-[7.5px] text-slate-600">
+                            <span>{l('Support & Complaints:', 'شکایات و پشتیبانی:')} <span className="font-mono">{supPh}</span></span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               ) : (
@@ -1052,6 +1075,22 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                       <QrCode className="w-10 h-10 text-slate-900" />
                       <span className="text-[8px] font-bold text-slate-500 mt-0.5">SCAN HUB</span>
                     </div>
+                  </div>
+
+                  {/* Contacts Strip (Destination, Kabul HQ, Support - Origin removed) */}
+                  <div className="pt-2 border-t border-slate-200 mt-2 flex justify-between items-center text-[9px] font-bold text-slate-700">
+                    {(() => {
+                      const destPh = formatReceiptPhone(currentDestBranch?.phone || currentDestBranch?.managerPhone) || '07XXXXXXXX';
+                      const hqPh = formatReceiptPhone('0774144004');
+                      const supPh = formatReceiptPhone('0711299680');
+                      return (
+                        <>
+                          <span>{l(`Dest (${currentDestBranch?.city || 'Hub'}): ${destPh}`, `مقصد (${currentDestBranch?.city || 'نمایندگی'}): ${destPh}`)}</span>
+                          <span>{l(`Kabul HQ: ${hqPh}`, `مرکز کابل: ${hqPh}`)}</span>
+                          <span>{l(`Support: ${supPh}`, `شکایات: ${supPh}`)}</span>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Security and Confidentiality Tagline */}

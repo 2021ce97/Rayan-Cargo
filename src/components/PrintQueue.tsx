@@ -39,7 +39,24 @@ export const PrintQueue = ({ onClose }: { onClose: () => void }) => {
               {queue.map(job => (
                 <div key={job.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                   <div>
-                    <div className="font-bold text-slate-800 font-mono text-sm">{job.cnNumber}</div>
+                    <div className="font-bold text-slate-800 font-mono text-sm flex items-center gap-2">
+                      <span>{job.cnNumber}</span>
+                      {(() => {
+                        const s = shipments.find(item => item.id === job.shipmentId);
+                        if (s && (s.printCount || 0) > 0) {
+                          return (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                              Printed {s.printCount}x
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                            Pending Print
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <div className="text-xs text-slate-500 mt-0.5">
                       {new Date(job.timestamp).toLocaleString()} • {job.format.replace('thermal_', '')} • {job.role}
                     </div>
