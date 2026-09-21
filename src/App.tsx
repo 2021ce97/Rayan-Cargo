@@ -158,11 +158,15 @@ const MainLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <I18nProvider>
-      <AppProvider>
-        <MainLayout />
-      </AppProvider>
-    </I18nProvider>
+    <ErrorBoundary>
+      <I18nProvider>
+        <AppProvider>
+          <ErrorBoundary>
+            <MainLayout />
+          </ErrorBoundary>
+        </AppProvider>
+      </I18nProvider>
+    </ErrorBoundary>
   );
 }
 

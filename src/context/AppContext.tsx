@@ -86,7 +86,7 @@ interface AppContextType {
   toggleDarkMode: () => void;
   isAuthenticated: boolean;
   login: (identifier: string, password?: string, portalScope?: 'customer' | 'staff' | 'any') => LoginResult;
-  signupCustomer: (name: string, phone: string, email: string, password?: string) => boolean;
+  signupCustomer: (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string) => boolean;
   loginWithUser: (user: User) => void;
   logout: () => void;
   currentUser: User;
@@ -391,18 +391,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Current logged in user (defaults to Central System Admin)
   const [currentUser, setCurrentUser] = useState<User>(() => {
-    const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-    if (savedId) {
-      const found = users.find(u => u.id === savedId);
-      if (found) return found;
+    try {
+      const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
+      if (savedId) {
+        const found = users.find(u => u && u.id === savedId);
+        if (found) return found;
+      }
+    } catch (e) {
+      console.warn('Failed to parse current user:', e);
     }
-    return users.find(u => u.role === 'super_admin') || INITIAL_USERS[0];
+    return users.find(u => u && u.role === 'super_admin') || INITIAL_USERS[0] || ({} as User);
   });
 
   // Active branch context
   const [activeBranchId, setActiveBranchIdState] = useState<string>(() => {
-    if (currentUser.role !== 'super_admin') {
-      return currentUser.branchId;
+    if (currentUser?.role && currentUser.role !== 'super_admin') {
+      return currentUser.branchId || 'all';
     }
     const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_BRANCH_ID);
     return saved || 'all';
@@ -417,9 +421,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setActiveBranchId = (id: string) => {
-    if (currentUser.role !== 'super_admin') {
-      setActiveBranchIdState(currentUser.branchId);
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_BRANCH_ID, currentUser.branchId);
+    if (currentUser?.role && currentUser.role !== 'super_admin') {
+      const bId = currentUser.branchId || id;
+      setActiveBranchIdState(bId);
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_BRANCH_ID, bId);
       return;
     }
     setActiveBranchIdState(id);
@@ -923,7 +928,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Customer Signup
-  const signupCustomer = (name: string, phone: string, email: string, password?: string): boolean => {
+  const signupCustomer = (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string): boolean => {
     const now = new Date().toISOString();
     const newUserId = `usr_cust_${Date.now().toString().slice(-6)}`;
     const cleanEmail = (email && email.trim()) ? email.trim().toLowerCase() : `cust_${phone.replace(/[^0-9]/g, '')}@rayancustomer.af`;
@@ -937,6 +942,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       branchId: 'customer',
       password: password?.trim() || 'customer123',
       passwordChangedByBranch: false,
+      tazkiraNumber: tazkiraNumber?.trim() || '',
       status: 'active',
       createdAt: now,
       lastLogin: 'Just now'
@@ -1904,18 +1910,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       destinationBranchId: input.destinationBranchId,
       currentBranchId: input.originBranchId,
       sender: {
-        name: input.senderName,
-        phone: input.senderPhone,
-        email: input.senderEmail,
-        nationalId: input.senderNationalId,
-        address: input.senderAddress,
-        city: input.senderCity,
-        province: input.senderProvince
+        name: input.senderName || currentUser.name || 'Valued Customer',
+        phone: input.senderPhone || currentUser.phone || '',
+        email: input.senderEmail || currentUser.email || '',
+        nationalId: input.senderNationalId || currentUser.tazkiraNumber || '',
+        address: input.senderAddress || `${input.senderCity || 'Kabul'} Central`,
+        city: input.senderCity || 'Kabul',
+        province: input.senderProvince || 'Kabul'
       },
       receiver: {
         name: input.receiverName,
         phone: input.receiverPhone,
-        nationalId: input.receiverNationalId,
         address: input.receiverAddress,
         city: input.receiverCity,
         province: input.receiverProvince
