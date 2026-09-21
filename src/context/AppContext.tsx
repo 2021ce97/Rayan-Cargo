@@ -86,7 +86,7 @@ interface AppContextType {
   toggleDarkMode: () => void;
   isAuthenticated: boolean;
   login: (identifier: string, password?: string, portalScope?: 'customer' | 'staff' | 'any') => LoginResult;
-  signupCustomer: (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string) => boolean;
+  signupCustomer: (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string) => boolean;
   loginWithUser: (user: User) => void;
   logout: () => void;
   currentUser: User;
@@ -928,7 +928,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Customer Signup
-  const signupCustomer = (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string): boolean => {
+  const signupCustomer = (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string): boolean => {
     const now = new Date().toISOString();
     const newUserId = `usr_cust_${Date.now().toString().slice(-6)}`;
     const cleanEmail = (email && email.trim()) ? email.trim().toLowerCase() : `cust_${phone.replace(/[^0-9]/g, '')}@rayancustomer.af`;
@@ -940,9 +940,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       phone: phone.trim(),
       role: 'customer',
       branchId: 'customer',
+      nationalId: tazkiraNumber?.trim() || '',
+      tazkiraNumber: tazkiraNumber?.trim() || '',
+      city: city?.trim() || 'Kabul',
       password: password?.trim() || 'customer123',
       passwordChangedByBranch: false,
-      tazkiraNumber: tazkiraNumber?.trim() || '',
       status: 'active',
       createdAt: now,
       lastLogin: 'Just now'

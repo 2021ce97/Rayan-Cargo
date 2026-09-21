@@ -114,23 +114,23 @@ export const CustomerPortal: React.FC = () => {
 
   const handlePreBookSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!receiverName.trim() || !receiverPhone.trim() || !senderName.trim() || !senderPhone.trim()) {
-      alert(t('fill_contacts_warning') || 'Please fill in sender and receiver contact details.');
+    if (!receiverName.trim() || !receiverPhone.trim()) {
+      alert(t('fill_contacts_warning') || 'Please fill in receiver contact details.');
       return;
     }
 
     const input: CustomerPreBookingInput = {
       originBranchId,
       destinationBranchId,
-      senderName,
-      senderPhone,
-      senderEmail,
-      senderAddress: senderAddress || `${senderCity} Central`,
-      senderCity,
-      senderProvince,
+      senderName: currentUser?.name || 'Customer',
+      senderPhone: currentUser?.phone || '0700000000',
+      senderEmail: currentUser?.email || '',
+      senderNationalId: currentUser?.nationalId || '',
+      senderAddress: currentUser?.address || `${currentUser?.city || 'Kabul'} Central`,
+      senderCity: currentUser?.city || 'Kabul',
+      senderProvince: currentUser?.city || 'Kabul',
       receiverName,
       receiverPhone,
-      receiverNationalId: receiverNationalId.trim() || undefined,
       receiverAddress: receiverAddress || `${receiverCity} Central`,
       receiverCity,
       receiverProvince,
@@ -732,59 +732,27 @@ export const CustomerPortal: React.FC = () => {
                 </div>
               </div>
 
-              {/* 2. Sender & Receiver Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {/* 2. Sender Account Auto-Attached & Receiver Details */}
+              <div className="space-y-4">
                 
-                {/* Sender Details */}
-                <div className="space-y-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-                  <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{t('sender_details')}</span>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('sender_name')}</label>
-                    <input
-                      type="text"
-                      required
-                      value={senderName}
-                      onChange={(e) => setSenderName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('sender_phone')}</label>
-                      <input
-                        type="tel"
-                        required
-                        value={senderPhone}
-                        onChange={(e) => setSenderPhone(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                      />
+                {/* Sender Auto-Attached Info Banner */}
+                <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black shrink-0">
+                      ✓
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('sender_city')}</label>
-                      <input
-                        type="text"
-                        value={senderCity}
-                        onChange={(e) => setSenderCity(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
-                      />
+                      <div className="font-bold text-blue-900 dark:text-blue-100">
+                        {language === 'fa' ? 'اطلاعات فرستنده (حساب شما):' : language === 'ps' ? 'د استوونکي معلومات (ستاسو حساب):' : 'Sender Details (Your Account):'}
+                      </div>
+                      <div className="text-blue-700 dark:text-blue-300 font-medium mt-0.5">
+                        <strong>{currentUser?.name}</strong> • {currentUser?.phone} {currentUser?.nationalId ? `• Tazkira: ${currentUser.nationalId}` : ''} ({currentUser?.city || 'Kabul'})
+                      </div>
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('sender_address')}</label>
-                    <input
-                      type="text"
-                      value={senderAddress}
-                      onChange={(e) => setSenderAddress(e.target.value)}
-                      placeholder="e.g. Mandawi Market, Kabul"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
-                    />
-                  </div>
+                  <span className="self-start sm:self-center px-3 py-1 rounded-full bg-blue-200/80 dark:bg-blue-800 text-blue-900 dark:text-blue-100 font-bold text-[10px] uppercase">
+                    {language === 'fa' ? 'خودکار ضمیمه شد' : 'Auto-Attached'}
+                  </span>
                 </div>
 
                 {/* Receiver Details */}
@@ -806,7 +774,7 @@ export const CustomerPortal: React.FC = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">{t('receiver_phone')}</label>
                       <input
@@ -827,19 +795,6 @@ export const CustomerPortal: React.FC = () => {
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:outline-none"
                       />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                      {t('receiver_tazkira_nid') || 'Receiver Tazkira / National ID (Optional)'}
-                    </label>
-                    <input
-                      type="text"
-                      value={receiverNationalId}
-                      onChange={(e) => setReceiverNationalId(e.target.value)}
-                      placeholder="e.g. 1402-0987-12345"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                    />
                   </div>
 
                   <div>

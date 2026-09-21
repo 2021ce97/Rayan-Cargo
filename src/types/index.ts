@@ -104,6 +104,10 @@ export interface User {
   phone: string;
   role: UserRole;
   branchId: string; // 'all' for super_admin, 'customer' for customers, or specific branch id
+  nationalId?: string; // Customer Tazkira / National ID
+  tazkiraNumber?: string;
+  city?: string;
+  address?: string;
   password?: string;
   passwordChangedByBranch?: boolean;
   lastPasswordChange?: string;

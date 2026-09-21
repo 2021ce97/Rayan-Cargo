@@ -567,36 +567,6 @@ export const NewBookingModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">{t('national_id_tazkira')}</label>
-                  <input
-                    type="text"
-                    value={senderNid}
-                    onChange={(e) => setSenderNid(e.target.value)}
-                    placeholder="e.g. TK-892341"
-                    className="w-full h-9 px-3 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-700">
-                      {t('receiver_tazkira_optional')}
-                    </label>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                      {t('optional_badge', 'Optional')}
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    value={receiverNid}
-                    onChange={(e) => setReceiverNid(e.target.value)}
-                    placeholder="e.g. 1401-1234567-8 / TK-99120"
-                    className="w-full h-9 px-3 text-xs bg-amber-50/50 border border-amber-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"
-                  />
-                  <p className="text-[9.5px] text-slate-400 mt-0.5">
-                    {t('receiver_tazkira_optional_desc')}
-                  </p>
-                </div>
-                <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">{t('origin_city_prov')}</label>
                   <input
                     type="text"

@@ -595,19 +595,6 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('sender_nid')}
-                </label>
-                <input
-                  type="text"
-                  disabled={!isSuperAdmin}
-                  value={senderNationalId}
-                  onChange={(e) => setSenderNationalId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                />
-              </div>
-
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {t('sender_address')}
@@ -669,19 +656,6 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
                   onChange={(e) => setReceiverPhone(e.target.value)}
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                   required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('receiver_nid')}
-                </label>
-                <input
-                  type="text"
-                  disabled={!isSuperAdmin}
-                  value={receiverNationalId}
-                  onChange={(e) => setReceiverNationalId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 />
               </div>
 

@@ -52,6 +52,7 @@ export const LoginPage: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [customerTazkira, setCustomerTazkira] = useState('');
   const [customerCity, setCustomerCity] = useState('Kabul');
   const [customerAuthError, setCustomerAuthError] = useState('');
   const [customerAuthSuccess, setCustomerAuthSuccess] = useState('');
@@ -113,7 +114,9 @@ export const LoginPage: React.FC = () => {
         customerName.trim(),
         customerPhone.trim() || '0700000000',
         customerEmail.trim() || `${customerPhone.trim()}@customer.armaghansadeq.af`,
-        customerPassword
+        customerPassword,
+        customerTazkira.trim(),
+        customerCity.trim()
       );
       if (!success) {
         setCustomerAuthError(t('err_reg_failed') || 'Customer registration failed. Please check your information and try again.');
@@ -553,6 +556,20 @@ export const LoginPage: React.FC = () => {
                         onChange={(e) => setCustomerCity(e.target.value)}
                         placeholder="Kabul, Herat, Mazar..."
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        {t('national_id_tazkira') || 'Tazkira / National ID Number'} <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={customerTazkira}
+                        onChange={(e) => setCustomerTazkira(e.target.value)}
+                        placeholder="e.g. TK-892341 or 1402-12345"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none font-mono"
                       />
                     </div>
                   </>
