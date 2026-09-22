@@ -822,7 +822,7 @@ export const CustomerPortal: React.FC = () => {
                       type="number"
                       min="0.5"
                       step="0.5"
-                      required
+                      placeholder="Optional (e.g. 2.5)"
                       value={estimatedWeightKg}
                       onChange={(e) => setEstimatedWeightKg(e.target.value === "" ? "" : parseFloat(e.target.value))}
                       className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
