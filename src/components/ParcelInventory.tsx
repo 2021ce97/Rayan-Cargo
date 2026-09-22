@@ -917,24 +917,31 @@ export const ParcelInventory: React.FC = () => {
                         <div className="text-[10px] text-slate-400 font-normal">
                           {new Date(s.bookedAt).toLocaleDateString()}
                         </div>
-                        {/* Print Tracking Indicator */}
-                        <div className="mt-0.5">
-                          {s.printCount !== undefined && s.printCount > 0 ? (
-                            <span 
-                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-sans font-bold text-[8.5px] border border-blue-200 dark:border-blue-800"
-                              title={`Printed ${s.printCount} time(s). Last: ${s.lastPrintedAt ? new Date(s.lastPrintedAt).toLocaleTimeString() : 'N/A'}`}
-                            >
-                              <Printer className="w-2.5 h-2.5" />
-                              <span>{s.printCount === 1 ? 'Printed 1x' : `Printed ${s.printCount}x`}</span>
-                            </span>
-                          ) : (
-                            <span 
-                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 font-sans font-medium text-[8.5px]"
-                              title="Receipt not printed yet"
-                            >
-                              <span>Unprinted</span>
-                            </span>
-                          )}
+                        {/* Print Tracking Indicator (Sender vs Receiver Copy Counts) */}
+                        <div className="mt-1 flex items-center gap-1 flex-wrap">
+                          <span 
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded font-sans font-bold text-[8.5px] border ${
+                              (s.senderPrintCount || 0) > 0 
+                                ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' 
+                                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'
+                            }`}
+                            title={`Sender copy printed ${s.senderPrintCount || 0} time(s)`}
+                          >
+                            <Printer className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+                            <span>S: {s.senderPrintCount || 0}</span>
+                          </span>
+
+                          <span 
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded font-sans font-bold text-[8.5px] border ${
+                              (s.receiverPrintCount || 0) > 0 
+                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
+                                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'
+                            }`}
+                            title={`Receiver copy printed ${s.receiverPrintCount || 0} time(s)`}
+                          >
+                            <Printer className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>R: {s.receiverPrintCount || 0}</span>
+                          </span>
                         </div>
                         {isPrebooked ? (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-sans font-bold text-[9px] mt-0.5">

@@ -117,11 +117,11 @@ export const PrintReceiptModal: React.FC = () => {
     printElementUsingIframe(targetRef, `Receipt_${shipment.cnNumber}`, formatArg);
 
     // Record print count to prevent confusion
-    const newCount = await recordPrint(shipment.id);
+    const newCount = await recordPrint(shipment.id, receiptRole);
     showToast(
       newCount === 1 
-        ? `✓ Print #1 recorded (Original copy issued)` 
-        : `✓ Print #${newCount} recorded (Duplicate copy issued)`,
+        ? `✓ Print #1 recorded (${receiptRole === 'seller' ? 'Sender' : 'Receiver'} copy issued)` 
+        : `✓ Print #${newCount} recorded (${receiptRole === 'seller' ? 'Sender' : 'Receiver'} duplicate issued)`,
       'success',
       'Print Tracking'
     );
@@ -136,7 +136,7 @@ export const PrintReceiptModal: React.FC = () => {
         if (receiptRef.current) {
           const ok = await generateA4PdfFromElement(receiptRef.current, `Receipt_${shipment.cnNumber}.pdf`);
           if (ok) {
-            await recordPrint(shipment.id);
+            await recordPrint(shipment.id, receiptRole);
             setDownloadSuccess(true);
             setTimeout(() => setDownloadSuccess(false), 4000);
           }
@@ -155,7 +155,7 @@ export const PrintReceiptModal: React.FC = () => {
             isSquare ? 80 : undefined
           );
           if (ok) {
-            await recordPrint(shipment.id);
+            await recordPrint(shipment.id, receiptRole);
             setDownloadSuccess(true);
             setTimeout(() => setDownloadSuccess(false), 4000);
             return;
@@ -171,7 +171,7 @@ export const PrintReceiptModal: React.FC = () => {
           isSquare ? '80x80' : '80mm'
         );
         if (ok) {
-          await recordPrint(shipment.id);
+          await recordPrint(shipment.id, receiptRole);
           setDownloadSuccess(true);
           setTimeout(() => setDownloadSuccess(false), 4000);
         }

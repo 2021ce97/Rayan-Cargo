@@ -267,8 +267,11 @@ export interface Shipment {
   bookedByUserId: string;
   bookedByUserName: string;
   printCount?: number;
+  senderPrintCount?: number;
+  receiverPrintCount?: number;
   lastPrintedAt?: string;
   lastPrintedBy?: string;
+  lastPrintedRole?: 'buyer' | 'seller';
 }
 
 export function formatReceiptPhone(phone?: string): string {
