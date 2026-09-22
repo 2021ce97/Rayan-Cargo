@@ -47,11 +47,11 @@ export const PrintReceiptModal: React.FC = () => {
   const thermal80x80Ref = useRef<HTMLDivElement>(null);
 
   const getEffectivePrintMode = () => {
-    const userPref = currentUser.preferences?.receiptPrintMode;
+    const userPref = currentUser?.preferences?.receiptPrintMode;
     if (userPref && userPref !== 'auto') {
       return userPref;
     }
-    return receiptPrintMode;
+    return receiptPrintMode || 'standard';
   };
 
   const [printFormat, setPrintFormat] = useState<'standard' | 'thermal_80mm' | 'thermal_80x80'>(
@@ -66,7 +66,7 @@ export const PrintReceiptModal: React.FC = () => {
   // Sync if setting changes
   useEffect(() => {
     setPrintFormat(getEffectivePrintMode() === 'thermal' ? 'thermal_80mm' : 'standard');
-  }, [receiptPrintMode, currentUser.preferences?.receiptPrintMode, selectedShipmentForReceipt]);
+  }, [receiptPrintMode, currentUser?.preferences?.receiptPrintMode, selectedShipmentForReceipt]);
 
   const { enqueue } = usePrintQueue();
 
@@ -378,17 +378,36 @@ export const PrintReceiptModal: React.FC = () => {
 
               {/* Sender & Receiver Side-by-Side Table */}
               <div className="grid grid-cols-2 gap-1 mb-1.5">
-                <div className="border border-black p-1.5 flex flex-col justify-between min-h-[45px]">
-                  <div className="text-[8.5px] font-bold border-b border-black/10 pb-0.5 mb-1 text-slate-500 uppercase">{l('FROM (SENDER):', 'فرستنده:')}</div>
-                  <div className="font-black text-[11px] leading-tight break-words">{shipment.sender.name}</div>
-                  <div className="text-[9px] font-medium mt-0.5">{l('Tel:', 'تلفن:')} <span className="font-mono">{shipment.sender.phone}</span></div>
-                  <div className="text-[8px] text-slate-600 mt-0.5">{l('Origin:', 'مبدأ:')} {originBranch?.city} ({originBranch?.name})</div>
+                <div className={`border p-1.5 flex flex-col justify-between min-h-[50px] ${receiptRole === 'seller' ? 'border-2 border-black bg-slate-100/70' : 'border-black'}`}>
+                  <div>
+                    <div className="text-[8.5px] font-black border-b border-black/15 pb-0.5 mb-1 text-slate-800 uppercase flex items-center justify-between">
+                      <span>{l('FROM (SENDER):', 'فرستنده:')}</span>
+                      {receiptRole === 'seller' && <span className="bg-black text-white text-[7px] px-1 py-0.2 rounded font-bold">★ SENDER COPY</span>}
+                    </div>
+                    <div className="font-black text-[11px] leading-tight break-words">{shipment.sender.name}</div>
+                  </div>
+                  <div className="mt-1">
+                    <div className="bg-black text-white font-mono font-black text-[9.5px] px-1.5 py-0.5 rounded tracking-wide text-center" dir="ltr">
+                      ☎ {formatReceiptPhone(shipment.sender.phone)}
+                    </div>
+                    <div className="text-[8px] text-slate-700 font-bold mt-0.5">{l('Origin:', 'مبدأ:')} {originBranch?.city} ({originBranch?.name})</div>
+                  </div>
                 </div>
-                <div className="border border-black p-1.5 flex flex-col justify-between min-h-[45px]">
-                  <div className="text-[8.5px] font-bold border-b border-black/10 pb-0.5 mb-1 text-slate-500 uppercase">{l('TO (CONSIGNEE):', 'گیرنده:')}</div>
-                  <div className="font-black text-[11px] leading-tight break-words">{shipment.receiver.name}</div>
-                  <div className="text-[9px] font-medium mt-0.5">{l('Tel:', 'تلفن:')} <span className="font-mono">{shipment.receiver.phone}</span></div>
-                  <div className="text-[8px] text-slate-600 mt-0.5">{l('Dest:', 'مقصد:')} {destBranch?.city} ({destBranch?.name})</div>
+
+                <div className={`border p-1.5 flex flex-col justify-between min-h-[50px] ${receiptRole === 'buyer' ? 'border-2 border-black bg-slate-100/70' : 'border-black'}`}>
+                  <div>
+                    <div className="text-[8.5px] font-black border-b border-black/15 pb-0.5 mb-1 text-slate-800 uppercase flex items-center justify-between">
+                      <span>{l('TO (CONSIGNEE):', 'گیرنده:')}</span>
+                      {receiptRole === 'buyer' && <span className="bg-black text-white text-[7px] px-1 py-0.2 rounded font-bold">★ RECEIVER COPY</span>}
+                    </div>
+                    <div className="font-black text-[11px] leading-tight break-words">{shipment.receiver.name}</div>
+                  </div>
+                  <div className="mt-1">
+                    <div className="bg-black text-white font-mono font-black text-[9.5px] px-1.5 py-0.5 rounded tracking-wide text-center" dir="ltr">
+                      ☎ {formatReceiptPhone(shipment.receiver.phone)}
+                    </div>
+                    <div className="text-[8px] text-slate-700 font-bold mt-0.5">{l('Dest:', 'مقصد:')} {destBranch?.city} ({destBranch?.name})</div>
+                  </div>
                 </div>
               </div>
 
@@ -517,16 +536,35 @@ export const PrintReceiptModal: React.FC = () => {
               {/* Parties Box Side-by-Side */}
               <div className="grid grid-cols-2 gap-1.5 my-1">
                 {/* Sender */}
-                <div className="border border-black p-1.5 rounded-xs bg-neutral-50/50 min-h-[42px] flex flex-col justify-between">
-                  <div className="text-[7.5px] font-black text-neutral-500 uppercase border-b border-neutral-200 pb-0.5 mb-1">{l('FROM', 'فرستنده')}</div>
-                  <div className="font-black text-[10.5px] leading-tight truncate">{shipment.sender.name}</div>
-                  <div className="font-mono font-bold text-[8.5px]" dir="ltr">{shipment.sender.phone}</div>
+                <div className={`border p-1.5 rounded-xs flex flex-col justify-between min-h-[46px] ${receiptRole === 'seller' ? 'border-2 border-black bg-neutral-100' : 'border-black bg-neutral-50/50'}`}>
+                  <div>
+                    <div className="text-[7.5px] font-black text-neutral-700 uppercase border-b border-neutral-300 pb-0.5 mb-1 flex items-center justify-between">
+                      <span>{l('FROM (SENDER)', 'فرستنده')}</span>
+                      {receiptRole === 'seller' && <span className="text-[6.5px] bg-black text-white px-1 font-bold">MAIN</span>}
+                    </div>
+                    <div className="font-black text-[10.5px] leading-tight truncate">{shipment.sender.name}</div>
+                  </div>
+                  <div className="mt-0.5">
+                    <div className="bg-black text-white font-mono font-black text-[8.5px] px-1 py-0.2 rounded-xs tracking-tight text-center" dir="ltr">
+                      ☎ {formatReceiptPhone(shipment.sender.phone)}
+                    </div>
+                  </div>
                 </div>
+
                 {/* Receiver */}
-                <div className="border-2 border-black p-1.5 rounded-xs bg-neutral-50 min-h-[42px] flex flex-col justify-between">
-                  <div className="text-[7.5px] font-black text-black uppercase border-b border-neutral-300 pb-0.5 mb-1">{l('TO', 'گیرنده')}</div>
-                  <div className="font-black text-[10.5px] leading-tight truncate">{shipment.receiver.name}</div>
-                  <div className="font-mono font-black text-[8.5px]" dir="ltr">{shipment.receiver.phone}</div>
+                <div className={`border p-1.5 rounded-xs flex flex-col justify-between min-h-[46px] ${receiptRole === 'buyer' ? 'border-2 border-black bg-neutral-100' : 'border-black bg-neutral-50'}`}>
+                  <div>
+                    <div className="text-[7.5px] font-black text-black uppercase border-b border-neutral-300 pb-0.5 mb-1 flex items-center justify-between">
+                      <span>{l('TO (RECEIVER)', 'گیرنده')}</span>
+                      {receiptRole === 'buyer' && <span className="text-[6.5px] bg-black text-white px-1 font-bold">MAIN</span>}
+                    </div>
+                    <div className="font-black text-[10.5px] leading-tight truncate">{shipment.receiver.name}</div>
+                  </div>
+                  <div className="mt-0.5">
+                    <div className="bg-black text-white font-mono font-black text-[8.5px] px-1 py-0.2 rounded-xs tracking-tight text-center" dir="ltr">
+                      ☎ {formatReceiptPhone(shipment.receiver.phone)}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -649,23 +687,40 @@ export const PrintReceiptModal: React.FC = () => {
 
               {/* Sender & Receiver Boxes (Two-Column Layout) */}
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="border border-slate-200 rounded-xl p-3.5 relative overflow-hidden bg-slate-50/50">
-                  <div className="flex items-center gap-2 text-blue-800 font-black mb-2.5 text-xs">
-                    <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[11px]">1</div>
-                    {l('Sender Details', 'مشخصات فرستنده (Sender)')}
+                <div className={`border rounded-xl p-3.5 relative overflow-hidden transition-all ${
+                  receiptRole === 'seller' 
+                    ? 'border-2 border-blue-600 bg-blue-50/40 shadow-xs' 
+                    : 'border-slate-300 bg-slate-50/50'
+                }`}>
+                  <div className="flex items-center justify-between text-blue-900 font-black mb-2 text-xs border-b border-blue-200/80 pb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[11px]">1</div>
+                      <span>{l('Sender Details', 'مشخصات فرستنده (Sender)')}</span>
+                    </div>
+                    {receiptRole === 'seller' && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-600 text-white uppercase tracking-wider">
+                        {l('Sender Copy Focus', 'نسخه فرستنده')}
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
-                      <span className="text-slate-500">{l('Name:', 'اسم:')}</span>
-                      <span className="font-bold text-slate-900">{shipment.sender.name}</span>
+                      <span className="text-slate-500 font-semibold">{l('Name:', 'اسم:')}</span>
+                      <span className="font-black text-slate-900 text-[13px]">{shipment.sender.name}</span>
                     </div>
+                    
+                    {/* BOLD BLACK BADGE CONTACT NUMBER */}
                     <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
-                      <span className="text-slate-500">{l('Phone:', 'شماره تماس:')}</span>
-                      <span className="font-bold font-mono" dir="ltr">{shipment.sender.phone}</span>
+                      <span className="text-slate-500 font-semibold">{l('Contact Number:', 'شماره تماس:')}</span>
+                      <div className="bg-slate-950 text-white px-2.5 py-1 rounded-lg font-mono font-black text-xs tracking-wider flex items-center gap-1.5 shadow-xs" dir="ltr">
+                        <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>{formatReceiptPhone(shipment.sender.phone)}</span>
+                      </div>
                     </div>
+
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">{l('City/Branch:', 'ولایت / شهر:')}</span>
-                      <span className="font-bold flex items-center gap-1">
+                      <span className="text-slate-500 font-semibold">{l('City / Origin Hub:', 'ولایت / نمایندگی مبدأ:')}</span>
+                      <span className="font-bold flex items-center gap-1 text-slate-800">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
                         {shipment.sender.city} ({originBranch?.name})
                       </span>
@@ -673,23 +728,40 @@ export const PrintReceiptModal: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl p-3.5 relative overflow-hidden bg-slate-50/50">
-                  <div className="flex items-center gap-2 text-emerald-800 font-black mb-2.5 text-xs">
-                    <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center text-[11px]">2</div>
-                    {l('Receiver Details', 'مشخصات گیرنده (Receiver)')}
+                <div className={`border rounded-xl p-3.5 relative overflow-hidden transition-all ${
+                  receiptRole === 'buyer' 
+                    ? 'border-2 border-emerald-600 bg-emerald-50/40 shadow-xs' 
+                    : 'border-slate-300 bg-slate-50/50'
+                }`}>
+                  <div className="flex items-center justify-between text-emerald-900 font-black mb-2 text-xs border-b border-emerald-200/80 pb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-[11px]">2</div>
+                      <span>{l('Receiver Details', 'مشخصات گیرنده (Receiver)')}</span>
+                    </div>
+                    {receiptRole === 'buyer' && (
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white uppercase tracking-wider">
+                        {l('Receiver Copy Focus', 'نسخه گیرنده')}
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
-                      <span className="text-slate-500">{l('Name:', 'اسم:')}</span>
-                      <span className="font-bold text-slate-900">{shipment.receiver.name}</span>
+                      <span className="text-slate-500 font-semibold">{l('Name:', 'اسم:')}</span>
+                      <span className="font-black text-slate-900 text-[13px]">{shipment.receiver.name}</span>
                     </div>
+
+                    {/* BOLD BLACK BADGE CONTACT NUMBER */}
                     <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
-                      <span className="text-slate-500">{l('Phone:', 'شماره تماس:')}</span>
-                      <span className="font-bold font-mono" dir="ltr">{shipment.receiver.phone}</span>
+                      <span className="text-slate-500 font-semibold">{l('Contact Number:', 'شماره تماس:')}</span>
+                      <div className="bg-slate-950 text-white px-2.5 py-1 rounded-lg font-mono font-black text-xs tracking-wider flex items-center gap-1.5 shadow-xs" dir="ltr">
+                        <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>{formatReceiptPhone(shipment.receiver.phone)}</span>
+                      </div>
                     </div>
+
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-500">{l('Dest/City:', 'مقصد / شهر:')}</span>
-                      <span className="font-bold flex items-center gap-1">
+                      <span className="text-slate-500 font-semibold">{l('City / Dest Hub:', 'مقصد / نمایندگی توزیع:')}</span>
+                      <span className="font-bold flex items-center gap-1 text-slate-800">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
                         {shipment.receiver.city} ({destBranch?.name})
                       </span>

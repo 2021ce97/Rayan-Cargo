@@ -2284,39 +2284,55 @@ export function generateThermalLabelPdf(
       doc.setLineWidth(0.2);
       
       // Sender Box
-      doc.rect(margin, y, colW, 22);
-      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, y, colW, 23);
+      doc.setFillColor(receiptRole === 'seller' ? 220 : 245, receiptRole === 'seller' ? 235 : 247, receiptRole === 'seller' ? 252 : 250);
       doc.rect(margin, y, colW, 4, 'F');
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(6.5);
-      doc.text('FROM (SENDER):', margin + 1.5, y + 3);
+      doc.text(receiptRole === 'seller' ? 'FROM (SENDER) ★ MAIN:' : 'FROM (SENDER):', margin + 1.5, y + 3);
       
       doc.setFontSize(8.5);
       doc.setFont('helvetica', 'bold');
       doc.text(shipment.sender.name.substring(0, 20), margin + 1.5, y + 8);
+      
+      // Bold Highlighted Contact Phone Badge
+      doc.setFillColor(0, 0, 0);
+      doc.rect(margin + 1.5, y + 9.5, colW - 3, 4.5, 'F');
+      doc.setTextColor(255, 255, 255);
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Tel: ${shipment.sender.phone}`, margin + 1.5, y + 13);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`TEL: ${shipment.sender.phone}`, margin + 3, y + 13);
+
+      doc.setTextColor(0, 0, 0);
       doc.setFontSize(6.5);
-      doc.text(`Origin: ${originName}`, margin + 1.5, y + 18);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Origin: ${originName}`, margin + 1.5, y + 18.5);
 
       // Receiver Box
-      doc.rect(margin + colW + 3, y, colW, 22);
-      doc.setFillColor(248, 250, 252);
+      doc.rect(margin + colW + 3, y, colW, 23);
+      doc.setFillColor(receiptRole === 'buyer' ? 220 : 245, receiptRole === 'buyer' ? 252 : 247, receiptRole === 'buyer' ? 235 : 250);
       doc.rect(margin + colW + 3, y, colW, 4, 'F');
       doc.setFontSize(6.5);
-      doc.text('TO (CONSIGNEE):', margin + colW + 4.5, y + 3);
+      doc.text(receiptRole === 'buyer' ? 'TO (CONSIGNEE) ★ MAIN:' : 'TO (CONSIGNEE):', margin + colW + 4.5, y + 3);
       
       doc.setFontSize(8.5);
       doc.setFont('helvetica', 'bold');
       doc.text(shipment.receiver.name.substring(0, 20), margin + colW + 4.5, y + 8);
+      
+      // Bold Highlighted Contact Phone Badge
+      doc.setFillColor(0, 0, 0);
+      doc.rect(margin + colW + 4.5, y + 9.5, colW - 3, 4.5, 'F');
+      doc.setTextColor(255, 255, 255);
       doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Tel: ${shipment.receiver.phone}`, margin + colW + 4.5, y + 13);
-      doc.setFontSize(6.5);
-      doc.text(`Dest: ${destName}`, margin + colW + 4.5, y + 18);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`TEL: ${shipment.receiver.phone}`, margin + colW + 6, y + 13);
 
-      y += 24;
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Dest: ${destName}`, margin + colW + 4.5, y + 18.5);
+
+      y += 25;
 
       // SPECS (Weight, Pieces, Category, Service)
       doc.setLineWidth(0.2);

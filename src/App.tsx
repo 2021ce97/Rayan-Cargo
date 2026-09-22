@@ -70,13 +70,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 const MainLayout: React.FC = () => {
-  const { activeView, isAuthenticated, currentUser } = useApp();
+  const { activeView, isAuthenticated, currentUser, selectedShipmentForReceipt } = useApp();
 
   if (!isAuthenticated) {
     return (
       <>
         <LoginPage />
-        <PrintReceiptModal />
+        {selectedShipmentForReceipt && <PrintReceiptModal />}
         <ToastContainer />
       </>
     );
@@ -84,7 +84,7 @@ const MainLayout: React.FC = () => {
 
   const renderActiveView = () => {
     // If logged in as customer, allow customer_portal, customer_history, and tracking
-    if (currentUser.role === 'customer') {
+    if (currentUser?.role === 'customer') {
       if (activeView === 'customer_history') return <CustomerHistory />;
       if (activeView === 'tracking') return <TrackingPortal />;
       return <CustomerPortal />;
@@ -109,10 +109,10 @@ const MainLayout: React.FC = () => {
         return <TrackingPortal />;
       case 'branches':
         // Only super admin can access full branch network configuration
-        return currentUser.role === 'super_admin' ? <BranchManagement /> : <Dashboard />;
+        return currentUser?.role === 'super_admin' ? <BranchManagement /> : <Dashboard />;
       case 'users':
         // Only super admin can access user & role management across all branches
-        return currentUser.role === 'super_admin' ? <UserManagement /> : <Dashboard />;
+        return currentUser?.role === 'super_admin' ? <UserManagement /> : <Dashboard />;
       case 'reports':
         return <AnalyticsReports />;
       default:
@@ -141,7 +141,7 @@ const MainLayout: React.FC = () => {
       </div>
 
       {/* Printable Consignment Waybill Modal */}
-      <PrintReceiptModal />
+      {selectedShipmentForReceipt && <PrintReceiptModal />}
 
       {/* Global Toast Notification System */}
       <ToastContainer />

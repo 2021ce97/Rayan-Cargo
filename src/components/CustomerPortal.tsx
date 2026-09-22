@@ -23,6 +23,7 @@ import confetti from 'canvas-confetti';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { CustomerPreBookingInput, ParcelCategory } from '../types';
+import { BranchSearchSelect } from './BranchSearchSelect';
 
 export const CustomerPortal: React.FC = () => {
   const { 
@@ -650,11 +651,11 @@ export const CustomerPortal: React.FC = () => {
       {/* DEDICATED PRE-BOOKING MODAL DIALOG (OPENS UPON CLICK, AND CLOSES AUTOMATICALLY ON SAVE) */}
       {isAddOrderOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/70 backdrop-blur-sm overflow-y-auto animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/75 backdrop-blur-sm overflow-y-auto"
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-white dark:bg-slate-900 w-[95vw] sm:w-full max-w-4xl rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col mx-auto">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-3xl rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-auto max-h-[90vh] flex flex-col">
             
             {/* Modal Header */}
             <div className="px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/70 shrink-0">
@@ -684,7 +685,7 @@ export const CustomerPortal: React.FC = () => {
             </div>
 
             {/* Scrollable Form Body */}
-            <form onSubmit={handlePreBookSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+            <form onSubmit={handlePreBookSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
               
               {/* 1. Branch Routing Selection */}
               <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 space-y-3">
@@ -695,39 +696,23 @@ export const CustomerPortal: React.FC = () => {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-red-600" />
-                      <span>{t('origin_branch_drop')}</span>
-                    </label>
-                    <select
-                      value={originBranchId}
-                      onChange={(e) => handleOriginChange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-red-500 focus:outline-none cursor-pointer"
-                    >
-                      {sanitizedBranches.map(b => (
-                        <option key={b.id} value={b.id}>
-                          {getLocalizedBranchName(b)}
-                        </option>
-                      ))}
-                    </select>
+                    <BranchSearchSelect
+                      branches={sanitizedBranches}
+                      selectedBranchId={originBranchId}
+                      onChange={handleOriginChange}
+                      label={t('origin_branch_drop')}
+                      placeholder={language === 'fa' ? 'جستجو و انتخاب نمایندگی مبدأ...' : 'Search & select origin branch...'}
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                      <Truck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{t('destination_branch_dest')}</span>
-                    </label>
-                    <select
-                      value={destinationBranchId}
-                      onChange={(e) => handleDestChange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-red-500 focus:outline-none cursor-pointer"
-                    >
-                      {sanitizedBranches.map(b => (
-                        <option key={b.id} value={b.id}>
-                          {getLocalizedBranchName(b)}
-                        </option>
-                      ))}
-                    </select>
+                    <BranchSearchSelect
+                      branches={sanitizedBranches}
+                      selectedBranchId={destinationBranchId}
+                      onChange={handleDestChange}
+                      label={t('destination_branch_dest')}
+                      placeholder={language === 'fa' ? 'جستجو و انتخاب نمایندگی مقصد...' : 'Search & select destination branch...'}
+                    />
                   </div>
                 </div>
               </div>

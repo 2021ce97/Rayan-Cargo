@@ -26,6 +26,7 @@ import {
   PaymentMethod,
   AdminEditShipmentInput 
 } from '../types';
+import { BranchSearchSelect } from './BranchSearchSelect';
 
 interface EditShipmentModalProps {
   shipment: Shipment | null;
@@ -47,7 +48,7 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
     language
   } = useApp();
 
-  const isSuperAdmin = currentUser.role === 'super_admin';
+  const isSuperAdmin = currentUser?.role === 'super_admin';
 
   // Form states
   const [productPrice, setProductPrice] = useState<number | "">("");
@@ -696,39 +697,25 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('origin_branch')}
-                </label>
-                <select
+                <BranchSearchSelect
+                  branches={branches}
+                  selectedBranchId={originBranchId}
+                  onChange={setOriginBranchId}
+                  label={t('origin_branch')}
                   disabled={!isSuperAdmin}
-                  value={originBranchId}
-                  onChange={(e) => setOriginBranchId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden cursor-pointer"
-                >
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {getBranchDisplayName(b.id)} ({b.city})
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Select origin branch..."
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('destination_branch')}
-                </label>
-                <select
+                <BranchSearchSelect
+                  branches={branches}
+                  selectedBranchId={destinationBranchId}
+                  onChange={setDestinationBranchId}
+                  label={t('destination_branch')}
                   disabled={!isSuperAdmin}
-                  value={destinationBranchId}
-                  onChange={(e) => setDestinationBranchId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden cursor-pointer"
-                >
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {getBranchDisplayName(b.id)} ({b.city})
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Select destination branch..."
+                />
               </div>
 
               <div>

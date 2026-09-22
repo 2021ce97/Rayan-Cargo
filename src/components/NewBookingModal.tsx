@@ -26,6 +26,7 @@ import {
   ShipmentStatus 
 } from '../types';
 import confetti from 'canvas-confetti';
+import { BranchSearchSelect } from './BranchSearchSelect';
 
 export const NewBookingModal: React.FC = () => {
   const { 
@@ -427,51 +428,26 @@ export const NewBookingModal: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Origin Branch: Available as default, locked for branch users */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                  <span>{t('origin_branch_lbl')}</span>
-                  {isBranchUser && (
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <Lock className="w-2.5 h-2.5" />
-                      {t('default_locked_badge')}
-                    </span>
-                  )}
-                </label>
-
-                {isBranchUser ? (
-                  <div className="w-full h-11 px-3.5 flex items-center justify-between text-xs font-bold bg-slate-100 border border-slate-300 rounded-xl text-slate-900">
-                    <span className="truncate">{getLocalizedBranchName(originBranchObj)}</span>
-                  </div>
-                ) : (
-                  <select
-                    value={originBranchId}
-                    onChange={(e) => handleOriginChange(e.target.value)}
-                    className="w-full h-11 px-3.5 text-xs font-bold bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none cursor-pointer"
-                  >
-                    {sanitizedBranches.map(b => (
-                      <option key={b.id} value={b.id}>
-                        {getLocalizedBranchName(b)}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <BranchSearchSelect
+                  branches={sanitizedBranches}
+                  selectedBranchId={originBranchId}
+                  onChange={handleOriginChange}
+                  label={t('origin_branch_lbl')}
+                  disabled={isBranchUser}
+                  disabledBadge={t('default_locked_badge')}
+                  placeholder={language === 'fa' ? 'جستجو و انتخاب نمایندگی مبدأ...' : 'Search & select origin branch...'}
+                />
               </div>
 
-              {/* Destination Branch (Dropdown of other branches) */}
+              {/* Destination Branch (Dropdown with Search) */}
               <div>
-                <label className="block text-xs font-bold text-red-600 mb-1.5 flex items-center justify-between">
-                  <span>{t('dest_branch_lbl')}</span>
-                </label>
-                <select
-                  value={destBranchId}
-                  onChange={(e) => handleDestChange(e.target.value)}
-                  className="w-full h-11 px-3.5 text-xs font-bold bg-red-50/50 border-2 border-red-500/40 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:outline-none cursor-pointer"
-                >
-                  {availableDestinations.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {getLocalizedBranchName(b)}
-                    </option>
-                  ))}
-                </select>
+                <BranchSearchSelect
+                  branches={availableDestinations}
+                  selectedBranchId={destBranchId}
+                  onChange={handleDestChange}
+                  label={t('dest_branch_lbl')}
+                  placeholder={language === 'fa' ? 'جستجو و انتخاب نمایندگی مقصد...' : 'Search & select destination branch...'}
+                />
               </div>
             </div>
 
