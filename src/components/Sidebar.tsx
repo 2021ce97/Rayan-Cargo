@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { LanguageSwitcher } from './LanguageSwitcher';
 import { Branch, ActiveView } from '../types';
 
 export const Sidebar: React.FC = () => {
@@ -212,6 +213,15 @@ export const Sidebar: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Global Language Selector (Trilingual: English, دری, پښتو) */}
+        <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
+          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1 flex items-center justify-between">
+            <span>{t('language_label', 'Language / ژبه / زبان')}</span>
+            <span className="text-[9px] text-amber-400 font-mono font-bold uppercase">{language}</span>
+          </div>
+          <LanguageSwitcher variant="segmented" className="w-full" />
         </div>
 
         {/* Quick Booking Action Callout */}

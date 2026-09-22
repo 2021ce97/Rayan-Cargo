@@ -89,15 +89,15 @@ export const Header: React.FC = () => {
           </div>
         )}
 
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-2 sm:gap-3">
+        <div className="max-w-[1600px] mx-auto px-2 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 gap-1.5 sm:gap-3 min-w-0">
             
             {/* Left: Mobile Menu Toggle + Logo & Brand */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 min-w-0">
               {/* Mobile Sidebar Hamburger Toggle */}
               <button
                 onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-                className="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                className="lg:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shrink-0"
                 title={isMobileSidebarOpen ? 'Close Menu' : 'Open Navigation Menu'}
                 aria-label="Toggle navigation menu"
               >
@@ -110,9 +110,25 @@ export const Header: React.FC = () => {
 
               <div 
                 onClick={() => setActiveView('dashboard')}
-                className="cursor-pointer transition-transform hover:opacity-95"
+                className="cursor-pointer transition-transform hover:opacity-95 shrink-0"
               >
-                <ArmaghanLogo variant="badge" size="sm" showSubtitle={true} />
+                {/* Responsive Logo: compact on mobile, full on tablet/desktop */}
+                <div className="hidden sm:block">
+                  <ArmaghanLogo variant="badge" size="sm" showSubtitle={true} />
+                </div>
+                <div className="sm:hidden flex items-center gap-1.5">
+                  <div className="w-8 h-8 rounded-xl p-0.5 bg-white dark:bg-slate-900 border border-red-500/20 shadow-xs flex items-center justify-center shrink-0">
+                    <img src="/logo.jpg" alt="Logo" className="w-7 h-7 object-contain rounded-lg" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-black text-xs text-slate-900 dark:text-white leading-tight">
+                      Kabul Cargo
+                    </span>
+                    <span className="text-[8px] font-bold text-red-600 dark:text-red-400 leading-none">
+                      TRANSFERS
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -139,19 +155,19 @@ export const Header: React.FC = () => {
             </form>
 
             {/* Action Tools & Switchers */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
 
               {/* Mobile Search Icon Toggle */}
               <button
                 onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-                className="md:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                className="md:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shrink-0"
                 title="Search CN"
               >
                 <Search className="w-4 h-4" />
               </button>
 
               {/* Branch Switcher (for super_admin only) / Lock Badge (for branch) */}
-              <div className="relative">
+              <div className="relative shrink-0">
                 {currentUser.role === 'super_admin' ? (
                   <button
                     onClick={() => {
@@ -161,7 +177,7 @@ export const Header: React.FC = () => {
                     title={t('current_branch')}
                   >
                     <Building2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0" />
-                    <span className="max-w-[75px] sm:max-w-[140px] md:max-w-[180px] truncate">{currentBranchName}</span>
+                    <span className="max-w-[55px] sm:max-w-[140px] md:max-w-[180px] truncate text-[11px] sm:text-xs">{currentBranchName}</span>
                     <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                   </button>
                 ) : (
@@ -170,7 +186,7 @@ export const Header: React.FC = () => {
                     title={t('restricted_access_title')}
                   >
                     <Lock className="w-3.5 h-3.5 text-red-600 dark:text-red-400 shrink-0" />
-                    <span className="max-w-[80px] sm:max-w-[140px] md:max-w-[180px] truncate font-bold">{currentBranchName}</span>
+                    <span className="max-w-[60px] sm:max-w-[140px] md:max-w-[180px] truncate font-bold text-[11px] sm:text-xs">{currentBranchName}</span>
                   </div>
                 )}
 
@@ -217,10 +233,15 @@ export const Header: React.FC = () => {
                 )}
               </div>
 
-              {/* Database & Real-time Sync Indicator */}
+              {/* Dedicated Global Trilingual Language Switcher (Always accessible on all screen sizes) */}
+              <div className="shrink-0">
+                <LanguageSwitcher variant="dropdown" />
+              </div>
+
+              {/* Database & Real-time Sync Indicator (Desktop & Tablet) */}
               <button
                 onClick={() => setIsDbModalOpen(true)}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                className={`hidden sm:flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
                   realtimeStatus === 'SUBSCRIBED' || dbStatus.connected
                     ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
                     : isSyncing
@@ -230,7 +251,7 @@ export const Header: React.FC = () => {
                 title="Supabase PostgreSQL & Real-time Database Status (Click to inspect)"
               >
                 <Database className={`w-3.5 h-3.5 shrink-0 ${realtimeStatus === 'SUBSCRIBED' || dbStatus.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`} />
-                <span className="hidden sm:inline font-mono text-[11px]">
+                <span className="hidden md:inline font-mono text-[11px]">
                   {realtimeStatus === 'SUBSCRIBED'
                     ? 'Live DB'
                     : dbStatus.connected
@@ -242,19 +263,11 @@ export const Header: React.FC = () => {
                 <span className={`w-2 h-2 rounded-full shrink-0 ${realtimeStatus === 'SUBSCRIBED' ? 'bg-emerald-500 animate-pulse' : dbStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               </button>
 
-              {/* Dedicated Global Trilingual Language Switcher */}
-              <div className="hidden sm:block">
-                <LanguageSwitcher variant="segmented" />
-              </div>
-              <div className="sm:hidden">
-                <LanguageSwitcher variant="dropdown" />
-              </div>
-
               {/* Branch Password Self-Change Button (for Branch Accounts) */}
               {currentUser.role !== 'super_admin' && (
                 <button
                   onClick={() => setIsPasswordModalOpen(true)}
-                  className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold transition-colors cursor-pointer"
+                  className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold transition-colors cursor-pointer shrink-0"
                   title={t('change_branch_password_title')}
                 >
                   <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -265,7 +278,7 @@ export const Header: React.FC = () => {
               {/* Global Settings Button (for Super Admin & Users) */}
               <button
                 onClick={() => setIsSettingsModalOpen(true)}
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                className="hidden sm:flex p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shrink-0"
                 title="System Settings"
               >
                 <SettingsIcon className="w-4 h-4" />
@@ -273,7 +286,7 @@ export const Header: React.FC = () => {
 
               {/* User Account Info */}
               <div
-                className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors text-start"
+                className="hidden sm:flex items-center gap-1.5 sm:gap-2 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors text-start shrink-0"
               >
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-slate-800 to-slate-950 text-white flex items-center justify-center font-bold text-xs shrink-0">
                   {currentUser.name.charAt(0)}
@@ -291,7 +304,7 @@ export const Header: React.FC = () => {
               {/* Dedicated Logout Button */}
               <button
                 onClick={logout}
-                className="p-2 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 transition-colors cursor-pointer shrink-0"
                 title={t('logout_btn')}
               >
                 <LogOut className="w-4 h-4" />
