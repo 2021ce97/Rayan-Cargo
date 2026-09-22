@@ -2667,11 +2667,21 @@ export function generateThermalLabelPdf(
 
     y += specH + 3;
 
-    // Footer info
+    // Footer info with helplines
+    const destPhone100 = formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XXXXXXXX';
+    const kabulHq100 = formatReceiptPhone('0774144004');
+    const support100 = formatReceiptPhone('0711299680');
+
     doc.setFontSize(6.5);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Dest (${destBranch?.city || 'Hub'}): ${destPhone100} | HQ: ${kabulHq100} | Support: ${support100}`, margin, y);
+
+    doc.setFontSize(6);
     doc.setTextColor(100, 116, 139);
-    doc.text(`Booked: ${new Date(shipment.bookedAt).toLocaleString()} | By: ${shipment.bookedByUserName || 'Staff'}`, margin, y);
-    doc.text('Armaghan Sadeq Transfers • Thermal Shipping Label', margin, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Booked: ${new Date(shipment.bookedAt).toLocaleString()} | By: ${shipment.bookedByUserName || 'Staff'}`, margin, y + 4.5);
+    doc.text('Armaghan Sadeq Transfers • Official Logistics Cargo Network', margin, y + 8.5);
 
     const filename = `Thermal_Label_${shipment.cnNumber}.pdf`;
     drawPageBorder(doc, pageWidth, 150, 2.5);

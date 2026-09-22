@@ -453,29 +453,36 @@ export const PrintReceiptModal: React.FC = () => {
               </div>
 
               {/* Footer with Contacts & Rules */}
-              <div className="text-center pt-1 border-t border-dotted border-black/30 space-y-1">
-                <div className="text-[10px] text-slate-900 font-bold space-y-1 leading-normal px-1 text-right dir-rtl">
-                  <p>{l('1. Bill valid 1 month. Info accuracy is sender duty.', '۱. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درجشده در آن بر عهده فرستنده است.')}</p>
-                  <p>{l('2. Illegal items forbidden. No liability for fire or accidents.', '۲. ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده میباشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتشسوزی و تصادم مسئول نیست.')}</p>
-                  <p>{l('3. Returned items kept 1 month. Receipt required for payment.', '۳. اجناس مستردشده حداکثر یک ماه نگهداری میشود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمیگیرد.')}</p>
+              <div className="text-center pt-1.5 border-t border-dotted border-black/40 space-y-1.5">
+                <div className="text-[9.5px] text-slate-900 font-bold space-y-1 leading-normal px-1 text-right dir-rtl">
+                  <p>{l('1. Bill valid 1 month. Info accuracy is sender duty.', '۱. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درج‌شده در آن بر عهده فرستنده است.')}</p>
+                  <p>{l('2. Illegal items forbidden. No liability for fire or accidents.', '۲. ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده می‌باشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی و تصادم مسئول نیست.')}</p>
+                  <p>{l('3. Returned items kept 1 month. Receipt required for payment.', '۳. اجناس مستردشده حداکثر یک ماه نگهداری می‌شود. هنگام دریافت پول، ارائه بل الزامی است.')}</p>
                 </div>
-                <div className="pt-1 border-t border-black/10">
-                  <div className="text-[9px] font-black leading-tight">
-                    {(() => {
-                      const destPhoneFormatted = formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XXXXXXXX';
-                      return l(`Destination (${destBranch?.city || 'Hub'}): ${destPhoneFormatted}`, `تماس نمایندگی مقصد (${destBranch?.city || 'نمایندگی'}): ${destPhoneFormatted}`);
-                    })()}
+                
+                {/* 3 Structured Contact Badges */}
+                <div className="pt-1.5 border-t border-black/20 space-y-1 text-start">
+                  <div className="bg-slate-100 p-1 rounded border border-black/15 flex items-center justify-between text-[8.5px]">
+                    <span className="font-bold text-slate-800">{l(`Receiver Branch (${destBranch?.city || 'Dest Hub'}):`, `تماس نمایندگی مقصد (${destBranch?.city || 'نمایندگی'}):`)}</span>
+                    <span className="font-mono font-black text-slate-950 bg-white px-1 py-0.2 rounded border border-black/20" dir="ltr">
+                      ☎ {formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XX XXX XXX'}
+                    </span>
                   </div>
-                  <div className="text-[8.5px] font-bold leading-tight mt-0.5">
-                    {(() => {
-                      const hqPhone = formatReceiptPhone('0774144004');
-                      const supPhone = formatReceiptPhone('0711299680');
-                      return l(`Kabul HQ: ${hqPhone} | Support: ${supPhone}`, `مرکز کابل: ${hqPhone} | شکایات و پشتیبانی: ${supPhone}`);
-                    })()}
+
+                  <div className="grid grid-cols-2 gap-1 text-[8px]">
+                    <div className="bg-slate-100 p-1 rounded border border-black/15 flex flex-col justify-between">
+                      <span className="font-bold text-slate-700">{l('Kabul Head Office:', 'دفتر مرکزی کابل:')}</span>
+                      <span className="font-mono font-black text-slate-950 mt-0.5" dir="ltr">☎ {formatReceiptPhone('0774144004')}</span>
+                    </div>
+                    <div className="bg-slate-100 p-1 rounded border border-black/15 flex flex-col justify-between">
+                      <span className="font-bold text-red-700">{l('Complaints & Support:', 'شکایات و پشتیبانی:')}</span>
+                      <span className="font-mono font-black text-red-950 mt-0.5" dir="ltr">☎ {formatReceiptPhone('0711299680')}</span>
+                    </div>
                   </div>
-                  <div className="text-[7px] text-slate-500 mt-1 flex justify-between">
+
+                  <div className="text-[7px] text-slate-500 pt-0.5 flex justify-between items-center">
                     <span>Printed: {new Date().toLocaleDateString()} | Rayan Tech</span>
-                    <span className="font-bold font-mono">
+                    <span className="font-bold font-mono text-[7.5px] text-slate-800">
                       {(shipment.printCount || 0) === 0 ? 'COPY #1 (ORIGINAL)' : `COPY #${(shipment.printCount || 0) + 1} (RE-PRINT)`}
                     </span>
                   </div>
@@ -586,22 +593,19 @@ export const PrintReceiptModal: React.FC = () => {
               
               {/* Footer: Contacts & Conditions */}
               <div className="pt-1 border-t border-black mt-1 space-y-0.5 text-center">
-                <div className="text-[9px] text-slate-900 font-bold leading-tight mb-1 px-1 text-right dir-rtl">
+                <div className="text-[8.5px] text-slate-900 font-bold leading-tight mb-1 px-1 text-right dir-rtl">
                   <p>۱. بل پس از یک ماه فاقد اعتبار است.</p>
                   <p>۲. مسئولیت اموال بر عهده فرستنده است.</p>
                   <p>۳. بل اصلی برای دریافت پول الزامی است.</p>
                 </div>
-                <div className="pt-1 border-t border-black/10">
-                  <div className="text-[8px] font-black leading-tight">
-                    {(() => {
-                      const destPhoneFormatted = formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XXXXXXXX';
-                      const hqPhone = formatReceiptPhone('0774144004');
-                      const supPhone = formatReceiptPhone('0711299680');
-                      return l(
-                        `Dest: ${destPhoneFormatted} | HQ: ${hqPhone} | Support: ${supPhone}`,
-                        `مقصد: ${destPhoneFormatted} | کابل: ${hqPhone} | شکایات: ${supPhone}`
-                      );
-                    })()}
+                <div className="pt-1 border-t border-black/20 text-start space-y-0.5">
+                  <div className="flex items-center justify-between text-[7.5px] font-bold">
+                    <span className="text-slate-800">{l(`Dest Hub (${destBranch?.city || 'Dest'}):`, `نمایندگی مقصد (${destBranch?.city || 'مقصد'}):`)}</span>
+                    <span className="font-mono font-black" dir="ltr">{formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XX XXX XXX'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[7px] text-slate-700">
+                    <span>{l('Kabul HQ:', 'مرکز کابل:')} <strong className="font-mono" dir="ltr">{formatReceiptPhone('0774144004')}</strong></span>
+                    <span className="text-red-700">{l('Support:', 'شکایات:')} <strong className="font-mono" dir="ltr">{formatReceiptPhone('0711299680')}</strong></span>
                   </div>
                 </div>
               </div>
@@ -867,27 +871,44 @@ export const PrintReceiptModal: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200 mt-2">
-                    <div className="text-[9.5px] text-slate-700 font-medium space-y-0.5">
-                      <p className="font-bold text-slate-900">
-                        {(() => {
-                          const destPhoneFormatted = formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XXXXXXXX';
-                          return l(`Destination Branch (${destBranch?.city || 'Dest Hub'}): ${destPhoneFormatted}`, `تماس نمایندگی مقصد (${destBranch?.city || 'مقصد'}): ${destPhoneFormatted}`);
-                        })()}
-                      </p>
-                      <p>
-                        {(() => {
-                          const hqPhone = formatReceiptPhone('0774144004');
-                          const supPhone = formatReceiptPhone('0711299680');
-                          return l(`Kabul Main HQ: ${hqPhone} | Complaints & Support: ${supPhone}`, `مرکز عمومی کابل: ${hqPhone} | شکایات و پشتیبانی: ${supPhone}`);
-                        })()}
-                      </p>
+                  <div className="pt-2 border-t border-slate-200 mt-2 space-y-1.5">
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* 1. Destination Branch */}
+                      <div className="bg-white p-1.5 rounded-lg border border-slate-200 flex flex-col justify-between">
+                        <span className="text-[8px] font-bold text-rose-700 uppercase tracking-tight truncate">
+                          {l(`1. Dest (${destBranch?.city || 'Hub'}):`, `۱. نمایندگی (${destBranch?.city || 'مقصد'}):`)}
+                        </span>
+                        <span className="font-mono font-black text-slate-950 text-[9.5px] mt-0.5 tracking-tight" dir="ltr">
+                          ☎ {formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XX XXX XXX'}
+                        </span>
+                      </div>
+
+                      {/* 2. Kabul Main HQ */}
+                      <div className="bg-white p-1.5 rounded-lg border border-slate-200 flex flex-col justify-between">
+                        <span className="text-[8px] font-bold text-blue-800 uppercase tracking-tight truncate">
+                          {l('2. Kabul Main HQ:', '۲. دفتر مرکزی کابل:')}
+                        </span>
+                        <span className="font-mono font-black text-slate-950 text-[9.5px] mt-0.5 tracking-tight" dir="ltr">
+                          ☎ {formatReceiptPhone('0774144004')}
+                        </span>
+                      </div>
+
+                      {/* 3. Complaints & Support */}
+                      <div className="bg-white p-1.5 rounded-lg border border-slate-200 flex flex-col justify-between">
+                        <span className="text-[8px] font-bold text-amber-700 uppercase tracking-tight truncate">
+                          {l('3. Support / Complaints:', '۳. شکایات و پشتیبانی:')}
+                        </span>
+                        <span className="font-mono font-black text-red-700 text-[9.5px] mt-0.5 tracking-tight" dir="ltr">
+                          ☎ {formatReceiptPhone('0711299680')}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-[8px] font-bold text-slate-400 text-end">
-                      <span className="text-[9px] font-black text-slate-800 block">
+
+                    <div className="flex items-center justify-between text-[8px] text-slate-400 pt-1">
+                      <span>{l('Armaghan Sadeq Cargo Network Helpline & Support', 'مرکز راهنمایی و پشتیبانی شبکه انتقالات ارمغان صادق')}</span>
+                      <span className="font-bold text-slate-800">
                         {(shipment.printCount || 0) === 0 ? 'PRINT #1 (ORIGINAL)' : `RE-PRINT #${(shipment.printCount || 0) + 1} (COPY)`}
                       </span>
-                      OFFICIAL RECEIPT
                     </div>
                   </div>
                 </div>

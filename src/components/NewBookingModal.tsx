@@ -328,32 +328,32 @@ export const NewBookingModal: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="w-full max-w-5xl mx-auto pb-12 flex flex-col space-y-4 sm:space-y-6 min-w-0 px-2 sm:px-4 md:px-0">
       
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/20">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs min-w-0">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/20 shrink-0">
               <PackagePlus className="w-5 h-5" />
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight truncate">
                 {t('booking_page_title')}
               </h1>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 truncate">
                 {t('booking_page_subtitle')}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {!isBranchUser && mainBranch && (
             <button
               onClick={() => handleOriginChange(mainBranch.id)}
               type="button"
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border ${
+              className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border ${
                 originBranchId === mainBranch.id
                   ? 'bg-red-600 text-white border-red-600 shadow-sm'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
@@ -368,7 +368,7 @@ export const NewBookingModal: React.FC = () => {
             <button
               onClick={handleAutoFillSample}
               type="button"
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Sparkles className="w-4 h-4 text-amber-600" />
               <span>{t('autofill_sample_btn')}</span>
@@ -377,7 +377,7 @@ export const NewBookingModal: React.FC = () => {
           <button
             onClick={handleReset}
             type="button"
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             title={t('clear_form_btn')}
           >
             <RotateCcw className="w-4 h-4" />
@@ -786,9 +786,9 @@ export const NewBookingModal: React.FC = () => {
                     step="100"
                     value={productPriceAfn}
                     onChange={(e) => setProductPriceAfn(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full h-9 pl-3 pr-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
+                    className="w-full h-9 ps-3 pe-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                   />
-                  <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
+                  <span className="absolute end-3 top-2 text-xs font-mono font-bold text-slate-400 pointer-events-none">
                     AFN
                   </span>
                 </div>
@@ -807,9 +807,9 @@ export const NewBookingModal: React.FC = () => {
                     step="10"
                     value={destCommission}
                     onChange={(e) => setDestCommission(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full h-9 pl-3 pr-16 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
+                    className="w-full h-9 ps-3 pe-16 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                   />
-                  <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
+                  <span className="absolute end-3 top-2 text-xs font-mono font-bold text-slate-400 pointer-events-none">
                     AFN
                   </span>
                 </div>
@@ -828,9 +828,9 @@ export const NewBookingModal: React.FC = () => {
                     step="10"
                     value={serviceFee}
                     onChange={(e) => setServiceFee(e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full h-9 pl-3 pr-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
+                    className="w-full h-9 ps-3 pe-12 text-xs font-mono font-bold bg-white border border-slate-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-red-500"
                   />
-                  <span className="absolute right-3 top-2 text-xs font-mono font-bold text-slate-400">
+                  <span className="absolute end-3 top-2 text-xs font-mono font-bold text-slate-400 pointer-events-none">
                     AFN
                   </span>
                 </div>
