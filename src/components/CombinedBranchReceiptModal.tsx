@@ -55,7 +55,8 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
     activeBranchId, 
     showToast,
     updateShipmentStatus,
-    recordPrint
+    recordPrint,
+    recordStickerPrint
   } = useApp();
   const { language: globalLang } = useI18n();
   const { getLocalizedBranchName: i18nGetLocalizedBranchName } = useI18n();
@@ -85,6 +86,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
   const [selectedDestBranchId, setSelectedDestBranchId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedShipmentIds, setSelectedShipmentIds] = useState<string[]>([]);
+  const [stickerFilter, setStickerFilter] = useState<'all' | 'new' | 'stickered'>('all');
   // Default to 80mm Roll thermal format as requested
   const [stickerFormat, setStickerFormat] = useState<'thermal_80mm' | 'thermal_4x6' | 'a4'>('thermal_80mm');
   const [batchRefNumber, setBatchRefNumber] = useState('');
@@ -261,9 +263,13 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
     );
   }, [allShipments, selectedSenderBranchId, selectedDestBranchId]);
 
-  // Filtered parcels by search query
+  // Filtered parcels by search query and sticker status
   const displayedParcels = useMemo(() => {
     return availableRouteParcels.filter(s => {
+      const isStickered = (s.stickerPrintCount || 0) > 0;
+      if (stickerFilter === 'new' && isStickered) return false;
+      if (stickerFilter === 'stickered' && !isStickered) return false;
+
       const q = searchTerm.toLowerCase().trim();
       if (!q) return true;
       return (
@@ -274,7 +280,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
         s.packageInfo.description.toLowerCase().includes(q)
       );
     });
-  }, [availableRouteParcels, searchTerm]);
+  }, [availableRouteParcels, searchTerm, stickerFilter]);
 
   // Selected shipments objects
   const selectedShipments = useMemo(() => {
@@ -329,6 +335,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
       selectedShipments.forEach(s => {
         recordPrint(s.id);
       });
+      recordStickerPrint(selectedShipmentIds, batchRefNumber);
       showToast(`✓ Print count updated for ${selectedShipments.length} shipments`, 'success');
     }
   };
@@ -348,6 +355,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
         const ok = await generateThermalPdfFromElement(stickerPrintRef.current, filename, 80);
         if (ok) {
           selectedShipments.forEach(s => recordPrint(s.id));
+          recordStickerPrint(selectedShipmentIds, batchRefNumber);
           showToast('✓ 80mm Carton Sticker PDF downloaded successfully');
         } else {
           showToast('❌ Failed to generate PDF');
@@ -386,6 +394,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
 
       pdf.save(filename);
       selectedShipments.forEach(s => recordPrint(s.id));
+      recordStickerPrint(selectedShipmentIds, batchRefNumber);
       showToast('✓ Carton Sticker PDF downloaded successfully');
     } catch (err) {
       console.error(err);
@@ -414,6 +423,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
       );
       if (ok) {
         selectedShipments.forEach(s => recordPrint(s.id));
+        recordStickerPrint(selectedShipmentIds, batchRefNumber);
         showToast(
           modalLang === 'fa' 
             ? '✓ بارنامه رسمی تجمیعی ارسال با موفقیت دانلود شد' 
@@ -644,6 +654,63 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                 </div>
               </div>
 
+              {/* Sticker Status Filters & Quick Select New Only */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-1 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setStickerFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                      stickerFilter === 'all'
+                        ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+                    }`}
+                  >
+                    {modalLang === 'fa' ? 'همه' : modalLang === 'ps' ? 'ټول' : 'All'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStickerFilter('new')}
+                    className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                      stickerFilter === 'new'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                    }`}
+                  >
+                    <span>🟢</span>
+                    <span>{modalLang === 'fa' ? 'فقط جدید' : modalLang === 'ps' ? 'یوازې نوي' : 'New Only'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStickerFilter('stickered')}
+                    className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                      stickerFilter === 'stickered'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                    }`}
+                  >
+                    <span>🔵</span>
+                    <span>{modalLang === 'fa' ? 'چاپ‌شده قبلی' : modalLang === 'ps' ? 'مخکې چاپ شوي' : 'Already Stickered'}</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedShipmentIds(availableRouteParcels.filter(s => !s.stickerPrintCount || s.stickerPrintCount === 0).map(s => s.id))}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 hover:bg-emerald-200 text-emerald-800 dark:text-emerald-200 font-bold text-[11px] border border-emerald-300 dark:border-emerald-700 transition-colors cursor-pointer"
+                  title="Select only unstickered new parcels"
+                >
+                  {modalLang === 'fa' ? 'انتخاب فقط جدیدها' : modalLang === 'ps' ? 'یوازې نوي انتخاب کړئ' : 'Select New Only'}
+                </button>
+              </div>
+
+              {/* Warning Banner if selected parcels contain already stickered items */}
+              {selectedShipments.some(s => (s.stickerPrintCount || 0) > 0) && (
+                <div className="px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                  <span>⚠️ <strong>Notice:</strong> {selectedShipments.filter(s => (s.stickerPrintCount || 0) > 0).length} selected parcel(s) were already stickered in previous batch(es). Review to avoid duplication.</span>
+                </div>
+              )}
+
               {/* Search Bar */}
               <div className="relative">
                 <Search className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-2.5 w-3.5 h-3.5 text-slate-400`} />
@@ -697,6 +764,17 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                             <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                               {s.receiver.name} <span className="text-[10px] text-slate-400 font-mono">({s.receiver.phone})</span>
                             </p>
+                            <div className="flex items-center gap-2 pt-0.5">
+                              {s.stickerPrintCount && s.stickerPrintCount > 0 ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[9px] font-bold" title={`Stickered ${s.stickerPrintCount}x in batch ${s.stickerBatchRef || 'N/A'}`}>
+                                  <span>🔵 Stickered ({s.stickerPrintCount}x) • {s.stickerBatchRef || 'Done'}</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[9px] font-bold" title="New / Unstickered parcel">
+                                  <span>🟢 New / Unstickered</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 

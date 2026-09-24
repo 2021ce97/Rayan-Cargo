@@ -272,6 +272,9 @@ export interface Shipment {
   lastPrintedAt?: string;
   lastPrintedBy?: string;
   lastPrintedRole?: 'buyer' | 'seller';
+  stickerPrintCount?: number;
+  stickerBatchRef?: string;
+  stickerPrintedAt?: string;
 }
 
 export function formatReceiptPhone(phone?: string): string {

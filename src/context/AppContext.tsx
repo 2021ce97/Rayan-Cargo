@@ -135,6 +135,7 @@ interface AppContextType {
   submitParcelForCollection: (shipmentId: string, reference?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
   recordPrint: (shipmentId: string, copyType?: 'buyer' | 'seller') => Promise<number>;
+  recordStickerPrint: (shipmentIds: string[], batchRef: string) => void;
   reportDeliveryIssue: (shipmentId: string, issueType: string, customNote?: string) => boolean;
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
@@ -2797,6 +2798,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return copyType === 'seller' ? nextSender : nextReceiver;
   };
 
+  const recordStickerPrint = (shipmentIds: string[], batchRef: string) => {
+    const now = new Date().toISOString();
+    setShipments(prev => prev.map(s => {
+      if (shipmentIds.includes(s.id) || shipmentIds.includes(s.cnNumber)) {
+        return {
+          ...s,
+          stickerPrintCount: (s.stickerPrintCount || 0) + 1,
+          stickerBatchRef: batchRef,
+          stickerPrintedAt: now
+        };
+      }
+      return s;
+    }));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -2840,6 +2856,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         submitParcelForCollection,
         updateShipmentStatus,
         recordPrint,
+        recordStickerPrint,
         reportDeliveryIssue,
         canUserUpdateStatus,
         changePassword,
