@@ -132,7 +132,7 @@ interface AppContextType {
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
   adminEditShipment: (shipmentId: string, input: AdminEditShipmentInput) => Promise<boolean>;
   deleteShipment: (shipmentId: string) => Promise<boolean>;
-  submitParcelForCollection: (shipmentId: string, reference?: string) => boolean;
+  submitParcelForCollection: (shipmentId: string, reference?: string, customSubmittedAt?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
   recordPrint: (shipmentId: string, copyType?: 'buyer' | 'seller') => Promise<number>;
   recordStickerPrint: (shipmentIds: string[], batchRef: string) => void;
@@ -2416,22 +2416,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  const submitParcelForCollection = (shipmentId: string, reference?: string): boolean => {
+  const submitParcelForCollection = (shipmentId: string, reference?: string, customSubmittedAt?: string): boolean => {
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) return false;
     if (target.customerSubmissionAt) {
       showToast(t('parcel_already_submitted') || 'This parcel has already been submitted to the customer.');
       return false;
     }
-    if (target.status !== 'out_for_delivery' && target.status !== 'delivered') {
-      showToast(t('parcel_not_ready_for_submission') || 'Only parcels ready for delivery can be submitted.');
+    if (target.status !== 'out_for_delivery' && target.status !== 'delivered' && target.status !== 'received_at_branch') {
+      showToast(t('parcel_not_ready_for_submission') || 'Only parcels ready for delivery or at destination hub can be submitted.');
       return false;
     }
 
-    const now = new Date().toISOString();
+    let submissionTimestamp: string;
+    if (customSubmittedAt) {
+      const parsed = new Date(customSubmittedAt);
+      submissionTimestamp = isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+    } else {
+      submissionTimestamp = new Date().toISOString();
+    }
+
+    const readableDateTime = new Date(submissionTimestamp).toLocaleString();
     const updatedShipment: Shipment = {
       ...target,
-      customerSubmissionAt: now,
+      customerSubmissionAt: submissionTimestamp,
       customerSubmissionReference: reference?.trim() || `SUB-${target.cnNumber}-${Date.now().toString().slice(-4)}`,
       customerSubmissionBy: currentUser.name,
       statusHistory: [
@@ -2441,8 +2449,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: target.status,
           location: branches.find(b => b.id === target.destinationBranchId)?.name || 'Destination Branch',
           branchName: branches.find(b => b.id === target.destinationBranchId)?.name || 'Destination Branch',
-          timestamp: now,
-          note: `Parcel bill submitted once for customer collection. Reference: ${reference?.trim() || 'System generated'}.`,
+          timestamp: submissionTimestamp,
+          note: `Parcel bill submitted once for customer collection on ${readableDateTime}. Reference: ${reference?.trim() || 'System generated'}.`,
           updatedBy: currentUser.name
         }
       ]
@@ -2450,7 +2458,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setShipments(prev => prev.map(s => s.id === target.id ? updatedShipment : s));
     directSupabaseUpdateShipmentStatus(target.id, target.status, updatedShipment.statusHistory, {
-      customer_submission_at: now,
+      customer_submission_at: submissionTimestamp,
       customer_submission_reference: updatedShipment.customerSubmissionReference,
       customer_submission_by: currentUser.name
     });
@@ -2460,14 +2468,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       body: JSON.stringify({
         status: target.status,
         statusHistory: updatedShipment.statusHistory,
-        customerSubmissionAt: now,
+        customerSubmissionAt: submissionTimestamp,
         customerSubmissionReference: updatedShipment.customerSubmissionReference,
         customerSubmissionBy: currentUser.name,
         userRole: currentUser.role,
         userBranchId: currentUser.branchId
       })
     }).catch(err => console.error('Error saving customer submission:', err));
-    showToast(t('parcel_submitted_success') || 'Parcel submitted to the customer once.');
+    showToast(t('parcel_submitted_success') || 'Parcel bill submitted to customer once.');
     return true;
   };
 

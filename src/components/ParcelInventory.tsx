@@ -19,6 +19,7 @@ import {
   FileText, 
   Loader2, 
   FileCheck, 
+  Calendar,
   X, 
   Lock, 
   Send, 
@@ -183,6 +184,18 @@ export const ParcelInventory: React.FC = () => {
   const [isSettling, setIsSettling] = useState(false);
   const [submissionModalShipment, setSubmissionModalShipment] = useState<Shipment | null>(null);
   const [submissionReference, setSubmissionReference] = useState('');
+  const [autoSubmissionDateTime, setAutoSubmissionDateTime] = useState<boolean>(true);
+  const [customSubmissionDateTime, setCustomSubmissionDateTime] = useState<string>('');
+
+  const handleOpenSubmissionModal = (s: Shipment) => {
+    setSubmissionModalShipment(s);
+    setSubmissionReference(`SUB-${s.cnNumber}-${Date.now().toString().slice(-4)}`);
+    setAutoSubmissionDateTime(true);
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const localNow = new Date(now.getTime() - offset * 60000);
+    setCustomSubmissionDateTime(localNow.toISOString().slice(0, 16));
+  };
 
   // Delivery Issue Reporting Modal
   const [issueModalShipment, setIssueModalShipment] = useState<Shipment | null>(null);
@@ -459,9 +472,13 @@ export const ParcelInventory: React.FC = () => {
 
   const handleSubmitParcel = () => {
     if (!submissionModalShipment) return;
-    if (submitParcelForCollection(submissionModalShipment.id, submissionReference)) {
+    const submittedTimestamp = autoSubmissionDateTime 
+      ? new Date().toISOString() 
+      : (customSubmissionDateTime ? new Date(customSubmissionDateTime).toISOString() : new Date().toISOString());
+    if (submitParcelForCollection(submissionModalShipment.id, submissionReference, submittedTimestamp)) {
       setSubmissionModalShipment(null);
       setSubmissionReference('');
+      setAutoSubmissionDateTime(true);
     }
   };
 
@@ -472,7 +489,8 @@ export const ParcelInventory: React.FC = () => {
       'Sender Name', 'Sender Phone', 'Sender City',
       'Receiver Name', 'Receiver Phone', 'Receiver City',
       'Category', 'Weight (KG)', 'Pieces',
-      'Total Amount (AFN)', 'Payment Status', 'Remittance Status', 'Booking Date'
+      'Total Amount (AFN)', 'Payment Status', 'Remittance Status', 'Booking Date',
+      'Bill Submission Status', 'Submitted At (Date & Time)', 'Submission Ref', 'Submitted By'
     ];
 
     const rows = processedParcels.map(p => {
@@ -495,7 +513,11 @@ export const ParcelInventory: React.FC = () => {
         p.financials.totalAmount,
         p.financials.paymentStatus,
         p.remittanceStatus || 'n/a',
-        new Date(p.bookedAt).toISOString()
+        new Date(p.bookedAt).toISOString(),
+        p.customerSubmissionAt ? 'Submitted' : 'Not Submitted',
+        p.customerSubmissionAt ? new Date(p.customerSubmissionAt).toISOString() : '',
+        `"${p.customerSubmissionReference || ''}"`,
+        `"${p.customerSubmissionBy || ''}"`
       ].join(',');
     });
 
@@ -738,6 +760,36 @@ export const ParcelInventory: React.FC = () => {
             {t('showing_label')} <strong>{processedParcels.length}</strong> {t('of_label')} {baseShipmentList.length}
           </div>
         </div>
+
+        {/* Dedicated Banner for Submitted Parcels Tab */}
+        {activeTab === 'submitted' && (
+          <div className="p-4 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
+                <FileCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-blue-950 dark:text-blue-100 flex items-center gap-2">
+                  <span>{t('tab_submitted_parcels')}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 font-mono font-bold">
+                    {processedParcels.length} {t('branch_customer_parcels')}
+                  </span>
+                </h4>
+                <p className="text-[11.5px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
+                  {t('tab_submitted_desc')}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 text-end">
+                <span className="text-[10px] text-slate-400 block font-semibold">{t('th_total_charge')}</span>
+                <span className="font-mono font-black text-blue-700 dark:text-blue-300 text-xs">
+                  {processedParcels.reduce((sum, p) => sum + (p.financials?.totalAmount || 0), 0).toLocaleString()} AFN
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Search and Secondary Select Filters */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -1024,7 +1076,32 @@ export const ParcelInventory: React.FC = () => {
                             )}
                           </>
                         )}
-                        {isSubmitted && <div className="mt-1 text-[9px] font-bold text-blue-700 dark:text-blue-300">{t('parcel_submitted_badge')} · {s.customerSubmissionReference}</div>}
+                        {isSubmitted && (
+                          <div className="mt-1.5 p-1.5 rounded-xl bg-blue-50/90 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-start shadow-2xs">
+                            <div className="flex items-center gap-1 text-[9.5px] font-bold text-blue-700 dark:text-blue-300">
+                              <CheckCircle2 className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                              <span>{t('parcel_submitted_badge')}</span>
+                              {s.customerSubmissionReference && (
+                                <span className="font-mono text-[8.5px] opacity-75 truncate max-w-[90px]" title={s.customerSubmissionReference}>
+                                  ({s.customerSubmissionReference})
+                                </span>
+                              )}
+                            </div>
+                            {s.customerSubmissionAt && (
+                              <div className="text-[8.5px] font-mono text-blue-800 dark:text-blue-300 flex items-center gap-1 mt-0.5 font-semibold">
+                                <Clock className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                                <span>
+                                  {new Date(s.customerSubmissionAt).toLocaleDateString()} · {new Date(s.customerSubmissionAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            )}
+                            {s.customerSubmissionBy && (
+                              <div className="text-[8px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                {t('submitted_by_officer')}: {s.customerSubmissionBy}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Status / Pre-booked / Settlement Action */}
@@ -1137,14 +1214,22 @@ export const ParcelInventory: React.FC = () => {
                               <PhoneOff className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          {(s.status === 'out_for_delivery' || s.status === 'delivered') && !isSubmitted && (
+                          {(s.status === 'received_at_branch' || s.status === 'out_for_delivery' || s.status === 'delivered') && !isSubmitted && (
                             <button
-                              onClick={() => { setSubmissionModalShipment(s); setSubmissionReference(''); }}
-                              className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-700 dark:text-blue-300 transition-colors cursor-pointer"
+                              onClick={() => handleOpenSubmissionModal(s)}
+                              className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 transition-colors cursor-pointer"
                               title={t('submit_parcel_for_collection')}
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <FileCheck className="w-3.5 h-3.5" />
                             </button>
+                          )}
+                          {isSubmitted && (
+                            <span 
+                              className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 inline-flex items-center justify-center cursor-help"
+                              title={`${t('parcel_submitted_badge')}: ${s.customerSubmissionAt ? new Date(s.customerSubmissionAt).toLocaleString() : ''} (${s.customerSubmissionReference || ''})`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </span>
                           )}
                         </div>
                       </td>
@@ -1619,31 +1704,171 @@ export const ParcelInventory: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: ONE-TIME CUSTOMER BILL SUBMISSION */}
-      {submissionModalShipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white">{t('submit_parcel_for_collection')}</h3>
-                <p className="text-xs text-slate-500 mt-1">{submissionModalShipment.cnNumber} · {submissionModalShipment.receiver.name}</p>
+      {/* MODAL: ONE-TIME CUSTOMER BILL SUBMISSION WITH AUTOMATIC DATE & TIME */}
+      {submissionModalShipment && (() => {
+        const origB = branches.find(b => b.id === submissionModalShipment.originBranchId);
+        const destB = branches.find(b => b.id === submissionModalShipment.destinationBranchId);
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+              
+              {/* Header */}
+              <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                    <FileCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>{t('submit_parcel_for_collection')}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold">1x One-Time</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                      {submissionModalShipment.cnNumber} · {origB?.city || 'Origin'} ➔ {destB?.city || 'Dest'}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSubmissionModalShipment(null)} 
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <button onClick={() => setSubmissionModalShipment(null)} className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200">
-              {t('submit_parcel_once_notice')}
-            </div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-              {t('submission_reference_label')}
-              <input value={submissionReference} onChange={(e) => setSubmissionReference(e.target.value)} placeholder={t('submission_reference_placeholder')} className="mt-1 w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs" />
-            </label>
-            <div className="flex gap-2">
-              <button onClick={handleSubmitParcel} className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer">{t('confirm_submit_parcel')}</button>
-              <button onClick={() => setSubmissionModalShipment(null)} className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer">{t('btn_cancel')}</button>
+
+              {/* Informative Notice */}
+              <div className="p-3.5 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span>{t('bill_submission_card_title')}</span>
+                </div>
+                <p className="text-[11.5px] leading-relaxed text-blue-800/90 dark:text-blue-300/90">
+                  {t('submit_parcel_once_notice')}
+                </p>
+              </div>
+
+              {/* Consignment Brief Card */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 grid grid-cols-2 gap-2.5 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('receiver_details') || 'Receiver'}:</span>
+                  <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{submissionModalShipment.receiver.name}</div>
+                  <div className="text-[11px] font-mono text-slate-500">{submissionModalShipment.receiver.phone}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('th_total_charge') || 'Bill Amount'}:</span>
+                  <div className="font-mono font-black text-slate-900 dark:text-white">
+                    {submissionModalShipment.financials.totalAmount.toLocaleString()} AFN
+                  </div>
+                  <span className={`inline-block text-[9.5px] font-bold px-1.5 py-0.2 rounded ${
+                    submissionModalShipment.financials.paymentStatus === 'paid' 
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                  }`}>
+                    {submissionModalShipment.financials.paymentStatus.toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('submitted_by_officer')}:</span>
+                  <div className="font-bold text-slate-700 dark:text-slate-300 truncate">{currentUser.name}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('th_weight_pieces')}:</span>
+                  <div className="font-medium text-slate-700 dark:text-slate-300">
+                    {submissionModalShipment.packageInfo.weightKg} KG · {submissionModalShipment.packageInfo.pieces} pcs
+                  </div>
+                </div>
+              </div>
+
+              {/* Automatic Date & Time Section (The requested feature) */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input 
+                      type="checkbox" 
+                      checked={autoSubmissionDateTime}
+                      onChange={(e) => setAutoSubmissionDateTime(e.target.checked)}
+                      className="rounded border-slate-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      {t('auto_submission_datetime')}
+                    </span>
+                  </label>
+                  {autoSubmissionDateTime && (
+                    <span className="inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      {t('auto_timestamp_active')}
+                    </span>
+                  )}
+                </div>
+
+                {autoSubmissionDateTime ? (
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-200/80 dark:border-emerald-800/40 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <div>
+                        <div className="font-bold text-slate-800 dark:text-slate-100">
+                          {new Date().toLocaleDateString(language === 'fa' ? 'fa-AF' : 'en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
+                        <div className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-slate-400 italic">
+                      Current System Time
+                    </span>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      {t('submission_datetime_label')}
+                    </label>
+                    <input 
+                      type="datetime-local" 
+                      value={customSubmissionDateTime}
+                      onChange={(e) => setCustomSubmissionDateTime(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Reference Number Input */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('submission_reference_label')}
+                </label>
+                <input 
+                  value={submissionReference} 
+                  onChange={(e) => setSubmissionReference(e.target.value)} 
+                  placeholder={t('submission_reference_placeholder')} 
+                  className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button 
+                  onClick={handleSubmitParcel} 
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{t('confirm_submit_parcel')}</span>
+                </button>
+                <button 
+                  onClick={() => setSubmissionModalShipment(null)} 
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer transition-colors"
+                >
+                  {t('btn_cancel')}
+                </button>
+              </div>
+
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MODAL 3: STATUS PROGRESSION MODAL */}
       {statusModalShipment && (() => {
@@ -2037,6 +2262,42 @@ export const ParcelInventory: React.FC = () => {
               </div>
             </div>
 
+            {/* One-Time Bill Submission Record (if submitted) */}
+            {detailsModalShipment.customerSubmissionAt && (
+              <div className="p-4 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 space-y-2">
+                <div className="flex items-center justify-between pb-1.5 border-b border-blue-200/60 dark:border-blue-800/60">
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-950 dark:text-blue-100">
+                    <FileCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span>{t('bill_submission_card_title')}</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 font-bold text-[10px]">
+                    {t('parcel_submitted_badge')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs pt-1">
+                  <div>
+                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">{t('submitted_date_time')}:</span>
+                    <div className="font-mono font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+                      <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>{new Date(detailsModalShipment.customerSubmissionAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">{t('submission_reference_label')}:</span>
+                    <div className="font-mono font-bold text-slate-900 dark:text-white mt-0.5">
+                      {detailsModalShipment.customerSubmissionReference || 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">{t('submitted_by_officer')}:</span>
+                    <div className="font-bold text-slate-900 dark:text-white mt-0.5">
+                      {detailsModalShipment.customerSubmissionBy || 'Staff'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Timeline-based Status History Component */}
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 max-h-72 overflow-y-auto">
               <ShipmentStatusTimeline 
@@ -2060,6 +2321,20 @@ export const ParcelInventory: React.FC = () => {
               </button>
 
               <div className="flex items-center gap-2">
+                {!detailsModalShipment.customerSubmissionAt && (detailsModalShipment.status === 'received_at_branch' || detailsModalShipment.status === 'out_for_delivery' || detailsModalShipment.status === 'delivered') && (
+                  <button
+                    onClick={() => {
+                      const s = detailsModalShipment;
+                      setDetailsModalShipment(null);
+                      handleOpenSubmissionModal(s);
+                    }}
+                    className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                    title={t('submit_parcel_for_collection')}
+                  >
+                    <FileCheck className="w-4 h-4" />
+                    <span>{t('submit_parcel_for_collection')}</span>
+                  </button>
+                )}
                 {currentUser.role === 'super_admin' && (
                   <button
                     onClick={() => {

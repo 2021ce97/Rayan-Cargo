@@ -281,6 +281,14 @@ export const PrintReceiptModal: React.FC = () => {
                 ? l('COPY #1 (ORIGINAL)', 'نسخه ۱ (اصلی)') 
                 : l(`COPY #${(shipment.printCount || 0) + 1} (RE-PRINT)`, `نسخه #${(shipment.printCount || 0) + 1} (کاپی مجدد)`)}
             </span>
+            {shipment.customerSubmissionAt && (
+              <span className="font-mono font-bold px-2 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 flex items-center gap-1" title={shipment.customerSubmissionReference}>
+                <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                <span>
+                  {l('Submitted:', 'تسلیم شده:')} {new Date(shipment.customerSubmissionAt).toLocaleDateString()} {new Date(shipment.customerSubmissionAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </span>
+            )}
           </div>
         </div>
 

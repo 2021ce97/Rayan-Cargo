@@ -236,7 +236,17 @@ export const ShipmentStatusTimeline: React.FC<ShipmentStatusTimelineProps> = ({
 
                 {/* Notes and description */}
                 {item.note && (
-                  <div className="mt-2 p-2 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-700/50 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <div className={`mt-2 p-2.5 rounded-xl border text-xs leading-relaxed ${
+                    item.note.includes('Parcel bill submitted') || item.note.includes('bill submitted')
+                      ? 'bg-blue-50/90 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100'
+                      : 'bg-white/70 dark:bg-slate-900/60 border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300'
+                  }`}>
+                    {(item.note.includes('Parcel bill submitted') || item.note.includes('bill submitted')) && (
+                      <div className="flex items-center gap-1.5 font-bold text-blue-700 dark:text-blue-300 text-[11px] mb-1">
+                        <FileCheck className="w-3.5 h-3.5" />
+                        <span>{t('bill_submission_card_title')}</span>
+                      </div>
+                    )}
                     {item.note}
                   </div>
                 )}
