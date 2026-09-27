@@ -1,22 +1,17 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Boxes, 
   Search, 
-  Filter, 
-  Download, 
   Printer, 
   Eye, 
-  Building2, 
   FileSpreadsheet,
   PackagePlus,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   MapPin, 
-  Phone, 
   Clock, 
   DollarSign, 
-  FileText, 
   Loader2, 
   FileCheck, 
   Calendar,
@@ -28,75 +23,60 @@ import {
   Check,
   Scale,
   ArrowRightLeft,
-  Banknote,
-  Receipt,
-  UserCheck,
   AlertCircle,
+  AlertTriangle,
   ShieldCheck,
-  Users,
-  QrCode,
   RefreshCw,
   PhoneOff,
   MessageSquareWarning,
   Edit3,
   Trash2,
   Truck,
-  CheckSquare
+  CheckSquare,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
-import { Shipment, ShipmentStatus, ParcelCategory, PaymentStatus } from '../types';
-import { printElementUsingIframe, generateThermalLabelPdf, generateCombinedCustomerPdf } from '../utils/pdfExport';
-import { BarcodeGenerator } from './BarcodeGenerator';
-import { CombinedCustomerReceiptModal } from './CombinedCustomerReceiptModal';
+import { Shipment, ShipmentStatus, PaymentStatus } from '../types';
+import { generateThermalLabelPdf } from '../utils/pdfExport';
 import { ShipmentStatusTimeline } from './ShipmentStatusTimeline';
 import { EditShipmentModal } from './EditShipmentModal';
 import { CombinedBranchReceiptModal } from './CombinedBranchReceiptModal';
+import { ReportDeliveryIssueModal } from './ReportDeliveryIssueModal';
 
 type SortField = 'date' | 'weight' | 'amount' | 'cn' | 'status';
 type SortOrder = 'asc' | 'desc';
-type InventoryTab = 'all' | 'inbound' | 'outbound' | 'warehouse' | 'prebooked' | 'submitted' | 'settlement';
+type InventoryTab = 'all' | 'in_transit' | 'arrived' | 'delivered' | 'submitted' | 'prebooked';
 
 export const ParcelInventory: React.FC = () => {
   const { language, t } = useI18n();
   const { 
     filteredShipments, 
-    partnerShipments,
     branches, 
-    users,
     currentUser,
-    setCurrentUser,
-    loginWithUser,
     activeBranchId,
-    setActiveBranchId,
-    selectedPartnerBranchId,
-    setSelectedPartnerBranchId,
     canUserUpdateStatus,
     setSelectedShipmentForReceipt, 
     setActiveView,
     updateShipmentStatus,
     reportDeliveryIssue,
     confirmCustomerPreBooking,
-    settleInterBranchRemittance,
-    createSingleParcelRemittance,
     submitParcelForCollection,
     deleteShipment,
     syncWithDatabase,
-    isSyncing,
-    showToast
+    isSyncing
   } = useApp();
 
-  // Auto-sync parcels immediately on mount and poll periodically so new parcels from any branch/customer appear automatically
+  // Auto-sync parcels immediately on mount and poll periodically
   useEffect(() => {
-    // 1. Immediate sync on entering parcel inventory
     syncWithDatabase();
 
-    // 2. Periodic sync fallback every 25 seconds (real-time websocket & storage events handle instant updates)
     const pollInterval = setInterval(() => {
       syncWithDatabase();
     }, 25000);
 
-    // 3. Cross-tab storage synchronization
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'armaghan_shipments' || e.key === 'armaghan_sync_signal') {
         syncWithDatabase();
@@ -104,7 +84,6 @@ export const ParcelInventory: React.FC = () => {
     };
     window.addEventListener('storage', handleStorage);
 
-    // 4. Instant cross-tab broadcast synchronization
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel('armaghan_cargo_sync');
@@ -122,21 +101,21 @@ export const ParcelInventory: React.FC = () => {
     };
   }, [syncWithDatabase, activeBranchId]);
 
+  // Visual Interactive Step-by-Step Guide State
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
+
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
-  // Debounce search input to prevent re-render loops and input lag
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 200);
+    }, 180);
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedPayment, setSelectedPayment] = useState<string>('all');
   const [selectedDestinationBranch, setSelectedDestinationBranch] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<InventoryTab>('all');
 
@@ -148,22 +127,16 @@ export const ParcelInventory: React.FC = () => {
   const [statusModalShipment, setStatusModalShipment] = useState<Shipment | null>(null);
   const [statusChoice, setStatusChoice] = useState<ShipmentStatus>('in_transit');
   const [statusNote, setStatusNote] = useState('');
-  const [detailsModalShipment, setDetailsModalShipment] = useState<Shipment | null>(null);
+  const [statusAutoSubmitBill, setStatusAutoSubmitBill] = useState(true);
+  const [deliveryCollectedAmount, setDeliveryCollectedAmount] = useState<number>(0);
 
-  // Delivery Handover & Remittance fields in status modal
-  const [deliveryCollectedAfn, setDeliveryCollectedAfn] = useState<number>(100);
-  const [deliveryCommissionAfn, setDeliveryCommissionAfn] = useState<number>(30);
-  const [deliveryTransportFeeAfn, setDeliveryTransportFeeAfn] = useState<number>(20);
-  const [deliveryOriginCommAfn, setDeliveryOriginCommAfn] = useState<number>(0);
-  const [deliveryNetToHqAfn, setDeliveryNetToHqAfn] = useState<number>(50);
-  const [deliveryAutoRemit, setDeliveryAutoRemit] = useState<boolean>(true);
-  const [deliveryRefNumber, setDeliveryRefNumber] = useState<string>('');
+  const [detailsModalShipment, setDetailsModalShipment] = useState<Shipment | null>(null);
 
   // Pre-booking confirmation modal state
   const [confirmModalShipment, setConfirmModalShipment] = useState<Shipment | null>(null);
   const [weighedWeight, setWeighedWeight] = useState<number>(1);
   const [weighedPieces, setWeighedPieces] = useState<number>(1);
-  const [modalProductPrice, setModalProductPrice] = useState<number>(5000);
+  const [modalProductPrice, setModalProductPrice] = useState<number>(1000);
   const [modalServiceFee, setModalServiceFee] = useState<number>(150);
   const [modalDiscountAmount, setModalDiscountAmount] = useState<number>(0);
   const [customDestCommission, setCustomDestCommission] = useState<number>(70);
@@ -173,15 +146,9 @@ export const ParcelInventory: React.FC = () => {
   const [editedReceiverName, setEditedReceiverName] = useState('');
   const [editedReceiverPhone, setEditedReceiverPhone] = useState('');
   const [editedDescription, setEditedDescription] = useState('');
-  const [modalTargetStatus, setModalTargetStatus] = useState<ShipmentStatus>('verified');
-  const [modalOriginBranchId, setModalOriginBranchId] = useState('');
-  const [modalDestBranchId, setModalDestBranchId] = useState('');
-  const [modalNote, setModalNote] = useState('');
+  const [modalTargetStatus, setModalTargetStatus] = useState<ShipmentStatus>('booked');
 
-  // Inter-branch settlement modal state
-  const [settlementModalShipment, setSettlementModalShipment] = useState<Shipment | null>(null);
-  const [settlementNote, setSettlementNote] = useState('');
-  const [isSettling, setIsSettling] = useState(false);
+  // One-Time Bill Submission modal state
   const [submissionModalShipment, setSubmissionModalShipment] = useState<Shipment | null>(null);
   const [submissionReference, setSubmissionReference] = useState('');
   const [autoSubmissionDateTime, setAutoSubmissionDateTime] = useState<boolean>(true);
@@ -202,10 +169,10 @@ export const ParcelInventory: React.FC = () => {
   const [issueType, setIssueType] = useState<string>('no_answer');
   const [issueCustomNote, setIssueCustomNote] = useState<string>('');
 
-  // Combined Branch Bulk Dispatch & Carton Sticker Modal state
+  // Combined Branch Bulk Dispatch
   const [isCombinedBranchOpen, setIsCombinedBranchOpen] = useState(false);
 
-  // Admin Edit Parcel Modal state
+  // Admin Edit Parcel Modal
   const [editModalShipment, setEditModalShipment] = useState<Shipment | null>(null);
 
   // Delete Confirmation state
@@ -246,7 +213,6 @@ export const ParcelInventory: React.FC = () => {
     }
   };
 
-  // Toggle sorting helper
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
@@ -256,8 +222,8 @@ export const ParcelInventory: React.FC = () => {
     }
   };
 
-  // Base list of shipments based on partner branch selection
-  const baseShipmentList = selectedPartnerBranchId !== 'all' ? partnerShipments : filteredShipments;
+  // Base list of shipments
+  const baseShipmentList = filteredShipments;
 
   // Filter and sort parcels
   const processedParcels = useMemo(() => {
@@ -271,45 +237,25 @@ export const ParcelInventory: React.FC = () => {
         s.receiver.name.toLowerCase().includes(query) ||
         s.receiver.phone.includes(query) ||
         s.receiver.city.toLowerCase().includes(query) ||
-        (s.sender.nationalId && s.sender.nationalId.toLowerCase().includes(query)) ||
         s.packageInfo.description.toLowerCase().includes(query);
 
       const matchesStatus = selectedStatus === 'all' || s.status === selectedStatus;
-      const matchesCategory = selectedCategory === 'all' || s.packageInfo.category === selectedCategory;
-      const matchesPayment = selectedPayment === 'all' || s.financials.paymentStatus === selectedPayment;
       const matchesDestinationBranch = selectedDestinationBranch === 'all' || s.destinationBranchId === selectedDestinationBranch;
 
       let matchesTab = true;
-      const userBranch = currentUser.role !== 'super_admin' ? currentUser.branchId : (activeBranchId !== 'all' ? activeBranchId : null);
-
-      if (activeTab === 'prebooked') {
-        matchesTab = (s.status === 'pre_booked' || s.status === 'verified') &&
-          (currentUser.role === 'super_admin'
-            ? (activeBranchId === 'all' || s.originBranchId === activeBranchId)
-            : s.originBranchId === currentUser.branchId);
-      } else if (activeTab === 'settlement') {
-        matchesTab = s.remittanceStatus === 'pending' || s.destBranchCommission !== undefined;
+      if (activeTab === 'in_transit') {
+        matchesTab = s.status === 'in_transit';
+      } else if (activeTab === 'arrived') {
+        matchesTab = s.status === 'received_at_branch' || s.status === 'out_for_delivery';
+      } else if (activeTab === 'delivered') {
+        matchesTab = s.status === 'delivered';
       } else if (activeTab === 'submitted') {
         matchesTab = !!s.customerSubmissionAt;
-      } else if (userBranch) {
-        if (activeTab === 'inbound') {
-          matchesTab = s.destinationBranchId === userBranch && s.status !== 'pre_booked';
-        } else if (activeTab === 'outbound') {
-          matchesTab = s.originBranchId === userBranch && s.status !== 'pre_booked';
-        } else if (activeTab === 'warehouse') {
-          matchesTab = s.currentBranchId === userBranch && s.status !== 'delivered' && s.status !== 'pre_booked';
-        }
-      } else {
-        if (activeTab === 'inbound') {
-          matchesTab = s.status === 'in_transit' || s.status === 'received_at_branch' || s.status === 'out_for_delivery';
-        } else if (activeTab === 'outbound') {
-          matchesTab = s.status === 'booked' || s.status === 'in_transit';
-        } else if (activeTab === 'warehouse') {
-          matchesTab = s.status === 'received_at_branch' || s.status === 'booked';
-        }
+      } else if (activeTab === 'prebooked') {
+        matchesTab = s.status === 'pre_booked' || s.status === 'verified';
       }
 
-      return matchesSearch && matchesStatus && matchesCategory && matchesPayment && matchesDestinationBranch && matchesTab;
+      return matchesSearch && matchesStatus && matchesDestinationBranch && matchesTab;
     });
 
     result.sort((a, b) => {
@@ -335,29 +281,15 @@ export const ParcelInventory: React.FC = () => {
     });
 
     return result;
-  }, [baseShipmentList, debouncedSearchTerm, selectedStatus, selectedCategory, selectedPayment, activeTab, sortField, sortOrder, currentUser, activeBranchId]);
+  }, [baseShipmentList, debouncedSearchTerm, selectedStatus, selectedDestinationBranch, activeTab, sortField, sortOrder]);
 
   // Open status modal
   const handleOpenStatusModal = (shipment: Shipment) => {
     const perm = canUserUpdateStatus(shipment);
     setStatusModalShipment(shipment);
     setStatusNote('');
-    
-    const collected = shipment.financials?.totalAmount || shipment.financials?.productPrice || 1000;
-    const comm = shipment.destBranchCommission !== undefined ? shipment.destBranchCommission : (shipment.financials?.destBranchCommission || 70);
-    const transportFee = 0; // Destination branch does NOT keep transport fee
-    const isProvincialOrigin = shipment.originBranchId && shipment.originBranchId !== 'br_admin_hq';
-    const origComm = isProvincialOrigin ? 20 : 0;
-    const destTotalRetained = comm; // Destination branch keeps ONLY commission!
-    const net = Math.max(0, collected - destTotalRetained - origComm);
-
-    setDeliveryCollectedAfn(collected);
-    setDeliveryCommissionAfn(comm);
-    setDeliveryTransportFeeAfn(0);
-    setDeliveryOriginCommAfn(origComm);
-    setDeliveryNetToHqAfn(net);
-    setDeliveryAutoRemit(true);
-    setDeliveryRefNumber(`HAW-${Math.floor(100000 + Math.random() * 900000)}`);
+    setDeliveryCollectedAmount(shipment.financials?.totalAmount || 0);
+    setStatusAutoSubmitBill(true);
 
     if (perm.allowedStatuses.length > 0) {
       setStatusChoice(perm.allowedStatuses[0]);
@@ -367,27 +299,18 @@ export const ParcelInventory: React.FC = () => {
   // Save status progression
   const handleSaveStatus = async () => {
     if (!statusModalShipment) return;
-    let finalNote = statusNote;
+    let finalNote = statusNote.trim();
+
     if (statusChoice === 'delivered') {
-      const destTotalRetained = deliveryCommissionAfn;
-      const moneyNote = `Handed over to receiver. Collected: ${deliveryCollectedAfn} AFN, Retained Destination Commission: ${deliveryCommissionAfn} AFN (no transport kept by branch), Sender Branch Commission: ${deliveryOriginCommAfn} AFN, Net Remitted to Main Branch: ${deliveryNetToHqAfn} AFN (Ref: ${deliveryRefNumber})`;
+      const moneyNote = `Delivered to consignee. Amount: ${deliveryCollectedAmount} AFN`;
       finalNote = finalNote ? `${finalNote} | ${moneyNote}` : moneyNote;
     }
 
-    const ok = await updateShipmentStatus(statusModalShipment.id, statusChoice, finalNote);
+    const ok = await updateShipmentStatus(statusModalShipment.id, statusChoice, finalNote || undefined);
     if (ok) {
-      if (statusChoice === 'delivered' && deliveryAutoRemit) {
-        createSingleParcelRemittance(
-          statusModalShipment.id,
-          deliveryCommissionAfn,
-          deliveryNetToHqAfn,
-          'hawala',
-          deliveryRefNumber,
-          'Sarafi Central',
-          'Submitted upon parcel handover to receiver',
-          0,
-          deliveryOriginCommAfn
-        );
+      if (statusChoice === 'delivered' && statusAutoSubmitBill && !statusModalShipment.customerSubmissionAt) {
+        const autoRef = `SUB-${statusModalShipment.cnNumber}-${Date.now().toString().slice(-4)}`;
+        submitParcelForCollection(statusModalShipment.id, autoRef, new Date().toISOString());
       }
       setStatusModalShipment(null);
     }
@@ -398,7 +321,7 @@ export const ParcelInventory: React.FC = () => {
     setConfirmModalShipment(shipment);
     setWeighedWeight(shipment.packageInfo.weightKg || 1);
     setWeighedPieces(shipment.packageInfo.pieces || 1);
-    const price = shipment.financials?.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials?.totalAmount || 3000;
+    const price = shipment.financials?.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials?.totalAmount || 1000;
     setModalProductPrice(price);
     setModalServiceFee(shipment.financials?.serviceFee || 150);
     setModalDiscountAmount(shipment.financials?.discountAmount || 0);
@@ -409,10 +332,7 @@ export const ParcelInventory: React.FC = () => {
     setEditedReceiverName(shipment.receiver.name);
     setEditedReceiverPhone(shipment.receiver.phone);
     setEditedDescription(shipment.packageInfo.description);
-    setModalTargetStatus(shipment.status === 'verified' ? 'booked' : 'verified');
-    setModalOriginBranchId(shipment.originBranchId);
-    setModalDestBranchId(shipment.destinationBranchId);
-    setModalNote('');
+    setModalTargetStatus('booked');
   };
 
   // Confirm pre-booking
@@ -432,9 +352,8 @@ export const ParcelInventory: React.FC = () => {
       destBranchCommission: customDestCommission,
       paymentStatus: confirmedPaymentStatus,
       status: modalTargetStatus,
-      originBranchId: modalOriginBranchId,
-      destinationBranchId: modalDestBranchId,
-      note: modalNote.trim() || undefined
+      originBranchId: confirmModalShipment.originBranchId,
+      destinationBranchId: confirmModalShipment.destinationBranchId
     });
     if (ok) {
       setConfirmModalShipment(null);
@@ -454,22 +373,7 @@ export const ParcelInventory: React.FC = () => {
     setIssueModalShipment(null);
   };
 
-  // Handle Inter-Branch Settlement
-  const handleOpenSettlement = (shipment: Shipment) => {
-    setSettlementModalShipment(shipment);
-    setSettlementNote(`Remittance settled via Central Treasury / Hawala by ${currentUser.name}`);
-  };
-
-  const handleConfirmSettlement = () => {
-    if (!settlementModalShipment) return;
-    setIsSettling(true);
-    setTimeout(() => {
-      settleInterBranchRemittance(settlementModalShipment.id, settlementNote);
-      setIsSettling(false);
-      setSettlementModalShipment(null);
-    }, 400);
-  };
-
+  // Submit Parcel Bill
   const handleSubmitParcel = () => {
     if (!submissionModalShipment) return;
     const submittedTimestamp = autoSubmissionDateTime 
@@ -488,8 +392,8 @@ export const ParcelInventory: React.FC = () => {
       'CN Number', 'Status', 'Origin Branch', 'Destination Branch',
       'Sender Name', 'Sender Phone', 'Sender City',
       'Receiver Name', 'Receiver Phone', 'Receiver City',
-      'Category', 'Weight (KG)', 'Pieces',
-      'Total Amount (AFN)', 'Payment Status', 'Remittance Status', 'Booking Date',
+      'Weight (KG)', 'Pieces',
+      'Total Amount (AFN)', 'Payment Status', 'Booking Date',
       'Bill Submission Status', 'Submitted At (Date & Time)', 'Submission Ref', 'Submitted By'
     ];
 
@@ -507,12 +411,10 @@ export const ParcelInventory: React.FC = () => {
         `"${p.receiver.name}"`,
         `"${p.receiver.phone}"`,
         `"${p.receiver.city}"`,
-        p.packageInfo.category,
         p.packageInfo.weightKg,
         p.packageInfo.pieces,
         p.financials.totalAmount,
         p.financials.paymentStatus,
-        p.remittanceStatus || 'n/a',
         new Date(p.bookedAt).toISOString(),
         p.customerSubmissionAt ? 'Submitted' : 'Not Submitted',
         p.customerSubmissionAt ? new Date(p.customerSubmissionAt).toISOString() : '',
@@ -525,7 +427,7 @@ export const ParcelInventory: React.FC = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Armaghan_Sadeq_Transfers_Consignments_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `Consignments_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -541,267 +443,242 @@ export const ParcelInventory: React.FC = () => {
     ? (activeBranchId === 'all' ? t('all_branches') : branches.find(b => b.id === activeBranchId)?.name)
     : branches.find(b => b.id === currentUser.branchId)?.name;
 
-  const otherBranches = branches.filter(b => b.id !== currentUser.branchId);
-  const partnerBranchObj = branches.find(b => b.id === selectedPartnerBranchId);
-
-  const prebookedCount = baseShipmentList.filter(s => s.status === 'pre_booked').length;
-  const pendingSettlementCount = baseShipmentList.filter(s => s.remittanceStatus === 'pending').length;
+  const prebookedCount = baseShipmentList.filter(s => s.status === 'pre_booked' || s.status === 'verified').length;
+  const inTransitCount = baseShipmentList.filter(s => s.status === 'in_transit').length;
+  const arrivedCount = baseShipmentList.filter(s => s.status === 'received_at_branch' || s.status === 'out_for_delivery').length;
+  const deliveredCount = baseShipmentList.filter(s => s.status === 'delivered').length;
   const submittedParcelCount = baseShipmentList.filter(s => !!s.customerSubmissionAt).length;
 
+  const isFiltered = searchTerm !== '' || selectedStatus !== 'all' || selectedDestinationBranch !== 'all';
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-300" id="parcel-inventory-page">
+    <div className="space-y-5 animate-in fade-in duration-300" id="parcel-inventory-page">
       
-      {/* Header Banner */}
-      <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center font-bold">
-              <Boxes className="w-5 h-5" />
+      {/* 1. Header Banner */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center font-bold">
+            <Boxes className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                {t('parcels_title') || 'Parcel Management'}
+              </h1>
+              {activeBranchId !== 'all' && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
+                  {currentBranchName}
+                </span>
+              )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-slate-900 dark:text-white">
-                  {t('parcels_title')}
-                </h1>
-                {activeBranchId !== 'all' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
-                    {currentBranchName}
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Manage 6-branch consignments, origin/destination handoffs, settlements, and manifests
-              </p>
-            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {t('inventory_subtitle') || 'Book, dispatch, track, deliver, and record one-time bill submissions'}
+            </p>
           </div>
         </div>
 
-        {/* Top actions: Auto-Sync, New Booking, Export Manifest, Combined Customer PDF, Export CSV */}
+        {/* Top actions */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* How It Works Guide Toggle */}
+          <button
+            onClick={() => setShowHowItWorks(!showHowItWorks)}
+            className="px-3 py-2 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer shadow-2xs"
+            title="Learn the simple 4-step lifecycle of a parcel"
+          >
+            <HelpCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <span>{showHowItWorks ? 'Hide Guide' : 'How Parcel System Works'}</span>
+            {showHowItWorks ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* Live Sync button */}
           <button
             onClick={() => syncWithDatabase()}
             disabled={isSyncing}
             className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer shadow-2xs"
-            title="Live Cloud/Database Synchronized. Auto-fetches new bookings continuously."
+            title="Auto-syncing real-time updates"
           >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
-            <span className="text-[11px] font-mono">{isSyncing ? (t('syncing') || 'Syncing...') : (t('live_synced') || 'Live Synced')}</span>
+            <span className="text-[11px] font-mono hidden sm:inline">{isSyncing ? 'Syncing...' : 'Synced'}</span>
           </button>
 
+          {/* New Booking Button */}
           <button
             onClick={() => setActiveView('booking')}
-            className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
           >
             <PackagePlus className="w-4 h-4" />
-            <span>{t('new_booking_btn')}</span>
+            <span>{t('new_booking_btn') || 'Book New Parcel'}</span>
           </button>
 
+          {/* Combined Branch Bulk Dispatch */}
           <button
             onClick={() => setIsCombinedBranchOpen(true)}
-            id="btn-combined-branch-pdf"
-            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
-            title={language === 'fa' ? 'ارسال تجمیعی به نمایندگی، چاپ استیکر کارتن و صدور بارنامه تجمیعی' : 'Branch Bulk Dispatch, Master Stickers & Waybills'}
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+            title="Bulk Dispatch & Bag Stickers"
           >
             <Boxes className="w-4 h-4 text-amber-400" />
-            <span>{language === 'fa' ? 'ارسال تجمیعی و استیکر کارتن' : language === 'ps' ? 'څانګې ته ټولیز لېږل او استیکر' : 'Branch Bulk Dispatch & Stickers'}</span>
+            <span className="hidden sm:inline">Bulk Dispatch</span>
           </button>
 
-          {selectedParcelIds.size > 0 && (
-            <button
-              onClick={() => setIsCombinedBranchOpen(true)}
-              className="px-3.5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer animate-in fade-in"
-              title={language === 'fa' ? 'ارسال تجمیعی بسته‌های انتخاب‌شده' : 'Dispatch selected parcels'}
-            >
-              <CheckSquare className="w-4 h-4 text-white" />
-              <span>{language === 'fa' ? 'ارسال بسته‌های منتخب' : 'Dispatch Selected'} ({selectedParcelIds.size})</span>
-            </button>
-          )}
-
+          {/* Export to CSV */}
           <button
             onClick={exportToCSV}
-            className="px-3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+            className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
             title="Export Table as CSV"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="hidden sm:inline">CSV</span>
+            <span className="hidden md:inline">CSV</span>
           </button>
         </div>
       </div>
 
-      {/* CROSS-BRANCH BILATERAL HISTORY SELECTOR */}
-      {currentUser.role !== 'super_admin' && (
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-              <Building2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-              <span>Cross-Branch Partner History:</span>
-              <span className="text-slate-500 dark:text-slate-400 font-normal">
-                Select a branch to view all mutual parcels sent to or received from that branch
-              </span>
+      {/* 2. SIMPLE 4-STEP SYSTEM GUIDE (Visible / Collapsible) */}
+      {showHowItWorks && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-purple-50/60 to-blue-50/90 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-blue-950/40 border border-indigo-200 dark:border-indigo-800/80 shadow-xs space-y-3 animate-in fade-in zoom-in-95">
+          <div className="flex items-center justify-between pb-2 border-b border-indigo-200/60 dark:border-indigo-800/60">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
+              <h2 className="text-xs sm:text-sm font-black text-indigo-950 dark:text-indigo-100">
+                How a Parcel Moves in the System (Simplified 4-Step Flow)
+              </h2>
             </div>
-            {selectedPartnerBranchId !== 'all' && (
-              <button
-                onClick={() => setSelectedPartnerBranchId('all')}
-                className="text-xs text-red-600 dark:text-red-400 hover:underline font-bold cursor-pointer"
-              >
-                {t('clear_partner_filter') || 'Clear Partner Filter ✕'}
-              </button>
-            )}
+            <button 
+              onClick={() => setShowHowItWorks(false)}
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold cursor-pointer"
+            >
+              Close Guide ✕
+            </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            <button
-              onClick={() => setSelectedPartnerBranchId('all')}
-              className={`p-2.5 rounded-xl text-xs font-bold border transition-all text-start cursor-pointer ${
-                selectedPartnerBranchId === 'all'
-                  ? 'bg-red-600 text-white border-red-600 shadow-xs'
-                  : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-              }`}
-            >
-              <div className="text-[10px] opacity-75">{t('all_hubs') || 'All Hubs'}</div>
-              <div className="truncate font-black">{t('all_5_partners') || 'All 5 Partners'}</div>
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+            {/* Step 1 */}
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 shadow-2xs space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 font-black text-xs flex items-center justify-center">1</span>
+                <h3 className="font-bold text-xs text-slate-900 dark:text-white">Booking (ثبت بار)</h3>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                Origin branch enters sender, receiver, weight, and price. Official Waybill (CN #) is issued and receipt is printed.
+              </p>
+            </div>
 
-            {otherBranches.map(b => {
-              const isSelected = selectedPartnerBranchId === b.id;
-              return (
-                <button
-                  key={b.id}
-                  onClick={() => setSelectedPartnerBranchId(b.id)}
-                  className={`p-2.5 rounded-xl text-xs font-bold border transition-all text-start cursor-pointer ${
-                    isSelected
-                      ? 'bg-red-600 text-white border-red-600 shadow-xs ring-2 ring-red-300'
-                      : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px] opacity-75 font-mono">
-                    <span>{b.code}</span>
-                    <span>{b.province}</span>
-                  </div>
-                  <div className="truncate font-black mt-0.5">{b.name.replace(' Branch', '')}</div>
-                </button>
-              );
-            })}
+            {/* Step 2 */}
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 shadow-2xs space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black text-xs flex items-center justify-center">2</span>
+                <h3 className="font-bold text-xs text-slate-900 dark:text-white">Dispatch (ارسال در مسیر)</h3>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                Parcel is dispatched on highway transport. Status changes to <strong>In Transit</strong> so customers can track online.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 shadow-2xs space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-black text-xs flex items-center justify-center">3</span>
+                <h3 className="font-bold text-xs text-slate-900 dark:text-white">Arrived at Hub (رسیده به نمایندگی)</h3>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                Destination branch scans the incoming cargo into warehouse. Status updates to <strong>Received at Hub</strong>.
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 shadow-2xs space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black text-xs flex items-center justify-center">4</span>
+                <h3 className="font-bold text-xs text-slate-900 dark:text-white">Delivery & Bill (تحویل و تسلیمی)</h3>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                Cargo handed to receiver (COD collected). Click <strong>Submit Bill</strong> to record one-time submission with automatic date & time.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tabs & Filter Toolbar */}
-      <div className="space-y-4">
-        
-        {/* Navigation Filter Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="inline-flex p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold flex-wrap gap-1">
+      {/* 3. SIMPLIFIED LIFECYCLE TABS */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="inline-flex p-1 rounded-2xl bg-slate-200/80 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold flex-wrap gap-1">
+            {/* All */}
             <button
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeTab === 'all' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${activeTab === 'all' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
             >
-              {t('tab_all_parcels')} ({baseShipmentList.length})
+              All Parcels ({baseShipmentList.length})
             </button>
+
+            {/* In Transit */}
             <button
-              onClick={() => setActiveTab('outbound')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'outbound' ? 'bg-white dark:bg-slate-900 text-red-600 dark:text-red-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              onClick={() => setActiveTab('in_transit')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'in_transit' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>{t('tab_outbound_sent')}</span>
+              <Truck className="w-3.5 h-3.5" />
+              <span>In Transit ({inTransitCount})</span>
             </button>
+
+            {/* Arrived at Hub */}
             <button
-              onClick={() => setActiveTab('inbound')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'inbound' ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              onClick={() => setActiveTab('arrived')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'arrived' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
             >
               <Inbox className="w-3.5 h-3.5" />
-              <span>{t('tab_inbound_incoming')}</span>
+              <span>At Hub ({arrivedCount})</span>
             </button>
+
+            {/* Delivered */}
             <button
-              onClick={() => setActiveTab('warehouse')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${activeTab === 'warehouse' ? 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-400 shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              onClick={() => setActiveTab('delivered')}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'delivered' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
             >
-              {t('tab_in_warehouse')}
+              <Check className="w-3.5 h-3.5" />
+              <span>Delivered ({deliveredCount})</span>
             </button>
-            <button
-              onClick={() => setActiveTab('prebooked')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'prebooked' ? 'bg-purple-600 text-white shadow-xs' : 'text-purple-600 dark:text-purple-400 hover:text-purple-700'}`}
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Pending Pre-bookings</span>
-              {prebookedCount > 0 && (
-                <span className="px-1.5 py-0.2 bg-white text-purple-700 rounded-full text-[10px] font-black">
-                  {prebookedCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('settlement')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'settlement' ? 'bg-emerald-600 text-white shadow-xs' : 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-700'}`}
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>Branch Settlement</span>
-              {pendingSettlementCount > 0 && (
-                <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 rounded-full text-[10px] font-black">
-                  {pendingSettlementCount} Due
-                </span>
-              )}
-            </button>
+
+            {/* Bill Submitted */}
             <button
               onClick={() => setActiveTab('submitted')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'submitted' ? 'bg-blue-600 text-white shadow-xs' : 'text-blue-600 dark:text-blue-400 hover:text-blue-700'}`}
+              className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'submitted' ? 'bg-blue-600 text-white shadow-xs' : 'text-blue-600 dark:text-blue-400 hover:text-blue-700'}`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>{t('tab_submitted_parcels')}</span>
-              {submittedParcelCount > 0 && <span className="px-1.5 py-0.2 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black">{submittedParcelCount}</span>}
+              <span>Submitted Bills</span>
+              {submittedParcelCount > 0 && (
+                <span className="px-1.5 py-0.2 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black">
+                  {submittedParcelCount}
+                </span>
+              )}
             </button>
+
+            {/* Pre-Bookings */}
+            {prebookedCount > 0 && (
+              <button
+                onClick={() => setActiveTab('prebooked')}
+                className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${activeTab === 'prebooked' ? 'bg-purple-600 text-white shadow-xs' : 'text-purple-600 dark:text-purple-400 hover:text-purple-700'}`}
+              >
+                <Scale className="w-3.5 h-3.5" />
+                <span>Pre-Bookings ({prebookedCount})</span>
+              </button>
+            )}
           </div>
 
           <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-            {t('showing_label')} <strong>{processedParcels.length}</strong> {t('of_label')} {baseShipmentList.length}
+            Showing <strong>{processedParcels.length}</strong> of {baseShipmentList.length} parcels
           </div>
         </div>
 
-        {/* Dedicated Banner for Submitted Parcels Tab */}
-        {activeTab === 'submitted' && (
-          <div className="p-4 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-xs">
-                <FileCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm text-blue-950 dark:text-blue-100 flex items-center gap-2">
-                  <span>{t('tab_submitted_parcels')}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 font-mono font-bold">
-                    {processedParcels.length} {t('branch_customer_parcels')}
-                  </span>
-                </h4>
-                <p className="text-[11.5px] text-blue-800/80 dark:text-blue-300/80 mt-0.5">
-                  {t('tab_submitted_desc')}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 text-end">
-                <span className="text-[10px] text-slate-400 block font-semibold">{t('th_total_charge')}</span>
-                <span className="font-mono font-black text-blue-700 dark:text-blue-300 text-xs">
-                  {processedParcels.reduce((sum, p) => sum + (p.financials?.totalAmount || 0), 0).toLocaleString()} AFN
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Search and Secondary Select Filters */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          
-          <div className="relative">
+        {/* 4. CLEAN SEARCH & COMPACT FILTERS */}
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center gap-3">
+          {/* Search Box */}
+          <div className="relative flex-1 min-w-[220px]">
             <Search className="w-4 h-4 absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search CN, Sender, Receiver, Phone..."
-              className="w-full h-10 ps-9 pe-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+              placeholder="Search by CN #, Sender, Receiver, Phone..."
+              className="w-full h-9.5 ps-9 pe-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
             />
             {searchTerm && (
               <button
@@ -813,78 +690,60 @@ export const ParcelInventory: React.FC = () => {
             )}
           </div>
 
-          <div>
+          {/* Status Filter */}
+          <div className="min-w-[150px]">
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full h-10 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer font-medium"
+              className="w-full h-9.5 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer font-medium"
             >
-              <option value="all">{t('filter_by_status')}: {t('filter_all')}</option>
-              <option value="pre_booked">Pre-Booked (Online Customer)</option>
-              <option value="verified">{t('status_verified') || 'Verified / Ready'}</option>
-              <option value="booked">{t('status_booked')}</option>
-              <option value="in_transit">{t('status_in_transit')}</option>
-              <option value="received_at_branch">{t('status_received')}</option>
-              <option value="out_for_delivery">{t('status_out_delivery')}</option>
-              <option value="delivered">{t('status_delivered')}</option>
-              <option value="cancelled">{t('status_cancelled')}</option>
+              <option value="all">Status: All</option>
+              <option value="booked">Booked</option>
+              <option value="in_transit">In Transit</option>
+              <option value="received_at_branch">At Destination Hub</option>
+              <option value="out_for_delivery">Out for Delivery</option>
+              <option value="delivered">Delivered</option>
+              <option value="pre_booked">Pre-Booked</option>
             </select>
           </div>
 
-          <div>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full h-10 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer font-medium capitalize"
-            >
-              <option value="all">{t('filter_by_category')}: {t('filter_all')}</option>
-              <option value="documents">{t('category_documents')}</option>
-              <option value="electronics">{t('category_electronics')}</option>
-              <option value="clothing">{t('category_clothing')}</option>
-              <option value="commercial">{t('category_commercial')}</option>
-              <option value="dry_fruits">{t('category_dry_fruits')}</option>
-              <option value="carpets">{t('category_carpets')}</option>
-              <option value="perishable">{t('category_perishable')}</option>
-            </select>
-          </div>
-
-          <div>
-            <select
-              value={selectedPayment}
-              onChange={(e) => setSelectedPayment(e.target.value)}
-              className="w-full h-10 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer font-medium"
-            >
-              <option value="all">{t('filter_by_payment')}: {t('filter_all')}</option>
-              <option value="paid">{t('payment_paid')} (Cash at Origin)</option>
-              <option value="to_pay">{t('payment_to_pay')} (COD at Destination)</option>
-              <option value="pending">{t('payment_pending')}</option>
-            </select>
-          </div>
-
-          <div>
+          {/* Destination Branch Filter */}
+          <div className="min-w-[170px]">
             <select
               value={selectedDestinationBranch}
               onChange={(e) => setSelectedDestinationBranch(e.target.value)}
-              className="w-full h-10 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer font-medium"
+              className="w-full h-9.5 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer font-medium"
             >
-              <option value="all">Destination Branch: All</option>
+              <option value="all">Destination: All Branches</option>
               {branches.map(b => (
                 <option key={b.id} value={b.id}>{b.name} ({b.city})</option>
               ))}
             </select>
           </div>
 
+          {/* Clear Filters Button */}
+          {isFiltered && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedStatus('all');
+                setSelectedDestinationBranch('all');
+              }}
+              className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg font-bold transition-colors cursor-pointer"
+            >
+              Reset Filters ✕
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main Parcels Table */}
+      {/* 5. CLEAN PARCEL INVENTORY TABLE */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs border-collapse">
-            
             <thead className="bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider select-none">
               <tr>
-                <th className="p-3.5 w-8">
+                <th className="p-3 w-8">
                   <input 
                     type="checkbox" 
                     className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-red-600 focus:ring-red-500 cursor-pointer"
@@ -892,44 +751,44 @@ export const ParcelInventory: React.FC = () => {
                     onChange={toggleAll}
                   />
                 </th>
-                <th className="p-3.5 text-start cursor-pointer" onClick={() => handleSort('cn')}>
+                <th className="p-3 text-start cursor-pointer" onClick={() => handleSort('cn')}>
                   <div className="flex items-center gap-1">
-                    <span>{t('th_cn')}</span>
+                    <span>{t('th_cn') || 'Waybill #'}</span>
                     {sortField === 'cn' ? (sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-red-600" /> : <ArrowDown className="w-3 h-3 text-red-600" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
-                <th className="p-3.5 text-start">{t('th_sender')}</th>
-                <th className="p-3.5 text-start">{t('th_receiver')}</th>
-                <th className="p-3.5 text-center">{t('th_route')}</th>
-                <th className="p-3.5 text-center cursor-pointer" onClick={() => handleSort('weight')}>
+                <th className="p-3 text-start">{t('th_route') || 'Route'}</th>
+                <th className="p-3 text-start">{t('th_sender') || 'Sender'}</th>
+                <th className="p-3 text-start">{t('th_receiver') || 'Receiver'}</th>
+                <th className="p-3 text-center cursor-pointer" onClick={() => handleSort('weight')}>
                   <div className="flex items-center justify-center gap-1">
-                    <span>{t('th_weight_pieces')}</span>
+                    <span>Weight / Pcs</span>
                     {sortField === 'weight' ? (sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-red-600" /> : <ArrowDown className="w-3 h-3 text-red-600" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
-                <th className="p-3.5 text-center cursor-pointer" onClick={() => handleSort('amount')}>
+                <th className="p-3 text-center cursor-pointer" onClick={() => handleSort('amount')}>
                   <div className="flex items-center justify-center gap-1">
-                    <span>{t('th_total_charge')}</span>
+                    <span>Amount & Bill</span>
                     {sortField === 'amount' ? (sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-red-600" /> : <ArrowDown className="w-3 h-3 text-red-600" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
-                <th className="p-3.5 text-center cursor-pointer" onClick={() => handleSort('status')}>
+                <th className="p-3 text-center cursor-pointer" onClick={() => handleSort('status')}>
                   <div className="flex items-center justify-center gap-1">
-                    <span>{t('th_status')}</span>
+                    <span>{t('th_status') || 'Status'}</span>
                     {sortField === 'status' ? (sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-red-600" /> : <ArrowDown className="w-3 h-3 text-red-600" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
-                <th className="p-3.5 text-end">{t('th_actions')}</th>
+                <th className="p-3 text-end">{t('th_actions') || 'Operations'}</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {processedParcels.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center text-slate-400">
-                    <Boxes className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    <p className="font-semibold text-sm">{t('no_shipments_found')}</p>
-                    <p className="text-xs text-slate-500 mt-1">Try resetting the search terms or filters</p>
+                  <td colSpan={9} className="p-10 text-center text-slate-400">
+                    <Boxes className="w-9 h-9 mx-auto mb-2 opacity-30" />
+                    <p className="font-bold text-xs">{t('no_shipments_found') || 'No parcels found'}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Try searching with a different keyword or resetting filters</p>
                   </td>
                 </tr>
               ) : (
@@ -938,21 +797,13 @@ export const ParcelInventory: React.FC = () => {
                   const dest = branches.find(b => b.id === s.destinationBranchId);
                   const updatePerm = canUserUpdateStatus(s);
                   const isPrebooked = s.status === 'pre_booked';
-                  const isPendingSettlement = s.remittanceStatus === 'pending';
                   const isSubmitted = !!s.customerSubmissionAt;
-                  const canVerifyPreBooking = currentUser.role === 'super_admin' || (
-                    s.originBranchId === currentUser.branchId || 
-                    (branches.find(b => b.id === currentUser.branchId)?.city?.toLowerCase() === orig?.city?.toLowerCase())
-                  );
+                  const canSubmitBill = (s.status === 'received_at_branch' || s.status === 'out_for_delivery' || s.status === 'delivered') && !isSubmitted;
 
                   return (
-                    <tr 
-                      key={s.id} 
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
-                        isPrebooked ? 'bg-purple-50/30 dark:bg-purple-950/20' : ''
-                      }`}
-                    >
-                      <td className="p-3.5 w-8" onClick={(e) => e.stopPropagation()}>
+                    <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      {/* Checkbox */}
+                      <td className="p-3 w-8" onClick={(e) => e.stopPropagation()}>
                         <input 
                           type="checkbox" 
                           className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-red-600 focus:ring-red-500 cursor-pointer"
@@ -960,277 +811,167 @@ export const ParcelInventory: React.FC = () => {
                           onChange={() => toggleSelection(s.id)}
                         />
                       </td>
-                      
-                      {/* CN Number */}
-                      <td className="p-3.5 font-mono font-bold">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-red-600 dark:text-red-400 font-bold">{s.cnNumber}</span>
+
+                      {/* Waybill / CN */}
+                      <td className="p-3 font-mono">
+                        <div className="font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                          <span>{s.cnNumber}</span>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-normal">
+                        <div className="text-[10px] text-slate-400 mt-0.5">
                           {new Date(s.bookedAt).toLocaleDateString()}
                         </div>
-                        {/* Print Tracking Indicator (Sender vs Receiver Copy Counts) */}
-                        <div className="mt-1 flex items-center gap-1 flex-wrap">
-                          <span 
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded font-sans font-bold text-[8.5px] border ${
-                              (s.senderPrintCount || 0) > 0 
-                                ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800' 
-                                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'
-                            }`}
-                            title={`Sender copy printed ${s.senderPrintCount || 0} time(s)`}
-                          >
-                            <Printer className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
-                            <span>S: {s.senderPrintCount || 0}</span>
+                        {isPrebooked && (
+                          <span className="inline-block mt-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-sans font-bold text-[8.5px]">
+                            Online Pre-Book
                           </span>
-
-                          <span 
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded font-sans font-bold text-[8.5px] border ${
-                              (s.receiverPrintCount || 0) > 0 
-                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' 
-                                : 'bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'
-                            }`}
-                            title={`Receiver copy printed ${s.receiverPrintCount || 0} time(s)`}
-                          >
-                            <Printer className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                            <span>R: {s.receiverPrintCount || 0}</span>
-                          </span>
-                        </div>
-                        {isPrebooked ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-sans font-bold text-[9px] mt-0.5">
-                            {t('online_pre_book_tag') || 'Online Pre-Book'}
-                          </span>
-                        ) : s.isPreBooking ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-sans font-bold text-[9px] mt-0.5 animate-in fade-in zoom-in slide-in-from-bottom-1 duration-500">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
-                            {t('status_verified_pre_book') || 'Verified Pre-Book'}
-                          </span>
-                        ) : null}
-                      </td>
-
-                      {/* Sender */}
-                      <td className="p-3.5">
-                        <div className="font-bold text-slate-900 dark:text-slate-100">{s.sender.name}</div>
-                        <div className="text-[11px] font-mono text-slate-500">{s.sender.phone}</div>
-                        <div className="text-[10px] text-slate-400">{s.sender.city}</div>
-                      </td>
-
-                      {/* Receiver */}
-                      <td className="p-3.5">
-                        <div className="font-bold text-slate-900 dark:text-slate-100">{s.receiver.name}</div>
-                        <div className="text-[11px] font-mono text-slate-500">{s.receiver.phone}</div>
-                        <div className="text-[10px] text-slate-400">{s.receiver.city}</div>
+                        )}
                       </td>
 
                       {/* Route */}
-                      <td className="p-3.5 text-center">
-                        <div className="flex flex-col items-center gap-1.5">
-                          <div className="flex items-center gap-1.5 w-full justify-between max-w-[120px] mx-auto bg-slate-50 dark:bg-slate-800/50 p-1 rounded border border-slate-100 dark:border-slate-800">
-                            <span className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">{t('route_from') || 'From'}</span>
-                            <span className="font-bold text-[11px] text-slate-700 dark:text-slate-300">{orig?.code || 'ORIG'}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 w-full justify-between max-w-[120px] mx-auto bg-slate-50 dark:bg-slate-800/50 p-1 rounded border border-slate-100 dark:border-slate-800">
-                            <span className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">{t('route_to') || 'To'}</span>
-                            <span className="font-bold text-[11px] text-slate-700 dark:text-slate-300">{dest?.code || 'DEST'}</span>
-                          </div>
+                      <td className="p-3">
+                        <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                          <span>{orig?.city || s.sender.city}</span>
+                          <span className="text-slate-400 text-[10px]">➔</span>
+                          <span>{dest?.city || s.receiver.city}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          {orig?.code || 'ORG'} - {dest?.code || 'DST'}
                         </div>
                       </td>
 
-                      {/* Weight & Category */}
-                      <td className="p-3.5 text-center">
+                      {/* Sender */}
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[130px]">{s.sender.name}</div>
+                        <div className="text-[10.5px] font-mono text-slate-500">{s.sender.phone}</div>
+                      </td>
+
+                      {/* Receiver */}
+                      <td className="p-3">
+                        <div className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[130px]">{s.receiver.name}</div>
+                        <div className="text-[10.5px] font-mono text-slate-500">{s.receiver.phone}</div>
+                      </td>
+
+                      {/* Cargo Weight & Pieces */}
+                      <td className="p-3 text-center">
                         <div className="font-black text-slate-900 dark:text-slate-100 font-mono">
                           {s.packageInfo.weightKg} KG
                         </div>
-                        <div className="text-[10px] text-slate-500 capitalize">
-                          {s.packageInfo.pieces} pcs • {s.packageInfo.category}
+                        <div className="text-[10px] text-slate-400">
+                          {s.packageInfo.pieces} pcs
                         </div>
                       </td>
 
-                      {/* Amount & Commission / Remittance Info */}
-                      <td className="p-3.5 text-center">
-                        {isPrebooked && s.financials.totalAmount === 0 ? (
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold text-[10px] border border-amber-300 dark:border-amber-800">
-                              <Clock className="w-3 h-3 text-amber-600" />
-                              <span>{t('awaiting_origin_price') || 'Awaiting Origin Price'}</span>
-                            </span>
-                            <div className="text-[9px] text-slate-400">{t('set_on_scale') || 'Set on scale intake'}</div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="font-black text-slate-900 dark:text-slate-100 font-mono">
-                              {s.financials.totalAmount.toLocaleString()} AFN
-                            </div>
-                            <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                              s.financials.paymentStatus === 'paid' 
-                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' 
-                                : s.financials.paymentStatus === 'to_pay'
-                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
-                                : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
-                            }`}>
-                              {s.financials.paymentStatus === 'to_pay' ? (t('pay_to_pay') || 'COD (To-Pay)') : s.financials.paymentStatus.toUpperCase()}
-                            </span>
-                            {s.destBranchCommission !== undefined && (
-                              <div className="text-[9px] text-slate-400 mt-0.5">
-                                Dest Comm: {s.destBranchCommission} AFN
-                              </div>
-                            )}
-                          </>
-                        )}
-                        {isSubmitted && (
-                          <div className="mt-1.5 p-1.5 rounded-xl bg-blue-50/90 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 text-start shadow-2xs">
-                            <div className="flex items-center gap-1 text-[9.5px] font-bold text-blue-700 dark:text-blue-300">
-                              <CheckCircle2 className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
-                              <span>{t('parcel_submitted_badge')}</span>
-                              {s.customerSubmissionReference && (
-                                <span className="font-mono text-[8.5px] opacity-75 truncate max-w-[90px]" title={s.customerSubmissionReference}>
-                                  ({s.customerSubmissionReference})
-                                </span>
-                              )}
-                            </div>
+                      {/* Amount & Bill Submission */}
+                      <td className="p-3 text-center">
+                        <div className="font-black text-slate-900 dark:text-slate-100 font-mono">
+                          {s.financials.totalAmount.toLocaleString()} AFN
+                        </div>
+                        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          s.financials.paymentStatus === 'paid' 
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' 
+                            : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
+                        }`}>
+                          {s.financials.paymentStatus === 'paid' ? 'PAID' : 'COD (To-Pay)'}
+                        </span>
+
+                        {/* Bill Submission Badge or Quick Trigger */}
+                        {isSubmitted ? (
+                          <div className="mt-1 flex items-center justify-center gap-1 text-[9.5px] font-bold text-blue-700 dark:text-blue-300" title={`Submitted on: ${s.customerSubmissionAt ? new Date(s.customerSubmissionAt).toLocaleString() : ''} (${s.customerSubmissionReference || ''})`}>
+                            <CheckCircle2 className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                            <span>Submitted</span>
                             {s.customerSubmissionAt && (
-                              <div className="text-[8.5px] font-mono text-blue-800 dark:text-blue-300 flex items-center gap-1 mt-0.5 font-semibold">
-                                <Clock className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                                <span>
-                                  {new Date(s.customerSubmissionAt).toLocaleDateString()} · {new Date(s.customerSubmissionAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
+                              <span className="text-[8.5px] font-mono opacity-75">
+                                ({new Date(s.customerSubmissionAt).toLocaleDateString([], { month: 'numeric', day: 'numeric' })})
+                              </span>
                             )}
-                            {s.customerSubmissionBy && (
-                              <div className="text-[8px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                                {t('submitted_by_officer')}: {s.customerSubmissionBy}
-                              </div>
+                          </div>
+                        ) : canSubmitBill ? (
+                          <button
+                            onClick={() => handleOpenSubmissionModal(s)}
+                            className="mt-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[9.5px] font-bold flex items-center justify-center gap-1 mx-auto cursor-pointer transition-colors"
+                            title="Submit Bill with automatic date & time stamp"
+                          >
+                            <FileCheck className="w-3 h-3 text-blue-600" />
+                            <span>Submit Bill</span>
+                          </button>
+                        ) : null}
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-3 text-center">
+                        {isPrebooked ? (
+                          <button
+                            onClick={() => handleOpenConfirmPreBooking(s)}
+                            className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-2xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer"
+                          >
+                            <Scale className="w-3 h-3" />
+                            <span>Weigh & Confirm</span>
+                          </button>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <button
+                              onClick={() => handleOpenStatusModal(s)}
+                              className={`px-3 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-transform active:scale-95 shadow-2xs flex items-center justify-center gap-1 mx-auto ${
+                                s.status === 'delivered' ? 'bg-emerald-600 text-white hover:bg-emerald-700' :
+                                s.status === 'out_for_delivery' ? 'bg-amber-600 text-white hover:bg-amber-700' :
+                                s.status === 'received_at_branch' ? 'bg-blue-600 text-white hover:bg-blue-700' :
+                                s.status === 'in_transit' ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
+                                'bg-slate-600 text-white hover:bg-slate-700'
+                              }`}
+                            >
+                              <span>{s.status.replace(/_/g, ' ')}</span>
+                              {updatePerm.canUpdate ? (
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                              ) : (
+                                <Lock className="w-2.5 h-2.5 text-white/70" />
+                              )}
+                            </button>
+
+                            {s.deliveryIssue && s.status !== 'delivered' && (
+                              <button
+                                onClick={() => handleOpenIssueModal(s)}
+                                className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 hover:bg-amber-200 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-800 flex items-center gap-1 mx-auto cursor-pointer transition-colors"
+                                title={`Delivery Issue: ${s.deliveryIssue.reasonText || s.deliveryIssue.type}`}
+                              >
+                                <AlertTriangle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                <span className="truncate max-w-[105px]">{s.deliveryIssue.reasonText || 'Delivery Issue'}</span>
+                              </button>
                             )}
                           </div>
                         )}
                       </td>
 
-                      {/* Status / Pre-booked / Settlement Action */}
-                      <td className="p-3.5 text-center">
-                        {isPrebooked || s.status === 'verified' ? (
-                          canVerifyPreBooking ? (
-                            <button
-                              onClick={() => handleOpenConfirmPreBooking(s)}
-                              className={`px-3 py-1.5 rounded-full text-[10px] font-bold text-white shadow-xs flex items-center justify-center gap-1 mx-auto transition-transform active:scale-95 cursor-pointer ${
-                                s.status === 'verified'
-                                  ? 'bg-teal-600 hover:bg-teal-700'
-                                  : 'bg-amber-600 hover:bg-amber-700'
-                              }`}
-                              title={s.status === 'verified' ? "Verified & priced pre-booking. Click to edit or book official waybill." : "Verify, weigh, set pricing and book this customer pre-booking"}
-                            >
-                              <Scale className="w-3.5 h-3.5" />
-                              <span>{s.status === 'verified' ? 'Verified / Book' : 'Weigh & Set Price'}</span>
-                            </button>
-                          ) : (
-                            <div 
-                              className="px-2.5 py-1 rounded-full text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1 mx-auto cursor-not-allowed"
-                              title={`Only the designated Origin Branch (${orig?.name || 'Sender Hub'}) or Central Super Admin can process and verify this customer pre-booking.`}
-                            >
-                              <Lock className="w-3 h-3 text-slate-400" />
-                              <span>{s.status === 'verified' ? 'Verified (Origin/Admin Only)' : `Origin (${orig?.city || 'Sender'}) Only`}</span>
-                            </div>
-                          )
-                        ) : (
-                          <button
-                            onClick={() => handleOpenStatusModal(s)}
-                            className={`px-3 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-transform active:scale-95 shadow-xs flex items-center justify-center gap-1 mx-auto ${
-                              s.status === 'delivered' ? 'bg-emerald-600 text-white hover:bg-emerald-700' :
-                              s.status === 'out_for_delivery' ? 'bg-amber-600 text-white hover:bg-amber-700' :
-                              s.status === 'received_at_branch' ? 'bg-blue-600 text-white hover:bg-blue-700' :
-                              s.status === 'in_transit' ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
-                              'bg-slate-600 text-white hover:bg-slate-700'
-                            }`}
-                          >
-                            <span>{s.status.replace(/_/g, ' ')}</span>
-                            {updatePerm.canUpdate ? (
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                            ) : (
-                              <Lock className="w-2.5 h-2.5 text-white/70" />
-                            )}
-                          </button>
-                        )}
-                        
-                        {/* Settle Remittance Trigger */}
-                        {isPendingSettlement && s.status === 'delivered' && (
-                          <button
-                            onClick={() => handleOpenSettlement(s)}
-                            className="mt-1 px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-1 mx-auto cursor-pointer"
-                          >
-                            <ArrowRightLeft className="w-2.5 h-2.5" />
-                            <span>{t('settle_remittance_btn') || 'Settle Remittance'}</span>
-                          </button>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="p-3.5 text-end">
+                      {/* Clean 2-Button Actions: Print & Manage */}
+                      <td className="p-3 text-end">
                         <div className="flex items-center justify-end gap-1.5">
-                          {currentUser.role === 'super_admin' && (
-                            <button
-                              onClick={() => setEditModalShipment(s)}
-                              className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 transition-colors cursor-pointer"
-                              title={t('btn_edit_parcel') || 'Edit Parcel (Super Admin)'}
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {currentUser.role === 'super_admin' && (
-                            <button
-                              onClick={() => setDeleteConfirmShipment(s)}
-                              className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/60 transition-colors cursor-pointer"
-                              title={t('btn_delete_parcel') || 'Delete Parcel (Permanent)'}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          {/* Print Waybill */}
                           <button
                             onClick={() => setSelectedShipmentForReceipt(s)}
-                            className={`p-1.5 rounded-lg relative transition-colors cursor-pointer ${
-                              (s.printCount || 0) > 0 
-                                ? 'bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800' 
-                                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-                            }`}
-                            title={`Print / Download Receipt (${s.printCount || 0} print${s.printCount === 1 ? '' : 's'} recorded)`}
+                            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
+                            title={`Print Consignment Waybill (${(s.printCount || 0) === 0 ? 'Original 1-Time Print' : `Re-print #${s.printCount}`})`}
                           >
-                            <Printer className="w-3.5 h-3.5" />
-                            {(s.printCount || 0) > 0 && (
-                              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 bg-blue-600 text-white rounded-full text-[8px] font-black flex items-center justify-center shadow-xs">
+                            <Printer className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            <span className="hidden md:inline">Print</span>
+                            {(s.printCount || 0) === 0 ? (
+                              <span className="px-1.5 py-0.2 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded text-[8.5px] font-black border border-emerald-300 dark:border-emerald-700" title="One-time original print available">
+                                1x
+                              </span>
+                            ) : (
+                              <span className="w-3.5 h-3.5 bg-blue-600 text-white rounded-full text-[8.5px] font-black flex items-center justify-center">
                                 {s.printCount}
                               </span>
                             )}
                           </button>
+
+                          {/* Manage / Details */}
                           <button
                             onClick={() => setDetailsModalShipment(s)}
-                            className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 transition-colors cursor-pointer"
-                            title="View Full Dossier"
+                            className="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 font-bold text-xs flex items-center gap-1 border border-red-200 dark:border-red-800/60 transition-colors cursor-pointer shadow-2xs"
+                            title="Open Parcel Dossier (Full details, tracking, bill submission & actions)"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <Eye className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                            <span>Manage</span>
                           </button>
-                          {(s.status === 'in_transit' || s.status === 'received_at_branch' || s.status === 'out_for_delivery') && (currentUser.branchId === s.destinationBranchId || currentUser.role === 'super_admin') && (
-                            <button
-                              onClick={() => handleOpenIssueModal(s)}
-                              className="p-1.5 rounded-lg bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 transition-colors cursor-pointer"
-                              title={t('report_delivery_issue') || 'Report Delivery Issue / تماس ناموفق'}
-                            >
-                              <PhoneOff className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {(s.status === 'received_at_branch' || s.status === 'out_for_delivery' || s.status === 'delivered') && !isSubmitted && (
-                            <button
-                              onClick={() => handleOpenSubmissionModal(s)}
-                              className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 transition-colors cursor-pointer"
-                              title={t('submit_parcel_for_collection')}
-                            >
-                              <FileCheck className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {isSubmitted && (
-                            <span 
-                              className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 inline-flex items-center justify-center cursor-help"
-                              title={`${t('parcel_submitted_badge')}: ${s.customerSubmissionAt ? new Date(s.customerSubmissionAt).toLocaleString() : ''} (${s.customerSubmissionReference || ''})`}
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            </span>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -1242,476 +983,205 @@ export const ParcelInventory: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL 1: PRE-BOOKING INSPECTION & CONFIRMATION MODAL */}
-      {confirmModalShipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-in fade-in zoom-in-95 space-y-5 my-8">
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div>
-                <span className="px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-700 font-mono font-black text-xs">
-                  {confirmModalShipment.cnNumber}
-                </span>
-                <h3 className="font-black text-base text-slate-900 dark:text-white mt-1">
-                  {t('modal_weigh_title') || 'Weigh, Inspect & Issue Official Waybill'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {t('modal_weigh_desc') || 'Customer submitted this pre-booking online. Inspect cargo and set official weight and freight charges.'}
-                </p>
-              </div>
-              <button
-                onClick={() => setConfirmModalShipment(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+      {/* MODAL: SIMPLE STATUS PROGRESSION MODAL */}
+      {statusModalShipment && (() => {
+        const updatePerm = canUserUpdateStatus(statusModalShipment);
+        const origBranch = branches.find(b => b.id === statusModalShipment.originBranchId);
+        const destBranch = branches.find(b => b.id === statusModalShipment.destinationBranchId);
 
-            <div className="space-y-4 text-xs">
+        const stages: { status: ShipmentStatus; label: string; desc: string }[] = [
+          { status: 'booked', label: '1. Booked', desc: 'Received & weighed at origin hub' },
+          { status: 'in_transit', label: '2. In Transit', desc: 'Dispatched on highway transport' },
+          { status: 'received_at_branch', label: '3. At Dest Hub', desc: 'Arrived at destination branch' },
+          { status: 'out_for_delivery', label: '4. Out for Delivery', desc: 'Dispatched to consignee' },
+          { status: 'delivered', label: '5. Delivered', desc: 'Handed over to receiver & paid' },
+        ];
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto animate-in fade-in zoom-in-95">
               
-              {/* Route Summary */}
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-3">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{t('sender_origin_lbl') || 'Sender'}</span>
-                  <p className="font-bold text-slate-900 dark:text-white">{confirmModalShipment.sender.name}</p>
-                  <p className="font-mono text-slate-500">{confirmModalShipment.sender.phone}</p>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <ArrowRightLeft className="w-4 h-4 text-red-600" />
+                    <span>Update Parcel Status</span>
+                  </h3>
+                  <div className="text-xs font-mono font-bold text-red-600 mt-0.5">
+                    {statusModalShipment.cnNumber} ({origBranch?.city || 'Origin'} ➔ {destBranch?.city || 'Dest'})
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{t('receiver_destination_lbl') || 'Receiver'}</span>
-                  <p className="font-bold text-slate-900 dark:text-white">{confirmModalShipment.receiver.name}</p>
-                  <p className="font-mono text-slate-500">{confirmModalShipment.receiver.phone}</p>
-                </div>
+                <button
+                  onClick={() => setStatusModalShipment(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Controlled corrections before verification */}
-              <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 space-y-3">
-                <div className="font-bold text-xs text-blue-900 dark:text-blue-300">Customer and parcel details</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="space-y-1">
-                    <span className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300">Sender name</span>
-                    <input value={editedSenderName} onChange={(e) => setEditedSenderName(e.target.value)} className="w-full h-9 px-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg" />
-                  </label>
-                  <label className="space-y-1">
-                    <span className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300">Sender phone</span>
-                    <input value={editedSenderPhone} onChange={(e) => setEditedSenderPhone(e.target.value)} className="w-full h-9 px-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg" />
-                  </label>
-                  <label className="space-y-1">
-                    <span className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300">Receiver name</span>
-                    <input value={editedReceiverName} onChange={(e) => setEditedReceiverName(e.target.value)} className="w-full h-9 px-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg" />
-                  </label>
-                  <label className="space-y-1">
-                    <span className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300">Receiver phone</span>
-                    <input value={editedReceiverPhone} onChange={(e) => setEditedReceiverPhone(e.target.value)} className="w-full h-9 px-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg" />
-                  </label>
-                </div>
-                <label className="space-y-1 block">
-                  <span className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300">Parcel description</span>
-                  <textarea value={editedDescription} onChange={(e) => setEditedDescription(e.target.value)} rows={2} className="w-full p-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg resize-none" />
-                </label>
+              {/* Visual 5-Step Path */}
+              <div className="grid grid-cols-5 gap-1.5 text-center">
+                {stages.map((st, idx) => {
+                  const isPassed = ['booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered'].indexOf(statusModalShipment.status) >= idx;
+                  const isCurrent = statusModalShipment.status === st.status;
+
+                  return (
+                    <div 
+                      key={st.status} 
+                      className={`p-2 rounded-xl border text-[10px] flex flex-col justify-between transition-all ${
+                        isCurrent
+                          ? 'bg-red-600 text-white border-red-600 font-bold shadow-md shadow-red-600/30 ring-2 ring-red-400/50'
+                          : isPassed
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      <div className="font-bold">{st.label}</div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Super Admin Hub and Routing Override */}
-              {currentUser.role === 'super_admin' && (
-                <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 space-y-2.5">
-                  <div className="flex items-center justify-between text-purple-900 dark:text-purple-300 font-bold text-xs">
-                    <span className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>Admin Hub & Routing Override</span>
-                    </span>
-                    <span className="text-[10px] bg-purple-200 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 px-2 py-0.5 rounded font-bold">
-                      Super Admin Mode
-                    </span>
+              {/* Status form if authorized */}
+              {updatePerm.canUpdate ? (
+                <div className="space-y-3.5 text-xs pt-1">
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
+                      Choose Next Status:
+                    </label>
+                    <select
+                      value={statusChoice}
+                      onChange={(e) => setStatusChoice(e.target.value as ShipmentStatus)}
+                      className="w-full h-10 px-3 font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      {updatePerm.allowedStatuses.map(st => (
+                        <option key={st} value={st}>
+                          {st === 'booked' && '📦 Booked at Origin (ثبت در مبدا)'}
+                          {st === 'in_transit' && '➔ In Transit / Dispatched (در حال انتقال)'}
+                          {st === 'received_at_branch' && '✓ Received at Destination Hub (رسید به شعبه مقصد)'}
+                          {st === 'out_for_delivery' && '🚚 Out for Final Delivery (توزیع به گیرنده)'}
+                          {st === 'delivered' && '★ Delivered to Receiver (تحویل به گیرنده)'}
+                          {st === 'returned' && '↩ Returned to Origin (برگشت داده شده)'}
+                          {st === 'cancelled' && '✗ Cancelled (لغو شده)'}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Origin Branch (Receiving Hub)
+
+                  {/* If marking delivered */}
+                  {statusChoice === 'delivered' && (
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
+                        <span className="flex items-center gap-1.5">
+                          <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Delivery Handover & COD Collection</span>
+                        </span>
+                        <span className="text-[10px] bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                          Handover
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-600 dark:text-slate-300">Amount Collected (AFN):</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={deliveryCollectedAmount}
+                          onChange={(e) => setDeliveryCollectedAmount(Math.max(0, Number(e.target.value) || 0))}
+                          className="w-32 h-8 px-2 font-mono font-bold text-right bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-slate-900 dark:text-white text-xs"
+                        />
+                      </div>
+
+                      {/* Auto Bill Submission Toggle */}
+                      <label className="flex items-center gap-2 pt-1 border-t border-emerald-200 dark:border-emerald-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={statusAutoSubmitBill}
+                          onChange={(e) => setStatusAutoSubmitBill(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className="text-[11px] text-emerald-900 dark:text-emerald-200 font-semibold">
+                          Record Bill Submission automatically with current date & time
+                        </span>
                       </label>
-                      <select
-                        value={modalOriginBranchId}
-                        onChange={(e) => setModalOriginBranchId(e.target.value)}
-                        className="w-full h-9 px-2 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium"
-                      >
-                        {branches.map(b => (
-                          <option key={b.id} value={b.id}>{b.name} ({b.city})</option>
-                        ))}
-                      </select>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Destination Branch (Delivery Hub)
-                      </label>
-                      <select
-                        value={modalDestBranchId}
-                        onChange={(e) => setModalDestBranchId(e.target.value)}
-                        className="w-full h-9 px-2 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-medium"
-                      >
-                        {branches.map(b => (
-                          <option key={b.id} value={b.id}>{b.name} ({b.city})</option>
-                        ))}
-                      </select>
-                    </div>
+                  )}
+
+                  {/* Note / Remarks */}
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
+                      Tracking Remarks / Note (Optional):
+                    </label>
+                    <input
+                      type="text"
+                      value={statusNote}
+                      onChange={(e) => setStatusNote(e.target.value)}
+                      placeholder="e.g. Dispatched on highway fleet / Received by customer"
+                      className="w-full h-9 px-3 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500"
+                    />
                   </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={handleSaveStatus}
+                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-colors"
+                    >
+                      Apply Status Change
+                    </button>
+                    <button
+                      onClick={() => setStatusModalShipment(null)}
+                      className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  {/* Undelivered / Issue Option */}
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const s = statusModalShipment;
+                        setStatusModalShipment(null);
+                        handleOpenIssueModal(s);
+                      }}
+                      className="w-full py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                    >
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>{t('report_not_delivered_title') || 'Report Delivery Issue / Undelivered (ثبت عدم تحویل یا مشکل)'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-bold">
+                    <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Status Update Locked</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">{updatePerm.reason}</p>
+                  <button
+                    onClick={() => setStatusModalShipment(null)}
+                    className="w-full py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer mt-2"
+                  >
+                    Close
+                  </button>
                 </div>
               )}
 
-              {/* Physical Cargo Verification */}
-              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
-                <div className="flex items-center justify-between text-amber-900 dark:text-amber-300 font-bold text-xs">
-                  <span>1. {t('verify_pricing_title')}</span>
-                  <span className="text-[10px] font-normal">{t('physical_scale_intake') || 'Physical Scale Intake'}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('verified_scale_weight')} *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={weighedWeight}
-                        onChange={(e) => setWeighedWeight(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
-                        className="w-full h-10 pl-3 pr-10 font-mono font-black text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500"
-                      />
-                      <span className="absolute right-3 top-2.5 font-bold text-xs text-slate-400">KG</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('pieces_boxes_lbl')} *
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={weighedPieces}
-                      onChange={(e) => setWeighedPieces(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full h-10 px-3 font-mono font-black text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Branch Manager Pricing Controls */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
-                  <span className="font-black text-slate-900 dark:text-white text-xs">
-                    2. {t('pricing_breakdown_title')}
-                  </span>
-                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
-                    Branch Manager Rate Editor
-                  </span>
-                </div>
-
-                {/* Quick Presets - Removed */}
-
-                {/* Pricing Inputs */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('base_booking_rate_lbl') || 'Product Price'}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="100"
-                      value={modalProductPrice}
-                      onChange={(e) => setModalProductPrice(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('service_handling_fee_lbl') || 'Service Fee'}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="10"
-                      value={modalServiceFee}
-                      onChange={(e) => setModalServiceFee(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('dest_commission_lbl') || 'Dest. Commission'}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="10"
-                      value={customDestCommission}
-                      onChange={(e) => setCustomDestCommission(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {t('applied_discount_lbl')} (AFN)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="10"
-                      value={modalDiscountAmount}
-                      onChange={(e) => setModalDiscountAmount(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-full h-9 px-2.5 font-mono font-bold text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Option */}
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  3. {t('payment_status')}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmedPaymentStatus('paid')}
-                    className={`py-2.5 px-3 rounded-xl font-bold border transition-all cursor-pointer text-xs ${
-                      confirmedPaymentStatus === 'paid'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                    }`}
-                  >
-                    ✓ {t('pay_paid')} (Paid at Origin)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmedPaymentStatus('to_pay')}
-                    className={`py-2.5 px-3 rounded-xl font-bold border transition-all cursor-pointer text-xs ${
-                      confirmedPaymentStatus === 'to_pay'
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                    }`}
-                  >
-                    ⏳ {t('pay_to_pay')} (COD at Dest)
-                  </button>
-                </div>
-              </div>
-
-              {/* Target Status Choice */}
-              <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-500/30 space-y-2">
-                <div className="flex items-center justify-between text-teal-900 dark:text-teal-300 font-bold text-xs">
-                  <span>4. Target Verification Status</span>
-                  <span className="text-[10px] text-teal-700 dark:text-teal-400 font-medium">Select outcome workflow</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setModalTargetStatus('verified')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold text-start transition-all cursor-pointer ${
-                      modalTargetStatus === 'verified'
-                        ? 'bg-teal-600 text-white border-teal-600 shadow-xs'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Mark as Verified</span>
-                    </div>
-                    <div className={`text-[10px] font-normal mt-0.5 ${modalTargetStatus === 'verified' ? 'text-teal-100' : 'text-slate-400'}`}>
-                      Price & weight confirmed; ready for intake
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModalTargetStatus('booked')}
-                    className={`p-2.5 rounded-xl border text-xs font-bold text-start transition-all cursor-pointer ${
-                      modalTargetStatus === 'booked'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Confirm & Book Official</span>
-                    </div>
-                    <div className={`text-[10px] font-normal mt-0.5 ${modalTargetStatus === 'booked' ? 'text-blue-100' : 'text-slate-400'}`}>
-                      Issue formal booked waybill for dispatch
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Verification Notes */}
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Verification Remarks / Notes (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={modalNote}
-                  onChange={(e) => setModalNote(e.target.value)}
-                  placeholder="e.g. Inspected at counter, verified original packaging..."
-                  className="w-full h-9 px-2.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                />
-              </div>
-
-              {/* Live Calculation Preview Box */}
-              {(() => {
-                const fragileCharge = confirmModalShipment.packageInfo?.isFragile ? 50 : 0;
-                const calcSellerPayout = modalProductPrice - modalServiceFee - fragileCharge - customDestCommission + modalDiscountAmount;
-                const calcTotal = modalProductPrice;
-                return (
-                  <div className="p-3.5 rounded-2xl bg-slate-900 text-white space-y-1.5 shadow-inner">
-                    <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-[10px] font-mono text-slate-400">
-                      <span>CALCULATED INVOICE BREAKDOWN</span>
-                      <span className="text-emerald-400 font-bold">{t('auto_math') || 'Auto Math'}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-300 text-xs">
-                      <span>Product Price (COD):</span>
-                      <span className="font-mono font-bold text-white">{modalProductPrice} AFN</span>
-                    </div>
-                    <div className="flex justify-between text-slate-300 text-xs">
-                      <span>Service Fee:</span>
-                      <span className="font-mono font-bold text-red-300">-{modalServiceFee} AFN</span>
-                    </div>
-                    <div className="flex justify-between text-slate-300 text-xs">
-                      <span>Dest. Commission:</span>
-                      <span className="font-mono font-bold text-red-300">-{customDestCommission} AFN</span>
-                    </div>
-                    {fragileCharge > 0 && (
-                      <div className="flex justify-between text-amber-300 text-xs">
-                        <span>Fragile Handling:</span>
-                        <span className="font-mono font-bold">-{fragileCharge} AFN</span>
-                      </div>
-                    )}
-                    {modalDiscountAmount > 0 && (
-                      <div className="flex justify-between text-emerald-400 text-xs font-bold">
-                        <span>Discount Applied:</span>
-                        <span className="font-mono">+{modalDiscountAmount} AFN</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between font-black text-sm text-emerald-400 pt-2 border-t border-slate-800">
-                      <span className="text-white text-xs">NET SELLER PAYOUT:</span>
-                      <span className="font-mono">{calcSellerPayout} AFN</span>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleConfirmPreBookingSubmit}
-                  className={`flex-1 py-3 font-black rounded-xl shadow-lg transition-colors cursor-pointer text-xs flex items-center justify-center gap-2 text-white ${
-                    modalTargetStatus === 'verified'
-                      ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/25'
-                      : 'bg-red-600 hover:bg-red-700 shadow-red-600/25'
-                  }`}
-                >
-                  <Check className="w-4 h-4" />
-                  <span>
-                    {modalTargetStatus === 'verified' ? 'Save as Verified Pre-Booking' : (t('btn_confirm_waybill') || 'Confirm & Issue Official Waybill')}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmModalShipment(null)}
-                  className="px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer text-xs"
-                >
-                  {t('btn_cancel')}
-                </button>
-              </div>
-
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
-      {/* MODAL 2: INTER-BRANCH SETTLEMENT MODAL */}
-      {settlementModalShipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-in fade-in zoom-in-95 space-y-5 my-8">
-            <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div>
-                <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-mono font-black text-xs">
-                  {settlementModalShipment.cnNumber}
-                </span>
-                <h3 className="font-black text-base text-slate-900 dark:text-white mt-1">
-                  {t('modal_settle_title') || 'Inter-Branch Financial Settlement'}
-                </h3>
-                <p className="text-xs text-slate-500">
-                  {t('modal_settle_desc') || 'Branch 2 collected COD money. Retain Destination Commission and remit balance to Origin Branch.'}
-                </p>
-              </div>
-              <button
-                onClick={() => setSettlementModalShipment(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2 font-mono">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">{t('total_collected') || 'Total Money Collected'}:</span>
-                  <span className="font-bold">{settlementModalShipment.financials.totalAmount} AFN</span>
-                </div>
-                <div className="flex justify-between text-emerald-600 font-bold">
-                  <span>{t('dest_kept_commission') || 'Dest Branch Commission'}:</span>
-                  <span>- {settlementModalShipment.destBranchCommission || 100} AFN</span>
-                </div>
-                <div className="flex justify-between text-base font-black text-red-600 pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <span>{t('net_remittance_due') || 'Net Remittance Due'}:</span>
-                  <span>{settlementModalShipment.originRemittanceDue || (settlementModalShipment.financials.totalAmount - (settlementModalShipment.destBranchCommission || 100))} AFN</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('settle_ref_note') || 'Settlement & Transfer Reference Note'}
-                </label>
-                <textarea
-                  rows={2}
-                  value={settlementNote}
-                  onChange={(e) => setSettlementNote(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl resize-none text-slate-900 dark:text-white"
-                  placeholder="e.g. Settle via Kabul Sarafi Hawala / Central Treasury..."
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleConfirmSettlement}
-                  disabled={isSettling}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2"
-                >
-                  {isSettling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
-                  <span>{t('btn_confirm_settle') || 'Confirm Settlement & Release Funds'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSettlementModalShipment(null)}
-                  className="px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer"
-                >
-                  {t('btn_cancel') || 'Cancel'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: ONE-TIME CUSTOMER BILL SUBMISSION WITH AUTOMATIC DATE & TIME */}
+      {/* MODAL: ONE-TIME BILL SUBMISSION WITH AUTOMATIC DATE & TIME */}
       {submissionModalShipment && (() => {
         const origB = branches.find(b => b.id === submissionModalShipment.originBranchId);
         const destB = branches.find(b => b.id === submissionModalShipment.destinationBranchId);
 
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto animate-in fade-in zoom-in-95">
               
               {/* Header */}
               <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -1721,8 +1191,8 @@ export const ParcelInventory: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>{t('submit_parcel_for_collection')}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold">1x One-Time</span>
+                      <span>{t('submit_parcel_for_collection') || 'Record Bill Submission'}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold">One-Time</span>
                     </h3>
                     <p className="text-xs text-slate-500 font-mono mt-0.5">
                       {submissionModalShipment.cnNumber} · {origB?.city || 'Origin'} ➔ {destB?.city || 'Dest'}
@@ -1731,57 +1201,32 @@ export const ParcelInventory: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => setSubmissionModalShipment(null)} 
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Informative Notice */}
-              <div className="p-3.5 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 text-xs text-blue-900 dark:text-blue-200 space-y-1">
-                <div className="font-bold flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span>{t('bill_submission_card_title')}</span>
-                </div>
-                <p className="text-[11.5px] leading-relaxed text-blue-800/90 dark:text-blue-300/90">
-                  {t('submit_parcel_once_notice')}
-                </p>
-              </div>
-
-              {/* Consignment Brief Card */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 grid grid-cols-2 gap-2.5 text-xs">
+              {/* Consignment Brief */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('receiver_details') || 'Receiver'}:</span>
-                  <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{submissionModalShipment.receiver.name}</div>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Receiver:</span>
+                  <div className="font-bold text-slate-800 dark:text-slate-200">{submissionModalShipment.receiver.name}</div>
                   <div className="text-[11px] font-mono text-slate-500">{submissionModalShipment.receiver.phone}</div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('th_total_charge') || 'Bill Amount'}:</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Amount:</span>
                   <div className="font-mono font-black text-slate-900 dark:text-white">
                     {submissionModalShipment.financials.totalAmount.toLocaleString()} AFN
                   </div>
-                  <span className={`inline-block text-[9.5px] font-bold px-1.5 py-0.2 rounded ${
-                    submissionModalShipment.financials.paymentStatus === 'paid' 
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                  }`}>
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                     {submissionModalShipment.financials.paymentStatus.toUpperCase()}
                   </span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('submitted_by_officer')}:</span>
-                  <div className="font-bold text-slate-700 dark:text-slate-300 truncate">{currentUser.name}</div>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">{t('th_weight_pieces')}:</span>
-                  <div className="font-medium text-slate-700 dark:text-slate-300">
-                    {submissionModalShipment.packageInfo.weightKg} KG · {submissionModalShipment.packageInfo.pieces} pcs
-                  </div>
-                </div>
               </div>
 
-              {/* Automatic Date & Time Section (The requested feature) */}
-              <div className="p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-3">
+              {/* Automatic Date & Time Section */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer select-none">
                     <input 
@@ -1792,13 +1237,13 @@ export const ParcelInventory: React.FC = () => {
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      {t('auto_submission_datetime')}
+                      {t('auto_submission_datetime') || 'Automatic Submission Date & Time'}
                     </span>
                   </label>
                   {autoSubmissionDateTime && (
                     <span className="inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      {t('auto_timestamp_active')}
+                      Auto Timestamp Active
                     </span>
                   )}
                 </div>
@@ -1816,52 +1261,47 @@ export const ParcelInventory: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <span className="text-[10px] text-slate-400 italic">
-                      Current System Time
-                    </span>
+                    <span className="text-[10px] text-slate-400">Current Local Time</span>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                      {t('submission_datetime_label')}
-                    </label>
+                  <div>
                     <input 
                       type="datetime-local" 
                       value={customSubmissionDateTime}
                       onChange={(e) => setCustomSubmissionDateTime(e.target.value)}
-                      className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500"
+                      className="w-full h-9 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
                 )}
               </div>
 
-              {/* Reference Number Input */}
+              {/* Reference Number */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('submission_reference_label')}
+                  Submission Reference Number:
                 </label>
                 <input 
                   value={submissionReference} 
                   onChange={(e) => setSubmissionReference(e.target.value)} 
-                  placeholder={t('submission_reference_placeholder')} 
-                  className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500" 
+                  placeholder="e.g. SUB-10291" 
+                  className="w-full h-9 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500" 
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button 
                   onClick={handleSubmitParcel} 
                   className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-colors"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{t('confirm_submit_parcel')}</span>
+                  <span>Confirm Bill Submission</span>
                 </button>
                 <button 
                   onClick={() => setSubmissionModalShipment(null)} 
                   className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer transition-colors"
                 >
-                  {t('btn_cancel')}
+                  Cancel
                 </button>
               </div>
 
@@ -1870,288 +1310,13 @@ export const ParcelInventory: React.FC = () => {
         );
       })()}
 
-      {/* MODAL 3: STATUS PROGRESSION MODAL */}
-      {statusModalShipment && (() => {
-        const updatePerm = canUserUpdateStatus(statusModalShipment);
-        const origBranch = branches.find(b => b.id === statusModalShipment.originBranchId);
-        const destBranch = branches.find(b => b.id === statusModalShipment.destinationBranchId);
-        const origUser = users.find(u => u.branchId === statusModalShipment.originBranchId);
-        const destUser = users.find(u => u.branchId === statusModalShipment.destinationBranchId);
-        const adminUser = users.find(u => u.role === 'super_admin');
-
-        const stages: { status: ShipmentStatus; label: string; actor: string; desc: string }[] = [
-          { status: 'booked', label: '1. Booked', actor: origBranch?.code || 'Origin', desc: 'Received & weighed at sender branch' },
-          { status: 'in_transit', label: '2. In Transit', actor: origBranch?.code || 'Origin', desc: 'Dispatched on highway transport' },
-          { status: 'received_at_branch', label: '3. At Dest Hub', actor: destBranch?.code || 'Dest', desc: 'Received & scanned at arrival branch' },
-          { status: 'out_for_delivery', label: '4. Out for Delivery', actor: destBranch?.code || 'Dest', desc: 'Courier dispatched to consignee' },
-          { status: 'delivered', label: '5. Delivered', actor: destBranch?.code || 'Dest', desc: 'Handed over & payment/POD cleared' },
-        ];
-
-        return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 animate-in fade-in zoom-in-95 space-y-4 my-auto max-h-[92vh] overflow-y-auto">
-              
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div>
-                  <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <ArrowRightLeft className="w-5 h-5 text-red-600" />
-                    <span>{t('modal_status_title') || 'Change Consignment Status'}</span>
-                  </h3>
-                  <div className="text-xs font-mono font-bold text-red-600 flex items-center gap-2 mt-0.5">
-                    <span>{statusModalShipment.cnNumber}</span>
-                    <span className="text-slate-400 font-normal">({origBranch?.city} ➔ {destBranch?.city})</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setStatusModalShipment(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Visual Lifecycle Stepper */}
-              <div className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200 dark:border-slate-700">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
-                  <span>{t('consignment_lifecycle_path') || 'Consignment Lifecycle Path'}</span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono">
-                    Current: {statusModalShipment.status.replace(/_/g, ' ').toUpperCase()}
-                  </span>
-                </div>
-                
-                <div className="grid grid-cols-5 gap-1 text-center">
-                  {stages.map((st, idx) => {
-                    const isPassed = ['booked', 'in_transit', 'received_at_branch', 'out_for_delivery', 'delivered'].indexOf(statusModalShipment.status) >= idx;
-                    const isCurrent = statusModalShipment.status === st.status;
-
-                    return (
-                      <div 
-                        key={st.status} 
-                        className={`p-1.5 rounded-lg border text-[10px] flex flex-col justify-between transition-all ${
-                          isCurrent
-                            ? 'bg-red-600 text-white border-red-600 font-bold shadow-md shadow-red-600/30 ring-2 ring-red-400/50'
-                            : isPassed
-                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                            : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
-                        }`}
-                      >
-                        <div className="font-bold truncate text-[9px] sm:text-[10px]">{st.label.split('. ')[1]}</div>
-                        <div className="text-[8px] opacity-80 mt-0.5 truncate font-mono">
-                          {st.actor}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Who can change this explainer box */}
-              <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/80 text-xs space-y-1.5">
-                <div className="font-bold text-blue-900 dark:text-blue-200 flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span>Who Has Authority to Change Status?</span>
-                  </span>
-                </div>
-                <div className="text-[11px] text-blue-950 dark:text-blue-300 space-y-1 leading-relaxed">
-                  {(() => {
-                    const escapeHtml = (s: string) => s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c] || c));
-                    const safeOrig = escapeHtml(origBranch?.name || 'Sender');
-                    const safeDest = escapeHtml(destBranch?.name || 'Receiver');
-                    return (
-                      <>
-                        <p dangerouslySetInnerHTML={{ __html: t('lifecycle_origin_msg')?.replace('{branch}', safeOrig) || `• <strong>Origin Branch (${safeOrig}):</strong> Controls <em>Booked</em> ➔ <em>In Transit</em> (Dispatches to highway).` }} />
-                        <p dangerouslySetInnerHTML={{ __html: t('lifecycle_dest_msg')?.replace('{branch}', safeDest) || `• <strong>Destination Branch (${safeDest}):</strong> Controls <em>Received at Branch</em> ➔ <em>Out for Delivery</em> ➔ <em>Delivered</em>.` }} />
-                      </>
-                    );
-                  })()}
-                  <p>• <strong>Super Admin (HQ):</strong> Master override across all provincial branches and statuses.</p>
-                </div>
-              </div>
-
-              {/* Current User Permission Status */}
-              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Logged-in Account:</span>
-                  <span className="font-bold text-slate-800 dark:text-white">{currentUser.name}</span>
-                  <span className="text-slate-500 text-[11px]"> ({currentUser.role === 'super_admin' ? 'Super Admin HQ' : branches.find(b => b.id === currentUser.branchId)?.name || 'Branch'})</span>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  updatePerm.canUpdate 
-                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800' 
-                    : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                }`}>
-                  {updatePerm.canUpdate ? '✓ Authorized' : '🔒 Locked for your role'}
-                </span>
-              </div>
-
-              {/* Action Form */}
-              {updatePerm.canUpdate ? (
-                <div className="space-y-3 text-xs pt-1">
-                  <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">
-                      {t('status_next_milestone') || 'Select Next Permitted Milestone'}
-                    </label>
-                    <select
-                      value={statusChoice}
-                      onChange={(e) => setStatusChoice(e.target.value as ShipmentStatus)}
-                      className="w-full h-10 px-3 font-bold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                      {updatePerm.allowedStatuses.map(st => (
-                        <option key={st} value={st}>
-                          {st === 'booked' && `📦 Booked at Origin (ثبت در مبدا)`}
-                          {st === 'in_transit' && `➔ In Transit (Dispatch to Carrier / در حال انتقال)`}
-                          {st === 'received_at_branch' && `✓ Received at Destination Hub (رسید به شعبه مقصد)`}
-                          {st === 'out_for_delivery' && `🚚 Out for Final Delivery (توزیع به گیرنده)`}
-                          {st === 'delivered' && `★ Delivered & Handed Over (تحویل داده شده)`}
-                          {st === 'verified' && `✓ Verified at Origin (تایید شده)`}
-                          {st === 'returned' && `↩ Returned to Origin (برگشت داده شده)`}
-                          {st === 'cancelled' && `✗ Cancelled (لغو شده)`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Financial Handover & Remittance System when delivering to Receiver */}
-                  {statusChoice === 'delivered' && (
-                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2.5">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
-                        <span className="flex items-center gap-1.5">
-                          <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Receiver Payment & Branch Commission Breakdown</span>
-                        </span>
-                        <span className="text-[10px] bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-100 px-2 py-0.5 rounded-full font-bold">
-                          Financial Handover
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
-                            Total Collected (AFN)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={deliveryCollectedAfn}
-                            onChange={(e) => {
-                              const val = Math.max(0, Number(e.target.value) || 0);
-                              setDeliveryCollectedAfn(val);
-                              setDeliveryNetToHqAfn(Math.max(0, val - deliveryCommissionAfn - deliveryOriginCommAfn));
-                            }}
-                            className="w-full h-8 px-2 font-bold bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-slate-900 dark:text-white text-xs"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-0.5">
-                            My Commission (AFN)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={deliveryCommissionAfn}
-                            onChange={(e) => {
-                              const comm = Math.max(0, Number(e.target.value) || 0);
-                              setDeliveryCommissionAfn(comm);
-                              setDeliveryNetToHqAfn(Math.max(0, deliveryCollectedAfn - comm - deliveryOriginCommAfn));
-                            }}
-                            className="w-full h-8 px-2 font-bold bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-emerald-600 dark:text-emerald-400 text-xs"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5">
-                            Remit to Main Branch HQ (AFN)
-                          </label>
-                          <div className="w-full h-8 px-2 font-black bg-blue-50 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-700 dark:text-blue-300 text-xs flex items-center">
-                            {deliveryNetToHqAfn.toLocaleString()} AFN
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-2 rounded-lg bg-emerald-100/60 dark:bg-emerald-950/60 text-[10px] text-emerald-900 dark:text-emerald-300 flex justify-between font-medium">
-                        <span>Receiver Branch Keeps Only Commission:</span>
-                        <strong className="font-mono">{deliveryCommissionAfn} AFN (No transportation fee retained)</strong>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1 border-t border-emerald-200/70 dark:border-emerald-800/70 text-[11px]">
-                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 dark:text-slate-300 font-medium">
-                          <input
-                            type="checkbox"
-                            checked={deliveryAutoRemit}
-                            onChange={(e) => setDeliveryAutoRemit(e.target.checked)}
-                            className="w-3.5 h-3.5 rounded text-red-600 focus:ring-red-500"
-                          />
-                          <span>Submit Remittance to Main Branch for Confirmation</span>
-                        </label>
-                        <span className="text-[10px] text-slate-500 font-mono">Ref: {deliveryRefNumber}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                      {t('status_note_lbl') || 'Milestone Note / Tracking Remark'}
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={statusNote}
-                      onChange={(e) => setStatusNote(e.target.value)}
-                      placeholder="e.g. Dispatched on highway fleet / Received at warehouse unloading dock..."
-                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-red-500 text-xs"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-2">
-                    <button
-                      onClick={handleSaveStatus}
-                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-colors"
-                    >
-                      {t('btn_apply_status') || 'Apply Milestone Change'}
-                    </button>
-                    <button
-                      onClick={() => setStatusModalShipment(null)}
-                      className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                    >
-                      {t('btn_cancel') || 'Cancel'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 pt-1">
-                  <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs space-y-1.5">
-                    <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
-                      <Lock className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>{t('status_locked_title') || 'Status Update Locked'}</span>
-                    </div>
-                    <p className="leading-relaxed text-[11px]">
-                      {updatePerm.reason}
-                    </p>
-                  </div>
-
-
-                  <button
-                    onClick={() => setStatusModalShipment(null)}
-                    className="w-full py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                  >
-                    {t('btn_close') || 'Close'}
-                  </button>
-                </div>
-              )}
-
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* MODAL 4: DETAILS DOSSIER MODAL */}
+      {/* MODAL: COMPREHENSIVE MANAGE & DOSSIER MODAL */}
       {detailsModalShipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-in fade-in zoom-in-95 space-y-6 my-8">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
             
-            <div className="flex items-start justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-md bg-red-100 text-red-700 font-mono font-black text-sm">
@@ -2160,11 +1325,11 @@ export const ParcelInventory: React.FC = () => {
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                     detailsModalShipment.status === 'delivered' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
                   }`}>
-                    {detailsModalShipment.status.replace(/_/g, ' ')}
+                    {detailsModalShipment.status.replace(/_/g, ' ').toUpperCase()}
                   </span>
                 </div>
                 <h2 className="text-base font-black text-slate-900 dark:text-white">
-                  {t('dossier_title') || 'Consignment Dossier & Tracking Specifications'}
+                  Consignment Dossier & Operations
                 </h2>
               </div>
 
@@ -2176,120 +1341,95 @@ export const ParcelInventory: React.FC = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+            {/* Sender & Receiver Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   <MapPin className="w-4 h-4 text-red-500" />
-                  <span>{t('dossier_sender_box') || 'Sender Details (Origin)'}</span>
+                  <span>Sender (Origin)</span>
                 </div>
                 <div className="font-bold text-sm text-slate-900 dark:text-white">{detailsModalShipment.sender.name}</div>
                 <div className="font-mono text-slate-600 dark:text-slate-400">{detailsModalShipment.sender.phone}</div>
                 <div className="text-[11px] text-slate-500">{detailsModalShipment.sender.address}, {detailsModalShipment.sender.city}</div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   <MapPin className="w-4 h-4 text-emerald-500" />
-                  <span>{t('dossier_receiver_box') || 'Receiver Details (Destination)'}</span>
+                  <span>Receiver (Destination)</span>
                 </div>
                 <div className="font-bold text-sm text-slate-900 dark:text-white">{detailsModalShipment.receiver.name}</div>
                 <div className="font-mono text-slate-600 dark:text-slate-400">{detailsModalShipment.receiver.phone}</div>
                 <div className="text-[11px] text-slate-500">{detailsModalShipment.receiver.address}, {detailsModalShipment.receiver.city}</div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   <Boxes className="w-4 h-4 text-amber-500" />
-                  <span>{t('dossier_specs_box') || 'Package Specs'}</span>
+                  <span>Cargo Specifications</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div>
-                    <span className="text-slate-400">{t('category_lbl') || 'Category'}:</span>
-                    <p className="font-bold capitalize">{detailsModalShipment.packageInfo.category}</p>
-                  </div>
-                  <div>
-                    <span className="text-slate-400">{t('weight_lbl') || 'Weight'}:</span>
+                    <span className="text-slate-400">Weight:</span>
                     <p className="font-bold font-mono">{detailsModalShipment.packageInfo.weightKg} KG</p>
                   </div>
                   <div>
-                    <span className="text-slate-400">{t('pieces_lbl') || 'Pieces'}:</span>
+                    <span className="text-slate-400">Pieces:</span>
                     <p className="font-bold">{detailsModalShipment.packageInfo.pieces} Boxes</p>
                   </div>
-                  <div>
-                    <span className="text-slate-400">{t('service_type') || 'Service'}:</span>
-                    <p className="font-bold">{detailsModalShipment.packageInfo.serviceType}</p>
+                  <div className="col-span-2">
+                    <span className="text-slate-400">Description:</span>
+                    <p className="font-medium text-slate-700 dark:text-slate-300">{detailsModalShipment.packageInfo.description || 'General Cargo'}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   <DollarSign className="w-4 h-4 text-emerald-500" />
-                  <span>{t('dossier_financial_box') || 'Financial Summary'}</span>
+                  <span>Financial Summary</span>
                 </div>
                 <div className="space-y-1 text-[11px]">
+                  <div className="flex justify-between font-bold">
+                    <span className="text-slate-500">Total Waybill Fee:</span>
+                    <span className="font-mono">{detailsModalShipment.financials.totalAmount.toLocaleString()} AFN</span>
+                  </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Product Price (COD):</span>
-                    <span className="font-mono">{detailsModalShipment.financials.productPrice} AFN</span>
-                  </div>
-                  {detailsModalShipment.financials.serviceFee > 0 && (
-                    <div className="flex justify-between text-slate-500">
-                      <span>Service Fee:</span>
-                      <span className="font-mono">-{detailsModalShipment.financials.serviceFee} AFN</span>
-                    </div>
-                  )}
-                  {detailsModalShipment.financials.destBranchCommission > 0 && (
-                    <div className="flex justify-between text-slate-500">
-                      <span>Dest. Commission:</span>
-                      <span className="font-mono">-{detailsModalShipment.financials.destBranchCommission} AFN</span>
-                    </div>
-                  )}
-                  {detailsModalShipment.financials.discountAmount > 0 && (
-                    <div className="flex justify-between text-emerald-500">
-                      <span>Discount Applied:</span>
-                      <span className="font-mono">+{detailsModalShipment.financials.discountAmount} AFN</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-black text-sm text-emerald-600 dark:text-emerald-400 pt-1 border-t border-slate-200 dark:border-slate-700">
-                    <span>Seller Payout:</span>
-                    <span>{detailsModalShipment.financials.sellerPayout} AFN</span>
-                  </div>
-                  <div className="flex justify-between font-bold pt-0.5 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-                    <span>{t('payment_lbl') || 'Payment Status'}:</span>
-                    <span className="uppercase text-emerald-600">{detailsModalShipment.financials.paymentStatus}</span>
+                    <span className="text-slate-500">Payment Status:</span>
+                    <span className="font-bold uppercase text-emerald-600">{detailsModalShipment.financials.paymentStatus}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* One-Time Bill Submission Record (if submitted) */}
+            {/* Bill Submission Status if submitted */}
             {detailsModalShipment.customerSubmissionAt && (
-              <div className="p-4 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 space-y-2">
-                <div className="flex items-center justify-between pb-1.5 border-b border-blue-200/60 dark:border-blue-800/60">
-                  <div className="flex items-center gap-2 text-xs font-bold text-blue-950 dark:text-blue-100">
+              <div className="p-3.5 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 space-y-1.5">
+                <div className="flex items-center justify-between pb-1 border-b border-blue-200/60 dark:border-blue-800/60">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-blue-950 dark:text-blue-100">
                     <FileCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span>{t('bill_submission_card_title')}</span>
+                    <span>One-Time Bill Submission Record</span>
                   </div>
                   <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 font-bold text-[10px]">
-                    {t('parcel_submitted_badge')}
+                    Recorded
                   </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
                   <div>
-                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">{t('submitted_date_time')}:</span>
-                    <div className="font-mono font-bold text-slate-900 dark:text-white flex items-center gap-1.5 mt-0.5">
-                      <Clock className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">Submitted Date & Time:</span>
+                    <div className="font-mono font-bold text-slate-900 dark:text-white flex items-center gap-1 mt-0.5">
+                      <Clock className="w-3 h-3 text-blue-600" />
                       <span>{new Date(detailsModalShipment.customerSubmissionAt).toLocaleString()}</span>
                     </div>
                   </div>
                   <div>
-                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">{t('submission_reference_label')}:</span>
+                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">Reference:</span>
                     <div className="font-mono font-bold text-slate-900 dark:text-white mt-0.5">
                       {detailsModalShipment.customerSubmissionReference || 'N/A'}
                     </div>
                   </div>
                   <div>
-                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">{t('submitted_by_officer')}:</span>
+                    <span className="text-[10px] text-blue-700/80 dark:text-blue-300/80 font-semibold">Recorded By:</span>
                     <div className="font-bold text-slate-900 dark:text-white mt-0.5">
                       {detailsModalShipment.customerSubmissionBy || 'Staff'}
                     </div>
@@ -2298,8 +1438,8 @@ export const ParcelInventory: React.FC = () => {
               </div>
             )}
 
-            {/* Timeline-based Status History Component */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 max-h-72 overflow-y-auto">
+            {/* Tracking History */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 max-h-56 overflow-y-auto">
               <ShipmentStatusTimeline 
                 history={detailsModalShipment.statusHistory}
                 currentStatus={detailsModalShipment.status}
@@ -2307,20 +1447,32 @@ export const ParcelInventory: React.FC = () => {
               />
             </div>
 
-            {/* Modal Actions Footer */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <button
-                onClick={() => {
-                  setSelectedShipmentForReceipt(detailsModalShipment);
-                  setDetailsModalShipment(null);
-                }}
-                className="px-4 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors"
-              >
-                <Printer className="w-4 h-4" />
-                <span>{t('print_receipt_waybill_btn') || 'Print / Download Receipt'}</span>
-              </button>
+            {/* Operations Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                {/* Print Receipt */}
+                <button
+                  onClick={() => {
+                    setSelectedShipmentForReceipt(detailsModalShipment);
+                    setDetailsModalShipment(null);
+                  }}
+                  className="px-3 py-2 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Receipt</span>
+                </button>
+
+                {/* Print Thermal Label */}
+                <button
+                  onClick={() => handlePrintThermalLabel(detailsModalShipment)}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
+                >
+                  <span>Thermal Label</span>
+                </button>
+              </div>
 
               <div className="flex items-center gap-2">
+                {/* Submit Bill if not yet submitted */}
                 {!detailsModalShipment.customerSubmissionAt && (detailsModalShipment.status === 'received_at_branch' || detailsModalShipment.status === 'out_for_delivery' || detailsModalShipment.status === 'delivered') && (
                   <button
                     onClick={() => {
@@ -2328,40 +1480,66 @@ export const ParcelInventory: React.FC = () => {
                       setDetailsModalShipment(null);
                       handleOpenSubmissionModal(s);
                     }}
-                    className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
-                    title={t('submit_parcel_for_collection')}
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                   >
-                    <FileCheck className="w-4 h-4" />
-                    <span>{t('submit_parcel_for_collection')}</span>
+                    <FileCheck className="w-3.5 h-3.5" />
+                    <span>Submit Bill</span>
                   </button>
                 )}
+
+                {/* Report Contact Issue */}
+                {(detailsModalShipment.status === 'in_transit' || detailsModalShipment.status === 'received_at_branch' || detailsModalShipment.status === 'out_for_delivery') && (
+                  <button
+                    onClick={() => {
+                      const s = detailsModalShipment;
+                      setDetailsModalShipment(null);
+                      handleOpenIssueModal(s);
+                    }}
+                    className="px-3 py-2 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer border border-orange-200"
+                    title="Report Contact Issue (Customer didn't answer)"
+                  >
+                    <PhoneOff className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Report Issue</span>
+                  </button>
+                )}
+
+                {/* Edit (Super Admin only) */}
                 {currentUser.role === 'super_admin' && (
                   <button
                     onClick={() => {
                       setEditModalShipment(detailsModalShipment);
                       setDetailsModalShipment(null);
                     }}
-                    className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
-                    title={t('btn_edit_parcel') || 'Edit Parcel (Super Admin)'}
+                    className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl text-xs font-bold border border-amber-200 cursor-pointer"
+                    title="Edit Consignment"
                   >
-                    <Edit3 className="w-4 h-4" />
-                    <span>{t('btn_edit_parcel') || 'Edit Parcel'}</span>
+                    <Edit3 className="w-3.5 h-3.5" />
                   </button>
                 )}
+
+                {/* Delete (Super Admin only) */}
+                {currentUser.role === 'super_admin' && (
+                  <button
+                    onClick={() => {
+                      setDeleteConfirmShipment(detailsModalShipment);
+                      setDetailsModalShipment(null);
+                    }}
+                    className="p-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-bold border border-red-200 cursor-pointer"
+                    title="Delete Consignment"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                {/* Change Status */}
                 <button
                   onClick={() => {
                     handleOpenStatusModal(detailsModalShipment);
                     setDetailsModalShipment(null);
                   }}
-                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-colors"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
                 >
-                  {t('modal_status_title') || 'Update Status'}
-                </button>
-                <button
-                  onClick={() => setDetailsModalShipment(null)}
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                >
-                  {t('btn_close') || 'Close'}
+                  Change Status
                 </button>
               </div>
             </div>
@@ -2370,80 +1548,95 @@ export const ParcelInventory: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: DELIVERY ISSUE REPORTING */}
-      {issueModalShipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-5 animate-in fade-in zoom-in-95">
-            <div className="flex items-start justify-between">
+      {/* MODAL: PRE-BOOKING WEIGH & CONFIRM */}
+      {confirmModalShipment && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto animate-in fade-in zoom-in-95">
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <div className="flex items-center gap-2 text-orange-600 dark:text-orange-500 mb-1">
-                  <MessageSquareWarning className="w-5 h-5" />
-                  <h3 className="font-black text-base">{t('report_delivery_issue') || 'Report Contact / Delivery Issue'}</h3>
-                </div>
+                <span className="px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-700 font-mono font-black text-xs">
+                  {confirmModalShipment.cnNumber}
+                </span>
+                <h3 className="font-black text-base text-slate-900 dark:text-white mt-1">
+                  Weigh & Confirm Pre-Booking
+                </h3>
                 <p className="text-xs text-slate-500">
-                  {issueModalShipment.cnNumber} · {issueModalShipment.receiver.name} ({issueModalShipment.receiver.phone})
+                  Verify scale weight and price to issue official waybill.
                 </p>
               </div>
-              <button onClick={() => setIssueModalShipment(null)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
+              <button
+                onClick={() => setConfirmModalShipment(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 flex items-center justify-center font-bold cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="p-3 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/60 rounded-xl text-xs text-orange-900 dark:text-orange-200">
-              {t('issue_modal_desc') || 'Log a failed contact attempt. This will be visible to the origin branch and the customer tracking portal.'}
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('issue_type') || 'Reason / Issue Type'}
-                </label>
-                <select 
-                  value={issueType} 
-                  onChange={(e) => setIssueType(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-orange-500 outline-none"
-                >
-                  <option value="no_answer">{t('issue_no_answer') || "Didn't Answer (جواب نداد)"}</option>
-                  <option value="incorrect_number">{t('issue_wrong_number') || "Incorrect Number (شماره اشتباه)"}</option>
-                  <option value="not_available">{t('issue_not_available') || "Consignee Not Available (گیرنده در دسترس نیست)"}</option>
-                  <option value="other">{t('issue_other') || "Other (دیگر)"}</option>
-                </select>
-              </div>
-
-              {issueType === 'other' && (
+            <div className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {t('issue_custom_note') || 'Custom Note'}
-                  </label>
-                  <textarea 
-                    value={issueCustomNote} 
-                    onChange={(e) => setIssueCustomNote(e.target.value)}
-                    placeholder={t('issue_custom_placeholder') || 'Enter specifics...'}
-                    className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:ring-2 focus:ring-orange-500 outline-none resize-none h-24"
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Scale Weight (KG):</label>
+                  <input
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={weighedWeight}
+                    onChange={(e) => setWeighedWeight(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
+                    className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
                   />
                 </div>
-              )}
-            </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Pieces / Boxes:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={weighedPieces}
+                    onChange={(e) => setWeighedPieces(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                  />
+                </div>
+              </div>
 
-            <div className="pt-2 flex justify-end gap-2">
-              <button
-                onClick={() => setIssueModalShipment(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 cursor-pointer transition-colors"
-              >
-                {t('btn_cancel') || 'Cancel'}
-              </button>
-              <button
-                onClick={handleConfirmIssue}
-                disabled={issueType === 'other' && !issueCustomNote.trim()}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-colors flex items-center gap-1.5"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>{t('btn_submit_issue') || 'Submit Report'}</span>
-              </button>
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Total Product Price / COD (AFN):</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="50"
+                  value={modalProductPrice}
+                  onChange={(e) => setModalProductPrice(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleConfirmPreBookingSubmit}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md transition-colors"
+                >
+                  Confirm & Issue Official Waybill
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmModalShipment(null)}
+                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Combined Branch Bulk Dispatch & Bag Tag Modal */}
+      {/* MODAL: DELIVERY ISSUE REPORTING (Report an Issue) */}
+      <ReportDeliveryIssueModal
+        shipment={issueModalShipment}
+        onClose={() => setIssueModalShipment(null)}
+      />
+
+      {/* Combined Branch Bulk Dispatch Modal */}
       <CombinedBranchReceiptModal
         isOpen={isCombinedBranchOpen}
         onClose={() => setIsCombinedBranchOpen(false)}
@@ -2460,49 +1653,32 @@ export const ParcelInventory: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {deleteConfirmShipment && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-6 animate-in fade-in zoom-in-95 space-y-6">
-            <div className="flex items-center gap-4 text-red-600">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center shrink-0">
-                <AlertCircle className="w-6 h-6" />
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 animate-in fade-in zoom-in-95 space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-black text-lg">{t('confirm_delete_title', 'Delete Parcel Permanently?')}</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  This action cannot be undone. All records for waybill <span className="font-mono font-bold text-red-600">{deleteConfirmShipment.cnNumber}</span> will be permanently erased.
+                <h3 className="font-black text-base">Delete Parcel Permanently?</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Waybill <span className="font-mono font-bold text-red-600">{deleteConfirmShipment.cnNumber}</span> will be permanently removed.
                 </p>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Sender:</span>
-                <span className="font-bold">{deleteConfirmShipment.sender.name}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Receiver:</span>
-                <span className="font-bold">{deleteConfirmShipment.receiver.name}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-500">Booked Date:</span>
-                <span className="font-bold">{new Date(deleteConfirmShipment.bookedAt).toLocaleDateString()}</span>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
+            <div className="flex gap-2 text-xs">
               <button
                 onClick={handleDeleteShipment}
                 disabled={isDeleting}
-                className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl shadow-lg shadow-red-600/20 transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl cursor-pointer"
               >
-                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                <span>{t('btn_confirm_delete', 'Yes, Delete Permanently')}</span>
+                {isDeleting ? 'Deleting...' : 'Yes, Delete Permanently'}
               </button>
               <button
                 onClick={() => setDeleteConfirmShipment(null)}
-                disabled={isDeleting}
-                className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl cursor-pointer"
               >
-                {t('btn_cancel')}
+                Cancel
               </button>
             </div>
           </div>

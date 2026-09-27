@@ -17,7 +17,8 @@ import {
   ChevronRight,
   MousePointerClick,
   X,
-  Boxes
+  Boxes,
+  AlertTriangle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../context/AppContext';
@@ -509,9 +510,16 @@ export const CustomerPortal: React.FC = () => {
                         <span className="font-mono font-black text-red-600 dark:text-red-400 text-xs">
                           {s.cnNumber}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                          {s.status}
-                        </span>
+                        {s.deliveryIssue && s.status !== 'delivered' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-amber-600" />
+                            <span>{s.deliveryIssue.reasonText || 'Delivery Issue'}</span>
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {s.status}
+                          </span>
+                        )}
                       </div>
                       <span className="font-mono font-bold text-xs text-slate-900 dark:text-white">
                         {(s.financials?.totalAmount || 0).toLocaleString()} AFN
@@ -611,9 +619,16 @@ export const CustomerPortal: React.FC = () => {
                           {(s.financials?.totalAmount || 0).toLocaleString()} AFN
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                            {s.status}
-                          </span>
+                          {s.deliveryIssue && s.status !== 'delivered' ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800 inline-flex items-center gap-1" title={s.deliveryIssue.reasonText || 'Delivery Issue'}>
+                              <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              <span>{s.deliveryIssue.reasonText || 'Delivery Issue'}</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              {s.status}
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1.5">

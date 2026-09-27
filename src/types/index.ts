@@ -275,6 +275,13 @@ export interface Shipment {
   stickerPrintCount?: number;
   stickerBatchRef?: string;
   stickerPrintedAt?: string;
+  deliveryIssue?: {
+    type: string;
+    reasonText?: string;
+    note?: string;
+    reportedAt: string;
+    reportedBy: string;
+  };
 }
 
 export function formatReceiptPhone(phone?: string): string {

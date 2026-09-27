@@ -17,13 +17,16 @@ import {
   Share2,
   Check,
   AlertCircle,
+  AlertTriangle,
   Download
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useI18n } from '../context/I18nContext';
 import { BarcodeGenerator, QRCodeVisual } from './BarcodeGenerator';
 import { ShipmentStatus } from '../types';
 
 export const TrackingPortal: React.FC = () => {
+  const { language } = useI18n();
   const { 
     t, 
     trackedShipment, 
@@ -74,21 +77,24 @@ export const TrackingPortal: React.FC = () => {
   };
 
   const stages: { key: ShipmentStatus; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { key: 'booked', label: t('status_booked'), icon: FileText },
-    { key: 'in_transit', label: t('status_in_transit'), icon: Truck },
-    { key: 'received_at_branch', label: t('status_received_at_branch'), icon: Building2 },
-    { key: 'out_for_delivery', label: t('status_out_for_delivery'), icon: Package },
-    { key: 'delivered', label: t('status_delivered'), icon: CheckCircle2 }
+    { key: 'pre_booked', label: language === 'fa' ? 'پیش‌ثبت شده' : language === 'ps' ? 'مخکې ثبت شوی' : 'Pre-Booked', icon: Clock },
+    { key: 'booked', label: language === 'fa' ? 'تحویل در مبدا' : language === 'ps' ? 'مبدا ته تسلیم' : 'Drop at Origin', icon: MapPin },
+    { key: 'in_transit', label: language === 'fa' ? 'در حال انتقال' : language === 'ps' ? 'په لاره' : 'In Transit', icon: Truck },
+    { key: 'received_at_branch', label: language === 'fa' ? 'رسیده به مقصد' : language === 'ps' ? 'مقصد ته ورسید' : 'At Destination Hub', icon: Building2 },
+    { key: 'out_for_delivery', label: language === 'fa' ? 'در حال توزیع' : language === 'ps' ? 'د وېش په حال کې' : 'Out for Delivery', icon: Package },
+    { key: 'delivered', label: language === 'fa' ? 'تحویل شد' : language === 'ps' ? 'تسلیم شو' : 'Delivered', icon: CheckCircle2 }
   ];
 
   const getStageIndex = (status: ShipmentStatus) => {
     switch (status) {
-      case 'booked': return 0;
-      case 'in_transit': return 1;
-      case 'received_at_branch': return 2;
-      case 'out_for_delivery': return 3;
-      case 'delivered': return 4;
-      default: return 0;
+      case 'pre_booked': return 0;
+      case 'verified':
+      case 'booked': return 1;
+      case 'in_transit': return 2;
+      case 'received_at_branch': return 3;
+      case 'out_for_delivery': return 4;
+      case 'delivered': return 5;
+      default: return 1;
     }
   };
 
@@ -245,6 +251,42 @@ export const TrackingPortal: React.FC = () => {
               </div>
             </div>
 
+            {/* Delivery Attempt Issue Alert (Notice to Customer) */}
+            {trackedShipment.deliveryIssue && trackedShipment.status !== 'delivered' && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-500/70 shadow-sm flex items-start gap-3.5 text-amber-950 dark:text-amber-100 animate-in fade-in">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-extrabold text-sm sm:text-base text-amber-900 dark:text-amber-200">
+                      {t('delivery_issue_alert_title') || 'Delivery Notice: Delivery Attempt Unsuccessful (گزارش عدم تحویل بسته)'}
+                    </span>
+                    <span className="text-[11px] font-mono text-amber-700 dark:text-amber-400">
+                      {new Date(trackedShipment.deliveryIssue.reportedAt).toLocaleDateString()} • {new Date(trackedShipment.deliveryIssue.reportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  
+                  <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                    <span>{t('issue_reason_lbl') || 'Reason'}:</span>
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-200/70 dark:bg-amber-900/60 text-amber-950 dark:text-amber-100 font-extrabold">
+                      {trackedShipment.deliveryIssue.reasonText || trackedShipment.deliveryIssue.type}
+                    </span>
+                  </div>
+
+                  {trackedShipment.deliveryIssue.note && (
+                    <p className="text-xs text-amber-900 dark:text-amber-200 bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-xl border border-amber-200/60 dark:border-amber-900/40 leading-relaxed font-medium">
+                      {trackedShipment.deliveryIssue.note}
+                    </p>
+                  )}
+
+                  <div className="text-[11px] text-amber-700 dark:text-amber-400 pt-0.5">
+                    {t('contact_branch_prompt') || 'Please contact your destination cargo branch or visit the hub to collect your parcel.'}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Visual Tracking Progress Milestones */}
             <div className="py-4">
               <div className="relative">
@@ -255,7 +297,7 @@ export const TrackingPortal: React.FC = () => {
                   style={{ width: `${(currentStageIndex / (stages.length - 1)) * 100}%` }}
                 />
 
-                <div className="grid grid-cols-5 gap-2 relative z-10">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 relative z-10">
                   {stages.map((stage, idx) => {
                     const isCompleted = idx <= currentStageIndex;
                     const isCurrent = idx === currentStageIndex;
@@ -471,9 +513,20 @@ export const TrackingPortal: React.FC = () => {
                         <span>{item.location} ({item.branchName})</span>
                       </div>
 
-                      <p className={`text-xs ${isIssue ? 'text-orange-800 dark:text-orange-200 font-medium' : 'text-slate-600 dark:text-slate-300'}`}>
-                        {isIssue ? item.note.replace('Delivery Issue:', '').trim() : item.note}
-                      </p>
+                      {/* Delivery Reason / Custom Note (Clean display without extra large boilerplate text) */}
+                      {isIssue && (
+                        <div className="mt-1 p-2 rounded-lg bg-orange-100/80 dark:bg-orange-900/40 text-orange-950 dark:text-orange-100 text-xs font-semibold flex items-center gap-1.5 border border-orange-200 dark:border-orange-800">
+                          <AlertTriangle className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                          <span>{t('issue_reason_lbl') || 'Reason'}: {item.note.replace('Delivery Issue:', '').trim()}</span>
+                        </div>
+                      )}
+
+                      {item.note && (item.note.includes('bill submitted') || item.note.includes('Bill submitted')) && (
+                        <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                          <span>{t('parcel_submitted_badge') || 'One-Time Bill Submitted'}</span>
+                        </div>
+                      )}
 
                       {item.driverName && (
                         <div className={`pt-2 mt-2 border-t flex items-center justify-between text-[11px] ${

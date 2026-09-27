@@ -2626,9 +2626,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const now = new Date().toISOString();
     const userBranch = branches.find(b => b.id === currentUser.branchId);
 
-    const issueText = issueType === 'other' && customNote 
-      ? `Delivery Issue: ${customNote}` 
-      : `Delivery Issue: ${issueType}`;
+    const readableReasons: Record<string, string> = {
+      no_answer: "Receiver Didn't Answer (تماس بی‌پاسخ - گیرنده جواب نداد)",
+      incorrect_number: "Incorrect Phone Number (شماره تماس اشتباه است)",
+      not_available: "Receiver Not Available (گیرنده در دسترس نیست / در شهر نیست)",
+      postponed: "Delivery Postponed by Customer (به درخواست مشتری به تعویق افتاد)",
+      wrong_address: "Address Incomplete / Not Found (آدرس نامشخص یا ناقص)",
+      refused: "Consignee Refused Package (بسته توسط گیرنده رد شد)",
+      other: customNote || "Other Issue (سایر دلایل)"
+    };
+    const reasonText = readableReasons[issueType] || customNote || issueType;
+
+    const issueText = customNote 
+      ? `Delivery Issue: ${reasonText} - ${customNote}` 
+      : `Delivery Issue: ${reasonText}`;
+
+    const deliveryIssueData = {
+      type: issueType,
+      reasonText,
+      note: customNote,
+      reportedAt: now,
+      reportedBy: `${currentUser.name} (${userBranch?.name || 'Destination Branch'})`
+    };
 
     const newHistoryItem = {
       id: `issue_${Date.now()}`,
@@ -2641,7 +2660,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const newHistory = [...(target.statusHistory || []), newHistoryItem];
-    const updatedShipment = { ...target, statusHistory: newHistory };
+    const updatedShipment = { ...target, statusHistory: newHistory, deliveryIssue: deliveryIssueData };
 
     setShipments(prev => prev.map(s => s.id === target.id ? updatedShipment : s));
     if (trackedShipment && (trackedShipment.id === target.id || trackedShipment.cnNumber === target.cnNumber)) {
@@ -2730,7 +2749,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentBranchId,
       statusHistory: newHistory,
       actualDelivery,
-      financials: newFinancials
+      financials: newFinancials,
+      deliveryIssue: newStatus === 'delivered' ? undefined : target.deliveryIssue
     };
 
     setShipments(prev => prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s));

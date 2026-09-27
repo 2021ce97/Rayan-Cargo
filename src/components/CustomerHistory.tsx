@@ -18,7 +18,8 @@ import {
   Calendar,
   User,
   Phone,
-  Info
+  Info,
+  AlertTriangle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus } from '../types';
@@ -311,6 +312,13 @@ export const CustomerHistory: React.FC = () => {
                         <span>{language === 'fa' ? 'قیمت‌گذاری نهایی' : language === 'ps' ? 'تایید شوی قیمت' : 'Priced & Verified'}</span>
                       </span>
                     )}
+
+                    {shipment.deliveryIssue && shipment.status !== 'delivered' && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 text-[10px] font-bold flex items-center gap-1 border border-amber-300 dark:border-amber-800">
+                        <AlertTriangle className="w-3 h-3 text-amber-600" />
+                        <span>{shipment.deliveryIssue.reasonText || 'Delivery Issue'}</span>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -336,6 +344,36 @@ export const CustomerHistory: React.FC = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Delivery Issue Notice Banner if undelivered */}
+                {shipment.deliveryIssue && shipment.status !== 'delivered' && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-400 dark:border-amber-800 text-amber-950 dark:text-amber-100 text-xs flex items-start gap-3">
+                    <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 shadow-xs">
+                      <AlertTriangle className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-1 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-1">
+                        <span className="font-extrabold text-amber-900 dark:text-amber-200">
+                          {t('delivery_issue_alert_title') || 'Delivery Attempt Unsuccessful (گزارش عدم تحویل بسته)'}
+                        </span>
+                        <span className="text-[10px] font-mono text-amber-700 dark:text-amber-400">
+                          {new Date(shipment.deliveryIssue.reportedAt).toLocaleDateString()} {new Date(shipment.deliveryIssue.reportedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-amber-850 dark:text-amber-300">
+                        {t('issue_reason_lbl') || 'Reason'}: <span className="underline">{shipment.deliveryIssue.reasonText || shipment.deliveryIssue.type}</span>
+                      </div>
+                      {shipment.deliveryIssue.note && (
+                        <p className="text-[11px] text-amber-800 dark:text-amber-300 bg-white/60 dark:bg-slate-900/50 p-2 rounded-xl border border-amber-200 dark:border-amber-800/60">
+                          {shipment.deliveryIssue.note}
+                        </p>
+                      )}
+                      <div className="text-[10px] text-amber-700/90 dark:text-amber-400">
+                        {t('contact_branch_prompt') || 'Please contact your destination cargo branch or visit the hub to collect your parcel.'}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Main Details Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">

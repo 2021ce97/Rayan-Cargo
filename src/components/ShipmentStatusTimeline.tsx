@@ -234,21 +234,41 @@ export const ShipmentStatusTimeline: React.FC<ShipmentStatusTimelineProps> = ({
                   )}
                 </div>
 
-                {/* Notes and description */}
+                {/* Notes and description - Only show issue reasons, custom remarks, or bill submission (no large boilerplate) */}
                 {item.note && (
-                  <div className={`mt-2 p-2.5 rounded-xl border text-xs leading-relaxed ${
-                    item.note.includes('Parcel bill submitted') || item.note.includes('bill submitted')
-                      ? 'bg-blue-50/90 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100'
-                      : 'bg-white/70 dark:bg-slate-900/60 border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300'
-                  }`}>
-                    {(item.note.includes('Parcel bill submitted') || item.note.includes('bill submitted')) && (
-                      <div className="flex items-center gap-1.5 font-bold text-blue-700 dark:text-blue-300 text-[11px] mb-1">
-                        <FileCheck className="w-3.5 h-3.5" />
-                        <span>{t('bill_submission_card_title')}</span>
+                  (() => {
+                    const isBoilerplate = 
+                      item.note.startsWith('Status updated to') || 
+                      item.note.startsWith('Parcel pre-registered online by sender');
+                    
+                    if (isBoilerplate && !isIssue) return null;
+
+                    const isBillSubmission = item.note.includes('bill submitted') || item.note.includes('Bill submitted');
+
+                    return (
+                      <div className={`mt-2 p-2.5 rounded-xl border text-xs leading-relaxed ${
+                        isIssue
+                          ? 'bg-amber-100/90 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100 font-semibold'
+                          : isBillSubmission
+                          ? 'bg-blue-50/90 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-100 font-semibold'
+                          : 'bg-white/70 dark:bg-slate-900/60 border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300'
+                      }`}>
+                        {isIssue ? (
+                          <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-200">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span>{t('issue_reason_lbl') || 'Reason'}: {item.note.replace('Delivery Issue:', '').trim()}</span>
+                          </div>
+                        ) : isBillSubmission ? (
+                          <div className="flex items-center gap-1.5 font-bold text-blue-700 dark:text-blue-300 text-[11px]">
+                            <FileCheck className="w-3.5 h-3.5" />
+                            <span>{t('parcel_submitted_badge') || 'One-Time Bill Submitted'}</span>
+                          </div>
+                        ) : (
+                          item.note
+                        )}
                       </div>
-                    )}
-                    {item.note}
-                  </div>
+                    );
+                  })()
                 )}
 
                 {/* Driver / Courier if recorded */}

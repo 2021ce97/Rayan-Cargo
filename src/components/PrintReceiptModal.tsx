@@ -254,16 +254,16 @@ export const PrintReceiptModal: React.FC = () => {
               {l('Print Status Tracking:', 'رهگیری و تعداد چاپ:')}
             </span>
             {(shipment.printCount || 0) === 0 ? (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
-                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-                {l('0 prints logged • Ready for Print #1 (ORIGINAL)', '۰ چاپ ثبت شده • آماده برای چاپ اول (نسخه اصلی)')}
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border-2 border-emerald-400 shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                {l('★ ONE-TIME OFFICIAL PRINT (چاپ اصلی یک‌باره)', '★ آماده برای چاپ اصلی یک‌باره (نسخه اول)')}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
                 {l(
-                  `Printed ${shipment.printCount} time${shipment.printCount > 1 ? 's' : ''} ${shipment.lastPrintedAt ? `(Last: ${new Date(shipment.lastPrintedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}`,
-                  `${shipment.printCount} بار چاپ شده ${shipment.lastPrintedAt ? `(آخرین چاپ: ${new Date(shipment.lastPrintedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}`
+                  `Printed ${shipment.printCount} time${shipment.printCount > 1 ? 's' : ''} • RE-PRINT MODE ${shipment.lastPrintedAt ? `(Last: ${new Date(shipment.lastPrintedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}`,
+                  `${shipment.printCount} بار چاپ شده • حالت چاپ مجدد (المثنی)`
                 )}
               </span>
             )}
@@ -1017,10 +1017,14 @@ export const PrintReceiptModal: React.FC = () => {
               <button
                 onClick={handlePrint}
                 disabled={isGeneratingPdf}
-                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
               >
-                <Printer className="w-5 h-5" />
-                <span>{l('Print', 'Print (چاپ)')}</span>
+                <Printer className="w-4 sm:w-5 h-4 sm:h-5" />
+                <span>
+                  {(shipment.printCount || 0) === 0 
+                    ? l('One-Time Print (چاپ اصلی)', 'چاپ اصلی یک‌باره (One-Time Print)')
+                    : l(`Print Copy #${(shipment.printCount || 0) + 1}`, `چاپ مجدد #${(shipment.printCount || 0) + 1}`)}
+                </span>
               </button>
             </div>
           </div>
