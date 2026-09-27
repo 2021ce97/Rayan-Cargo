@@ -2539,7 +2539,7 @@ export function generateThermalLabelPdf(
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text('KABUL CARGO EXPRESS', margin + 4, y + 6);
+    doc.text('ARMAGHAN SADEQ TRANSFERS', margin + 4, y + 6);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.text('AFGHANISTAN NATIONWIDE LOGISTICS NETWORK', margin + 4, y + 11);

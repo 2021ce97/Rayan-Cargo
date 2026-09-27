@@ -4,17 +4,21 @@ import {
   AlertCircle, 
   AlertTriangle, 
   Info, 
-  X 
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ToastItem, ToastType } from '../types';
 
 export const ToastContainer: React.FC = () => {
-  const { toasts, dismissToast, isRTL } = useApp();
+  const { 
+    toasts, 
+    dismissToast, 
+    isRTL
+  } = useApp();
 
   if (!toasts || toasts.length === 0) return null;
 
-  const getToastStyles = (type: ToastType) => {
+  const getStandardToastStyles = (type: ToastType) => {
     switch (type) {
       case 'success':
         return {
@@ -46,12 +50,13 @@ export const ToastContainer: React.FC = () => {
 
   return (
     <div 
-      className="fixed top-4 end-4 z-[99999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none p-2 sm:p-0 no-print"
+      className="fixed top-4 end-4 z-[99999] flex flex-col gap-3 max-w-md w-full pointer-events-none p-3 sm:p-0 no-print"
       dir={isRTL ? 'rtl' : 'ltr'}
       id="global-toast-container"
     >
       {toasts.map((toast: ToastItem) => {
-        const styles = getToastStyles(toast.type);
+        // Standard System Toasts (Success, Error, Warning, Info)
+        const styles = getStandardToastStyles(toast.type);
         return (
           <div
             key={toast.id}

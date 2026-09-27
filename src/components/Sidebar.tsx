@@ -183,27 +183,27 @@ export const Sidebar: React.FC = () => {
   const renderSidebarContent = () => (
     <div className="flex flex-col justify-between h-full space-y-6">
       <div className="space-y-4">
-        {/* Kabul Cargo Transfers Official Brand Header (All Roles) */}
+        {/* Armaghan Sadeq Transfers Official Brand Header (All Roles) */}
         <div className="p-3 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 rounded-2xl border border-red-500/20 shadow-md">
           <div className="flex items-center gap-3">
             <div className="shrink-0 p-1.5 bg-white rounded-xl shadow-xs border border-red-500/30 flex items-center justify-center">
               <img
                 src="/logo.jpg"
-                alt="Kabul Cargo Transfers - خدمات انتقالات کابل کارگو"
+                alt="Armaghan Sadeq Transfers - خدمات انتقالات ارمغان صادق"
                 className="w-10 h-10 object-contain rounded-lg"
               />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-black text-sm text-white tracking-tight leading-tight">
-                  Kabul Cargo
+                  Armaghan Sadeq
                 </span>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 uppercase tracking-wider">
                   Transfers
                 </span>
               </div>
               <p className="text-[11px] font-bold text-red-400 mt-0.5 truncate">
-                خدمات انتقالات کابل کارگو
+                خدمات انتقالات ارمغان صادق
               </p>
               <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -213,15 +213,6 @@ export const Sidebar: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Global Language Selector (Trilingual: English, دری, پښتو) */}
-        <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1 flex items-center justify-between">
-            <span>{t('language_label', 'Language / ژبه / زبان')}</span>
-            <span className="text-[9px] text-amber-400 font-mono font-bold uppercase">{language}</span>
-          </div>
-          <LanguageSwitcher variant="segmented" className="w-full" />
         </div>
 
         {/* Quick Booking Action Callout */}
@@ -328,23 +319,6 @@ export const Sidebar: React.FC = () => {
           </div>
         )}
 
-        {/* Network Highway Health */}
-        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 text-slate-300 space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-bold text-red-400 uppercase tracking-wider">
-            <span className="flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              {t('afghan_highway_fleet')}
-            </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed truncate">
-            {branches.slice(0, 5).map(b => b.city).join(' • ')}
-          </p>
-          <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-500">
-            <span>{branches.length} {t('online_terminals_badge')}</span>
-            <span className="text-emerald-400 font-bold">100% Online</span>
-          </div>
-        </div>
       </div>
 
       {/* User Account & Security Footer */}
@@ -376,34 +350,19 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-2">
-          {!isSuperAdmin && !isCustomer && (
-            <button
-              onClick={() => {
-                setIsPasswordModalOpen(true);
-                setIsMobileSidebarOpen(false);
-              }}
-              className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
-              title={t('change_branch_password_title')}
-            >
-              <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-              <span>{t('login_password_lbl')}</span>
-            </button>
-          )}
-          
+        {!isSuperAdmin && !isCustomer && (
           <button
             onClick={() => {
+              setIsPasswordModalOpen(true);
               setIsMobileSidebarOpen(false);
-              logout();
             }}
-            className={`py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-rose-950/50 hover:text-rose-400 text-slate-300 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer ${
-              isSuperAdmin || isCustomer ? 'col-span-2' : ''
-            }`}
+            className="w-full py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer"
+            title={t('change_branch_password_title')}
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>{t('logout_btn')}</span>
+            <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+            <span>{t('login_password_lbl')}</span>
           </button>
-        </div>
+        )}
 
         <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
           <span className="flex items-center gap-1">

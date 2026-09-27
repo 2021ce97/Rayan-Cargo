@@ -279,15 +279,7 @@ export const Dashboard: React.FC = () => {
               <span>{t('send_from_admin_office', 'Send from Admin Office')}</span>
             </button>
           )}
-          {branches.length >= 2 ? (
-            <button
-              onClick={() => setActiveView('booking')}
-              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('new_consignment_btn')}</span>
-            </button>
-          ) : (
+          {branches.length < 2 && (
             <button
               onClick={() => setActiveView('branches')}
               className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 flex items-center gap-2 transition-all cursor-pointer"

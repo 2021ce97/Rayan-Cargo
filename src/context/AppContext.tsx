@@ -18,7 +18,8 @@ import {
   BranchRemittanceTransfer,
   ToastItem,
   ToastType,
-  AdminEditShipmentInput
+  AdminEditShipmentInput,
+  SmsNotificationPayload
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
@@ -187,6 +188,18 @@ interface AppContextType {
   toasts: ToastItem[];
   showToast: (message: string, type?: ToastType, title?: string, duration?: number) => void;
   dismissToast: (id: string) => void;
+  mockSmsLog: SmsNotificationPayload[];
+  triggerMockSmsNotification: (
+    shipmentOrId: Shipment | string, 
+    status: 'out_for_delivery' | 'delivered',
+    options?: {
+      driverName?: string;
+      driverPhone?: string;
+      location?: string;
+      customNote?: string;
+    }
+  ) => boolean;
+  clearMockSmsLog: () => void;
   isOfflineCached: boolean;
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: (open: boolean) => void;
@@ -210,7 +223,8 @@ const STORAGE_KEYS = {
   ACTIVE_BRANCH_ID: 'rayan_cargo_active_branch_v6_clean',
   IS_AUTH: 'rayan_cargo_is_auth_v6_clean',
   PARTNER_BRANCH_ID: 'rayan_cargo_partner_branch_v6_clean',
-  RECEIPT_PRINT_MODE: 'rayan_cargo_print_mode_v6_clean'
+  RECEIPT_PRINT_MODE: 'rayan_cargo_print_mode_v6_clean',
+  MOCK_SMS_LOG: 'rayan_cargo_mock_sms_log_v6'
 };
 
 // Helper to guarantee valid, non-zero financial figures and proper remittance commission
@@ -478,6 +492,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }, duration);
     }
   }, [dismissToast]);
+
+  // Mock SMS Notifications Log State (Persisted in LocalStorage)
+  const [mockSmsLog, setMockSmsLog] = useState<SmsNotificationPayload[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.MOCK_SMS_LOG);
+      return saved ? JSON.parse(saved) : [];
+    } catch (_) {
+      return [];
+    }
+  });
+
+  const clearMockSmsLog = useCallback(() => {
+    setMockSmsLog([]);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.MOCK_SMS_LOG);
+    } catch (_) {}
+  }, []);
+
+  // Mock SMS Notification Dispatcher for Customer Users
+  const triggerMockSmsNotification = useCallback((
+    shipmentOrId: Shipment | string, 
+    status: 'out_for_delivery' | 'delivered',
+    options?: {
+      driverName?: string;
+      driverPhone?: string;
+      location?: string;
+      customNote?: string;
+    }
+  ): boolean => {
+    const target = typeof shipmentOrId === 'string'
+      ? shipments.find(s => s.id === shipmentOrId || s.cnNumber === shipmentOrId)
+      : shipmentOrId;
+
+    if (!target) {
+      console.warn('triggerMockSmsNotification: target shipment not found:', shipmentOrId);
+      return false;
+    }
+
+    const recipientName = target.receiver?.name || target.sender?.name || 'Customer';
+    const recipientPhone = target.receiver?.phone || target.sender?.phone || '+93 79 123 4567';
+    const driver = options?.driverName || 'Armaghan Express Courier';
+    const driverPhoneStr = options?.driverPhone ? ` (${options.driverPhone})` : '';
+    const nowIso = new Date().toISOString();
+    const formattedAmount = (target.financials?.totalAmount || target.financials?.productPrice || 0).toLocaleString();
+    const isToPay = target.financials?.paymentStatus === 'to_pay';
+
+    let smsTitle = '';
+    let smsMessage = '';
+
+    if (status === 'out_for_delivery') {
+      smsTitle = `Armaghan Express • Out for Delivery (CN #${target.cnNumber})`;
+      if (language === 'fa') {
+        smsMessage = `📦 سلام ${recipientName} گرامی،\nبسته شما با بارنامه #${target.cnNumber} در حال حاضر با پیک توزیع (${driver}${driverPhoneStr}) جهت تحویل خارج شده است.${isToPay ? `\nمبلغ قابل پرداخت در محل: ${formattedAmount} افغانی.` : ''}\nلطفاً جهت هماهنگی تحویل در دسترس باشید.\nپیگیری آنلاین: armaghan.af`;
+      } else if (language === 'ps') {
+        smsMessage = `📦 دروند ${recipientName}،\nستاسو بار ګڼه #${target.cnNumber} د وېشلو لپاره د استازي (${driver}${driverPhoneStr}) لخوا وړل شوی دی.${isToPay ? `\nد تحویلۍ پیسې: ${formattedAmount} افغانۍ.` : ''}\nمهرباني وکړئ د اړیکې لپاره چمتو اوسئ.\nتعقیب: armaghan.af`;
+      } else {
+        smsMessage = `📦 Dear ${recipientName},\nYour consignment #${target.cnNumber} is now OUT FOR DELIVERY today with courier ${driver}${driverPhoneStr}.${isToPay ? ` Amount to collect: ${formattedAmount} AFN.` : ''}\nPlease keep your phone reachable at the delivery address.\nTrack online: armaghan.af`;
+      }
+    } else {
+      smsTitle = `Armaghan Express • Delivery Completed (CN #${target.cnNumber})`;
+      if (language === 'fa') {
+        smsMessage = `✅ سلام ${recipientName} گرامی،\nبسته شما با بارنامه #${target.cnNumber} با موفقیت تحویل داده شد.\nمبلغ تسویه شده: ${formattedAmount} افغانی.\nاز حسن اعتماد و انتخاب شما صمیمانه متشکریم!`;
+      } else if (language === 'ps') {
+        smsMessage = `✅ دروند ${recipientName}،\nستاسو بار ګڼه #${target.cnNumber} په بریالیتوب سره تسلیم شو.\nورکړل شوې پیسې: ${formattedAmount} افغانۍ.\nله ارمغان اکسپریس څخه د بار وړلو له امله مننه!`;
+      } else {
+        smsMessage = `✅ Dear ${recipientName},\nYour consignment #${target.cnNumber} has been successfully DELIVERED!\nTotal Paid: ${formattedAmount} AFN.\nThank you for choosing Armaghan Express. We value your trust!`;
+      }
+    }
+
+    const payload: SmsNotificationPayload = {
+      id: `sms_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      recipientName,
+      recipientPhone,
+      recipientRole: 'receiver',
+      cnNumber: target.cnNumber,
+      status,
+      driverName: options?.driverName,
+      driverPhone: options?.driverPhone,
+      location: options?.location,
+      amountDueAfn: target.financials?.amountDue || 0,
+      timestamp: nowIso,
+      isMockSms: true
+    };
+
+    setMockSmsLog(prev => {
+      const updated = [payload, ...prev.slice(0, 49)];
+      try {
+        localStorage.setItem(STORAGE_KEYS.MOCK_SMS_LOG, JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
+
+    const toastId = `sms-toast-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const newToast: ToastItem = {
+      id: toastId,
+      message: smsMessage,
+      type: 'sms',
+      title: smsTitle,
+      duration: 7500,
+      timestamp: Date.now(),
+      smsPayload: payload
+    };
+
+    setToasts(prev => [newToast, ...prev.slice(0, 4)]);
+    setToastMessage(`📱 SMS alert sent to customer ${recipientName} (${recipientPhone}) for CN #${target.cnNumber}`);
+
+    setTimeout(() => {
+      dismissToast(toastId);
+    }, 7500);
+
+    return true;
+  }, [shipments, language, dismissToast]);
 
   // Sync with Supabase PostgreSQL
   const syncWithDatabase = useCallback(async (force = false) => {
@@ -2375,6 +2501,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     showToast(t('parcel_edited_success') || 'Parcel information and financials updated successfully!', 'success');
+
+
+
     return true;
   };
 
@@ -2781,6 +2910,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       'success',
       'Milestone Updated'
     );
+
+
+
     return true;
   };
 
@@ -2913,6 +3045,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         showToast,
         dismissToast,
+        mockSmsLog,
+        triggerMockSmsNotification,
+        clearMockSmsLog,
         isOfflineCached,
         isMobileSidebarOpen,
         setIsMobileSidebarOpen,

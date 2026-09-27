@@ -28,7 +28,7 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
       <div className={`relative shrink-0 flex items-center justify-center ${className}`}>
         <img
           src="/logo.jpg"
-          alt="Kabul Cargo Transfers"
+          alt="Armaghan Sadeq Transfers"
           className={`${currentSize.img} object-contain rounded-xl shadow-xs transition-transform hover:scale-105`}
           loading="eager"
         />
@@ -42,7 +42,7 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
         <div className="relative shrink-0 p-1 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-red-500/20 dark:border-red-500/30 flex items-center justify-center">
           <img
             src="/logo.jpg"
-            alt="Kabul Cargo Transfers - خدمات انتقالات کابل کارگو"
+            alt="Armaghan Sadeq Transfers - خدمات انتقالات ارمغان صادق"
             className={`${currentSize.img} object-contain`}
             loading="eager"
           />
@@ -50,7 +50,7 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
         <div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`font-extrabold tracking-tight text-slate-900 dark:text-white ${currentSize.text}`}>
-              Kabul Cargo
+              Armaghan Sadeq
             </span>
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 uppercase tracking-wider">
               Transfers
@@ -58,7 +58,7 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
           </div>
           {showSubtitle && (
             <p className={`font-medium text-slate-500 dark:text-slate-400 ${currentSize.sub}`}>
-              خدمات انتقالات و باربری کابل کارگو
+              خدمات انتقالات و باربری ارمغان صادق
             </p>
           )}
         </div>
@@ -72,16 +72,16 @@ export const ArmaghanLogo: React.FC<ArmaghanLogoProps> = ({
       <div className="relative p-2 bg-white rounded-3xl shadow-lg border-2 border-red-400/40 mb-3 hover:shadow-red-500/10 transition-shadow">
         <img
           src="/logo.jpg"
-          alt="خدمات انتقالات کابل کارگو - Kabul Cargo Transfers"
+          alt="خدمات انتقالات ارمغان صادق - Armaghan Sadeq Transfers"
           className={`${currentSize.img} object-contain rounded-2xl`}
           loading="eager"
         />
       </div>
       <h1 className={`font-black tracking-tight text-slate-900 dark:text-white ${currentSize.text}`}>
-        Kabul Cargo Transfers
+        Armaghan Sadeq Transfers
       </h1>
       <p className="text-red-700 dark:text-red-400 font-bold text-sm sm:text-base mt-0.5">
-        خدمات انتقالات کابل کارگو
+        خدمات انتقالات ارمغان صادق
       </p>
       {showSubtitle && (
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm">

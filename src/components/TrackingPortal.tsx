@@ -123,7 +123,7 @@ export const TrackingPortal: React.FC = () => {
           
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-wider mb-4">
             <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
-            <span>Kabul Cargo Transfers • خدمات انتقالات کابل کارگو</span>
+            <span>Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق</span>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight mb-2">
@@ -476,7 +476,7 @@ export const TrackingPortal: React.FC = () => {
                   <span>{t('timeline_title')}</span>
                 </h4>
                 <span className="text-xs text-slate-400 font-mono">
-                  {trackedShipment.statusHistory.length} {t('operational_expense_entries') || 'Records'}
+                  {trackedShipment.statusHistory.length} {t('records_count') || 'Milestones'}
                 </span>
               </div>
 
@@ -506,21 +506,6 @@ export const TrackingPortal: React.FC = () => {
                   </div>
                 )})}
               </div>
-
-              {/* Proof of Delivery (if delivered) */}
-              {trackedShipment.status === 'delivered' && (
-                <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>{t('proof_of_delivery')}</span>
-                  </div>
-                  <div className="text-xs text-emerald-900 dark:text-emerald-200">
-                    <div>{t('signed_by')}: <strong>{trackedShipment.podSignature || trackedShipment.receiver.name}</strong></div>
-                    {trackedShipment.receiverIdProof && <div>{t('receiver_tazkira_label')}: {trackedShipment.receiverIdProof}</div>}
-                    {trackedShipment.actualDelivery && <div>{t('status_delivered')}: {new Date(trackedShipment.actualDelivery).toLocaleString()}</div>}
-                  </div>
-                </div>
-              )}
 
             </div>
 

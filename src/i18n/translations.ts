@@ -3,8 +3,8 @@ import { Language } from '../types';
 export const translations: Record<Language, Record<string, string>> = {
   en: {
     // Brand & Header
-    app_title: 'Kabul Cargo Transfers',
-    app_subtitle: 'Express Cargo & National Logistics System',
+    app_title: 'Armaghan Sadeq Transfers',
+    app_subtitle: 'Armaghan Sadeq Transfers • خدمات انتقالات ارمغان صادق',
     track_shipment: 'Track Shipment',
     enter_cn_placeholder: 'Enter Your CN Number (e.g. AST-894201)',
     track_btn: 'Track',
@@ -1235,8 +1235,8 @@ export const translations: Record<Language, Record<string, string>> = {
   
   fa: {
     // Dari / Farsi (دری)
-    app_title: 'خدمات انتقالات کابل کارگو (Kabul Cargo Transfers)',
-    app_subtitle: 'سیستم سراسری باربری، کارگو و انتقالات اموال کابل کارگو',
+    app_title: 'خدمات انتقالات ارمغان صادق (Armaghan Sadeq Transfers)',
+    app_subtitle: 'سیستم سراسری باربری، کارگو و خدمات انتقالات ارمغان صادق',
     track_shipment: 'پیگیری و تعقیب محموله',
     enter_cn_placeholder: 'شماره بارنامه (CN) را وارد کنید (مثلاً AST-894201)',
     track_btn: 'جستجو و تعقیب',
@@ -2467,8 +2467,8 @@ export const translations: Record<Language, Record<string, string>> = {
   
   ps: {
     // Pashto (پښتو)
-    app_title: 'د کابل کارګو د انتقال خدمات (Kabul Cargo Transfers)',
-    app_subtitle: 'د کابل کارګو بار وړلو، لیږد او د ترانزیټ مالونو د انتقال سیسټم',
+    app_title: 'د ارمغان صادق د انتقال خدمات (Armaghan Sadeq Transfers)',
+    app_subtitle: 'د ارمغان صادق بار وړلو، لیږد او د ترانزیټ مالونو د انتقال سیسټم',
     track_shipment: 'د بار تعقیب او پلټنه',
     enter_cn_placeholder: 'د بارنامې شمېره (CN) دننه کړئ (لکه AST-894201)',
     track_btn: 'پلټل او تعقیب',

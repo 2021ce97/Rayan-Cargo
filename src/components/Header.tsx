@@ -122,7 +122,7 @@ export const Header: React.FC = () => {
                   </div>
                   <div className="flex flex-col">
                     <span className="font-black text-xs text-slate-900 dark:text-white leading-tight">
-                      Kabul Cargo
+                      Armaghan Sadeq
                     </span>
                     <span className="text-[8px] font-bold text-red-600 dark:text-red-400 leading-none">
                       TRANSFERS
@@ -237,52 +237,6 @@ export const Header: React.FC = () => {
               <div className="shrink-0">
                 <LanguageSwitcher variant="dropdown" />
               </div>
-
-              {/* Database & Real-time Sync Indicator (Desktop & Tablet) */}
-              <button
-                onClick={() => setIsDbModalOpen(true)}
-                className={`hidden sm:flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer shrink-0 ${
-                  realtimeStatus === 'SUBSCRIBED' || dbStatus.connected
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
-                    : isSyncing
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 animate-pulse'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
-                }`}
-                title="Supabase PostgreSQL & Real-time Database Status (Click to inspect)"
-              >
-                <Database className={`w-3.5 h-3.5 shrink-0 ${realtimeStatus === 'SUBSCRIBED' || dbStatus.connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`} />
-                <span className="hidden md:inline font-mono text-[11px]">
-                  {realtimeStatus === 'SUBSCRIBED'
-                    ? 'Live DB'
-                    : dbStatus.connected
-                    ? 'Supabase'
-                    : isSyncing
-                    ? 'Syncing...'
-                    : 'Database'}
-                </span>
-                <span className={`w-2 h-2 rounded-full shrink-0 ${realtimeStatus === 'SUBSCRIBED' ? 'bg-emerald-500 animate-pulse' : dbStatus.connected ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-              </button>
-
-              {/* Branch Password Self-Change Button (for Branch Accounts) */}
-              {currentUser.role !== 'super_admin' && (
-                <button
-                  onClick={() => setIsPasswordModalOpen(true)}
-                  className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold transition-colors cursor-pointer shrink-0"
-                  title={t('change_branch_password_title')}
-                >
-                  <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span className="hidden lg:inline">{t('login_password_lbl')}</span>
-                </button>
-              )}
-
-              {/* Global Settings Button (for Super Admin & Users) */}
-              <button
-                onClick={() => setIsSettingsModalOpen(true)}
-                className="hidden sm:flex p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shrink-0"
-                title="System Settings"
-              >
-                <SettingsIcon className="w-4 h-4" />
-              </button>
 
               {/* User Account Info */}
               <div

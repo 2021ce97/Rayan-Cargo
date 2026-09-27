@@ -490,17 +490,6 @@ export const ParcelInventory: React.FC = () => {
             {showHowItWorks ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Live Sync button */}
-          <button
-            onClick={() => syncWithDatabase()}
-            disabled={isSyncing}
-            className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer shadow-2xs"
-            title="Auto-syncing real-time updates"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
-            <span className="text-[11px] font-mono hidden sm:inline">{isSyncing ? 'Syncing...' : 'Synced'}</span>
-          </button>
-
           {/* New Booking Button */}
           <button
             onClick={() => setActiveView('booking')}

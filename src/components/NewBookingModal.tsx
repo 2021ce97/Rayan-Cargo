@@ -413,10 +413,10 @@ export const NewBookingModal: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="flex flex-col space-y-6">
         
         {/* Main Form Fields */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
           
           {/* Section 1: Route & Branch Assignment */}
           <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
@@ -737,10 +737,10 @@ export const NewBookingModal: React.FC = () => {
 
         </div>
 
-        {/* Right Column: Pricing & Grand Total Summary */}
+        {/* Section 5: Pricing & Grand Total Summary (Bottom Flow) */}
         <div className="space-y-6">
           
-          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-5 sticky top-20">
+          <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-5">
             
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">

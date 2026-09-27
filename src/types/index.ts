@@ -352,6 +352,10 @@ export interface AdminEditShipmentInput {
   destinationBranchId?: string;
   status?: ShipmentStatus;
   auditNote?: string;
+  driverName?: string;
+  driverPhone?: string;
+  location?: string;
+  auditTrailNote?: string;
 }
 
 export interface AnalyticsSummary {
@@ -412,7 +416,24 @@ export interface AppNotification {
   targetRoles?: UserRole[];
 }
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'sms';
+
+export interface SmsNotificationPayload {
+  id: string;
+  recipientName: string;
+  recipientPhone: string;
+  recipientRole?: 'receiver' | 'sender' | 'customer';
+  cnNumber: string;
+  status: 'out_for_delivery' | 'delivered';
+  driverName?: string;
+  driverPhone?: string;
+  location?: string;
+  amountDueAfn?: number;
+  timestamp: string;
+  isMockSms?: boolean;
+  senderBranchName?: string;
+  destBranchName?: string;
+}
 
 export interface ToastItem {
   id: string;
@@ -421,6 +442,7 @@ export interface ToastItem {
   title?: string;
   duration?: number;
   timestamp: number;
+  smsPayload?: SmsNotificationPayload;
 }
 
 
