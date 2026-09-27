@@ -481,65 +481,27 @@ export const TrackingPortal: React.FC = () => {
               </div>
 
               {/* Timeline Items */}
-              <div className="relative ps-6 space-y-6 before:absolute before:inset-0 before:left-2.5 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
+              <div className="relative ps-6 space-y-3 before:absolute before:inset-0 before:left-2.5 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
                 {trackedShipment.statusHistory.slice().reverse().map((item, idx) => {
                   const isIssue = item.note?.startsWith('Delivery Issue:');
                   return (
                   <div key={item.id || idx} className="relative group">
                     
                     {/* Milestone Pin */}
-                    <div className={`absolute -left-6 top-1 w-5 h-5 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center ${
+                    <div className={`absolute -left-6 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-2 border-white dark:border-slate-900 flex items-center justify-center ${
                       isIssue ? 'bg-orange-500 text-white' : idx === 0 ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
                     }`}>
                       {isIssue ? <AlertCircle className="w-3 h-3" /> : <Check className="w-3 h-3" />}
                     </div>
 
-                    <div className={`p-4 rounded-xl border space-y-1.5 ${
+                    <div className={`px-4 py-3 rounded-xl border flex items-center ${
                       isIssue 
                         ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/60' 
                         : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-800'
                     }`}>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className={`font-bold text-xs ${isIssue ? 'text-orange-900 dark:text-orange-100' : 'text-slate-900 dark:text-slate-100'}`}>
-                          {isIssue ? (t('delivery_attempt_failed') || 'Delivery Attempt Failed') : t(`status_${item.status}`)}
-                        </span>
-                        <span className={`text-[11px] font-mono ${isIssue ? 'text-orange-700 dark:text-orange-400' : 'text-slate-400'}`}>
-                          {new Date(item.timestamp).toLocaleString()}
-                        </span>
-                      </div>
-
-                      <div className={`text-xs font-medium flex items-center gap-1 ${isIssue ? 'text-orange-800 dark:text-orange-300' : 'text-red-600 dark:text-red-400'}`}>
-                        <MapPin className="w-3 h-3" />
-                        <span>{item.location} ({item.branchName})</span>
-                      </div>
-
-                      {/* Delivery Reason / Custom Note (Clean display without extra large boilerplate text) */}
-                      {isIssue && (
-                        <div className="mt-1 p-2 rounded-lg bg-orange-100/80 dark:bg-orange-900/40 text-orange-950 dark:text-orange-100 text-xs font-semibold flex items-center gap-1.5 border border-orange-200 dark:border-orange-800">
-                          <AlertTriangle className="w-3.5 h-3.5 text-orange-600 shrink-0" />
-                          <span>{t('issue_reason_lbl') || 'Reason'}: {item.note.replace('Delivery Issue:', '').trim()}</span>
-                        </div>
-                      )}
-
-                      {item.note && (item.note.includes('bill submitted') || item.note.includes('Bill submitted')) && (
-                        <div className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                          <span>{t('parcel_submitted_badge') || 'One-Time Bill Submitted'}</span>
-                        </div>
-                      )}
-
-                      {item.driverName && (
-                        <div className={`pt-2 mt-2 border-t flex items-center justify-between text-[11px] ${
-                          isIssue ? 'border-orange-200/60 dark:border-orange-800/60 text-orange-700 dark:text-orange-400' : 'border-slate-200/60 dark:border-slate-700/60 text-slate-500'
-                        }`}>
-                          <span>{t('driver_assigned')}: <strong>{item.driverName}</strong></span>
-                          {item.driverPhone && <span>{t('phone')}: {item.driverPhone}</span>}
-                        </div>
-                      )}
-
-                      <div className={`text-[10px] pt-1 ${isIssue ? 'text-orange-600/70 dark:text-orange-400/70' : 'text-slate-400'}`}>
-                        {t('booked_by_officer')}: {item.updatedBy}
-                      </div>
+                      <span className={`font-bold text-sm ${isIssue ? 'text-orange-900 dark:text-orange-100' : 'text-slate-900 dark:text-slate-100'}`}>
+                        {isIssue ? (t('delivery_attempt_failed') || 'Delivery Attempt Failed') : t(`status_${item.status}`)}
+                      </span>
                     </div>
                   </div>
                 )})}

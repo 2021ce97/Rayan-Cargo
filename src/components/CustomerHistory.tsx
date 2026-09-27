@@ -465,14 +465,6 @@ export const CustomerHistory: React.FC = () => {
                           <span className="font-bold text-slate-900 dark:text-white">
                             {getStatusLabel(h.status)}
                           </span>
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            • {new Date(h.timestamp || (h as any).date || shipment.bookedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          {h.location && (
-                            <span className="text-[10px] text-slate-400">
-                              ({h.location})
-                            </span>
-                          )}
                         </div>
                       ))}
                     </div>
