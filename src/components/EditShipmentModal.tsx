@@ -55,6 +55,8 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
   const [serviceFee, setServiceFee] = useState<number | "">("");
   const [destBranchCommission, setDestBranchCommission] = useState<number | "">("");
   const [discountAmount, setDiscountAmount] = useState<number | "">("");
+  const [discountMode, setDiscountMode] = useState<'afn' | 'percent'>('afn');
+  const [discountInputValue, setDiscountInputValue] = useState<number | "">("");
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('to_pay');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cod');
 
@@ -103,7 +105,10 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
       setProductPrice(pPrice);
       setServiceFee(typeof f.serviceFee === 'number' ? f.serviceFee : (pkg.isFragile ? 200 : 150));
       setDestBranchCommission(typeof f.destBranchCommission === 'number' ? f.destBranchCommission : (shipment.destBranchCommission || 70));
-      setDiscountAmount(Number(f.discountAmount) || "");
+      const existingDisc = Number(f.discountAmount) || "";
+      setDiscountAmount(existingDisc);
+      setDiscountMode('afn');
+      setDiscountInputValue(existingDisc);
       setPaymentStatus(f.paymentStatus || 'to_pay');
       setPaymentMethod(f.paymentMethod || 'cod');
 
@@ -138,13 +143,19 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
   }, [shipment, isOpen]);
 
   // Live financial calculations
+  const calculatedDiscountAFN = useMemo(() => {
+    const raw = Number(discountInputValue) || 0;
+    const s = Number(serviceFee) || 0;
+    return discountMode === 'percent' ? Math.round((s * raw) / 100) : raw;
+  }, [discountMode, discountInputValue, serviceFee]);
+
   const sellerPayout = useMemo(() => {
     const p = Number(productPrice) || 0;
     const s = Number(serviceFee) || 0;
     const c = Number(destBranchCommission) || 0;
-    const d = Number(discountAmount) || 0;
+    const d = calculatedDiscountAFN;
     return Math.max(0, p - s - c + d);
-  }, [productPrice, serviceFee, destBranchCommission, discountAmount]);
+  }, [productPrice, serviceFee, destBranchCommission, calculatedDiscountAFN]);
 
   const originRemittance = useMemo(() => {
     const p = Number(productPrice) || 0;
@@ -183,7 +194,7 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
       productPrice: Number(productPrice) || 0,
       serviceFee: Number(serviceFee) || 0,
       destBranchCommission: Number(destBranchCommission) || 0,
-      discountAmount: Number(discountAmount) || 0,
+      discountAmount: calculatedDiscountAFN,
       paymentStatus,
       paymentMethod,
       weightKg,
@@ -415,23 +426,48 @@ export const EditShipmentModal: React.FC<EditShipmentModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('discount_amount')} (AFN)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Seller Fee Discount (Optional)
+                  </label>
+                  <div className="flex items-center gap-1 bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setDiscountMode('afn')}
+                      className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${discountMode === 'afn' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-black' : 'text-slate-600 dark:text-slate-300'}`}
+                    >
+                      AFN
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDiscountMode('percent')}
+                      className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${discountMode === 'percent' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-black' : 'text-slate-600 dark:text-slate-300'}`}
+                    >
+                      % Percent
+                    </button>
+                  </div>
+                </div>
+
                 <div className="relative">
                   <input
                     type="number"
                     min="0"
-                    step="1"
+                    max={discountMode === 'percent' ? 100 : undefined}
                     disabled={!isSuperAdmin}
-                    value={discountAmount}
-                    onChange={(e) => setDiscountAmount(e.target.value === "" ? "" : Math.max(0, Number(e.target.value)))}
-                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    value={discountInputValue}
+                    onChange={(e) => setDiscountInputValue(e.target.value === "" ? "" : Math.max(0, Number(e.target.value)))}
+                    placeholder={discountMode === 'percent' ? "e.g. 10 (%)" : "e.g. 50 (AFN)"}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 font-mono font-bold"
                   />
                   <span className="absolute inset-y-0 right-3 flex items-center text-xs font-bold text-slate-400">
-                    AFN
+                    {discountMode === 'percent' ? '%' : 'AFN'}
                   </span>
                 </div>
+                {discountMode === 'percent' && typeof discountInputValue === 'number' && discountInputValue > 0 && (
+                  <p className="text-[10px] text-emerald-600 font-bold mt-1">
+                    ✓ {discountInputValue}% of {serviceFee || 0} AFN = {calculatedDiscountAFN} AFN discount.
+                  </p>
+                )}
               </div>
 
               <div>

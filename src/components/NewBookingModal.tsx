@@ -133,7 +133,8 @@ export const NewBookingModal: React.FC = () => {
   const [productPriceAfn, setProductPriceAfn] = useState<number | "">("");
   const [serviceFee, setServiceFee] = useState<number | "">("");
   const [destCommission, setDestCommission] = useState<number | "">("");
-  const [discountAmount, setDiscountAmount] = useState<number | "">("");
+  const [discountMode, setDiscountMode] = useState<'afn' | 'percent'>('afn');
+  const [discountInputValue, setDiscountInputValue] = useState<number | "">("");
   const [discountReason, setDiscountReason] = useState<string>('');
 
   // Initialize and sync origin and destination details
@@ -171,9 +172,13 @@ export const NewBookingModal: React.FC = () => {
   const pPriceVal = typeof productPriceAfn === 'number' ? productPriceAfn : 0;
   const sFeeVal = typeof serviceFee === 'number' ? serviceFee : 0;
   const dCommVal = typeof destCommission === 'number' ? destCommission : 0;
-  const discVal = typeof discountAmount === 'number' ? discountAmount : 0;
-
   const totalServiceFee = sFeeVal + fragileFee;
+
+  const rawDiscNum = typeof discountInputValue === 'number' ? discountInputValue : 0;
+  const discVal = discountMode === 'percent'
+    ? Math.round((totalServiceFee * rawDiscNum) / 100)
+    : rawDiscNum;
+
   const sellerPayout = pPriceVal - dCommVal - totalServiceFee + discVal;
   
   const grandTotal = pPriceVal;
@@ -214,7 +219,8 @@ export const NewBookingModal: React.FC = () => {
     setProductPriceAfn(180000);
     setServiceFee(500);
     setDestCommission(200);
-    setDiscountAmount(50);
+    setDiscountMode('afn');
+    setDiscountInputValue(50);
     setDiscountReason('Merchant Regular Discount');
   };
 
@@ -235,7 +241,8 @@ export const NewBookingModal: React.FC = () => {
     setProductPriceAfn("");
     setServiceFee("");
     setDestCommission("");
-    setDiscountAmount("");
+    setDiscountMode('afn');
+    setDiscountInputValue("");
     setInitialStatus('booked');
   };
 
@@ -289,7 +296,7 @@ export const NewBookingModal: React.FC = () => {
         productPrice: Number(productPriceAfn) || 0,
         serviceFee: totalServiceFee,
         destBranchCommission: Number(destCommission) || 0,
-        discountAmount: Number(discountAmount) || 0,
+        discountAmount: discVal,
         sellerPayout: sellerPayout,
         totalAmount: grandTotal,
         amountPaid,
@@ -879,21 +886,48 @@ export const NewBookingModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Discount Inputs */}
+            {/* Discount Inputs (% vs AFN) */}
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <div className="font-bold text-slate-700 flex items-center justify-between">
                 <span>{t('applied_discount_lbl') || 'Seller Fee Discount'}</span>
-                <span className="text-[10px] text-slate-400">{t('optional_badge')}</span>
+                <div className="flex items-center gap-1 bg-slate-200 p-0.5 rounded-lg text-[10px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setDiscountMode('afn')}
+                    className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${discountMode === 'afn' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    AFN Amount
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountMode('percent')}
+                    className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${discountMode === 'percent' ? 'bg-white text-slate-900 shadow-2xs font-black' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    % Percent
+                  </button>
+                </div>
               </div>
-              <div className="grid grid-cols-1 gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  value={discountAmount}
-                  onChange={(e) => setDiscountAmount(e.target.value === "" ? "" : parseFloat(e.target.value) || 0)}
-                  placeholder="Discount Amount in AFN"
-                  className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono font-bold"
-                />
+
+              <div className="space-y-1">
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max={discountMode === 'percent' ? 100 : undefined}
+                    value={discountInputValue}
+                    onChange={(e) => setDiscountInputValue(e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder={discountMode === 'percent' ? "e.g. 10 (%)" : "e.g. 50 (AFN)"}
+                    className="w-full h-8 ps-3 pe-12 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono font-bold focus:ring-2 focus:ring-red-500"
+                  />
+                  <span className="absolute end-2.5 top-1.5 text-xs font-mono font-bold text-slate-400 pointer-events-none">
+                    {discountMode === 'percent' ? '%' : 'AFN'}
+                  </span>
+                </div>
+                {discountMode === 'percent' && typeof discountInputValue === 'number' && discountInputValue > 0 && (
+                  <p className="text-[10px] text-emerald-700 font-bold">
+                    ✓ {discountInputValue}% of {totalServiceFee} AFN Fee = {discVal} AFN discount added to seller payout.
+                  </p>
+                )}
               </div>
             </div>
 

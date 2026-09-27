@@ -139,6 +139,8 @@ export const ParcelInventory: React.FC = () => {
   const [modalProductPrice, setModalProductPrice] = useState<number>(1000);
   const [modalServiceFee, setModalServiceFee] = useState<number>(150);
   const [modalDiscountAmount, setModalDiscountAmount] = useState<number>(0);
+  const [prebookingDiscountMode, setPrebookingDiscountMode] = useState<'afn' | 'percent'>('afn');
+  const [prebookingDiscountInputValue, setPrebookingDiscountInputValue] = useState<number | "">(0);
   const [customDestCommission, setCustomDestCommission] = useState<number>(70);
   const [confirmedPaymentStatus, setConfirmedPaymentStatus] = useState<PaymentStatus>('to_pay');
   const [editedSenderName, setEditedSenderName] = useState('');
@@ -324,7 +326,10 @@ export const ParcelInventory: React.FC = () => {
     const price = shipment.financials?.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials?.totalAmount || 1000;
     setModalProductPrice(price);
     setModalServiceFee(shipment.financials?.serviceFee || 150);
-    setModalDiscountAmount(shipment.financials?.discountAmount || 0);
+    const existingDisc = shipment.financials?.discountAmount || 0;
+    setModalDiscountAmount(existingDisc);
+    setPrebookingDiscountMode('afn');
+    setPrebookingDiscountInputValue(existingDisc);
     setCustomDestCommission(shipment.destBranchCommission || shipment.financials?.destBranchCommission || 70);
     setConfirmedPaymentStatus(shipment.financials.paymentStatus || 'to_pay');
     setEditedSenderName(shipment.sender.name);
@@ -338,6 +343,11 @@ export const ParcelInventory: React.FC = () => {
   // Confirm pre-booking
   const handleConfirmPreBookingSubmit = () => {
     if (!confirmModalShipment) return;
+    const rawPreDisc = typeof prebookingDiscountInputValue === 'number' ? prebookingDiscountInputValue : 0;
+    const calculatedDiscountAFN = prebookingDiscountMode === 'percent' 
+      ? Math.round((modalServiceFee * rawPreDisc) / 100) 
+      : rawPreDisc;
+
     const ok = confirmCustomerPreBooking(confirmModalShipment.id, {
       weightKg: weighedWeight,
       pieces: weighedPieces,
@@ -348,7 +358,7 @@ export const ParcelInventory: React.FC = () => {
       description: editedDescription,
       productPrice: modalProductPrice,
       serviceFee: modalServiceFee,
-      discountAmount: modalDiscountAmount,
+      discountAmount: calculatedDiscountAFN,
       destBranchCommission: customDestCommission,
       paymentStatus: confirmedPaymentStatus,
       status: modalTargetStatus,
@@ -1547,10 +1557,10 @@ export const ParcelInventory: React.FC = () => {
                   {confirmModalShipment.cnNumber}
                 </span>
                 <h3 className="font-black text-base text-slate-900 dark:text-white mt-1">
-                  Weigh & Confirm Pre-Booking
+                  {t('weigh_confirm_title')}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Verify scale weight and price to issue official waybill.
+                  {t('weigh_confirm_desc')}
                 </p>
               </div>
               <button
@@ -1564,39 +1574,151 @@ export const ParcelInventory: React.FC = () => {
             <div className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Scale Weight (KG):</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">{t('scale_weight')}:</label>
                   <input
                     type="number"
                     min="0.1"
                     step="0.1"
                     value={weighedWeight}
                     onChange={(e) => setWeighedWeight(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
-                    className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                    className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Pieces / Boxes:</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">{t('pieces_boxes')}:</label>
                   <input
                     type="number"
                     min="1"
                     value={weighedPieces}
                     onChange={(e) => setWeighedPieces(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                    className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Total Product Price / COD (AFN):</label>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">{t('product_selling_price_lbl') || 'Total Product Price / COD (AFN)'}:</label>
                 <input
                   type="number"
                   min="0"
                   step="50"
                   value={modalProductPrice}
                   onChange={(e) => setModalProductPrice(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl"
+                  className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
                 />
               </div>
+
+              {/* Commission & Fees breakdown */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">{t('delivery_branch_commission')}:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={customDestCommission}
+                    onChange={(e) => setCustomDestCommission(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                  />
+                  <span className="text-[10px] text-slate-400">{t('kept_by_delivery_branch')}</span>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">{t('service_handling_origin_fee')}:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    value={modalServiceFee}
+                    onChange={(e) => setModalServiceFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full h-9 px-3 font-mono font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                  />
+                  <span className="text-[10px] text-slate-400">{t('origin_branch_fee_lbl')}</span>
+                </div>
+              </div>
+
+              {/* Optional Seller Discount Control (% or AFN) */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>{t('seller_fee_discount_opt')}</span>
+                  <div className="flex items-center gap-1 bg-slate-200 dark:bg-slate-700 p-0.5 rounded-lg text-[10px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setPrebookingDiscountMode('afn')}
+                      className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${prebookingDiscountMode === 'afn' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-black' : 'text-slate-600 dark:text-slate-300'}`}
+                    >
+                      {t('afn_amount')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrebookingDiscountMode('percent')}
+                      className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${prebookingDiscountMode === 'percent' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-black' : 'text-slate-600 dark:text-slate-300'}`}
+                    >
+                      {t('percent_rate')}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max={prebookingDiscountMode === 'percent' ? 100 : undefined}
+                    value={prebookingDiscountInputValue}
+                    onChange={(e) => setPrebookingDiscountInputValue(e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder={prebookingDiscountMode === 'percent' ? "e.g. 10 (%)" : "e.g. 50 (AFN)"}
+                    className="w-full h-8 ps-3 pe-12 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white font-mono font-bold"
+                  />
+                  <span className="absolute end-2.5 top-1.5 text-xs font-mono font-bold text-slate-400 pointer-events-none">
+                    {prebookingDiscountMode === 'percent' ? '%' : 'AFN'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Discount & Net Payout Summary */}
+              {(() => {
+                const rawPreDisc = typeof prebookingDiscountInputValue === 'number' ? prebookingDiscountInputValue : 0;
+                const calcDiscAFN = prebookingDiscountMode === 'percent' 
+                  ? Math.round((modalServiceFee * rawPreDisc) / 100) 
+                  : rawPreDisc;
+                const netPayout = modalProductPrice - customDestCommission - modalServiceFee + calcDiscAFN;
+
+                return (
+                  <div className="p-3.5 rounded-2xl bg-slate-900 text-white space-y-2 text-xs">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-800 flex items-center justify-between">
+                      <span>{t('calc_financial_breakdown')}</span>
+                      <span className="font-mono text-emerald-400">{t('live_math_lbl')}</span>
+                    </div>
+
+                    <div className="flex justify-between text-slate-300">
+                      <span>{t('product_price_collected')}</span>
+                      <span className="font-mono font-bold text-white">{modalProductPrice} AFN</span>
+                    </div>
+
+                    <div className="flex justify-between text-red-300">
+                      <span>{t('dest_commission_lbl')}:</span>
+                      <span className="font-mono font-bold">-{customDestCommission} AFN</span>
+                    </div>
+
+                    <div className="flex justify-between text-red-300">
+                      <span>{t('service_handling_fee')}:</span>
+                      <span className="font-mono font-bold">-{modalServiceFee} AFN</span>
+                    </div>
+
+                    {calcDiscAFN > 0 && (
+                      <div className="flex justify-between text-emerald-400 font-bold">
+                        <span>{t('applied_discount_to_seller')}</span>
+                        <span className="font-mono">+{calcDiscAFN} AFN</span>
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t border-slate-800 flex justify-between text-sm font-black">
+                      <span>{t('net_payout_to_seller_lbl')}</span>
+                      <span className="font-mono text-emerald-400">{netPayout} AFN</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-2 pt-2">
                 <button
@@ -1604,14 +1726,14 @@ export const ParcelInventory: React.FC = () => {
                   onClick={handleConfirmPreBookingSubmit}
                   className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md transition-colors"
                 >
-                  Confirm & Issue Official Waybill
+                  {t('confirm_issue_waybill')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmModalShipment(null)}
                   className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs cursor-pointer"
                 >
-                  Cancel
+                  {t('btn_cancel')}
                 </button>
               </div>
             </div>
