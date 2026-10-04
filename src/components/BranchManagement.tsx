@@ -72,7 +72,10 @@ export const BranchManagement: React.FC = () => {
   
   // Password Provision Modal for Admin
   const [provisionBranch, setProvisionBranch] = useState<Branch | null>(null);
+  const [provisionEmail, setProvisionEmail] = useState('');
   const [tempPassword, setTempPassword] = useState('');
+  const [provisionManagerName, setProvisionManagerName] = useState('');
+  const [provisionPhone, setProvisionPhone] = useState('');
   const [copiedInfo, setCopiedInfo] = useState(false);
   const [provisionSuccess, setProvisionSuccess] = useState(false);
 
@@ -87,8 +90,10 @@ export const BranchManagement: React.FC = () => {
     city: '',
     address: '',
     phone: '',
+    email: '',
     managerName: '',
-    tazkiraNumber: ''
+    tazkiraNumber: '',
+    password: ''
   });
   const [editTazkiraError, setEditTazkiraError] = useState('');
 
@@ -187,30 +192,42 @@ export const BranchManagement: React.FC = () => {
   const handleOpenProvisionModal = (branch: Branch) => {
     setProvisionBranch(branch);
     const branchUser = users.find(u => u.branchId === branch.id);
-    setTempPassword(branchUser?.password || `${branch.code.toLowerCase().replace(/[^a-z0-9]/g, '')}123`);
+    const defaultEmail = branchUser?.email || branch.email || `${branch.code.toLowerCase().replace(/[^a-z0-9]/g, '')}@armaghansadeq.af`;
+    const defaultPass = branchUser?.password || `${branch.code.toLowerCase().replace(/[^a-z0-9]/g, '')}123`;
+    setProvisionEmail(defaultEmail);
+    setTempPassword(defaultPass);
+    setProvisionManagerName(branchUser?.name || branch.managerName || '');
+    setProvisionPhone(branchUser?.phone || branch.phone || '');
     setCopiedInfo(false);
     setProvisionSuccess(false);
   };
 
   const handleSaveProvision = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!provisionBranch || !tempPassword.trim()) return;
+    if (!provisionBranch || !tempPassword.trim() || !provisionEmail.trim()) return;
 
     const branchUser = users.find(u => u.branchId === provisionBranch.id);
-    if (branchUser) {
-      resetBranchUserCredentials(branchUser.id, tempPassword.trim());
-      setProvisionSuccess(true);
-      setTimeout(() => {
-        setProvisionSuccess(false);
-        setProvisionBranch(null);
-      }, 2000);
-    }
+    const targetUserId = branchUser?.id || `usr_${provisionBranch.id}`;
+    
+    resetBranchUserCredentials(
+      targetUserId,
+      provisionEmail.trim().toLowerCase(),
+      tempPassword.trim(),
+      provisionManagerName.trim() || provisionBranch.managerName,
+      provisionPhone.trim() || provisionBranch.phone,
+      provisionBranch.id
+    );
+
+    setProvisionSuccess(true);
+    setTimeout(() => {
+      setProvisionSuccess(false);
+      setProvisionBranch(null);
+    }, 2000);
   };
 
   const handleCopyCredentials = () => {
     if (!provisionBranch) return;
-    const branchUser = users.find(u => u.branchId === provisionBranch.id);
-    const text = `Armaghan Sadeq Transfers Login Credentials:\nBranch: ${provisionBranch.name}\nEmail: ${branchUser?.email}\nTemporary Password: ${tempPassword}\n\nPlease sign in and immediately change your private password in the top bar.`;
+    const text = `Armaghan Sadeq Transfers Login Credentials:\nBranch: ${provisionBranch.name} (${provisionBranch.code})\nEmail: ${provisionEmail.trim()}\nPassword: ${tempPassword.trim()}\n\nPlease sign in to Armaghan Sadeq Transfers.`;
     navigator.clipboard.writeText(text);
     setCopiedInfo(true);
     setTimeout(() => setCopiedInfo(false), 3000);
@@ -229,8 +246,10 @@ export const BranchManagement: React.FC = () => {
       city: branch.city,
       address: branch.address,
       phone: branch.phone,
+      email: branchUser?.email || branch.email || '',
       managerName: branchUser?.name || branch.managerName,
-      tazkiraNumber: branch.tazkiraNumber
+      tazkiraNumber: branch.tazkiraNumber || '',
+      password: branchUser?.password || ''
     });
     setEditTazkiraError('');
   };
@@ -246,6 +265,9 @@ export const BranchManagement: React.FC = () => {
       return;
     }
 
+    const cleanEmail = editFormData.email.trim().toLowerCase();
+    const cleanPassword = editFormData.password.trim();
+
     updateBranch(editingBranch.id, {
       name: editFormData.name.trim(),
       nameFa: editFormData.nameFa.trim() || editFormData.name.trim(),
@@ -255,9 +277,21 @@ export const BranchManagement: React.FC = () => {
       city: editFormData.city.trim(),
       address: editFormData.address.trim(),
       phone: editFormData.phone.trim(),
+      email: cleanEmail,
       managerName: editFormData.managerName.trim(),
       tazkiraNumber: editFormData.tazkiraNumber.trim()
     });
+
+    const branchUser = users.find(u => u.branchId === editingBranch.id);
+    const targetUserId = branchUser?.id || `usr_${editingBranch.id}`;
+    resetBranchUserCredentials(
+      targetUserId,
+      cleanEmail,
+      cleanPassword || branchUser?.password || `${editingBranch.code.toLowerCase().replace(/[^a-z0-9]/g, '')}123`,
+      editFormData.managerName.trim(),
+      editFormData.phone.trim(),
+      editingBranch.id
+    );
 
     setEditingBranch(null);
   };
@@ -1102,6 +1136,43 @@ export const BranchManagement: React.FC = () => {
                 </div>
               </div>
 
+              {/* Account Login Credentials & Password */}
+              <div className="p-3.5 rounded-xl bg-red-50/70 border border-red-200 space-y-3">
+                <div className="text-[11px] font-bold text-red-900 flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-red-600" />
+                  <span>{t('credentials_modal_title') || 'Branch Account Credentials'}</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1 text-[11px]">
+                      {t('branch_email_lbl')} *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={editFormData.email}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder={t('ph_branch_email') || 'branch@armaghansadeq.af'}
+                      className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1 text-[11px]">
+                      {t('branch_initial_pass_lbl') || 'Branch Password'}
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.password}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder={t('ph_temp_pass') || 'New password (or leave empty)'}
+                      className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:ring-2 focus:ring-red-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -1127,8 +1198,6 @@ export const BranchManagement: React.FC = () => {
 
       {/* Admin Provision / Reset Credentials Modal */}
       {provisionBranch && (() => {
-        const bUser = users.find(u => u.branchId === provisionBranch.id);
-
         return (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95 space-y-4">
@@ -1163,19 +1232,21 @@ export const BranchManagement: React.FC = () => {
               <form onSubmit={handleSaveProvision} className="space-y-4 text-xs">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">
-                    {t('branch_email_lbl')}
+                    {t('branch_email_lbl')} *
                   </label>
                   <input
-                    type="text"
-                    disabled
-                    value={bUser?.email}
-                    className="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-mono font-bold"
+                    type="email"
+                    required
+                    value={provisionEmail}
+                    onChange={(e) => setProvisionEmail(e.target.value)}
+                    placeholder={t('ph_branch_email') || 'branch@armaghansadeq.af'}
+                    className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">
-                    {t('branch_initial_pass_lbl')}
+                    {t('branch_initial_pass_lbl')} *
                   </label>
                   <input
                     type="text"

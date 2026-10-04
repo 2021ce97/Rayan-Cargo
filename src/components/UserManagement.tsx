@@ -44,6 +44,7 @@ export const UserManagement: React.FC = () => {
   
   // Provision modal
   const [provisionUser, setProvisionUser] = useState<User | null>(null);
+  const [provisionEmail, setProvisionEmail] = useState('');
   const [tempPassword, setTempPassword] = useState('');
   const [copied, setCopied] = useState(false);
   const [provisionSuccess, setProvisionSuccess] = useState(false);
@@ -78,6 +79,7 @@ export const UserManagement: React.FC = () => {
 
   const handleOpenProvision = (user: User) => {
     setProvisionUser(user);
+    setProvisionEmail(user.email || '');
     setTempPassword(user.password || 'rayan123');
     setCopied(false);
     setProvisionSuccess(false);
@@ -85,9 +87,16 @@ export const UserManagement: React.FC = () => {
 
   const handleSaveProvision = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!provisionUser || !tempPassword.trim()) return;
+    if (!provisionUser || !tempPassword.trim() || !provisionEmail.trim()) return;
 
-    resetBranchUserCredentials(provisionUser.id, tempPassword.trim());
+    resetBranchUserCredentials(
+      provisionUser.id, 
+      provisionEmail.trim().toLowerCase(), 
+      tempPassword.trim(),
+      provisionUser.name,
+      provisionUser.phone,
+      provisionUser.branchId
+    );
     setProvisionSuccess(true);
     setTimeout(() => {
       setProvisionSuccess(false);
@@ -98,7 +107,7 @@ export const UserManagement: React.FC = () => {
   const handleCopy = () => {
     if (!provisionUser) return;
     const branch = branches.find(b => b.id === provisionUser.branchId);
-    const text = `Armaghan Sadeq Transfers Login Credentials:\nBranch: ${branch?.name || 'HQ'}\nEmail: ${provisionUser.email}\nTemporary Password: ${tempPassword}\n\nPlease sign in and immediately change your private password in the top bar.`;
+    const text = `Armaghan Sadeq Transfers Login Credentials:\nBranch: ${branch?.name || 'HQ'}\nEmail: ${provisionEmail.trim()}\nPassword: ${tempPassword}\n\nPlease sign in to Armaghan Sadeq Transfers.`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
@@ -389,13 +398,15 @@ export const UserManagement: React.FC = () => {
               <form onSubmit={handleSaveProvision} className="space-y-4 text-xs">
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">
-                    {t('branch_email_lbl')}
+                    {t('branch_email_lbl')} *
                   </label>
                   <input
-                    type="text"
-                    disabled
-                    value={provisionUser.email}
-                    className="w-full h-10 px-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-mono font-bold"
+                    type="email"
+                    required
+                    value={provisionEmail}
+                    onChange={(e) => setProvisionEmail(e.target.value)}
+                    placeholder={t('ph_branch_email') || 'branch@armaghansadeq.af'}
+                    className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
 

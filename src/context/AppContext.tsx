@@ -141,7 +141,7 @@ interface AppContextType {
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
   updateUserPreferences: (prefs: UserPreferences) => boolean;
-  resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string) => boolean;
+  resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string, targetBranchId?: string) => boolean;
   addBranch: (input: AddBranchInput) => { branch: Branch; user: User };
   updateBranch: (branchId: string, updates: Partial<Branch>) => boolean;
   deleteBranch: (branchId: string) => boolean;
@@ -304,18 +304,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Users - Ensure initial super admin and branch manager accounts are always preserved
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEYS.USERS);
+    const userMap = new Map<string, User>();
+    INITIAL_USERS.forEach(u => userMap.set(u.id, u));
+
     if (saved) {
       try { 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const userMap = new Map<string, User>();
-          INITIAL_USERS.forEach(u => userMap.set(u.id, u));
-          parsed.forEach((u: any) => userMap.set(u.id, { ...userMap.get(u.id), ...u }));
-          return Array.from(userMap.values());
+          parsed.forEach((u: any) => {
+            if (u && u.id) {
+              userMap.set(u.id, { ...userMap.get(u.id), ...u });
+            }
+          });
         }
       } catch (e) { console.error(e); }
     }
-    return INITIAL_USERS;
+
+    // Ensure all registered branches have a corresponding manager user
+    INITIAL_BRANCHES.forEach(b => {
+      if (b.isHeadOffice || b.id === 'br_admin_hq') return;
+      const hasUser = Array.from(userMap.values()).some(u => u.branchId === b.id);
+      if (!hasUser) {
+        const uId = `usr_${b.id}`;
+        const codeClean = (b.code || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '');
+        userMap.set(uId, {
+          id: uId,
+          name: b.managerName || `${b.name} Manager`,
+          email: (b.email || `${codeClean}@armaghansadeq.af`).toLowerCase(),
+          phone: b.phone || '',
+          role: 'branch_manager',
+          branchId: b.id,
+          password: `${codeClean}123`,
+          passwordChangedByBranch: false,
+          status: 'active',
+          createdAt: b.createdAt || new Date().toISOString(),
+          lastLogin: 'Never'
+        });
+      }
+    });
+
+    return Array.from(userMap.values());
   });
 
   // Helper to normalize and sanitize CN numbers to start from 1500 sequentially
@@ -625,6 +653,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T, storageKey: string) => {
         setter(prev => {
           if (Array.isArray(prev) && Array.isArray(newData)) {
+            if (storageKey === STORAGE_KEYS.USERS) {
+              const prevMap = new Map((prev as any[]).map(u => [u.id, u]));
+              let hasUserDiff = false;
+              const mergedUsers = (newData as any[]).map(nu => {
+                const pu = prevMap.get(nu.id);
+                if (!pu) {
+                  hasUserDiff = true;
+                  return nu;
+                }
+                const effectivePassword = nu.password || pu.password;
+                const isDiff = pu.email !== nu.email ||
+                  pu.name !== nu.name ||
+                  pu.phone !== nu.phone ||
+                  pu.role !== nu.role ||
+                  pu.branchId !== nu.branchId ||
+                  pu.password !== effectivePassword ||
+                  pu.status !== nu.status;
+                if (isDiff) hasUserDiff = true;
+                return {
+                  ...pu,
+                  ...nu,
+                  password: effectivePassword
+                };
+              });
+              if (!hasUserDiff && prev.length === mergedUsers.length) {
+                return prev;
+              }
+              try {
+                localStorage.setItem(storageKey, JSON.stringify(mergedUsers));
+              } catch (_) {}
+              return mergedUsers as any;
+            }
+
             if (prev.length === newData.length) {
               let identical = true;
               for (let i = 0; i < prev.length; i++) {
@@ -633,6 +694,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (
                   !p || !n || 
                   p.id !== n.id || 
+                  p.email !== n.email ||
+                  p.password !== n.password ||
+                  p.name !== n.name ||
+                  p.phone !== n.phone ||
+                  p.managerName !== n.managerName ||
+                  p.code !== n.code ||
+                  p.tazkiraNumber !== n.tazkiraNumber ||
                   p.status !== n.status || 
                   p.updatedAt !== n.updatedAt ||
                   (p.statusHistory && n.statusHistory && p.statusHistory.length !== n.statusHistory.length)
@@ -962,7 +1030,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch(e => console.warn('Background auth check notice:', e));
 
-    let matched = users.find(u => {
+    // Ensure freshest user state from localStorage cache
+    let currentUsers = users;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.USERS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          currentUsers = parsed;
+        }
+      }
+    } catch (_) {}
+
+    let matched = currentUsers.find(u => {
       const uEmail = (u.email || '').toLowerCase().trim();
       const uId = (u.id || '').toLowerCase().trim();
       const uName = (u.name || '').toLowerCase().trim();
@@ -974,8 +1054,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const phoneMatch = cleanPhone.length >= 5 && uPhone.length >= 5 && (uPhone.includes(cleanPhone) || cleanPhone.includes(uPhone));
       const adminAliasMatch = (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin') && (u.role === 'super_admin' || u.id === 'usr_admin');
 
-      return emailMatch || idMatch || nameMatch || phoneMatch || adminAliasMatch;
+      const b = branches.find(b => b.id === u.branchId);
+      const bCode = (b?.code || '').toLowerCase().trim();
+      const bCleanCode = bCode.replace(/[^a-z0-9]/g, '');
+      const cleanNoHyphen = clean.replace(/[^a-z0-9]/g, '');
+      const branchCodeMatch = bCode && (bCode === clean || bCleanCode === cleanNoHyphen);
+      const branchEmailMatch = b && b.email && b.email.toLowerCase().trim() === clean;
+      const branchNameMatch = b && (
+        (b.name && b.name.toLowerCase().trim() === clean) ||
+        (b.nameFa && b.nameFa.toLowerCase().trim() === clean) ||
+        (b.namePs && b.namePs.toLowerCase().trim() === clean) ||
+        (b.city && b.city.toLowerCase().trim() === clean) ||
+        (b.province && b.province.toLowerCase().trim() === clean)
+      );
+
+      return emailMatch || idMatch || nameMatch || phoneMatch || adminAliasMatch || branchCodeMatch || branchEmailMatch || branchNameMatch;
     });
+
+    // Fallback: Check if a registered branch matches identifier even if user state is out-of-sync
+    if (!matched) {
+      const matchedBranch = branches.find(b => {
+        const bCode = (b.code || '').toLowerCase().trim();
+        const bCleanCode = bCode.replace(/[^a-z0-9]/g, '');
+        const cleanNoHyphen = clean.replace(/[^a-z0-9]/g, '');
+        return (
+          (bCode && (bCode === clean || bCleanCode === cleanNoHyphen)) ||
+          (b.email && b.email.toLowerCase().trim() === clean) ||
+          (b.name && b.name.toLowerCase().trim() === clean) ||
+          (b.city && b.city.toLowerCase().trim() === clean)
+        );
+      });
+      if (matchedBranch) {
+        matched = currentUsers.find(u => u.branchId === matchedBranch.id);
+        if (!matched) {
+          const cleanCode = (matchedBranch.code || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '');
+          matched = {
+            id: `usr_${matchedBranch.id}`,
+            name: matchedBranch.managerName || `${matchedBranch.name} Manager`,
+            email: (matchedBranch.email || `${cleanCode}@armaghansadeq.af`).toLowerCase(),
+            phone: matchedBranch.phone || '',
+            role: 'branch_manager',
+            branchId: matchedBranch.id,
+            password: `${cleanCode}123`,
+            passwordChangedByBranch: false,
+            status: 'active',
+            createdAt: new Date().toISOString(),
+            lastLogin: 'Never'
+          };
+          setUsers(prev => [matched!, ...prev]);
+        }
+      }
+    }
 
     // Special fallback for Super Admin if user array was purged or desynchronized
     if (!matched && (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
@@ -993,12 +1122,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'armaghansadeq@cargo.af' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
-    
+    const b = branches.find(b => b.id === matched?.branchId);
+    const bCodeClean = (b?.code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const defaultBranchPass = bCodeClean ? `${bCodeClean}123` : '';
+
     let passValid = false;
-    if (!cleanPass && !matched.password) {
+    const userPass = (matched.password || '').trim();
+    if (!cleanPass && !userPass) {
       passValid = true;
     } else if (cleanPass) {
-      if (matched.password && matched.password === cleanPass) {
+      if (userPass && (userPass === cleanPass || userPass.toLowerCase() === cleanPass.toLowerCase())) {
+        passValid = true;
+      } else if (defaultBranchPass && cleanPass.toLowerCase() === defaultBranchPass.toLowerCase()) {
         passValid = true;
       } else if (isSuperAdmin && (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123')) {
         passValid = true;
@@ -1129,24 +1264,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
-    const updatedUser = {
+    const cleanPass = newPassword.trim();
+    const updatedUser: User = {
       ...currentUser,
-      password: newPassword.trim(),
+      password: cleanPass,
       passwordChangedByBranch: true,
       lastPasswordChange: new Date().toISOString()
     };
 
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+    setUsers(prev => {
+      const updated = prev.map(u => u.id === currentUser.id ? updatedUser : u);
+      try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
     setCurrentUser(updatedUser);
 
-    // Persist to Supabase Database
+    // Direct Supabase upsert
+    directSupabaseInsertUser(updatedUser);
+
+    // Backend database update
     fetch('/api/users/change-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: currentUser.id, newPassword })
-    }).catch(err => console.error('Error updating password in Supabase:', err));
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-User-Role': currentUser.role
+      },
+      body: JSON.stringify({ 
+        userId: currentUser.id, 
+        newPassword: cleanPass, 
+        userRole: currentUser.role 
+      })
+    }).catch(err => console.error('Error updating password in database:', err));
 
-    showToast('Your branch password was updated securely in Supabase!');
+    showToast('Your branch password was updated securely!');
     return true;
   };
 
@@ -1172,62 +1322,127 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  // Super Admin provisions initial email and password for a branch
+  // Super Admin provisions email and password for a branch
   const resetBranchUserCredentials = (
-    userId: string, 
+    userIdOrBranchId: string, 
     emailOrPassword: string, 
     initialPassword?: string,
     name?: string,
-    phone?: string
+    phone?: string,
+    targetBranchId?: string
   ): boolean => {
-    let emailToSet: string | undefined;
-    let passwordToSet: string | undefined;
+    // Resolve branch ID
+    const resolvedBranchId = targetBranchId || 
+      (userIdOrBranchId.startsWith('br_') ? userIdOrBranchId : null) || 
+      (userIdOrBranchId.startsWith('usr_br_') ? userIdOrBranchId.replace('usr_', '') : null) ||
+      branches.find(b => b.id === userIdOrBranchId || b.code.toLowerCase() === userIdOrBranchId.toLowerCase())?.id;
 
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        let email = u.email;
-        let password = u.password;
+    const targetBranch = branches.find(b => b.id === resolvedBranchId || b.id === userIdOrBranchId);
 
-        if (initialPassword !== undefined) {
-          email = emailOrPassword.trim();
-          password = initialPassword.trim();
-        } else {
-          if (emailOrPassword.includes('@')) {
-            email = emailOrPassword.trim();
-          } else {
-            password = emailOrPassword.trim();
-          }
-        }
+    let targetEmail: string | undefined;
+    let targetPassword: string | undefined;
 
-        emailToSet = email;
-        passwordToSet = password;
+    if (initialPassword !== undefined) {
+      targetEmail = emailOrPassword.trim().toLowerCase();
+      targetPassword = initialPassword.trim();
+    } else {
+      if (emailOrPassword.includes('@')) {
+        targetEmail = emailOrPassword.trim().toLowerCase();
+      } else {
+        targetPassword = emailOrPassword.trim();
+      }
+    }
 
-        return {
-          ...u,
-          email,
-          password,
-          passwordChangedByBranch: false,
-          name: name?.trim() || u.name,
-          phone: phone?.trim() || u.phone
+    // Locate existing user
+    const existingUser = users.find(u => 
+      u.id === userIdOrBranchId || 
+      (resolvedBranchId && u.branchId === resolvedBranchId) ||
+      (targetBranch && u.branchId === targetBranch.id)
+    );
+
+    const bId = resolvedBranchId || (targetBranch ? targetBranch.id : userIdOrBranchId);
+    const codeClean = (targetBranch?.code || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const uId = existingUser?.id || (userIdOrBranchId.startsWith('usr_') ? userIdOrBranchId : `usr_${bId}`);
+
+    const finalUser: User = {
+      id: uId,
+      name: name?.trim() || existingUser?.name || targetBranch?.managerName || 'Branch Manager',
+      email: (targetEmail || existingUser?.email || targetBranch?.email || `${codeClean}@armaghansadeq.af`).toLowerCase().trim(),
+      phone: phone?.trim() || existingUser?.phone || targetBranch?.phone || '',
+      role: 'branch_manager',
+      branchId: bId,
+      password: targetPassword || existingUser?.password || `${codeClean}123`,
+      passwordChangedByBranch: false,
+      status: 'active',
+      createdAt: existingUser?.createdAt || new Date().toISOString(),
+      lastLogin: existingUser?.lastLogin || 'Never'
+    };
+
+    let finalBranch: Branch | null = null;
+    if (resolvedBranchId || targetBranch) {
+      const bObj = targetBranch || branches.find(b => b.id === resolvedBranchId);
+      if (bObj) {
+        finalBranch = {
+          ...bObj,
+          email: targetEmail || bObj.email,
+          managerName: name?.trim() || bObj.managerName,
+          phone: phone?.trim() || bObj.phone
         };
       }
-      return u;
-    }));
+    }
 
-    // Persist to Supabase Database
+    // Update React states and LocalStorage
+    setUsers(prev => {
+      const exists = prev.some(u => u.id === finalUser.id || (finalUser.branchId && u.branchId === finalUser.branchId));
+      const updated = exists 
+        ? prev.map(u => (u.id === finalUser.id || (finalUser.branchId && u.branchId === finalUser.branchId)) ? finalUser : u)
+        : [...prev, finalUser];
+      try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
+
+    if (finalBranch) {
+      const fb = finalBranch;
+      setBranches(prev => {
+        const updated = prev.map(b => b.id === fb.id ? fb : b);
+        try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(updated)); } catch (_) {}
+        return updated;
+      });
+    }
+
+    // Direct Supabase upsert (instant sync)
+    directSupabaseInsertUser(finalUser);
+    if (finalBranch) {
+      directSupabaseInsertBranch(finalBranch);
+    }
+
+    // Backend database update
     fetch('/api/users/credentials', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-User-Role': currentUser?.role || 'super_admin'
+      },
       body: JSON.stringify({
-        userId,
-        email: emailToSet,
-        password: passwordToSet,
-        name,
-        phone
+        userId: finalUser.id,
+        branchId: finalUser.branchId,
+        email: finalUser.email,
+        password: finalUser.password,
+        name: finalUser.name,
+        phone: finalUser.phone,
+        userRole: currentUser?.role || 'super_admin'
       })
-    }).catch(err => console.error('Error provisioning credentials in Supabase:', err));
+    }).catch(err => console.error('Error provisioning credentials in backend:', err));
 
-    showToast('Branch credentials provisioned & stored in Supabase.');
+    if (finalBranch) {
+      fetch('/api/branches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(finalBranch)
+      }).catch(err => console.error('Error updating branch in backend:', err));
+    }
+
+    showToast(t('credentials_success_msg') || 'Branch credentials updated and saved securely.');
     return true;
   };
 
@@ -1368,21 +1583,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // If manager name, email, or phone is updated, sync with branch manager user
     if (updates.managerName || updates.email || updates.phone) {
+      const existingUser = users.find(u => u.branchId === branchId);
+      const cleanCode = (updatedBranch.code || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const finalUserObj: User = {
+        id: existingUser?.id || `usr_${branchId}`,
+        name: updates.managerName?.trim() || existingUser?.name || `${updatedBranch.name} Manager`,
+        email: (updates.email?.trim() || existingUser?.email || updatedBranch.email || `${cleanCode}@armaghansadeq.af`).toLowerCase(),
+        phone: updates.phone?.trim() || existingUser?.phone || updatedBranch.phone || '',
+        role: 'branch_manager',
+        branchId: branchId,
+        password: existingUser?.password || `${cleanCode}123`,
+        passwordChangedByBranch: existingUser?.passwordChangedByBranch || false,
+        status: 'active',
+        createdAt: existingUser?.createdAt || new Date().toISOString(),
+        lastLogin: existingUser?.lastLogin || 'Never'
+      };
+
       setUsers(prev => {
-        const updated = prev.map(u => {
-          if (u.branchId === branchId) {
-            return {
-              ...u,
-              name: updates.managerName?.trim() || u.name,
-              email: updates.email?.trim().toLowerCase() || u.email,
-              phone: updates.phone?.trim() || u.phone
-            };
-          }
-          return u;
-        });
+        const exists = prev.some(u => u.branchId === branchId || u.id === finalUserObj.id);
+        const updated = exists 
+          ? prev.map(u => (u.branchId === branchId || u.id === finalUserObj.id) ? finalUserObj : u)
+          : [...prev, finalUserObj];
         try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
         return updated;
       });
+
+      directSupabaseInsertUser(finalUserObj);
+      fetch('/api/users/credentials', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': currentUser?.role || 'super_admin'
+        },
+        body: JSON.stringify({
+          userId: finalUserObj.id,
+          branchId,
+          email: finalUserObj.email,
+          password: finalUserObj.password,
+          name: finalUserObj.name,
+          phone: finalUserObj.phone,
+          userRole: currentUser?.role || 'super_admin'
+        })
+      }).catch(err => console.warn('Could not sync user credentials on branch update:', err));
     }
 
     // Persist to direct Supabase & API

@@ -406,24 +406,61 @@ api.post('/users/credentials', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const callerRole = (req.headers['x-user-role'] as string) || req.body?.userRole;
-    if (callerRole && callerRole !== 'super_admin') {
+    if (callerRole && callerRole !== 'super_admin' && callerRole !== 'admin') {
       return res.status(403).json({ success: false, error: 'Unauthorized: Only Head Office Super Admin can provision branch credentials.' });
     }
-    const { userId, email, password, name, phone } = req.body;
-    if (!userId) {
-      return res.status(400).json({ success: false, error: 'User ID is required.' });
+    const { userId, branchId, email, password, name, phone } = req.body;
+    if (!userId && !branchId) {
+      return res.status(400).json({ success: false, error: 'User ID or Branch ID is required.' });
     }
 
-    await db.query(
+    const cleanEmail = email ? email.trim().toLowerCase() : undefined;
+    const cleanPass = password ? password.trim() : undefined;
+    const cleanName = name ? name.trim() : undefined;
+    const cleanPhone = phone ? phone.trim() : undefined;
+    const targetUserId = userId || `usr_${branchId}`;
+
+    const updateRes = await db.query(
       `UPDATE users SET 
         email = COALESCE($1, email),
         password = COALESCE($2, password),
         name = COALESCE($3, name),
         phone = COALESCE($4, phone),
         password_changed_by_branch = false
-      WHERE id = $5`,
-      [email?.trim(), password?.trim(), name?.trim(), phone?.trim(), userId]
+      WHERE id = $5 OR branch_id = $6`,
+      [cleanEmail, cleanPass, cleanName, cleanPhone, targetUserId, branchId || targetUserId]
     );
+
+    if (!updateRes.rowCount || updateRes.rowCount === 0) {
+      const now = new Date().toISOString();
+      await db.query(
+        `INSERT INTO users (
+          id, name, email, phone, role, branch_id, password, password_changed_by_branch, status, created_at, last_login
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (id) DO UPDATE SET
+          email = EXCLUDED.email,
+          password = EXCLUDED.password,
+          name = EXCLUDED.name,
+          phone = EXCLUDED.phone`,
+        [
+          targetUserId, cleanName || 'Branch Manager', cleanEmail || `${branchId || 'branch'}@armaghansadeq.af`,
+          cleanPhone || '', 'branch_manager', branchId || targetUserId, cleanPass || 'branch123',
+          false, 'active', now, 'Never'
+        ]
+      );
+    }
+
+    const targetBranchId = branchId || (targetUserId.startsWith('usr_br_') ? targetUserId.replace('usr_', '') : null);
+    if (targetBranchId || cleanEmail) {
+      await db.query(
+        `UPDATE branches SET 
+          email = COALESCE($1, email),
+          manager_name = COALESCE($2, manager_name),
+          phone = COALESCE($3, phone)
+        WHERE id = $4 OR email = $1`,
+        [cleanEmail, cleanName, cleanPhone, targetBranchId || '']
+      );
+    }
 
     res.json({ success: true });
   } catch (err: any) {
@@ -1553,8 +1590,9 @@ api.post('/auth/login', authRateLimiter(30, 60 * 1000), async (req: Request, res
     const cleanPass = (password || '').trim();
 
     const { rows } = await db.query('SELECT * FROM users');
+    const { rows: bRows } = await db.query('SELECT * FROM branches');
     
-    const matched = rows.find((r: any) => {
+    let matched = rows.find((r: any) => {
       const uEmail = (r.email || '').toLowerCase().trim();
       const uId = (r.id || '').toLowerCase().trim();
       const uName = (r.name || '').toLowerCase().trim();
@@ -1566,8 +1604,46 @@ api.post('/auth/login', authRateLimiter(30, 60 * 1000), async (req: Request, res
       const phoneMatch = cleanPhone.length >= 5 && uPhone.length >= 5 && (uPhone.includes(cleanPhone) || cleanPhone.includes(uPhone));
       const adminAliasMatch = (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin') && (r.role === 'super_admin' || r.id === 'usr_admin');
 
-      return emailMatch || idMatch || nameMatch || phoneMatch || adminAliasMatch;
+      const b = bRows.find((b: any) => b.id === r.branch_id);
+      const bCode = (b?.code || '').toLowerCase().trim();
+      const bCleanCode = bCode.replace(/[^a-z0-9]/g, '');
+      const cleanNoHyphen = clean.replace(/[^a-z0-9]/g, '');
+      const branchCodeMatch = bCode && (bCode === clean || bCleanCode === cleanNoHyphen);
+      const branchEmailMatch = b && b.email && b.email.toLowerCase().trim() === clean;
+      const branchNameMatch = b && (
+        (b.name && b.name.toLowerCase().trim() === clean) ||
+        (b.city && b.city.toLowerCase().trim() === clean) ||
+        (b.province && b.province.toLowerCase().trim() === clean)
+      );
+
+      return emailMatch || idMatch || nameMatch || phoneMatch || adminAliasMatch || branchCodeMatch || branchEmailMatch || branchNameMatch;
     });
+
+    if (!matched) {
+      const matchedBranch = bRows.find((b: any) => {
+        const bCode = (b.code || '').toLowerCase().trim();
+        const bCleanCode = bCode.replace(/[^a-z0-9]/g, '');
+        const cleanNoHyphen = clean.replace(/[^a-z0-9]/g, '');
+        return bCode === clean || bCleanCode === cleanNoHyphen || (b.email && b.email.toLowerCase().trim() === clean);
+      });
+      if (matchedBranch) {
+        matched = {
+          id: `usr_${matchedBranch.id}`,
+          name: matchedBranch.manager_name || `${matchedBranch.name} Manager`,
+          email: matchedBranch.email || `${matchedBranch.code.toLowerCase()}@armaghansadeq.af`,
+          phone: matchedBranch.phone || '',
+          role: 'branch_manager',
+          branch_id: matchedBranch.id,
+          password: `${matchedBranch.code.toLowerCase().replace(/[^a-z0-9]/g, '')}123`,
+          password_changed_by_branch: false,
+          last_password_change: null,
+          status: 'active',
+          avatar: null,
+          created_at: new Date().toISOString(),
+          last_login: 'Never'
+        };
+      }
+    }
 
     if (!matched && (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
       if (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123') {
@@ -1596,10 +1672,11 @@ api.post('/auth/login', authRateLimiter(30, 60 * 1000), async (req: Request, res
 
     const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'armaghansadeq@cargo.af' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
     let passValid = false;
-    if (!cleanPass && !matched.password) {
+    const dbPass = (matched.password || '').trim();
+    if (!cleanPass && !dbPass) {
       passValid = true;
     } else if (cleanPass) {
-      if (matched.password && matched.password === cleanPass) {
+      if (dbPass && (dbPass === cleanPass || dbPass.toLowerCase() === cleanPass.toLowerCase())) {
         passValid = true;
       } else if (isSuperAdmin && (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123')) {
         passValid = true;

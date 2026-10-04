@@ -172,6 +172,26 @@ const mockDb = {
     }
 
     if (upper.startsWith('UPDATE BRANCHES SET')) {
+      if (upper.includes('EMAIL = COALESCE($1, EMAIL)')) {
+        const [email, manager_name, phone, branchId] = params;
+        let target = memoryStore.branches.get(branchId);
+        if (!target) {
+          for (const b of memoryStore.branches.values()) {
+            if (b.id === branchId || (email && b.email?.toLowerCase() === email.toLowerCase())) {
+              target = b;
+              break;
+            }
+          }
+        }
+        if (target) {
+          if (email) target.email = email.trim().toLowerCase();
+          if (manager_name) target.manager_name = manager_name.trim();
+          if (phone) target.phone = phone.trim();
+          saveStoreToDisk();
+        }
+        return { rows: [], rowCount: 1 };
+      }
+
       const branchId = params[params.length - 1];
       const target = memoryStore.branches.get(branchId);
 
@@ -270,9 +290,17 @@ const mockDb = {
 
     if (upper.includes('UPDATE USERS SET PASSWORD = $1')) {
       const [newPass, now, userId] = params;
-      const u = memoryStore.users.get(userId);
+      let u = memoryStore.users.get(userId);
+      if (!u) {
+        for (const user of memoryStore.users.values()) {
+          if (user.branch_id === userId || user.id === `usr_${userId}`) {
+            u = user;
+            break;
+          }
+        }
+      }
       if (u) {
-        u.password = newPass;
+        u.password = (newPass || '').trim();
         u.password_changed_by_branch = true;
         u.last_password_change = now;
         saveStoreToDisk();
@@ -281,14 +309,66 @@ const mockDb = {
     }
 
     if (upper.includes('UPDATE USERS SET') && upper.includes('COALESCE($1, EMAIL)')) {
-      const [email, password, name, phone, userId] = params;
-      const u = memoryStore.users.get(userId);
+      const [email, password, name, phone, userId, branchId] = params;
+      let u = memoryStore.users.get(userId);
+      if (!u && branchId) {
+        u = memoryStore.users.get(branchId);
+      }
+      if (!u) {
+        for (const user of memoryStore.users.values()) {
+          if (
+            user.id === userId || 
+            user.id === branchId ||
+            user.branch_id === userId || 
+            (branchId && user.branch_id === branchId) || 
+            user.id === `usr_${userId}` ||
+            (branchId && user.id === `usr_${branchId}`)
+          ) {
+            u = user;
+            break;
+          }
+        }
+      }
       if (u) {
-        if (email) u.email = email;
-        if (password) u.password = password;
-        if (name) u.name = name;
-        if (phone) u.phone = phone;
+        if (email) u.email = email.trim().toLowerCase();
+        if (password) u.password = password.trim();
+        if (name) u.name = name.trim();
+        if (phone) u.phone = phone.trim();
         u.password_changed_by_branch = false;
+        const bId = u.branch_id || branchId;
+        if (bId && memoryStore.branches.has(bId)) {
+          const b = memoryStore.branches.get(bId);
+          if (b) {
+            if (email) b.email = email.trim().toLowerCase();
+            if (name) b.manager_name = name.trim();
+            if (phone) b.phone = phone.trim();
+          }
+        }
+        saveStoreToDisk();
+      } else {
+        const bId = branchId || userId;
+        const branch = memoryStore.branches.get(bId);
+        const newU = {
+          id: userId && userId.startsWith('usr_') ? userId : `usr_${bId}`,
+          name: name || branch?.manager_name || 'Branch Manager',
+          email: (email || branch?.email || `${bId}@armaghansadeq.af`).trim().toLowerCase(),
+          phone: phone || branch?.phone || '',
+          role: 'branch_manager',
+          branch_id: branch?.id || bId,
+          password: (password || 'branch123').trim(),
+          password_changed_by_branch: false,
+          last_password_change: null,
+          status: 'active',
+          avatar: null,
+          created_at: new Date().toISOString(),
+          last_login: 'Never'
+        };
+        memoryStore.users.set(newU.id, newU);
+        if (branch) {
+          if (email) branch.email = email.trim().toLowerCase();
+          if (name) branch.manager_name = name.trim();
+          if (phone) branch.phone = phone.trim();
+        }
         saveStoreToDisk();
       }
       return { rows: [], rowCount: 1 };
@@ -1522,6 +1602,37 @@ export async function initDatabase(
             last_login: u.lastLogin || 'Never'
           });
         }
+      }
+    }
+
+    // Ensure every registered branch has an active branch manager user
+    for (const b of memoryStore.branches.values()) {
+      if (b.is_head_office || b.id === 'br_admin_hq') continue;
+      let hasUser = false;
+      for (const u of memoryStore.users.values()) {
+        if (u.branch_id === b.id) {
+          hasUser = true;
+          break;
+        }
+      }
+      if (!hasUser) {
+        const uid = `usr_${b.id}`;
+        const cleanCode = (b.code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        memoryStore.users.set(uid, {
+          id: uid,
+          name: b.manager_name || `${b.name} Manager`,
+          email: (b.email || `${cleanCode}@armaghansadeq.af`).toLowerCase(),
+          phone: b.phone || '',
+          role: 'branch_manager',
+          branch_id: b.id,
+          password: `${cleanCode}123`,
+          password_changed_by_branch: false,
+          last_password_change: null,
+          status: 'active',
+          avatar: null,
+          created_at: b.created_at || new Date().toISOString(),
+          last_login: 'Never'
+        });
       }
     }
 
