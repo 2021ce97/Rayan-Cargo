@@ -8,7 +8,7 @@ import {
   Truck, 
   User, 
   FileText, 
-  Printer, 
+  Wallet, 
   Search,
   Sparkles,
   ShieldCheck,
@@ -34,7 +34,6 @@ export const CustomerPortal: React.FC = () => {
     customerShipments, 
     createCustomerPreBooking, 
     setActiveView,
-    setSelectedShipmentForReceipt,
     trackByCnNumber,
     language
   } = useApp();
@@ -216,6 +215,16 @@ export const CustomerPortal: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveView('customer_finances')}
+              type="button"
+              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 transition-all cursor-pointer shadow-md border border-emerald-400/40"
+              title={language === 'fa' ? 'امور مالی و تسویه‌حساب فروشات' : 'Financial Clearance & Payouts'}
+            >
+              <Wallet className="w-4 h-4 text-emerald-200" />
+              <span>{language === 'fa' ? 'امور مالی و تسویه‌حساب' : language === 'ps' ? 'مالي حساب او تصفیه' : 'Financial Clearance'}</span>
+            </button>
+
+            <button
               onClick={() => setActiveView('customer_history')}
               type="button"
               className="px-4 py-2.5 rounded-xl font-bold text-xs bg-red-800/60 hover:bg-red-800 text-white flex items-center gap-2 transition-all cursor-pointer shadow-md border border-red-400/30"
@@ -296,17 +305,6 @@ export const CustomerPortal: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={() => {
-                const shp = customerShipments.find(s => s.cnNumber === submittedCn);
-                if (shp) setSelectedShipmentForReceipt(shp);
-              }}
-              type="button"
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>{language === 'fa' ? 'چاپ بارنامه' : 'Print Waybill'}</span>
-            </button>
-            <button
-              onClick={() => {
                 trackByCnNumber(submittedCn);
                 setActiveView('tracking');
               }}
@@ -314,7 +312,7 @@ export const CustomerPortal: React.FC = () => {
               className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <Search className="w-3.5 h-3.5" />
-              <span>{language === 'fa' ? 'پیگیری' : 'Track'}</span>
+              <span>{language === 'fa' ? 'پیگیری زنده' : language === 'ps' ? 'ژوندۍ څارنه' : 'Live Tracking'}</span>
             </button>
             <button
               onClick={() => setIsAddOrderOpen(true)}
@@ -322,7 +320,7 @@ export const CustomerPortal: React.FC = () => {
               className="px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-900 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>{language === 'fa' ? 'ثبت بار دیگر' : 'Book Another'}</span>
+              <span>{language === 'fa' ? 'ثبت بار دیگر' : language === 'ps' ? 'بل بار ثبتول' : 'Book Another'}</span>
             </button>
             <button
               onClick={() => setSubmittedCn(null)}
@@ -447,7 +445,7 @@ export const CustomerPortal: React.FC = () => {
                 {language === 'fa' ? 'سفارشات و بسته‌های شما' : language === 'ps' ? 'ستاسو ټول فرمایشونه او بارونه' : 'Your Consignments & Orders'}
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {language === 'fa' ? 'برای مشاهده جزئیات، بارنامه یا پیگیری وضعیت روی هر بار کلیک کنید' : 'Click on any parcel to print waybill or check real-time status'}
+                {language === 'fa' ? 'برای مشاهده جزئیات و پیگیری وضعیت زنده روی هر بار کلیک کنید' : 'Click on any parcel to check real-time status & details'}
               </p>
             </div>
           </div>
@@ -502,7 +500,10 @@ export const CustomerPortal: React.FC = () => {
                 return (
                   <div
                     key={s.id}
-                    onClick={() => setSelectedShipmentForReceipt(s)}
+                    onClick={() => {
+                      trackByCnNumber(s.cnNumber);
+                      setActiveView('tracking');
+                    }}
                     className="p-4 space-y-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -546,22 +547,14 @@ export const CustomerPortal: React.FC = () => {
                     <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/80" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        onClick={() => setSelectedShipmentForReceipt(s)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1"
-                      >
-                        <Printer className="w-3 h-3 text-red-600" />
-                        <span>{language === 'fa' ? 'چاپ' : 'Receipt'}</span>
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => {
                           trackByCnNumber(s.cnNumber);
                           setActiveView('tracking');
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-red-100"
                       >
-                        <Search className="w-3 h-3" />
-                        <span>{language === 'fa' ? 'پیگیری' : 'Track'}</span>
+                        <Search className="w-3.5 h-3.5" />
+                        <span>{language === 'fa' ? 'پیگیری زنده' : language === 'ps' ? 'ژوندۍ څارنه' : 'Live Tracking'}</span>
                       </button>
                     </div>
                   </div>
@@ -591,9 +584,12 @@ export const CustomerPortal: React.FC = () => {
                     return (
                       <tr
                         key={s.id}
-                        onClick={() => setSelectedShipmentForReceipt(s)}
+                        onClick={() => {
+                          trackByCnNumber(s.cnNumber);
+                          setActiveView('tracking');
+                        }}
                         className="hover:bg-red-50/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer group"
-                        title={language === 'fa' ? 'کلیک جهت مشاهده بارنامه و جزئیات' : 'Click to view receipt & details'}
+                        title={language === 'fa' ? 'کلیک جهت پیگیری و مشاهده جزئیات' : 'Click to track & view details'}
                       >
                         <td className="py-3 px-4 font-mono text-slate-400 font-bold">{idx + 1}</td>
                         <td className="py-3 px-4">
@@ -634,22 +630,15 @@ export const CustomerPortal: React.FC = () => {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => setSelectedShipmentForReceipt(s)}
-                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-600 hover:text-white text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-                              title={language === 'fa' ? 'چاپ بارنامه' : 'Print Waybill'}
-                            >
-                              <Printer className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => {
                                 trackByCnNumber(s.cnNumber);
                                 setActiveView('tracking');
                               }}
-                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-600 hover:text-white text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-                              title={language === 'fa' ? 'پیگیری' : 'Track'}
+                              className="px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/40 hover:bg-red-600 hover:text-white text-red-600 dark:text-red-400 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                              title={language === 'fa' ? 'پیگیری زنده' : 'Live Tracking'}
                             >
                               <Search className="w-3.5 h-3.5" />
+                              <span>{language === 'fa' ? 'پیگیری' : 'Track'}</span>
                             </button>
                           </div>
                         </td>

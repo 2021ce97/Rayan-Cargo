@@ -176,7 +176,13 @@ export async function directSupabaseInsertShipment(shipment: Shipment): Promise<
       dest_branch_commission: shipment.destBranchCommission || 100,
       remittance_status: shipment.remittanceStatus || 'pending',
       origin_remittance_due: shipment.originRemittanceDue || 0,
-      created_at: (shipment as any).createdAt || shipment.bookedAt || new Date().toISOString()
+      created_at: (shipment as any).createdAt || shipment.bookedAt || new Date().toISOString(),
+      seller_payout_status: shipment.sellerPayoutStatus || (shipment.status === 'delivered' ? 'ready_for_payout' : 'pending_delivery'),
+      seller_payout_disbursed_at: shipment.sellerPayoutDisbursedAt || null,
+      seller_payout_method: shipment.sellerPayoutMethod || null,
+      seller_payout_voucher_ref: shipment.sellerPayoutVoucherRef || null,
+      seller_payout_confirmed_at: shipment.sellerPayoutConfirmedAt || null,
+      seller_payout_dispute_reason: shipment.sellerPayoutDisputeReason || null
     };
 
     const { error } = await client
@@ -436,7 +442,16 @@ export async function directSupabaseFetchAll(): Promise<{
       originRemittanceDue: s.origin_remittance_due,
       customerSubmissionAt: s.customer_submission_at || undefined,
       customerSubmissionReference: s.customer_submission_reference || undefined,
-      customerSubmissionBy: s.customer_submission_by || undefined
+      customerSubmissionBy: s.customer_submission_by || undefined,
+      sellerPayoutStatus: s.seller_payout_status || (typeof s.financials === 'object' ? s.financials?.sellerPayoutStatus : undefined) || (s.status === 'delivered' ? 'ready_for_payout' : 'pending_delivery'),
+      sellerPayoutDisbursedAt: s.seller_payout_disbursed_at || (typeof s.financials === 'object' ? s.financials?.sellerPayoutDisbursedAt : undefined),
+      sellerPayoutMethod: s.seller_payout_method || (typeof s.financials === 'object' ? s.financials?.sellerPayoutMethod : undefined),
+      sellerPayoutVoucherRef: s.seller_payout_voucher_ref || (typeof s.financials === 'object' ? s.financials?.sellerPayoutVoucherRef : undefined),
+      sellerPayoutDisbursedByBranchId: s.seller_payout_disbursed_by_branch_id || (typeof s.financials === 'object' ? s.financials?.sellerPayoutDisbursedByBranchId : undefined),
+      sellerPayoutDisbursedByUserName: s.seller_payout_disbursed_by_user_name || (typeof s.financials === 'object' ? s.financials?.sellerPayoutDisbursedByUserName : undefined),
+      sellerPayoutConfirmedAt: s.seller_payout_confirmed_at || (typeof s.financials === 'object' ? s.financials?.sellerPayoutConfirmedAt : undefined),
+      sellerPayoutDisputeReason: s.seller_payout_dispute_reason || (typeof s.financials === 'object' ? s.financials?.sellerPayoutDisputeReason : undefined),
+      sellerPayoutNotes: s.seller_payout_notes || (typeof s.financials === 'object' ? s.financials?.sellerPayoutNotes : undefined)
     }));
 
     const expenses: BranchExpense[] = (eRes.data || []).map((e: any) => ({

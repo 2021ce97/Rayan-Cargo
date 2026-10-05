@@ -76,7 +76,8 @@ export type ActiveViewType =
   | 'expenses'
   | 'remittances'
   | 'customer_portal'
-  | 'customer_history';
+  | 'customer_history'
+  | 'customer_finances';
 
 interface AppContextType {
   language: Language;
@@ -131,6 +132,9 @@ interface AppContextType {
     note?: string;
   }) => boolean;
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
+  disburseSellerPayout: (shipmentId: string, method: 'cash' | 'hawala' | 'bank_transfer', voucherRef?: string, notes?: string) => boolean;
+  confirmSellerPayoutReceived: (shipmentId: string) => boolean;
+  disputeSellerPayout: (shipmentId: string, reason: string) => boolean;
   adminEditShipment: (shipmentId: string, input: AdminEditShipmentInput) => Promise<boolean>;
   deleteShipment: (shipmentId: string) => Promise<boolean>;
   submitParcelForCollection: (shipmentId: string, reference?: string, customSubmittedAt?: string) => boolean;
@@ -2626,6 +2630,131 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  // Branch Manager records cash / hawala payout to customer (seller)
+  const disburseSellerPayout = (
+    shipmentId: string, 
+    method: 'cash' | 'hawala' | 'bank_transfer', 
+    voucherRef?: string, 
+    notes?: string
+  ): boolean => {
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) return false;
+
+    const now = new Date().toISOString();
+    const finalVoucher = voucherRef?.trim() || `PAY-${(target.originBranchId || 'HQ').replace('br_', '').toUpperCase()}-${Date.now().toString().slice(-5)}`;
+    const payoutAmount = target.financials?.sellerPayout !== undefined 
+      ? target.financials.sellerPayout 
+      : Math.max(0, (target.financials?.productPrice || 0) - (target.destBranchCommission || 70) - (target.financials?.serviceFee || 150) + (target.financials?.discountAmount || 0));
+
+    const updatedShipment: Shipment = {
+      ...target,
+      sellerPayoutStatus: 'disbursed_by_branch',
+      sellerPayoutDisbursedAt: now,
+      sellerPayoutMethod: method,
+      sellerPayoutVoucherRef: finalVoucher,
+      sellerPayoutDisbursedByBranchId: currentUser.branchId || target.originBranchId,
+      sellerPayoutDisbursedByUserName: currentUser.name,
+      sellerPayoutNotes: notes?.trim() || '',
+      financials: {
+        ...target.financials,
+        sellerPayout: payoutAmount
+      }
+    };
+
+    setShipments(prev => {
+      const updated = prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s);
+      try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
+
+    directSupabaseInsertShipment(updatedShipment);
+
+    fetch(`/api/shipments/${target.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sellerPayoutStatus: 'disbursed_by_branch',
+        sellerPayoutDisbursedAt: now,
+        sellerPayoutMethod: method,
+        sellerPayoutVoucherRef: finalVoucher,
+        sellerPayoutDisbursedByBranchId: currentUser.branchId || target.originBranchId,
+        sellerPayoutDisbursedByUserName: currentUser.name,
+        sellerPayoutNotes: notes?.trim() || ''
+      })
+    }).catch(err => console.error('Error recording payout in backend:', err));
+
+    showToast(`✓ Cash Payout of ${payoutAmount.toLocaleString()} AFN recorded (Voucher #${finalVoucher}). Awaiting customer receipt confirmation.`);
+    return true;
+  };
+
+  // Customer confirms physical receipt of cash / hawala
+  const confirmSellerPayoutReceived = (shipmentId: string): boolean => {
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) return false;
+
+    const now = new Date().toISOString();
+    const updatedShipment: Shipment = {
+      ...target,
+      sellerPayoutStatus: 'confirmed_by_customer',
+      sellerPayoutConfirmedAt: now
+    };
+
+    setShipments(prev => {
+      const updated = prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s);
+      try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
+
+    directSupabaseInsertShipment(updatedShipment);
+
+    fetch(`/api/shipments/${target.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sellerPayoutStatus: 'confirmed_by_customer',
+        sellerPayoutConfirmedAt: now
+      })
+    }).catch(err => console.error('Error confirming payout in backend:', err));
+
+    showToast(t('payout_confirmed_by_customer_msg') || '✓ Thank you! You have confirmed receipt of your product sale money. Account is fully cleared.');
+    return true;
+  };
+
+  // Customer flags a dispute if branch marked it paid but customer did not receive money
+  const disputeSellerPayout = (shipmentId: string, reason: string): boolean => {
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) return false;
+
+    const now = new Date().toISOString();
+    const updatedShipment: Shipment = {
+      ...target,
+      sellerPayoutStatus: 'disputed',
+      sellerPayoutDisputeReason: reason.trim(),
+      sellerPayoutDisputeAt: now
+    };
+
+    setShipments(prev => {
+      const updated = prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s);
+      try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(updated)); } catch (_) {}
+      return updated;
+    });
+
+    directSupabaseInsertShipment(updatedShipment);
+
+    fetch(`/api/shipments/${target.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sellerPayoutStatus: 'disputed',
+        sellerPayoutDisputeReason: reason.trim(),
+        sellerPayoutDisputeAt: now
+      })
+    }).catch(err => console.error('Error reporting payout dispute in backend:', err));
+
+    showToast('⚠️ Dispute reported to Head Office Super Admin. Management will investigate branch cashier records immediately.', 'error');
+    return true;
+  };
+
   // Super Admin: Edit parcel information and recalculate financials atomically
   const adminEditShipment = async (shipmentId: string, input: AdminEditShipmentInput): Promise<boolean> => {
     if (currentUser.role !== 'super_admin') {
@@ -3121,6 +3250,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       statusHistory: newHistory,
       actualDelivery,
       financials: newFinancials,
+      sellerPayoutStatus: newStatus === 'delivered' 
+        ? (target.sellerPayoutStatus === 'disbursed_by_branch' || target.sellerPayoutStatus === 'confirmed_by_customer' ? target.sellerPayoutStatus : 'ready_for_payout')
+        : target.sellerPayoutStatus,
       deliveryIssue: newStatus === 'delivered' ? undefined : target.deliveryIssue
     };
 
@@ -3255,6 +3387,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminEditShipment,
         deleteShipment,
         settleInterBranchRemittance,
+        disburseSellerPayout,
+        confirmSellerPayoutReceived,
+        disputeSellerPayout,
         submitParcelForCollection,
         updateShipmentStatus,
         recordPrint,

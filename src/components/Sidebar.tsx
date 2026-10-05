@@ -15,7 +15,8 @@ import {
   DollarSign,
   Package,
   X,
-  Menu
+  Menu,
+  Wallet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ChangePasswordModal } from './ChangePasswordModal';
@@ -88,6 +89,13 @@ export const Sidebar: React.FC = () => {
       id: 'customer_portal' as const,
       label: language === 'fa' ? 'ثبت آنلاین بسته' : (language === 'ps' ? 'د بار آنلاین ثبت' : 'Pre-Book Parcel'),
       icon: PackagePlus,
+      badge: null,
+      visible: true
+    },
+    {
+      id: 'customer_finances' as const,
+      label: language === 'fa' ? 'حساب و تسویه‌حساب' : (language === 'ps' ? 'مالي حساب او تصفیه' : 'Financial Clearance'),
+      icon: Wallet,
       badge: null,
       visible: true
     },

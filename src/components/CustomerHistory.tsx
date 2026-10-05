@@ -3,7 +3,6 @@ import {
   Package, 
   Search, 
   Plus, 
-  Printer, 
   Clock, 
   CheckCircle2, 
   Truck, 
@@ -19,7 +18,8 @@ import {
   User,
   Phone,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  Wallet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus } from '../types';
@@ -31,7 +31,7 @@ export const CustomerHistory: React.FC = () => {
     branches, 
     customerShipments, 
     setActiveView, 
-    setSelectedShipmentForReceipt,
+    trackByCnNumber,
     language,
     isRTL
   } = useApp();
@@ -130,14 +130,21 @@ export const CustomerHistory: React.FC = () => {
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
               {language === 'fa' 
-                ? 'مشاهده وضعیت لحظه‌ای، مبالغ پرداختی، تذکره، بارنامه و سابقه انتقال تمام بسته‌های ثبت‌شده'
+                ? 'مشاهده وضعیت لحظه‌ای، مبالغ پرداختی، تذکره، بارنامه دیجیتال و سابقه انتقال تمام بسته‌های ثبت‌شده'
                 : language === 'ps'
                 ? 'د ثبت شویو بارونو او کڅوړو د تحویلۍ او پیسو بشپړ حالت وګورئ'
-                : 'Track real-time delivery status, financial receipts, destination hubs, and print waybills for all your shipments.'}
+                : 'Track real-time delivery status, financial settlements, destination hubs, and live tracking for all your shipments.'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => setActiveView('customer_finances')}
+              className="px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+            >
+              <Wallet className="w-4 h-4" />
+              <span>{language === 'fa' ? 'امور مالی و تسویه‌حساب' : 'Financial Clearance'}</span>
+            </button>
             <button
               onClick={() => setActiveView('customer_portal')}
               className="px-4 py-2.5 rounded-xl font-bold text-xs bg-red-600 hover:bg-red-500 text-white flex items-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
@@ -335,12 +342,15 @@ export const CustomerHistory: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => setSelectedShipmentForReceipt(shipment)}
-                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-600 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-xs"
-                      title={t('btn_print_receipt')}
+                      onClick={() => {
+                        trackByCnNumber(shipment.cnNumber);
+                        setActiveView('tracking');
+                      }}
+                      className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-600 hover:text-white dark:bg-red-950/40 text-red-600 dark:text-red-400 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-red-200 dark:border-red-900 shadow-xs"
+                      title={language === 'fa' ? 'پیگیری زنده بارنامه' : 'Track Parcel'}
                     >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>{t('btn_print')}</span>
+                      <Search className="w-3.5 h-3.5" />
+                      <span>{language === 'fa' ? 'پیگیری زنده' : 'Track'}</span>
                     </button>
                   </div>
                 </div>

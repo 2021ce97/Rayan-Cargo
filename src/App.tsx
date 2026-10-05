@@ -14,6 +14,7 @@ import { ExpenseManager } from './components/ExpenseManager';
 import { RemittanceManager } from './components/RemittanceManager';
 import { CustomerPortal } from './components/CustomerPortal';
 import { CustomerHistory } from './components/CustomerHistory';
+import { CustomerFinances } from './components/CustomerFinances';
 import { PrintReceiptModal } from './components/PrintReceiptModal';
 import { LoginPage } from './components/LoginPage';
 import { ToastContainer } from './components/ToastContainer';
@@ -83,8 +84,9 @@ const MainLayout: React.FC = () => {
   }
 
   const renderActiveView = () => {
-    // If logged in as customer, allow customer_portal, customer_history, and tracking
+    // If logged in as customer, allow customer_portal, customer_finances, customer_history, and tracking
     if (currentUser?.role === 'customer') {
+      if (activeView === 'customer_finances') return <CustomerFinances />;
       if (activeView === 'customer_history') return <CustomerHistory />;
       if (activeView === 'tracking') return <TrackingPortal />;
       return <CustomerPortal />;
@@ -95,6 +97,8 @@ const MainLayout: React.FC = () => {
         return <Dashboard />;
       case 'customer_portal':
         return <CustomerPortal />;
+      case 'customer_finances':
+        return <CustomerFinances />;
       case 'customer_history':
         return <CustomerHistory />;
       case 'expenses':
@@ -140,8 +144,8 @@ const MainLayout: React.FC = () => {
         </main>
       </div>
 
-      {/* Printable Consignment Waybill Modal */}
-      {selectedShipmentForReceipt && <PrintReceiptModal />}
+      {/* Printable Consignment Waybill Modal (Branch Managers and Admin only) */}
+      {selectedShipmentForReceipt && currentUser?.role !== 'customer' && <PrintReceiptModal />}
 
       {/* Global Toast Notification System */}
       <ToastContainer />

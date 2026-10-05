@@ -6,7 +6,8 @@ import {
   Search, 
   ArrowRightLeft, 
   FileText, 
-  Menu 
+  Menu,
+  Wallet
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ActiveView } from '../types';
@@ -45,6 +46,16 @@ export const MobileBottomNav: React.FC = () => {
             setIsMobileSidebarOpen(false);
           },
           isActive: activeView === 'customer_portal' && !isMobileSidebarOpen
+        },
+        {
+          id: 'customer_finances',
+          label: language === 'fa' ? 'حسابات' : language === 'ps' ? 'تصفیه' : 'Finances',
+          icon: Wallet,
+          onClick: () => {
+            setActiveView('customer_finances');
+            setIsMobileSidebarOpen(false);
+          },
+          isActive: activeView === 'customer_finances' && !isMobileSidebarOpen
         },
         {
           id: 'customer_history',

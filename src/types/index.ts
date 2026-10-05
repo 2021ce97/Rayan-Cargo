@@ -234,6 +234,13 @@ export interface BranchSettlementRecord {
   createdAt: string;
 }
 
+export type SellerPayoutStatus = 
+  | 'pending_delivery' 
+  | 'ready_for_payout' 
+  | 'disbursed_by_branch' 
+  | 'confirmed_by_customer' 
+  | 'disputed';
+
 export interface Shipment {
   id: string;
   cnNumber: string; // Consignment Note number (e.g. RYN-894201 or RYN-PR-894201)
@@ -258,6 +265,16 @@ export interface Shipment {
   customerSubmissionAt?: string;
   customerSubmissionReference?: string;
   customerSubmissionBy?: string;
+  sellerPayoutStatus?: SellerPayoutStatus;
+  sellerPayoutDisbursedAt?: string;
+  sellerPayoutMethod?: 'cash' | 'hawala' | 'bank_transfer';
+  sellerPayoutVoucherRef?: string;
+  sellerPayoutDisbursedByBranchId?: string;
+  sellerPayoutDisbursedByUserName?: string;
+  sellerPayoutConfirmedAt?: string;
+  sellerPayoutDisputeReason?: string;
+  sellerPayoutDisputeAt?: string;
+  sellerPayoutNotes?: string;
   bookedAt: string;
   estimatedDelivery: string;
   actualDelivery?: string;
@@ -388,7 +405,8 @@ export type ActiveView =
   | 'reports' 
   | 'remittances' 
   | 'customer_portal'
-  | 'customer_history';
+  | 'customer_history'
+  | 'customer_finances';
 
 export interface StatusPermissionResult {
   allowed: boolean;
