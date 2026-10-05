@@ -21,11 +21,13 @@ import {
   Download,
   Boxes,
   HelpCircle,
-  Inbox
+  Inbox,
+  Lock
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { BranchRemittanceTransfer, Shipment } from '../types';
 import { printElementUsingIframe } from '../utils/pdfExport';
+import { DeliveryPaymentSettlementModal } from './DeliveryPaymentSettlementModal';
 
 type RemittanceTab = 'pending_deliveries' | 'transfers_submitted' | 'settled_history';
 
@@ -175,9 +177,27 @@ export const RemittanceManager: React.FC = () => {
 
   // View detail modal state
   const [viewDetailTransfer, setViewDetailTransfer] = useState<BranchRemittanceTransfer | null>(null);
+  const [paymentSettlementShipment, setPaymentSettlementShipment] = useState<Shipment | null>(null);
   const printableVoucherRef = useRef<HTMLDivElement>(null);
 
-  // Filter delivered shipments that have collected money and are pending remittance to HQ
+  // Delivered shipments that are still awaiting Step 2: Payment Settlement Lock
+  const awaitingPaymentSettlementShipments = useMemo(() => {
+    return shipments.filter(s => {
+      const isTargetDest = isSuperAdmin 
+        ? (selectedBranchFilter === 'all' ? true : s.destinationBranchId === selectedBranchFilter)
+        : (s.destinationBranchId === currentBranchId);
+      const isDelivered = s.status === 'delivered';
+      const isPaymentLocked = Boolean(
+        s.paymentSettlementLocked ||
+        s.paymentSettlement?.locked ||
+        s.financials?.paymentSettlement?.locked ||
+        s.financials?.paymentStatus === 'paid'
+      );
+      return isTargetDest && isDelivered && !isPaymentLocked;
+    });
+  }, [shipments, isSuperAdmin, selectedBranchFilter, currentBranchId]);
+
+  // Filter delivered shipments that have locked payment settlement and are pending remittance to HQ
   const pendingDeliveredShipments = useMemo(() => {
     return shipments.filter(s => {
       const isTargetDest = isSuperAdmin 
@@ -185,9 +205,15 @@ export const RemittanceManager: React.FC = () => {
         : (s.destinationBranchId === currentBranchId);
       
       const isDelivered = s.status === 'delivered';
+      const isPaymentLocked = Boolean(
+        s.paymentSettlementLocked ||
+        s.paymentSettlement?.locked ||
+        s.financials?.paymentSettlement?.locked ||
+        s.financials?.paymentStatus === 'paid'
+      );
       const isPendingRemittance = !s.remittanceStatus || s.remittanceStatus === 'pending' || (s.remittanceStatus as string) === 'unsettled';
 
-      return isTargetDest && isDelivered && isPendingRemittance;
+      return isTargetDest && isDelivered && isPaymentLocked && isPendingRemittance;
     });
   }, [shipments, isSuperAdmin, selectedBranchFilter, currentBranchId]);
 
@@ -519,11 +545,58 @@ export const RemittanceManager: React.FC = () => {
 
       {/* TAB CONTENT 1: PENDING PARCEL COLLECTIONS */}
       {activeTab === 'pending_deliveries' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="space-y-4">
+          {/* Alert Banner if any delivered parcels are awaiting Step 2 Payment Settlement Lock */}
+          {awaitingPaymentSettlementShipments.length > 0 && (
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-800 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-amber-950 dark:text-amber-100">
+                      {awaitingPaymentSettlementShipments.length} Delivered Parcel(s) Awaiting Payment Settlement & Price Adjustment
+                    </h3>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                      Complete "💰 Record Payment & Report" (Exact / + Paid Extra / - Paid Less) to lock payment and automatically add them to Remittance below.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {awaitingPaymentSettlementShipments.map(s => (
+                  <div
+                    key={s.id}
+                    className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/80 flex items-center justify-between gap-2 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-mono font-black text-slate-900 dark:text-white">{s.cnNumber}</div>
+                      <div className="text-[11px] text-slate-500 truncate">{s.receiver.name} • {s.financials.totalAmount.toLocaleString()} AFN</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentSettlementShipment(s)}
+                      className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-black text-[10px] shrink-0 cursor-pointer transition-colors"
+                    >
+                      💰 Record Payment
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-black text-slate-900 dark:text-white">
-                {t('pending_deliveries_heading')}
+              <h2 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <span>{t('pending_deliveries_heading')}</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span>Payment Locked & Ready</span>
+                </span>
               </h2>
               <p className="text-xs text-slate-500">
                 {t('pending_deliveries_subheading')}
@@ -571,14 +644,27 @@ export const RemittanceManager: React.FC = () => {
                   {pendingDeliveredShipments.map(s => {
                     const origBranch = branches.find(b => b.id === s.originBranchId);
                     const destBranch = branches.find(b => b.id === s.destinationBranchId);
-                    const collected = s.financials.productPrice || s.financials.totalAmount;
-                    const commission = s.financials.destBranchCommission || s.destBranchCommission || 70;
-                    const netDue = s.originRemittanceDue || Math.max(0, collected - commission);
+                    const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
+                    const collected = settlement?.locked
+                      ? settlement.actualCollectedAmount
+                      : (s.financials.productPrice || s.financials.totalAmount);
+                    const commission = settlement?.locked
+                      ? settlement.fixedDestCommission
+                      : (s.financials.destBranchCommission || s.destBranchCommission || 70);
+                    const netDue = settlement?.locked
+                      ? settlement.reconciledRemittanceDue
+                      : (s.originRemittanceDue || Math.max(0, collected - commission));
 
                     return (
                       <tr key={s.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
-                          {s.cnNumber}
+                          <div>{s.cnNumber}</div>
+                          {settlement?.reconciliationId && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-mono text-emerald-700 dark:text-emerald-400">
+                              <Lock className="w-2.5 h-2.5" />
+                              #{settlement.reconciliationId}
+                            </span>
+                          )}
                         </td>
                         <td className="p-3">
                           <div className="font-bold text-slate-800 dark:text-slate-200">{s.receiver.name}</div>
@@ -588,22 +674,42 @@ export const RemittanceManager: React.FC = () => {
                           {origBranch?.city} ➔ <strong className="text-slate-900 dark:text-white">{destBranch?.city}</strong>
                         </td>
                         <td className="p-3 text-end font-mono font-bold text-slate-900 dark:text-white">
-                          {collected.toLocaleString()} AFN
+                          <div>{collected.toLocaleString()} AFN</div>
+                          {settlement?.locked && settlement.adjustmentType !== 'exact' && (
+                            <div className={`text-[9.5px] font-bold ${
+                              settlement.adjustmentType === 'extra' ? 'text-emerald-600' : 'text-amber-600'
+                            }`} title={`Original: ${settlement.originalProductPrice.toLocaleString()} AFN | ${settlement.reasonLabel}`}>
+                              {settlement.adjustmentType === 'extra'
+                                ? `+${settlement.adjustmentAmount.toLocaleString()} Extra (${settlement.reasonLabel})`
+                                : `-${settlement.adjustmentAmount.toLocaleString()} Less (${settlement.reasonLabel})`}
+                            </div>
+                          )}
                         </td>
                         <td className="p-3 text-end font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          + {commission.toLocaleString()} AFN
+                          <div>+ {commission.toLocaleString()} AFN</div>
+                          <div className="text-[9px] text-slate-400 font-sans">Fixed</div>
                         </td>
                         <td className="p-3 text-end font-mono font-black text-amber-600 dark:text-amber-400">
                           {netDue.toLocaleString()} AFN
                         </td>
                         <td className="p-3 text-center">
-                          <button
-                            onClick={() => handleOpenRemitModal([s])}
-                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs cursor-pointer shadow-xs transition-colors flex items-center gap-1 mx-auto"
-                          >
-                            <Send className="w-3.5 h-3.5" />
-                            <span>{t('btn_remit_to_hq')}</span>
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setPaymentSettlementShipment(s)}
+                              className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-lg text-[10px] cursor-pointer transition-colors"
+                              title="View Locked Payment Report"
+                            >
+                              Report
+                            </button>
+                            <button
+                              onClick={() => handleOpenRemitModal([s])}
+                              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs cursor-pointer shadow-xs transition-colors flex items-center gap-1"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              <span>{t('btn_remit_to_hq')}</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -612,6 +718,7 @@ export const RemittanceManager: React.FC = () => {
               </table>
             </div>
           )}
+        </div>
         </div>
       )}
 
@@ -1288,6 +1395,12 @@ export const RemittanceManager: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delivery Payment Settlement & Price Adjustment Modal */}
+      <DeliveryPaymentSettlementModal
+        shipment={paymentSettlementShipment}
+        onClose={() => setPaymentSettlementShipment(null)}
+      />
 
     </div>
   );

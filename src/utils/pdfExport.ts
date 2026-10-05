@@ -2226,7 +2226,7 @@ export function generateThermalLabelPdf(
       const pageWidth = 80;
       const margin = 4;
       const contentWidth = pageWidth - margin * 2; // 72mm printable area
-      const pageHeight = 155; // Slightly taller to fit all info
+      const pageHeight = 142; // Compact height without duplicate CN or extra bottom padding
 
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -2249,10 +2249,10 @@ export function generateThermalLabelPdf(
 
       y += 14;
 
-      // CN Number Box (Bordered)
+      // CN Number Box (Bordered - Single CN number, no duplicate *CN* text)
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.4);
-      doc.rect(margin, y, contentWidth, 20);
+      doc.rect(margin, y, contentWidth, 14);
       
       const printSeq = (shipment.printCount || 0) + 1;
       const printTag = printSeq === 1 ? 'ORIGINAL #1' : `RE-PRINT #${printSeq}`;
@@ -2262,12 +2262,9 @@ export function generateThermalLabelPdf(
       
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(14);
-      doc.text(shipment.cnNumber, margin + 3, y + 12);
-      
-      doc.setFontSize(7);
-      doc.text(`*${shipment.cnNumber}*`, margin + contentWidth / 2, y + 18, { align: 'center' });
+      doc.text(shipment.cnNumber, margin + 3, y + 11.5);
 
-      y += 22;
+      y += 16;
 
       // Route Box (Black)
       doc.setFillColor(0, 0, 0);

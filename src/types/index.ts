@@ -163,9 +163,10 @@ export interface PackageDetails {
 }
 
 export interface BillingFinancials {
-  productPrice: number; // The product selling price to collect from buyer
-  serviceFee: number; // Origin branch service and handling fee
-  destBranchCommission: number; // Destination branch commission
+  originalProductPrice?: number; // Original product price set at booking before any delivery adjustment
+  productPrice: number; // The effective product selling price collected from buyer
+  serviceFee: number; // Origin branch service and handling fee (fixed)
+  destBranchCommission: number; // Destination branch commission (fixed)
   discountAmount: number; // Discount applied to the service fee
   sellerPayout: number; // Net amount payable to the origin seller
   totalAmount: number; // Same as productPrice, kept for compatibility
@@ -174,6 +175,35 @@ export interface BillingFinancials {
   paymentStatus: PaymentStatus;
   paymentMethod: PaymentMethod;
   discountReason?: string;
+  paymentSettlement?: DeliveryPaymentSettlement;
+}
+
+export type PriceAdjustmentType = 'exact' | 'extra' | 'less';
+
+export interface DeliveryPaymentSettlement {
+  reconciliationId: string; // Unique reconciliation lock ID (e.g. REC-ARM-1501-8912)
+  statusAtSettlement: 'delivered' | 'returned' | 'cancelled';
+  originalProductPrice: number; // Fixed original product price from booking
+  adjustmentType: PriceAdjustmentType; // 'exact' | 'extra' | 'less'
+  adjustmentAmount: number; // Difference amount in AFN (>= 0)
+  actualCollectedAmount: number; // Actual cash collected from customer at destination
+  fixedServiceFee: number; // Service fee remains fixed
+  fixedDestCommission: number; // Destination branch commission remains fixed
+  discountAmount: number; // Discount applied at booking
+  reconciledRemittanceDue: number; // Net amount to remit to Main / Sender Branch
+  reconciledSellerPayout: number; // Net amount payable to Seller
+  reasonCategory: string;
+  reasonLabel: string;
+  reportNote?: string;
+  settledByUserId: string;
+  settledByUserName: string;
+  settledByBranchId: string;
+  settledByBranchName: string;
+  settledAt: string;
+  locked: boolean;
+  unlockedByAdminAt?: string;
+  unlockedByAdminName?: string;
+  autoQueuedForRemittance: boolean;
 }
 
 export interface BranchRemittanceTransfer {
@@ -299,6 +329,8 @@ export interface Shipment {
     reportedAt: string;
     reportedBy: string;
   };
+  paymentSettlement?: DeliveryPaymentSettlement;
+  paymentSettlementLocked?: boolean;
 }
 
 export function formatReceiptPhone(phone?: string): string {

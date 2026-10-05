@@ -45,6 +45,7 @@ import { ShipmentStatusTimeline } from './ShipmentStatusTimeline';
 import { EditShipmentModal } from './EditShipmentModal';
 import { CombinedBranchReceiptModal } from './CombinedBranchReceiptModal';
 import { ReportDeliveryIssueModal } from './ReportDeliveryIssueModal';
+import { DeliveryPaymentSettlementModal } from './DeliveryPaymentSettlementModal';
 
 type SortField = 'date' | 'weight' | 'amount' | 'cn' | 'status';
 type SortOrder = 'asc' | 'desc';
@@ -128,8 +129,7 @@ export const ParcelInventory: React.FC = () => {
   const [statusModalShipment, setStatusModalShipment] = useState<Shipment | null>(null);
   const [statusChoice, setStatusChoice] = useState<ShipmentStatus>('in_transit');
   const [statusNote, setStatusNote] = useState('');
-  const [statusAutoSubmitBill, setStatusAutoSubmitBill] = useState(true);
-  const [deliveryCollectedAmount, setDeliveryCollectedAmount] = useState<number>(0);
+  const [paymentSettlementShipment, setPaymentSettlementShipment] = useState<Shipment | null>(null);
 
   const [detailsModalShipment, setDetailsModalShipment] = useState<Shipment | null>(null);
   const [payoutMethod, setPayoutMethod] = useState<'cash' | 'hawala' | 'bank_transfer'>('cash');
@@ -142,14 +142,23 @@ export const ParcelInventory: React.FC = () => {
 
   useEffect(() => {
     if (detailsModalShipment) {
-      const pPrice = detailsModalShipment.financials?.productPrice || detailsModalShipment.packageInfo?.declaredValueAfn || 0;
-      const destComm = detailsModalShipment.destBranchCommission !== undefined 
-        ? detailsModalShipment.destBranchCommission 
-        : (detailsModalShipment.financials?.destBranchCommission || 70);
-      const serviceFee = detailsModalShipment.financials?.serviceFee || detailsModalShipment.transportationFee || 150;
+      const settlement = detailsModalShipment.paymentSettlement || detailsModalShipment.financials?.paymentSettlement;
+      const pPrice = settlement?.locked
+        ? settlement.actualCollectedAmount
+        : (detailsModalShipment.financials?.productPrice || detailsModalShipment.packageInfo?.declaredValueAfn || 0);
+      const destComm = settlement?.locked
+        ? settlement.fixedDestCommission
+        : (detailsModalShipment.destBranchCommission !== undefined 
+            ? detailsModalShipment.destBranchCommission 
+            : (detailsModalShipment.financials?.destBranchCommission || 70));
+      const serviceFee = settlement?.locked
+        ? settlement.fixedServiceFee
+        : (detailsModalShipment.financials?.serviceFee || detailsModalShipment.transportationFee || 150);
       const discount = detailsModalShipment.financials?.discountAmount || 0;
       
-      const calcPayout = Math.max(0, pPrice - destComm - serviceFee + discount);
+      const calcPayout = settlement?.locked
+        ? settlement.reconciledSellerPayout
+        : Math.max(0, pPrice - destComm - serviceFee + discount);
       setEditablePayoutAmount(calcPayout);
       setEditableCommission(destComm);
       setEditableDiscount(discount);
@@ -327,35 +336,28 @@ export const ParcelInventory: React.FC = () => {
     return result;
   }, [baseShipmentList, debouncedSearchTerm, selectedStatus, selectedDestinationBranch, activeTab, sortField, sortOrder]);
 
-  // Open status modal
+  // Open status modal (Physical status only)
   const handleOpenStatusModal = (shipment: Shipment) => {
     const perm = canUserUpdateStatus(shipment);
     setStatusModalShipment(shipment);
     setStatusNote('');
-    setDeliveryCollectedAmount(shipment.financials?.totalAmount || 0);
-    setStatusAutoSubmitBill(true);
 
     if (perm.allowedStatuses.length > 0) {
-      setStatusChoice(perm.allowedStatuses[0]);
+      if (perm.allowedStatuses.includes(shipment.status)) {
+        setStatusChoice(shipment.status);
+      } else {
+        setStatusChoice(perm.allowedStatuses[0]);
+      }
     }
   };
 
-  // Save status progression
+  // Save physical status progression (Payment & Report is unlocked separately after status is Delivered, Returned, or Cancelled)
   const handleSaveStatus = async () => {
     if (!statusModalShipment) return;
-    let finalNote = statusNote.trim();
-
-    if (statusChoice === 'delivered') {
-      const moneyNote = `Delivered to consignee. Amount: ${deliveryCollectedAmount} AFN`;
-      finalNote = finalNote ? `${finalNote} | ${moneyNote}` : moneyNote;
-    }
+    const finalNote = statusNote.trim();
 
     const ok = await updateShipmentStatus(statusModalShipment.id, statusChoice, finalNote || undefined);
     if (ok) {
-      if (statusChoice === 'delivered' && statusAutoSubmitBill && !statusModalShipment.customerSubmissionAt) {
-        const autoRef = `SUB-${statusModalShipment.cnNumber}-${Date.now().toString().slice(-4)}`;
-        submitParcelForCollection(statusModalShipment.id, autoRef, new Date().toISOString());
-      }
       setStatusModalShipment(null);
     }
   };
@@ -902,40 +904,60 @@ export const ParcelInventory: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Amount & Bill Submission */}
+                      {/* Amount & Payment Settlement Stage */}
                       <td className="p-3 text-center">
-                        <div className="font-black text-slate-900 dark:text-slate-100 font-mono">
-                          {s.financials.totalAmount.toLocaleString()} AFN
-                        </div>
-                        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          s.financials.paymentStatus === 'paid' 
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' 
-                            : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
-                        }`}>
-                          {s.financials.paymentStatus === 'paid' ? 'PAID' : 'COD (To-Pay)'}
-                        </span>
+                        {(() => {
+                          const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
+                          const isPaymentStageEligible = s.status === 'delivered' || s.status === 'returned' || s.status === 'cancelled';
+                          const origPrice = s.financials?.originalProductPrice ?? settlement?.originalProductPrice ?? s.financials?.totalAmount ?? 0;
 
-                        {/* Bill Submission Badge or Quick Trigger */}
-                        {isSubmitted ? (
-                          <div className="mt-1 flex items-center justify-center gap-1 text-[9.5px] font-bold text-blue-700 dark:text-blue-300" title={`Submitted on: ${s.customerSubmissionAt ? new Date(s.customerSubmissionAt).toLocaleString() : ''} (${s.customerSubmissionReference || ''})`}>
-                            <CheckCircle2 className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
-                            <span>Submitted</span>
-                            {s.customerSubmissionAt && (
-                              <span className="text-[8.5px] font-mono opacity-75">
-                                ({new Date(s.customerSubmissionAt).toLocaleDateString([], { month: 'numeric', day: 'numeric' })})
-                              </span>
-                            )}
-                          </div>
-                        ) : canSubmitBill ? (
-                          <button
-                            onClick={() => handleOpenSubmissionModal(s)}
-                            className="mt-1 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[9.5px] font-bold flex items-center justify-center gap-1 mx-auto cursor-pointer transition-colors"
-                            title="Submit Bill with automatic date & time stamp"
-                          >
-                            <FileCheck className="w-3 h-3 text-blue-600" />
-                            <span>Submit Bill</span>
-                          </button>
-                        ) : null}
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="font-black text-slate-900 dark:text-slate-100 font-mono">
+                                {(settlement?.locked ? settlement.actualCollectedAmount : s.financials.totalAmount).toLocaleString()} AFN
+                              </div>
+
+                              {settlement?.locked && settlement.adjustmentType !== 'exact' && s.status === 'delivered' && (
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
+                                  settlement.adjustmentType === 'extra'
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
+                                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
+                                }`} title={`Original Price: ${origPrice.toLocaleString()} AFN | Reason: ${settlement.reasonLabel}`}>
+                                  {settlement.adjustmentType === 'extra'
+                                    ? `+${settlement.adjustmentAmount.toLocaleString()} Extra`
+                                    : `-${settlement.adjustmentAmount.toLocaleString()} Less`}
+                                </span>
+                              )}
+
+                              {isPaymentStageEligible ? (
+                                settlement?.locked ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPaymentSettlementShipment(s)}
+                                    className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 cursor-pointer transition-colors"
+                                    title={`Payment Locked (#${settlement.reconciliationId}) • Reported to Main/Sender Branch`}
+                                  >
+                                    <Lock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                    <span>Payment Locked</span>
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                    <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                    <span>Awaiting Payment Settlement</span>
+                                  </span>
+                                )
+                              ) : (
+                                <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                  s.financials.paymentStatus === 'paid' 
+                                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' 
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                }`}>
+                                  {s.financials.paymentStatus === 'paid' ? 'PAID' : 'COD (To-Pay)'}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Status */}
@@ -954,19 +976,46 @@ export const ParcelInventory: React.FC = () => {
                               onClick={() => handleOpenStatusModal(s)}
                               className={`px-3 py-1 rounded-full text-[10px] font-bold cursor-pointer transition-transform active:scale-95 shadow-2xs flex items-center justify-center gap-1 mx-auto ${
                                 s.status === 'delivered' ? 'bg-emerald-600 text-white hover:bg-emerald-700' :
+                                s.status === 'returned' || s.status === 'cancelled' ? 'bg-rose-600 text-white hover:bg-rose-700' :
                                 s.status === 'out_for_delivery' ? 'bg-amber-600 text-white hover:bg-amber-700' :
                                 s.status === 'received_at_branch' ? 'bg-blue-600 text-white hover:bg-blue-700' :
                                 s.status === 'in_transit' ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
                                 'bg-slate-600 text-white hover:bg-slate-700'
                               }`}
                             >
-                              <span>{s.status.replace(/_/g, ' ')}</span>
-                              {updatePerm.canUpdate ? (
+                              <span>
+                                {s.status === 'received_at_branch'
+                                  ? 'received at dest branch'
+                                  : s.status.replace(/_/g, ' ')}
+                              </span>
+                              {updatePerm.canUpdate && !(s.paymentSettlement?.locked || s.financials?.paymentSettlement?.locked) ? (
                                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                               ) : (
                                 <Lock className="w-2.5 h-2.5 text-white/70" />
                               )}
                             </button>
+
+                            {/* ONLY when parcel status is Delivered, Returned, or Cancelled: show Record Payment & Report button */}
+                            {(s.status === 'delivered' || s.status === 'returned' || s.status === 'cancelled') && (
+                              (s.paymentSettlement?.locked || s.financials?.paymentSettlement?.locked) ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPaymentSettlementShipment(s)}
+                                  className="px-2.5 py-1 rounded-lg text-[9.5px] font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 mx-auto cursor-pointer transition-colors"
+                                >
+                                  <Lock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                  <span>View Payment Report</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setPaymentSettlementShipment(s)}
+                                  className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-500 hover:bg-amber-600 text-white shadow-xs flex items-center gap-1 mx-auto cursor-pointer transition-transform active:scale-95"
+                                >
+                                  <span>💰 Record Payment & Report</span>
+                                </button>
+                              )
+                            )}
 
                             {s.deliveryIssue && s.status !== 'delivered' && (
                               <button
@@ -1100,7 +1149,7 @@ export const ParcelInventory: React.FC = () => {
                         <option key={st} value={st}>
                           {st === 'booked' && '📦 Booked at Origin (ثبت در مبدا)'}
                           {st === 'in_transit' && '➔ In Transit / Dispatched (در حال انتقال)'}
-                          {st === 'received_at_branch' && '✓ Received at Destination Hub (رسید به شعبه مقصد)'}
+                          {st === 'received_at_branch' && '✓ Received at Destination Branch (رسید به شعبه مقصد)'}
                           {st === 'out_for_delivery' && '🚚 Out for Final Delivery (توزیع به گیرنده)'}
                           {st === 'delivered' && '★ Delivered to Receiver (تحویل به گیرنده)'}
                           {st === 'returned' && '↩ Returned to Origin (برگشت داده شده)'}
@@ -1110,44 +1159,27 @@ export const ParcelInventory: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* If marking delivered */}
-                  {statusChoice === 'delivered' && (
-                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
+                  {/* Physical Status Stage Guidance (No money fields here) */}
+                  {(statusChoice === 'delivered' || statusChoice === 'returned' || statusChoice === 'cancelled') ? (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-black text-amber-900 dark:text-amber-200">
                         <span className="flex items-center gap-1.5">
-                          <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Delivery Handover & COD Collection</span>
+                          <DollarSign className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Next Stage: Awaiting Payment Settlement</span>
                         </span>
-                        <span className="text-[10px] bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-100 px-2 py-0.5 rounded-full font-bold">
-                          Handover
+                        <span className="text-[9.5px] bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-100 px-2 py-0.5 rounded-full font-bold">
+                          Step 1 of 2
                         </span>
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-600 dark:text-slate-300">Amount Collected (AFN):</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={deliveryCollectedAmount}
-                          onChange={(e) => setDeliveryCollectedAmount(Math.max(0, Number(e.target.value) || 0))}
-                          className="w-32 h-8 px-2 font-mono font-bold text-right bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg text-slate-900 dark:text-white text-xs"
-                        />
-                      </div>
-
-                      {/* Auto Bill Submission Toggle */}
-                      <label className="flex items-center gap-2 pt-1 border-t border-emerald-200 dark:border-emerald-800 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={statusAutoSubmitBill}
-                          onChange={(e) => setStatusAutoSubmitBill(e.target.checked)}
-                          className="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                        />
-                        <span className="text-[11px] text-emerald-900 dark:text-emerald-200 font-semibold">
-                          Record Bill Submission automatically with current date & time
-                        </span>
-                      </label>
+                      <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                        Saving this status updates the physical parcel status to <strong>{statusChoice.toUpperCase()}</strong>. Right after saving, the <strong>"💰 Record Payment & Report"</strong> button will appear on this parcel so you can record Exact / + Paid Extra / - Paid Less and lock it for remittance.
+                      </p>
                     </div>
-                  )}
+                  ) : statusChoice === 'received_at_branch' ? (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-[11px] text-blue-800 dark:text-blue-200">
+                      <strong>✓ Received at Destination Branch:</strong> Marks the parcel as arrived at the destination branch hub. (Payment & Report remains hidden until the parcel is marked Delivered, Returned, or Cancelled).
+                    </div>
+                  ) : null}
 
                   {/* Note / Remarks */}
                   <div>
@@ -1488,6 +1520,114 @@ export const ParcelInventory: React.FC = () => {
               />
             </div>
 
+            {/* Delivery Payment & Price Adjustment Report (For Delivered, Returned, or Cancelled) */}
+            {(detailsModalShipment.status === 'delivered' || detailsModalShipment.status === 'returned' || detailsModalShipment.status === 'cancelled') && (() => {
+              const settlement = detailsModalShipment.paymentSettlement || detailsModalShipment.financials?.paymentSettlement;
+              return (
+                <div className={`p-4 rounded-2xl border-2 space-y-3 ${
+                  settlement?.locked
+                    ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/80'
+                    : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800'
+                }`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className={`w-5 h-5 ${settlement?.locked ? 'text-emerald-600' : 'text-amber-600'}`} />
+                      <div>
+                        <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                          {settlement?.locked
+                            ? 'Delivery Payment & Price Adjustment Report (Locked)'
+                            : 'Stage 2: Awaiting Payment Settlement & Branch Report'}
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          {settlement?.locked
+                            ? `Reconciliation ID: #${settlement.reconciliationId} • Reported by ${settlement.settledByBranchName} (${settlement.settledByUserName})`
+                            : 'Record Exact / + Paid Extra / - Paid Less to lock payment and automatically add to Remittance'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const s = detailsModalShipment;
+                        setDetailsModalShipment(null);
+                        setPaymentSettlementShipment(s);
+                      }}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-all ${
+                        settlement?.locked
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          : 'bg-amber-500 hover:bg-amber-600 text-white'
+                      }`}
+                    >
+                      {settlement?.locked ? (
+                        <>
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>View Locked Payment Report</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>💰 Record Payment & Report</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {settlement?.locked && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-semibold block">Original Product Price</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                          {settlement.originalProductPrice.toLocaleString()} AFN
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-semibold block">Price Adjustment</span>
+                        <span className={`font-mono font-black ${
+                          settlement.adjustmentType === 'extra'
+                            ? 'text-emerald-600'
+                            : settlement.adjustmentType === 'less'
+                            ? 'text-amber-600'
+                            : 'text-slate-600 dark:text-slate-300'
+                        }`}>
+                          {settlement.adjustmentType === 'extra'
+                            ? `+${settlement.adjustmentAmount.toLocaleString()} AFN (Extra)`
+                            : settlement.adjustmentType === 'less'
+                            ? `-${settlement.adjustmentAmount.toLocaleString()} AFN (Less)`
+                            : 'Exact (0 AFN)'}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-semibold block">Actual Collected</span>
+                        <span className="font-mono font-black text-emerald-600">
+                          {settlement.actualCollectedAmount.toLocaleString()} AFN
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <span className="text-[10px] text-slate-400 font-semibold block">Remittance to HQ/Origin</span>
+                        <span className="font-mono font-black text-blue-600">
+                          {settlement.reconciledRemittanceDue.toLocaleString()} AFN
+                        </span>
+                      </div>
+                      {settlement.adjustmentType !== 'exact' && (
+                        <div className="col-span-2 sm:col-span-4 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                          <div>
+                            <span className="font-bold text-slate-500">Reason: </span>
+                            <span className="font-bold text-slate-900 dark:text-white">{settlement.reasonLabel}</span>
+                            {settlement.reportNote && (
+                              <span className="text-slate-500"> — "{settlement.reportNote}"</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            Fixed Fees: Comm {settlement.fixedDestCommission} AFN | Service {settlement.fixedServiceFee} AFN
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Comprehensive Seller Payout Handover panel */}
             {detailsModalShipment.status === 'delivered' && (
               <div className="p-4 rounded-2xl border-2 space-y-3 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 animate-in fade-in duration-300">
@@ -1512,15 +1652,32 @@ export const ParcelInventory: React.FC = () => {
                       <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
                       <span>{language === 'fa' ? 'اعتراض عدم دریافت!' : 'Disputed / Unpaid!'}</span>
                     </span>
+                  ) : !(detailsModalShipment.paymentSettlement?.locked || detailsModalShipment.financials?.paymentSettlement?.locked) ? (
+                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 text-[10px] font-bold flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      <span>Awaiting Destination Payment Lock</span>
+                    </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 text-[10px] font-bold">
-                      {language === 'fa' ? 'آماده پرداخت نقد' : 'Ready for Cash Out'}
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 text-[10px] font-bold">
+                      {language === 'fa' ? 'آماده پرداخت نقد' : 'Reconciled & Ready for Cash Out'}
                     </span>
                   )}
                 </div>
 
-                {/* If the cash is already disbursed or confirmed, show payment details */}
-                {detailsModalShipment.sellerPayoutStatus === 'confirmed_by_customer' || detailsModalShipment.sellerPayoutStatus === 'disbursed_by_branch' ? (
+                {/* Reconciliation Gate if Destination Branch has not locked payment settlement yet */}
+                {!(detailsModalShipment.paymentSettlement?.locked || detailsModalShipment.financials?.paymentSettlement?.locked) &&
+                 detailsModalShipment.sellerPayoutStatus !== 'confirmed_by_customer' &&
+                 detailsModalShipment.sellerPayoutStatus !== 'disbursed_by_branch' ? (
+                  <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs space-y-2">
+                    <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                      <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Double-Payout Prevention & Reconciliation Gate Active</span>
+                    </div>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+                      Seller cash payout is locked until the Destination Branch completes <strong>"💰 Record Payment & Report"</strong> (confirming whether the customer paid the exact price, extra, or less).
+                    </p>
+                  </div>
+                ) : detailsModalShipment.sellerPayoutStatus === 'confirmed_by_customer' || detailsModalShipment.sellerPayoutStatus === 'disbursed_by_branch' ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1.5">
                     <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/60">
                       <span className="text-[10px] text-slate-500 font-semibold">{language === 'fa' ? 'مبلغ خالص پرداخت شده:' : 'Net Disbursed Amount:'}</span>
@@ -1984,6 +2141,12 @@ export const ParcelInventory: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: DELIVERY PAYMENT SETTLEMENT & PRICE ADJUSTMENT */}
+      <DeliveryPaymentSettlementModal
+        shipment={paymentSettlementShipment}
+        onClose={() => setPaymentSettlementShipment(null)}
+      />
 
       {/* MODAL: DELIVERY ISSUE REPORTING (Report an Issue) */}
       <ReportDeliveryIssueModal

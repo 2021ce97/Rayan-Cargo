@@ -19,7 +19,9 @@ import {
   ToastItem,
   ToastType,
   AdminEditShipmentInput,
-  SmsNotificationPayload
+  SmsNotificationPayload,
+  DeliveryPaymentSettlement,
+  PriceAdjustmentType
 } from '../types';
 import { translations } from '../i18n/translations';
 import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
@@ -139,6 +141,18 @@ interface AppContextType {
   deleteShipment: (shipmentId: string) => Promise<boolean>;
   submitParcelForCollection: (shipmentId: string, reference?: string, customSubmittedAt?: string) => boolean;
   updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
+  recordDeliveryPaymentSettlement: (
+    shipmentId: string,
+    input: {
+      adjustmentType: PriceAdjustmentType;
+      adjustmentAmount: number;
+      actualCollectedAmount: number;
+      reasonCategory: string;
+      reasonLabel: string;
+      reportNote?: string;
+    }
+  ) => boolean;
+  unlockDeliveryPaymentSettlement: (shipmentId: string, reason?: string) => boolean;
   recordPrint: (shipmentId: string, copyType?: 'buyer' | 'seller') => Promise<number>;
   recordStickerPrint: (shipmentIds: string[], batchRef: string) => void;
   reportDeliveryIssue: (shipmentId: string, issueType: string, customNote?: string) => boolean;
@@ -235,27 +249,75 @@ const STORAGE_KEYS = {
 export const sanitizeShipmentFinancials = (s: Shipment): Shipment => {
   const pkg = s.packageInfo || ({} as any);
   const f = s.financials || ({} as any);
-  let price = Number(f.productPrice) || Number(pkg.declaredValueAfn) || Number(f.totalAmount) || 0;
-  if (price <= 0) {
-    if (s.cnNumber === 'ARM-1500') price = 20000;
-    else if (s.cnNumber === 'ARM-1510') price = 5000;
-    else price = 3000;
+  const existingSettlement: DeliveryPaymentSettlement | undefined = s.paymentSettlement || f.paymentSettlement;
+
+  let baseOriginalPrice = Number(f.originalProductPrice) || Number(existingSettlement?.originalProductPrice) || Number(pkg.declaredValueAfn) || Number(f.productPrice) || Number(f.totalAmount) || 0;
+  if (baseOriginalPrice <= 0) {
+    if (s.cnNumber === 'ARM-1500') baseOriginalPrice = 20000;
+    else if (s.cnNumber === 'ARM-1510') baseOriginalPrice = 5000;
+    else baseOriginalPrice = 3000;
   }
+
   const sFee = typeof f.serviceFee === 'number' && f.serviceFee > 0 ? f.serviceFee : (pkg.isFragile ? 200 : 150);
   const dComm = typeof f.destBranchCommission === 'number' && f.destBranchCommission > 0 ? f.destBranchCommission : (s.destBranchCommission || 70);
   const discount = Number(f.discountAmount) || 0;
-  const total = price;
-  const payout = Math.max(0, price - sFee - dComm + discount);
-  const isPaid = f.paymentStatus === 'paid' || s.status === 'delivered';
+
+  // If payment settlement is already recorded & locked, honor its reconciled numbers
+  if (existingSettlement && existingSettlement.locked) {
+    const actualCollected = Number(existingSettlement.actualCollectedAmount) || 0;
+    const isDeliv = s.status === 'delivered';
+    const effectiveTotal = isDeliv ? actualCollected : baseOriginalPrice;
+    const payout = isDeliv
+      ? Math.max(0, actualCollected - sFee - dComm + discount)
+      : 0;
+    const remDue = isDeliv
+      ? Math.max(0, actualCollected - dComm)
+      : (actualCollected > 0 ? Math.max(0, actualCollected - dComm) : 0);
+
+    return {
+      ...s,
+      paymentSettlement: existingSettlement,
+      paymentSettlementLocked: true,
+      packageInfo: {
+        ...pkg,
+        declaredValueAfn: baseOriginalPrice
+      },
+      financials: {
+        ...f,
+        originalProductPrice: baseOriginalPrice,
+        productPrice: effectiveTotal,
+        serviceFee: sFee,
+        destBranchCommission: dComm,
+        discountAmount: discount,
+        sellerPayout: payout,
+        totalAmount: effectiveTotal,
+        amountPaid: actualCollected,
+        amountDue: 0,
+        paymentStatus: isDeliv ? 'paid' : 'unpaid',
+        paymentMethod: f.paymentMethod || 'cod',
+        paymentSettlement: existingSettlement
+      },
+      destBranchCommission: dComm,
+      transportationFee: 0,
+      originRemittanceDue: remDue
+    };
+  }
+
+  const total = Number(f.productPrice) || baseOriginalPrice;
+  const payout = Math.max(0, total - sFee - dComm + discount);
+  const isPaid = f.paymentStatus === 'paid';
 
   return {
     ...s,
+    paymentSettlement: existingSettlement,
+    paymentSettlementLocked: Boolean(existingSettlement?.locked),
     packageInfo: {
       ...pkg,
-      declaredValueAfn: price
+      declaredValueAfn: baseOriginalPrice
     },
     financials: {
       ...f,
+      originalProductPrice: baseOriginalPrice,
       productPrice: total,
       serviceFee: sFee,
       destBranchCommission: dComm,
@@ -264,8 +326,9 @@ export const sanitizeShipmentFinancials = (s: Shipment): Shipment => {
       totalAmount: total,
       amountPaid: isPaid ? total : 0,
       amountDue: isPaid ? 0 : total,
-      paymentStatus: f.paymentStatus || (isPaid ? 'paid' : 'to_pay'),
-      paymentMethod: f.paymentMethod || 'cod'
+      paymentStatus: f.paymentStatus || 'to_pay',
+      paymentMethod: f.paymentMethod || 'cod',
+      paymentSettlement: existingSettlement
     },
     destBranchCommission: dComm,
     transportationFee: 0,
@@ -1851,18 +1914,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const targetBr = isSuperAdmin ? activeBranchId : currentUser.branchId;
     const branchOwedList = shipments.filter(s => {
       const isTargetDest = targetBr === 'all' ? true : (s.destinationBranchId === targetBr);
-      return isTargetDest && s.status === 'delivered' && (!s.remittanceStatus || s.remittanceStatus === 'pending' || (s.remittanceStatus as string) === 'unsettled');
+      const isPaymentLocked = Boolean(s.paymentSettlement?.locked || s.financials?.paymentSettlement?.locked);
+      return isTargetDest && s.status === 'delivered' && isPaymentLocked && (!s.remittanceStatus || s.remittanceStatus === 'pending' || (s.remittanceStatus as string) === 'unsettled');
     });
     const totalOwedToHeadOffice = branchOwedList.reduce((sum, s) => {
-      const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
+      const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
+      if (settlement?.locked) return sum + settlement.reconciledRemittanceDue;
+      const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 70);
       return sum + (s.originRemittanceDue !== undefined ? s.originRemittanceDue : Math.max(0, s.financials.totalAmount - comm));
     }, 0);
 
     const totalBranchCommissionsEarned = shipments.filter(s => {
       const isTargetDest = targetBr === 'all' ? true : (s.destinationBranchId === targetBr);
-      return isTargetDest && s.status === 'delivered';
+      const isPaymentLocked = Boolean(s.paymentSettlement?.locked || s.financials?.paymentSettlement?.locked);
+      return isTargetDest && s.status === 'delivered' && isPaymentLocked;
     }).reduce((sum, s) => {
-      const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
+      const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
+      if (settlement?.locked) return sum + settlement.fixedDestCommission;
+      const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 70);
       return sum + comm;
     }, 0);
 
@@ -1893,10 +1962,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return shipments
       .filter(s => {
         const isTargetDest = currentTargetBranch === 'all' ? true : (s.destinationBranchId === currentTargetBranch);
-        return isTargetDest && s.status === 'delivered' && (!s.remittanceStatus || s.remittanceStatus === 'pending' || (s.remittanceStatus as string) === 'unsettled');
+        const isPaymentLocked = Boolean(s.paymentSettlement?.locked || s.financials?.paymentSettlement?.locked);
+        return isTargetDest && s.status === 'delivered' && isPaymentLocked && (!s.remittanceStatus || s.remittanceStatus === 'pending' || (s.remittanceStatus as string) === 'unsettled');
       })
       .reduce((sum, s) => {
-        const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
+        const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
+        if (settlement?.locked) return sum + settlement.reconciledRemittanceDue;
+        const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 70);
         return sum + (s.originRemittanceDue !== undefined ? s.originRemittanceDue : Math.max(0, s.financials.totalAmount - comm));
       }, 0);
   }, [shipments, currentTargetBranch]);
@@ -1905,10 +1977,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return shipments
       .filter(s => {
         const isTargetDest = currentTargetBranch === 'all' ? true : (s.destinationBranchId === currentTargetBranch);
-        return isTargetDest && s.status === 'delivered';
+        const isPaymentLocked = Boolean(s.paymentSettlement?.locked || s.financials?.paymentSettlement?.locked);
+        return isTargetDest && s.status === 'delivered' && isPaymentLocked;
       })
       .reduce((sum, s) => {
-        const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 100);
+        const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
+        if (settlement?.locked) return sum + settlement.fixedDestCommission;
+        const comm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 70);
         return sum + comm;
       }, 0);
   }, [shipments, currentTargetBranch]);
@@ -1958,13 +2033,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const status = s.remittanceStatus as string | undefined;
         return status && status !== 'pending' && status !== 'unsettled';
       })) {
-        showToast(t('remittance_already_submitted') || 'One or more parcels already have a remittance in progress.');
+        showToast(t('remittance_already_submitted') || '⛔ Double-Remittance Blocked: One or more parcels already have a remittance in progress or settled.', 'error');
+        return false;
+      }
+      if (selectedParcels.some(s => !(s.paymentSettlement?.locked || s.financials?.paymentSettlement?.locked))) {
+        showToast('🔒 Reconciliation Gate: Please complete and lock "Record Payment & Report" on all selected parcels before remitting.', 'warning');
         return false;
       }
     }
 
     const calculatedCollected = selectedParcels.length > 0
-      ? selectedParcels.reduce((sum, s) => sum + (s.financials?.totalAmount || 0), 0)
+      ? selectedParcels.reduce((sum, s) => {
+          const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
+          return sum + (settlement?.locked ? settlement.actualCollectedAmount : (s.financials?.totalAmount || 0));
+        }, 0)
       : Math.max(0, totalCollected);
     const calculatedCommission = Math.max(0, totalCommissionKept);
     const calculatedTransport = Math.max(0, transportationFee);
@@ -2644,6 +2726,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) return false;
 
+    // Double-Payout Prevention Check #1: Block if already disbursed or confirmed
+    if (target.sellerPayoutStatus === 'disbursed_by_branch' || target.sellerPayoutStatus === 'confirmed_by_customer') {
+      showToast(
+        `⛔ Double-Payout Blocked: Seller payout for CN #${target.cnNumber} was already disbursed under Voucher #${target.sellerPayoutVoucherRef || 'N/A'} on ${target.sellerPayoutDisbursedAt ? new Date(target.sellerPayoutDisbursedAt).toLocaleString() : 'record'}.`,
+        'error',
+        'Double-Payout Prevention'
+      );
+      return false;
+    }
+
+    // Reconciliation Gate Check #2: Must be delivered and have Payment Settlement locked
+    const settlement = target.paymentSettlement || target.financials?.paymentSettlement;
+    if (target.status !== 'delivered') {
+      showToast('⛔ Reconciliation Gate: Seller payout is only allowed for delivered parcels.', 'error');
+      return false;
+    }
+    if (!settlement?.locked) {
+      showToast('🔒 Reconciliation Gate: Destination branch must complete and lock "Record Payment & Report" before seller payout can be disbursed.', 'warning');
+      return false;
+    }
+
     const now = new Date().toISOString();
     const finalVoucher = voucherRef?.trim() || `PAY-${(target.originBranchId || 'HQ').replace('br_', '').toUpperCase()}-${Date.now().toString().slice(-5)}`;
     
@@ -3047,7 +3150,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     
     if (isDestination) {
-      allowedStatuses.push('received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled');
+      allowedStatuses.push('received_at_branch', 'delivered', 'returned', 'cancelled');
     }
 
     if (allowedStatuses.length > 0) {
@@ -3203,7 +3306,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  // Update Shipment Status
+  // Update Shipment Status (Physical Status Only - Payment & Price Adjustment is handled separately after Delivered/Returned/Cancelled)
   const updateShipmentStatus = (
     shipmentId: string, 
     newStatus: ShipmentStatus, 
@@ -3224,11 +3327,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    const existingSettlement = target.paymentSettlement || target.financials?.paymentSettlement;
+    if (existingSettlement?.locked && target.status !== newStatus && currentUser.role !== 'super_admin') {
+      showToast(`🔒 Parcel #${target.cnNumber} already has a locked Payment Settlement (${existingSettlement.reconciliationId}). Only Super Admin can alter status after payment lock.`, 'error');
+      return false;
+    }
+
     const now = new Date().toISOString();
     const userBranch = branches.find(b => b.id === currentUser.branchId);
-
     const destBranch = branches.find(b => b.id === target.destinationBranchId);
     const resolvedLocation = location || (userBranch ? `${userBranch.name} (${userBranch.city})` : 'Transit Station');
+
+    const requiresPaymentStage = newStatus === 'delivered' || newStatus === 'returned' || newStatus === 'cancelled';
+    const stageSuffix = requiresPaymentStage && !existingSettlement?.locked
+      ? ' — Moved to Awaiting Payment Settlement stage.'
+      : '';
 
     const newHistoryItem = {
       id: `st_${Date.now()}`,
@@ -3236,7 +3349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       location: resolvedLocation,
       branchName: userBranch ? userBranch.name : (destBranch?.name || 'Cargo Hub'),
       timestamp: now,
-      note: note || `Status updated to ${newStatus.replace('_', ' ')} by ${currentUser.name} (${userBranch?.name || 'Branch'})`,
+      note: (note || `Status updated to ${newStatus.replace(/_/g, ' ')} by ${currentUser.name} (${userBranch?.name || 'Branch'})`) + stageSuffix,
       updatedBy: `${currentUser.name} (${userBranch?.name || 'Branch'})`,
       driverName,
       driverPhone
@@ -3244,20 +3357,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const newHistory = [...(target.statusHistory || []), newHistoryItem];
     const actualDelivery = newStatus === 'delivered' ? now : target.actualDelivery;
-    const newFinancials = {
+
+    // Preserve original product price and keep payment awaiting settlement until "Record Payment & Report" is completed
+    const originalProductPrice = target.financials?.originalProductPrice ?? target.financials?.productPrice ?? target.packageInfo?.declaredValueAfn ?? target.financials?.totalAmount ?? 0;
+    const newFinancials: BillingFinancials = {
       ...target.financials,
-      amountPaid: newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay' 
-        ? target.financials.totalAmount 
-        : target.financials?.amountPaid || 0,
-      amountDue: newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay' 
-        ? 0 
-        : target.financials?.amountDue || 0,
-      paymentStatus: (newStatus === 'delivered' && target.financials?.paymentStatus === 'to_pay' 
-        ? 'paid' 
-        : target.financials?.paymentStatus || 'paid') as any
+      originalProductPrice
     };
 
-    const currentBranchId = newStatus === 'received_at_branch' || newStatus === 'out_for_delivery' || newStatus === 'delivered' 
+    const currentBranchId = newStatus === 'received_at_branch' || newStatus === 'out_for_delivery' || newStatus === 'delivered' || newStatus === 'returned' || newStatus === 'cancelled'
       ? target.destinationBranchId 
       : target.currentBranchId;
 
@@ -3268,9 +3376,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       statusHistory: newHistory,
       actualDelivery,
       financials: newFinancials,
-      sellerPayoutStatus: newStatus === 'delivered' 
-        ? (target.sellerPayoutStatus === 'disbursed_by_branch' || target.sellerPayoutStatus === 'confirmed_by_customer' ? target.sellerPayoutStatus : 'ready_for_payout')
-        : target.sellerPayoutStatus,
+      sellerPayoutStatus: existingSettlement?.locked && newStatus === 'delivered'
+        ? (target.sellerPayoutStatus || 'ready_for_payout')
+        : 'pending_delivery',
       deliveryIssue: newStatus === 'delivered' ? undefined : target.deliveryIssue
     };
 
@@ -3297,14 +3405,318 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
     }).catch(err => console.error('Error updating status in Supabase:', err));
 
+    if (requiresPaymentStage && !existingSettlement?.locked) {
+      showToast(
+        `✓ Status changed to ${newStatus.replace(/_/g, ' ').toUpperCase()} for CN #${target.cnNumber}. Now click "💰 Record Payment & Report" to settle & lock payment.`,
+        'info',
+        'Awaiting Payment Settlement'
+      );
+    } else {
+      showToast(
+        `✓ Status updated to ${newStatus.replace(/_/g, ' ').toUpperCase()} for CN #${target.cnNumber}`,
+        'success',
+        'Milestone Updated'
+      );
+    }
+
+    return true;
+  };
+
+  // Stage 2 & 3: Record Delivery Payment Settlement (Exact / + Paid Extra / - Paid Less), Report to Main/Sender Branch, Auto-Add to Remittance & Lock
+  const recordDeliveryPaymentSettlement = (
+    shipmentId: string,
+    input: {
+      adjustmentType: PriceAdjustmentType;
+      adjustmentAmount: number;
+      actualCollectedAmount: number;
+      reasonCategory: string;
+      reasonLabel: string;
+      reportNote?: string;
+    }
+  ): boolean => {
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) {
+      showToast('Shipment not found.', 'error');
+      return false;
+    }
+
+    // Strictly only allowed when status is delivered, returned, or cancelled
+    if (target.status !== 'delivered' && target.status !== 'returned' && target.status !== 'cancelled') {
+      showToast(
+        '⛔ Payment & Report system is only available AFTER the parcel status is changed to Delivered, Returned, or Cancelled.',
+        'error',
+        'Stage Locked'
+      );
+      return false;
+    }
+
+    // Check branch permission: Destination branch or Super Admin
+    const isSuperAdmin = currentUser.role === 'super_admin';
+    const isDest = isUserDestBranch(target.destinationBranchId);
+    if (!isSuperAdmin && !isDest) {
+      showToast('⛔ Only the Destination Branch or Central Super Admin can record and lock delivery payment settlement.', 'error');
+      return false;
+    }
+
+    const existingSettlement = target.paymentSettlement || target.financials?.paymentSettlement;
+    if (existingSettlement?.locked && !isSuperAdmin) {
+      showToast(
+        `🔒 Payment for CN #${target.cnNumber} is already locked (Reconciliation #${existingSettlement.reconciliationId}). Contact Main Branch Super Admin to unlock.`,
+        'error',
+        'Payment Locked'
+      );
+      return false;
+    }
+
+    if (target.remittanceStatus === 'submitted_to_headoffice' || target.remittanceStatus === 'settled') {
+      showToast('⛔ Cannot modify payment: This parcel has already been submitted/settled in a Remittance Batch.', 'error');
+      return false;
+    }
+
+    if (target.sellerPayoutStatus === 'disbursed_by_branch' || target.sellerPayoutStatus === 'confirmed_by_customer') {
+      showToast('⛔ Cannot modify payment: Seller payout has already been disbursed for this parcel.', 'error');
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    const destBranch = branches.find(b => b.id === target.destinationBranchId);
+    const origBranch = branches.find(b => b.id === target.originBranchId);
+
+    // Fixed Original Product Price, Fixed Service Fee, Fixed Destination Branch Commission
+    const originalProductPrice = Number(
+      target.financials?.originalProductPrice ??
+      existingSettlement?.originalProductPrice ??
+      target.packageInfo?.declaredValueAfn ??
+      target.financials?.productPrice ??
+      target.financials?.totalAmount ??
+      0
+    );
+    const fixedServiceFee = Number(target.financials?.serviceFee ?? target.transportationFee ?? 150);
+    const fixedDestCommission = Number(target.destBranchCommission ?? target.financials?.destBranchCommission ?? 70);
+    const discountAmount = Number(target.financials?.discountAmount ?? 0);
+
+    let adjustmentType: PriceAdjustmentType = input.adjustmentType;
+    let adjustmentAmount = Math.max(0, Math.round(Number(input.adjustmentAmount) || 0));
+    let actualCollectedAmount = Math.max(0, Math.round(Number(input.actualCollectedAmount) || 0));
+
+    if (target.status === 'delivered') {
+      if (adjustmentType === 'exact') {
+        adjustmentAmount = 0;
+        actualCollectedAmount = originalProductPrice;
+      } else if (adjustmentType === 'extra') {
+        actualCollectedAmount = originalProductPrice + adjustmentAmount;
+      } else if (adjustmentType === 'less') {
+        adjustmentAmount = Math.min(originalProductPrice, adjustmentAmount);
+        actualCollectedAmount = Math.max(0, originalProductPrice - adjustmentAmount);
+      }
+    } else {
+      // Returned or Cancelled
+      actualCollectedAmount = Math.max(0, Math.round(Number(input.actualCollectedAmount) || 0));
+      if (actualCollectedAmount === originalProductPrice) {
+        adjustmentType = 'exact';
+        adjustmentAmount = 0;
+      } else if (actualCollectedAmount > originalProductPrice) {
+        adjustmentType = 'extra';
+        adjustmentAmount = actualCollectedAmount - originalProductPrice;
+      } else {
+        adjustmentType = 'less';
+        adjustmentAmount = originalProductPrice - actualCollectedAmount;
+      }
+    }
+
+    // Rule #2: Service Fee and Destination Branch Commission stay FIXED.
+    // Only the Product Money (Remittance to Main/Sender Branch & Seller Payout) goes up or down!
+    const reconciledRemittanceDue = target.status === 'delivered'
+      ? Math.max(0, actualCollectedAmount - fixedDestCommission)
+      : (actualCollectedAmount > 0 ? Math.max(0, actualCollectedAmount - fixedDestCommission) : 0);
+
+    const reconciledSellerPayout = target.status === 'delivered'
+      ? Math.max(0, actualCollectedAmount - fixedDestCommission - fixedServiceFee + discountAmount)
+      : 0;
+
+    const reconciliationId = `REC-${target.cnNumber}-${Date.now().toString().slice(-4)}`;
+
+    const settlementRecord: DeliveryPaymentSettlement = {
+      reconciliationId,
+      statusAtSettlement: target.status as 'delivered' | 'returned' | 'cancelled',
+      originalProductPrice,
+      adjustmentType,
+      adjustmentAmount,
+      actualCollectedAmount,
+      fixedServiceFee,
+      fixedDestCommission,
+      discountAmount,
+      reconciledRemittanceDue,
+      reconciledSellerPayout,
+      reasonCategory: input.reasonCategory || 'exact_payment',
+      reasonLabel: input.reasonLabel || (adjustmentType === 'exact' ? 'Exact Product Price Collected' : 'Price Adjustment'),
+      reportNote: input.reportNote?.trim() || undefined,
+      settledByUserId: currentUser.id,
+      settledByUserName: currentUser.name,
+      settledByBranchId: currentUser.branchId || target.destinationBranchId,
+      settledByBranchName: destBranch?.name || 'Destination Branch',
+      settledAt: now,
+      locked: true,
+      autoQueuedForRemittance: target.status === 'delivered' || actualCollectedAmount > 0
+    };
+
+    const adjustmentSummaryText = adjustmentType === 'exact'
+      ? `Exact Product Price collected (${actualCollectedAmount.toLocaleString()} AFN)`
+      : adjustmentType === 'extra'
+      ? `Customer PAID EXTRA +${adjustmentAmount.toLocaleString()} AFN (Original: ${originalProductPrice.toLocaleString()} AFN ➔ Collected: ${actualCollectedAmount.toLocaleString()} AFN)`
+      : `Customer PAID LESS -${adjustmentAmount.toLocaleString()} AFN (Original: ${originalProductPrice.toLocaleString()} AFN ➔ Collected: ${actualCollectedAmount.toLocaleString()} AFN)`;
+
+    const reportHistoryNote = `[Payment Locked & Reported to ${origBranch?.name || 'Sender/Main Branch'} • #${reconciliationId}] ${adjustmentSummaryText}. Reason: ${settlementRecord.reasonLabel}${settlementRecord.reportNote ? ` (${settlementRecord.reportNote})` : ''}. Fixed Dest Comm: ${fixedDestCommission} AFN | Fixed Service Fee: ${fixedServiceFee} AFN | Auto-Queued Remittance to HQ/Sender Branch: ${reconciledRemittanceDue.toLocaleString()} AFN | Reconciled Seller Payout: ${reconciledSellerPayout.toLocaleString()} AFN.`;
+
+    const newHistoryItem = {
+      id: `st_pay_${Date.now()}`,
+      status: target.status,
+      location: `${destBranch?.name || 'Destination Hub'} ➔ Reported to ${origBranch?.name || 'Main Branch'}`,
+      branchName: destBranch?.name || 'Destination Branch',
+      timestamp: now,
+      note: reportHistoryNote,
+      updatedBy: `${currentUser.name} (${destBranch?.name || 'Destination Branch'})`
+    };
+
+    const newHistory = [...(target.statusHistory || []), newHistoryItem];
+    const effectiveProductPrice = target.status === 'delivered' ? actualCollectedAmount : originalProductPrice;
+
+    const updatedFinancials: BillingFinancials = {
+      ...target.financials,
+      originalProductPrice,
+      productPrice: effectiveProductPrice,
+      totalAmount: effectiveProductPrice,
+      serviceFee: fixedServiceFee,
+      destBranchCommission: fixedDestCommission,
+      discountAmount,
+      sellerPayout: reconciledSellerPayout,
+      amountPaid: actualCollectedAmount,
+      amountDue: 0,
+      paymentStatus: target.status === 'delivered' ? 'paid' : 'unpaid',
+      paymentMethod: target.financials?.paymentMethod || 'cod',
+      paymentSettlement: settlementRecord
+    };
+
+    const updatedShipment: Shipment = {
+      ...target,
+      paymentSettlement: settlementRecord,
+      paymentSettlementLocked: true,
+      destBranchCommission: fixedDestCommission,
+      originRemittanceDue: reconciledRemittanceDue,
+      remittanceStatus: (target.status === 'delivered' || actualCollectedAmount > 0) ? 'pending' : 'not_applicable',
+      sellerPayoutStatus: target.status === 'delivered' ? 'ready_for_payout' : 'pending_delivery',
+      customerSubmissionAt: target.customerSubmissionAt || now,
+      customerSubmissionReference: target.customerSubmissionReference || reconciliationId,
+      customerSubmissionBy: target.customerSubmissionBy || currentUser.name,
+      financials: updatedFinancials,
+      statusHistory: newHistory
+    };
+
+    setShipments(prev => prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s));
+    if (trackedShipment && (trackedShipment.id === target.id || trackedShipment.cnNumber === target.cnNumber)) {
+      setTrackedShipment(updatedShipment);
+    }
+
+    directSupabaseInsertShipment(updatedShipment);
+    directSupabaseUpdateShipmentStatus(target.id, target.status, newHistory);
+
+    fetch(`/api/shipments/${target.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: target.status,
+        statusHistory: newHistory,
+        actualDelivery: target.actualDelivery || now,
+        financials: updatedFinancials,
+        destBranchCommission: fixedDestCommission,
+        originRemittanceDue: reconciledRemittanceDue,
+        customerSubmissionAt: updatedShipment.customerSubmissionAt,
+        customerSubmissionReference: updatedShipment.customerSubmissionReference,
+        customerSubmissionBy: updatedShipment.customerSubmissionBy,
+        currentBranchId: target.currentBranchId,
+        userRole: currentUser.role,
+        userBranchId: currentUser.branchId
+      })
+    }).catch(err => console.error('Error syncing payment settlement to backend:', err));
+
     showToast(
-      `✓ Status updated to ${newStatus.replace(/_/g, ' ').toUpperCase()} for CN #${target.cnNumber}`,
+      `🔒 Payment Locked (${reconciliationId})! ${adjustmentSummaryText}. Reported to ${origBranch?.name || 'Main Branch'} & automatically queued for Remittance (${reconciledRemittanceDue.toLocaleString()} AFN).`,
       'success',
-      'Milestone Updated'
+      'Payment Settled, Locked & Reported'
     );
 
+    return true;
+  };
 
+  // Super Admin Only: Unlock Payment Settlement if correction is needed before Remittance/Payout
+  const unlockDeliveryPaymentSettlement = (shipmentId: string, reason?: string): boolean => {
+    if (currentUser.role !== 'super_admin') {
+      showToast('⛔ Only Main Branch Super Admin can unlock a locked payment settlement.', 'error');
+      return false;
+    }
+    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
+    if (!target) return false;
 
+    if (target.remittanceStatus === 'submitted_to_headoffice' || target.remittanceStatus === 'settled') {
+      showToast('⛔ Cannot unlock: Parcel is already in a submitted or settled Remittance Batch.', 'error');
+      return false;
+    }
+    if (target.sellerPayoutStatus === 'disbursed_by_branch' || target.sellerPayoutStatus === 'confirmed_by_customer') {
+      showToast('⛔ Cannot unlock: Seller payout has already been disbursed.', 'error');
+      return false;
+    }
+
+    const existingSettlement = target.paymentSettlement || target.financials?.paymentSettlement;
+    if (!existingSettlement) return false;
+
+    const now = new Date().toISOString();
+    const unlockedSettlement: DeliveryPaymentSettlement = {
+      ...existingSettlement,
+      locked: false,
+      unlockedByAdminAt: now,
+      unlockedByAdminName: currentUser.name
+    };
+
+    const newHistoryItem = {
+      id: `st_unlock_${Date.now()}`,
+      status: target.status,
+      location: 'Main Branch (Central HQ)',
+      branchName: 'Head Office Admin',
+      timestamp: now,
+      note: `[Admin Unlock] Payment settlement #${existingSettlement.reconciliationId} unlocked by ${currentUser.name} for re-verification.${reason ? ` Reason: ${reason}` : ''}`,
+      updatedBy: `${currentUser.name} (Super Admin)`
+    };
+
+    const newHistory = [...(target.statusHistory || []), newHistoryItem];
+    const updatedFinancials: BillingFinancials = {
+      ...target.financials,
+      paymentStatus: 'to_pay',
+      paymentSettlement: unlockedSettlement
+    };
+
+    const updatedShipment: Shipment = {
+      ...target,
+      paymentSettlement: unlockedSettlement,
+      paymentSettlementLocked: false,
+      sellerPayoutStatus: 'pending_delivery',
+      financials: updatedFinancials,
+      statusHistory: newHistory
+    };
+
+    setShipments(prev => prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s));
+    fetch(`/api/shipments/${target.id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: target.status,
+        statusHistory: newHistory,
+        financials: updatedFinancials,
+        userRole: currentUser.role,
+        userBranchId: currentUser.branchId
+      })
+    }).catch(() => {});
+
+    showToast(`🔓 Payment lock removed for CN #${target.cnNumber}. Destination branch can now re-submit payment.`, 'warning');
     return true;
   };
 
@@ -3410,6 +3822,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         disputeSellerPayout,
         submitParcelForCollection,
         updateShipmentStatus,
+        recordDeliveryPaymentSettlement,
+        unlockDeliveryPaymentSettlement,
         recordPrint,
         recordStickerPrint,
         reportDeliveryIssue,

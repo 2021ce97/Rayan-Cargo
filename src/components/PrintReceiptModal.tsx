@@ -367,16 +367,33 @@ export const PrintReceiptModal: React.FC = () => {
                 <p className="text-[7.5px] font-bold mt-1 uppercase tracking-widest">{l('CENTRAL LOGISTICS HUB KABUL • OFFICIAL POS SLIP', 'مرکز لوجستیکی کابل • فیش رسمی')}</p>
               </div>
 
-              {/* CN Number Box */}
-              <div className="border border-black p-1.5 mb-1.5">
-                <div className="flex justify-between items-center text-[8.5px] font-bold text-slate-500 uppercase">
-                  <span>{l('CONSIGNMENT NOTE (CN #)', 'نمبر بارنامه (CN)')}</span>
-                  <span className="text-[7.5px] font-black px-1.5 py-0.5 rounded bg-black/10 text-slate-900">
-                    {(shipment.printCount || 0) === 0 ? 'ORIGINAL #1' : `RE-PRINT #${(shipment.printCount || 0) + 1}`}
+              {/* CN Number & QR Code Box (Side-by-Side: CN on Right, QR on Top-Left) */}
+              <div className="border border-black p-1.5 mb-1.5 flex items-center justify-between gap-2" dir="ltr">
+                {/* Top-Left: Compact Scannable QR Code */}
+                <div className="shrink-0 flex flex-col items-center justify-center p-0.5 bg-white border border-black/20 rounded">
+                  <img 
+                    src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Farmaghan-transfers.vercel.app%2F" 
+                    alt="Armaghan Transfers QR"
+                    className="w-11 h-11 object-contain"
+                    crossOrigin="anonymous"
+                  />
+                  <span className="text-[6.5px] font-bold text-slate-700 leading-none mt-0.5">
+                    {l('Scan to Track', 'اسکن پیگیری')}
                   </span>
                 </div>
-                <div className="text-[18px] font-black font-mono leading-none mt-1">{shipment.cnNumber}</div>
-                <div className="text-[8px] font-bold mt-1 text-center border-t border-black/10 pt-1 tracking-[0.2em]">*{shipment.cnNumber}*</div>
+
+                {/* Top-Right: CN Number & Print Badge (Single CN display, duplicate small *CN* removed) */}
+                <div className="flex-1 text-right flex flex-col items-end justify-center" dir={language === 'dari' ? 'rtl' : 'ltr'}>
+                  <div className="flex items-center justify-between w-full gap-1 text-[8.5px] font-bold text-slate-500 uppercase">
+                    <span>{l('CONSIGNMENT NOTE (CN #)', 'نمبر بارنامه (CN)')}</span>
+                    <span className="text-[7px] font-black px-1.5 py-0.5 rounded bg-black/10 text-slate-900 shrink-0" dir="ltr">
+                      {(shipment.printCount || 0) === 0 ? 'ORIGINAL #1' : `RE-PRINT #${(shipment.printCount || 0) + 1}`}
+                    </span>
+                  </div>
+                  <div className="text-[19px] font-black font-mono leading-none mt-1.5 tracking-tight text-slate-950" dir="ltr">
+                    {shipment.cnNumber}
+                  </div>
+                </div>
               </div>
 
               {/* Compact Route Info */}
@@ -486,20 +503,6 @@ export const PrintReceiptModal: React.FC = () => {
                       <span className="font-bold text-red-700">{l('Complaints & Support:', 'شکایات و پشتیبانی:')}</span>
                       <span className="font-mono font-black text-red-950 mt-0.5" dir="ltr">☎ {formatReceiptPhone('0711299680')}</span>
                     </div>
-                  </div>
-
-                  {/* Real Scannable QR Code at the bottom of the Thermal receipt */}
-                  <div className="my-2 py-1.5 border-t border-b border-dashed border-black/30 flex flex-col items-center justify-center bg-slate-50">
-                    <img 
-                      src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Farmaghan-transfers.vercel.app%2F" 
-                      alt="Armaghan Transfers QR"
-                      className="w-16 h-16 object-contain"
-                      crossOrigin="anonymous"
-                    />
-                    <span className="text-[8px] font-extrabold text-slate-800 tracking-tight mt-1 text-center" style={{ fontSize: '8px', lineHeight: '1.2' }}>
-                      {l('Scan to Track', 'جهت پیگیری بار اسکن کنید')}
-                    </span>
-                    <span className="text-[7px] font-mono text-slate-400 mt-0.5">armaghan-transfers.vercel.app</span>
                   </div>
 
                   <div className="text-[7px] text-slate-500 pt-0.5 flex justify-between items-center">

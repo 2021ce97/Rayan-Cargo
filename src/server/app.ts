@@ -478,23 +478,26 @@ api.get('/shipments', async (req: Request, res: Response) => {
       let financials = typeof r.financials === 'string' ? JSON.parse(r.financials) : (r.financials || {});
       
       const price = Number(financials.productPrice) || Number(packageInfo?.declaredValueAfn) || Number(financials.totalAmount) || 0;
+      const origPrice = Number(financials.originalProductPrice) || Number(financials.paymentSettlement?.originalProductPrice) || Number(packageInfo?.declaredValueAfn) || price || 3000;
       const sFee = typeof financials.serviceFee === 'number' && financials.serviceFee > 0 ? financials.serviceFee : (packageInfo?.isFragile ? 200 : 150);
       const dComm = typeof financials.destBranchCommission === 'number' && financials.destBranchCommission > 0 ? financials.destBranchCommission : 70;
       const discount = Number(financials.discountAmount) || 0;
-      const total = price > 0 ? price : 3000;
+      const total = price > 0 ? price : origPrice;
       const payout = Math.max(0, total - sFee - dComm + discount);
+      const isSettledLocked = Boolean(financials.paymentSettlement?.locked);
 
       financials = {
         ...financials,
+        originalProductPrice: origPrice,
         productPrice: total,
         serviceFee: sFee,
         destBranchCommission: dComm,
         discountAmount: discount,
-        sellerPayout: payout,
+        sellerPayout: isSettledLocked ? (financials.paymentSettlement.reconciledSellerPayout ?? payout) : payout,
         totalAmount: total,
-        amountPaid: financials.paymentStatus === 'paid' || r.status === 'delivered' ? total : (financials.amountPaid || 0),
-        amountDue: financials.paymentStatus === 'paid' || r.status === 'delivered' ? 0 : total,
-        paymentStatus: financials.paymentStatus || (r.status === 'delivered' ? 'paid' : 'to_pay'),
+        amountPaid: isSettledLocked ? (financials.paymentSettlement.actualCollectedAmount ?? total) : (financials.paymentStatus === 'paid' ? total : 0),
+        amountDue: isSettledLocked || financials.paymentStatus === 'paid' ? 0 : total,
+        paymentStatus: isSettledLocked ? (r.status === 'delivered' ? 'paid' : 'unpaid') : (financials.paymentStatus || 'to_pay'),
         paymentMethod: financials.paymentMethod || 'cod'
       };
 
@@ -508,6 +511,8 @@ api.get('/shipments', async (req: Request, res: Response) => {
         receiver: typeof r.receiver === 'string' ? JSON.parse(r.receiver) : r.receiver,
         packageInfo,
         financials,
+        paymentSettlement: financials.paymentSettlement || undefined,
+        paymentSettlementLocked: isSettledLocked,
         status: r.status,
         statusHistory: typeof r.status_history === 'string' ? JSON.parse(r.status_history || '[]') : (r.status_history || []),
         bookedAt: r.booked_at instanceof Date ? r.booked_at.toISOString() : r.booked_at,
@@ -783,19 +788,21 @@ api.patch('/shipments/:id/status', async (req: Request, res: Response) => {
         // Receiver total payable at destination (COD product price)
         const computedTotalPayable = rawProductPrice > 0 ? rawProductPrice : Number(currFinancials.totalAmount || 0);
 
+        const hasLockedSettlement = Boolean(finalFinancials?.paymentSettlement?.locked || currFinancials?.paymentSettlement?.locked);
         const mergedFinancials = {
           ...currFinancials,
           ...(finalFinancials || {}),
+          originalProductPrice: finalFinancials?.originalProductPrice ?? currFinancials?.originalProductPrice ?? rawProductPrice,
           productPrice: rawProductPrice,
           destBranchCommission: computedDestCommission,
           serviceFee: computedServiceFee,
           discountAmount: computedDiscount,
           sellerPayout: computedSellerPayout,
           totalAmount: computedTotalPayable,
-          amountPaid: computedTotalPayable,
-          amountDue: 0,
-          paymentStatus: 'paid',
-          paymentMethod: finalFinancials?.paymentMethod || currFinancials.paymentMethod || 'cash'
+          amountPaid: hasLockedSettlement ? computedTotalPayable : (currFinancials?.amountPaid || 0),
+          amountDue: hasLockedSettlement ? 0 : computedTotalPayable,
+          paymentStatus: hasLockedSettlement ? 'paid' : (finalFinancials?.paymentStatus || currFinancials?.paymentStatus || 'to_pay'),
+          paymentMethod: finalFinancials?.paymentMethod || currFinancials.paymentMethod || 'cod'
         };
 
         const deliveryTimestamp = actualDelivery || new Date().toISOString();
