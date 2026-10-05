@@ -114,11 +114,8 @@ export const CustomerFinances: React.FC = () => {
 
         if (pStatus === 'confirmed_by_customer') {
           totalPaidToCustomerAfn += netPayout;
-        } else if (pStatus === 'disbursed_by_branch') {
-          // Disbursed by branch, awaiting customer receipt confirmation
-          totalPaidToCustomerAfn += netPayout;
         } else {
-          // Ready for payout at branch
+          // If disbursed_by_branch, ready_for_payout, or disputed, count as pending collection
           totalPendingCollectionAfn += netPayout;
           pendingParcelsCount += 1;
         }

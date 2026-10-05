@@ -136,6 +136,44 @@ export const ParcelInventory: React.FC = () => {
   const [payoutVoucherRef, setPayoutVoucherRef] = useState('');
   const [payoutNotes, setPayoutNotes] = useState('');
 
+  const [editablePayoutAmount, setEditablePayoutAmount] = useState<number>(0);
+  const [editableCommission, setEditableCommission] = useState<number>(0);
+  const [editableDiscount, setEditableDiscount] = useState<number>(0);
+
+  useEffect(() => {
+    if (detailsModalShipment) {
+      const pPrice = detailsModalShipment.financials?.productPrice || detailsModalShipment.packageInfo?.declaredValueAfn || 0;
+      const destComm = detailsModalShipment.destBranchCommission !== undefined 
+        ? detailsModalShipment.destBranchCommission 
+        : (detailsModalShipment.financials?.destBranchCommission || 70);
+      const serviceFee = detailsModalShipment.financials?.serviceFee || detailsModalShipment.transportationFee || 150;
+      const discount = detailsModalShipment.financials?.discountAmount || 0;
+      
+      const calcPayout = Math.max(0, pPrice - destComm - serviceFee + discount);
+      setEditablePayoutAmount(calcPayout);
+      setEditableCommission(destComm);
+      setEditableDiscount(discount);
+    }
+  }, [detailsModalShipment]);
+
+  const handleCommissionChange = (val: number) => {
+    setEditableCommission(val);
+    if (detailsModalShipment) {
+      const pPrice = detailsModalShipment.financials?.productPrice || detailsModalShipment.packageInfo?.declaredValueAfn || 0;
+      const serviceFee = detailsModalShipment.financials?.serviceFee || detailsModalShipment.transportationFee || 150;
+      setEditablePayoutAmount(Math.max(0, pPrice - val - serviceFee + editableDiscount));
+    }
+  };
+
+  const handleDiscountChange = (val: number) => {
+    setEditableDiscount(val);
+    if (detailsModalShipment) {
+      const pPrice = detailsModalShipment.financials?.productPrice || detailsModalShipment.packageInfo?.declaredValueAfn || 0;
+      const serviceFee = detailsModalShipment.financials?.serviceFee || detailsModalShipment.transportationFee || 150;
+      setEditablePayoutAmount(Math.max(0, pPrice - editableCommission - serviceFee + val));
+    }
+  };
+
   // Pre-booking confirmation modal state
   const [confirmModalShipment, setConfirmModalShipment] = useState<Shipment | null>(null);
   const [weighedWeight, setWeighedWeight] = useState<number>(1);
@@ -1512,17 +1550,61 @@ export const ParcelInventory: React.FC = () => {
                   </div>
                 ) : (
                   /* Form to record payout */
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/60">
-                      <div>
-                        <span className="text-xs text-slate-500 font-semibold">{language === 'fa' ? 'مبلغ خالص قابل تحویل به فروشنده:' : 'Net Payable Seller Cash:'}</span>
-                        <div className="font-mono font-black text-emerald-700 dark:text-emerald-400 text-lg sm:text-xl">
-                          {Math.max(0, (detailsModalShipment.financials?.productPrice || 0) - (detailsModalShipment.destBranchCommission || 70) - (detailsModalShipment.financials?.serviceFee || 150) + (detailsModalShipment.financials?.discountAmount || 0)).toLocaleString()} AFN
+                  <div className="space-y-4">
+                    {/* Live Financial Breakdown during cash-out confirmation */}
+                    <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/10 border border-emerald-200 dark:border-emerald-900/60 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500 font-semibold">{language === 'fa' ? 'اطلاعات اولیه بارنامه:' : 'Waybill Reference:'}</span>
+                        <span className="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">
+                          {language === 'fa' ? 'قیمت کالا: ' : 'Declared COD: '} 
+                          {((detailsModalShipment.financials?.productPrice) || 0).toLocaleString()} AFN
+                        </span>
+                      </div>
+
+                      {/* Interactive Editable Payout Calculation Fields */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            {language === 'fa' ? 'کمیشن نمایندگی مقصد (AFN):' : 'Deducted Destination Commission:'}
+                          </label>
+                          <input
+                            type="number"
+                            value={editableCommission}
+                            onChange={(e) => handleCommissionChange(Number(e.target.value))}
+                            className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold rounded-xl text-red-600 dark:text-red-400 outline-none focus:border-red-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            {language === 'fa' ? 'تخفیف اعمال شده (AFN):' : 'Applied Discount Amount:'}
+                          </label>
+                          <input
+                            type="number"
+                            value={editableDiscount}
+                            onChange={(e) => handleDiscountChange(Number(e.target.value))}
+                            className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono font-bold rounded-xl text-emerald-600 dark:text-emerald-400 outline-none focus:border-red-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            {language === 'fa' ? 'خالص پرداختی نهایی به مشتری:' : 'Final Net Payout to Customer:'}
+                          </label>
+                          <input
+                            type="number"
+                            value={editablePayoutAmount}
+                            onChange={(e) => setEditablePayoutAmount(Number(e.target.value))}
+                            className="w-full p-2 bg-emerald-500/10 border border-emerald-300 text-xs font-mono font-black rounded-xl text-emerald-700 dark:text-emerald-300 outline-none focus:border-emerald-500"
+                          />
                         </div>
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 max-w-[150px] text-end">
-                        {language === 'fa' ? 'قیمت جنس منهای کمیشن و هزینه خدمات' : 'Product COD minus service & commissions'}
-                      </span>
+
+                      <div className="text-[10px] text-slate-400 leading-relaxed pt-1 text-center font-medium border-t border-emerald-200/50 dark:border-emerald-800/40">
+                        {language === 'fa' 
+                          ? 'تغییر کمیسیون یا تخفیف به طور خودکار مبلغ خالص پرداختی را مجدداً محاسبه می‌کند. همچنین می‌توانید کل مبلغ خالص را مستقیماً ویرایش نمایید.'
+                          : 'Modifying Commission or Discount automatically recalculates Net Payout. You may also override the Net Payout directly.'}
+                      </div>
                     </div>
 
                     {detailsModalShipment.sellerPayoutStatus === 'disputed' && (
@@ -1583,7 +1665,15 @@ export const ParcelInventory: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        const ok = disburseSellerPayout(detailsModalShipment.id, payoutMethod, payoutVoucherRef || undefined, payoutNotes || undefined);
+                        const ok = disburseSellerPayout(
+                          detailsModalShipment.id, 
+                          payoutMethod, 
+                          payoutVoucherRef || undefined, 
+                          payoutNotes || undefined,
+                          editablePayoutAmount,
+                          editableCommission,
+                          editableDiscount
+                        );
                         if (ok) {
                           setPayoutVoucherRef('');
                           setPayoutNotes('');

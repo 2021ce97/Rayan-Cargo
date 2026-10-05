@@ -132,7 +132,7 @@ interface AppContextType {
     note?: string;
   }) => boolean;
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
-  disburseSellerPayout: (shipmentId: string, method: 'cash' | 'hawala' | 'bank_transfer', voucherRef?: string, notes?: string) => boolean;
+  disburseSellerPayout: (shipmentId: string, method: 'cash' | 'hawala' | 'bank_transfer', voucherRef?: string, notes?: string, customPayout?: number, customCommission?: number, customDiscount?: number) => boolean;
   confirmSellerPayoutReceived: (shipmentId: string) => boolean;
   disputeSellerPayout: (shipmentId: string, reason: string) => boolean;
   adminEditShipment: (shipmentId: string, input: AdminEditShipmentInput) => Promise<boolean>;
@@ -2635,16 +2635,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     shipmentId: string, 
     method: 'cash' | 'hawala' | 'bank_transfer', 
     voucherRef?: string, 
-    notes?: string
+    notes?: string,
+    customPayout?: number,
+    customCommission?: number,
+    customDiscount?: number
   ): boolean => {
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) return false;
 
     const now = new Date().toISOString();
     const finalVoucher = voucherRef?.trim() || `PAY-${(target.originBranchId || 'HQ').replace('br_', '').toUpperCase()}-${Date.now().toString().slice(-5)}`;
-    const payoutAmount = target.financials?.sellerPayout !== undefined 
-      ? target.financials.sellerPayout 
-      : Math.max(0, (target.financials?.productPrice || 0) - (target.destBranchCommission || 70) - (target.financials?.serviceFee || 150) + (target.financials?.discountAmount || 0));
+    
+    // Handle custom commission and discount modifications
+    const finalCommission = typeof customCommission === 'number' ? customCommission : (target.destBranchCommission !== undefined ? target.destBranchCommission : (target.financials?.destBranchCommission || 70));
+    const finalDiscount = typeof customDiscount === 'number' ? customDiscount : (target.financials?.discountAmount || 0);
+
+    // Use custom payout value if provided, else fallback to standard calculation
+    const payoutAmount = typeof customPayout === 'number' 
+      ? customPayout 
+      : (target.financials?.sellerPayout !== undefined 
+          ? target.financials.sellerPayout 
+          : Math.max(0, (target.financials?.productPrice || 0) - finalCommission - (target.financials?.serviceFee || 150) + finalDiscount));
 
     const updatedShipment: Shipment = {
       ...target,
@@ -2655,9 +2666,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sellerPayoutDisbursedByBranchId: currentUser.branchId || target.originBranchId,
       sellerPayoutDisbursedByUserName: currentUser.name,
       sellerPayoutNotes: notes?.trim() || '',
+      destBranchCommission: finalCommission,
       financials: {
         ...target.financials,
-        sellerPayout: payoutAmount
+        sellerPayout: payoutAmount,
+        discountAmount: finalDiscount,
+        destBranchCommission: finalCommission
       }
     };
 
@@ -2679,7 +2693,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sellerPayoutVoucherRef: finalVoucher,
         sellerPayoutDisbursedByBranchId: currentUser.branchId || target.originBranchId,
         sellerPayoutDisbursedByUserName: currentUser.name,
-        sellerPayoutNotes: notes?.trim() || ''
+        sellerPayoutNotes: notes?.trim() || '',
+        destBranchCommission: finalCommission,
+        sellerPayout: payoutAmount,
+        discountAmount: finalDiscount
       })
     }).catch(err => console.error('Error recording payout in backend:', err));
 
