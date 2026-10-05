@@ -104,7 +104,7 @@ interface AppContextType {
   shipments: Shipment[];
   expenses: BranchExpense[];
   activeView: ActiveViewType;
-  setActiveView: (view: ActiveViewType) => void;
+  setActiveView: (view: ActiveViewType, forceRole?: string) => void;
   selectedShipmentForReceipt: Shipment | null;
   setSelectedShipmentForReceipt: (shipment: Shipment | null) => void;
   receiptPrintMode: 'a4' | 'thermal';
@@ -1180,13 +1180,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     if (matched.role === 'super_admin') {
       setActiveBranchId('all');
-      setActiveView('dashboard');
+      setActiveView('dashboard', 'super_admin');
     } else if (matched.role === 'customer') {
       setActiveBranchId('customer');
-      setActiveView('customer_portal');
+      setActiveView('customer_portal', 'customer');
     } else {
       setActiveBranchId(matched.branchId);
-      setActiveView('dashboard');
+      setActiveView('dashboard', matched.role);
     }
     setActiveBranchPartnerId('all');
     showToast(`Welcome, ${matched.name}!`);
@@ -1223,7 +1223,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
     setActiveBranchId('customer');
-    setActiveView('customer_portal');
+    setActiveView('customer_portal', 'customer');
 
     // Persist to Supabase Database (both direct client and backend API)
     directSupabaseInsertUser(newUser);
@@ -1682,8 +1682,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return currentUser.role === 'customer' ? 'customer_portal' : 'dashboard';
   });
 
-  const setActiveView = (view: ActiveViewType) => {
-    if (currentUser.role === 'customer' && view !== 'tracking' && view !== 'customer_portal' && view !== 'customer_history' && view !== 'customer_finances') {
+  const setActiveView = (view: ActiveViewType, forceRole?: string) => {
+    const role = forceRole || currentUser.role;
+    if (role === 'customer' && view !== 'tracking' && view !== 'customer_portal' && view !== 'customer_history' && view !== 'customer_finances') {
       setActiveViewState('customer_portal');
       return;
     }

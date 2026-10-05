@@ -1121,6 +1121,66 @@ api.put('/shipments/:id', async (req: Request, res: Response) => {
   }
 });
 
+// Generic partial updates for shipment records (including Financial Clearance fields)
+api.patch('/shipments/:id', async (req: Request, res: Response) => {
+  try {
+    const db = getDbPool();
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Fetch existing row
+    const { rows: existingRows } = await db.query('SELECT * FROM shipments WHERE id = $1', [id]);
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Shipment not found' });
+    }
+    const existing = existingRows[0];
+
+    // Combine updates into existing financials
+    const mergedFin = {
+      ...(typeof existing.financials === 'string' ? JSON.parse(existing.financials) : (existing.financials || {})),
+      ...(updates.financials || {})
+    };
+    if (updates.sellerPayout !== undefined) mergedFin.sellerPayout = Number(updates.sellerPayout);
+    if (updates.discountAmount !== undefined) mergedFin.discountAmount = Number(updates.discountAmount);
+
+    const finalDestCommission = Number(updates.destBranchCommission !== undefined ? updates.destBranchCommission : (existing.dest_branch_commission || mergedFin.destBranchCommission || 70));
+
+    await db.query(
+      `UPDATE shipments SET
+        seller_payout_status = COALESCE($1, seller_payout_status),
+        seller_payout_disbursed_at = COALESCE($2, seller_payout_disbursed_at),
+        seller_payout_method = COALESCE($3, seller_payout_method),
+        seller_payout_voucher_ref = COALESCE($4, seller_payout_voucher_ref),
+        seller_payout_disbursed_by_branch_id = COALESCE($5, seller_payout_disbursed_by_branch_id),
+        seller_payout_disbursed_by_user_name = COALESCE($6, seller_payout_disbursed_by_user_name),
+        seller_payout_notes = COALESCE($7, seller_payout_notes),
+        seller_payout_confirmed_at = COALESCE($8, seller_payout_confirmed_at),
+        seller_payout_dispute_reason = COALESCE($9, seller_payout_dispute_reason),
+        dest_branch_commission = $10,
+        financials = $11::jsonb
+      WHERE id = $12`,
+      [
+        updates.sellerPayoutStatus || null,
+        updates.sellerPayoutDisbursedAt || null,
+        updates.sellerPayoutMethod || null,
+        updates.sellerPayoutVoucherRef || null,
+        updates.sellerPayoutDisbursedByBranchId || null,
+        updates.sellerPayoutDisbursedByUserName || null,
+        updates.sellerPayoutNotes || null,
+        updates.sellerPayoutConfirmedAt || null,
+        updates.sellerPayoutDisputeReason || null,
+        finalDestCommission,
+        JSON.stringify(mergedFin),
+        id
+      ]
+    );
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // 4. Branch Expenses API
 api.get('/expenses', async (req: Request, res: Response) => {
   try {

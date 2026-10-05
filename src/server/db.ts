@@ -815,6 +815,15 @@ CREATE TABLE IF NOT EXISTS shipments (
   print_count INT DEFAULT 0,
   last_printed_at TIMESTAMPTZ,
   last_printed_by TEXT,
+  seller_payout_status TEXT DEFAULT 'ready_for_payout',
+  seller_payout_disbursed_at TIMESTAMPTZ,
+  seller_payout_method TEXT,
+  seller_payout_voucher_ref TEXT,
+  seller_payout_disbursed_by_branch_id TEXT,
+  seller_payout_disbursed_by_user_name TEXT,
+  seller_payout_notes TEXT,
+  seller_payout_confirmed_at TIMESTAMPTZ,
+  seller_payout_dispute_reason TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -955,7 +964,16 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
       `ALTER TABLE shipments ALTER COLUMN remittance_status SET DEFAULT 'pending';`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_submission_at TIMESTAMPTZ;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_submission_reference TEXT;`,
-      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_submission_by TEXT;`
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_submission_by TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_status TEXT DEFAULT 'ready_for_payout';`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_disbursed_at TIMESTAMPTZ;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_method TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_voucher_ref TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_disbursed_by_branch_id TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_disbursed_by_user_name TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_notes TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_confirmed_at TIMESTAMPTZ;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_dispute_reason TEXT;`
     ];
 
     for (const sql of columnMigrations) {
