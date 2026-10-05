@@ -477,7 +477,7 @@ export const PrintReceiptModal: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-1 text-[8px]">
+                   <div className="grid grid-cols-2 gap-1 text-[8px]">
                     <div className="bg-slate-100 p-1 rounded border border-black/15 flex flex-col justify-between">
                       <span className="font-bold text-slate-700">{l('Kabul Head Office:', 'دفتر مرکزی کابل:')}</span>
                       <span className="font-mono font-black text-slate-950 mt-0.5" dir="ltr">☎ {formatReceiptPhone('0774144004')}</span>
@@ -486,6 +486,20 @@ export const PrintReceiptModal: React.FC = () => {
                       <span className="font-bold text-red-700">{l('Complaints & Support:', 'شکایات و پشتیبانی:')}</span>
                       <span className="font-mono font-black text-red-950 mt-0.5" dir="ltr">☎ {formatReceiptPhone('0711299680')}</span>
                     </div>
+                  </div>
+
+                  {/* Real Scannable QR Code at the bottom of the Thermal receipt */}
+                  <div className="my-2 py-1.5 border-t border-b border-dashed border-black/30 flex flex-col items-center justify-center bg-slate-50">
+                    <img 
+                      src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Farmaghan-transfers.vercel.app%2F" 
+                      alt="Armaghan Transfers QR"
+                      className="w-16 h-16 object-contain"
+                      crossOrigin="anonymous"
+                    />
+                    <span className="text-[8px] font-extrabold text-slate-800 tracking-tight mt-1 text-center" style={{ fontSize: '8px', lineHeight: '1.2' }}>
+                      {l('Scan to Track', 'جهت پیگیری بار اسکن کنید')}
+                    </span>
+                    <span className="text-[7px] font-mono text-slate-400 mt-0.5">armaghan-transfers.vercel.app</span>
                   </div>
 
                   <div className="text-[7px] text-slate-500 pt-0.5 flex justify-between items-center">
@@ -606,14 +620,25 @@ export const PrintReceiptModal: React.FC = () => {
                   <p>۲. مسئولیت اموال بر عهده فرستنده است.</p>
                   <p>۳. بل اصلی برای دریافت پول الزامی است.</p>
                 </div>
-                <div className="pt-1 border-t border-black/20 text-start space-y-0.5">
-                  <div className="flex items-center justify-between text-[7.5px] font-bold">
-                    <span className="text-slate-800">{l(`Dest Hub (${destBranch?.city || 'Dest'}):`, `نمایندگی مقصد (${destBranch?.city || 'مقصد'}):`)}</span>
-                    <span className="font-mono font-black" dir="ltr">{formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XX XXX XXX'}</span>
+                <div className="pt-1 border-t border-black/20 flex gap-1.5 items-stretch justify-between text-start">
+                  <div className="flex-1 space-y-0.5">
+                    <div className="flex items-center justify-between text-[7.5px] font-bold">
+                      <span className="text-slate-800">{l(`Dest Hub (${destBranch?.city || 'Dest'}):`, `نمایندگی مقصد (${destBranch?.city || 'مقصد'}):`)}</span>
+                      <span className="font-mono font-black" dir="ltr">{formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XX XXX XXX'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[7px] text-slate-700">
+                      <span>{l('Kabul HQ:', 'مرکز کابل:')} <strong className="font-mono" dir="ltr">{formatReceiptPhone('0774144004')}</strong></span>
+                      <span className="text-red-700">{l('Support:', 'شکایات:')} <strong className="font-mono" dir="ltr">{formatReceiptPhone('0711299680')}</strong></span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-[7px] text-slate-700">
-                    <span>{l('Kabul HQ:', 'مرکز کابل:')} <strong className="font-mono" dir="ltr">{formatReceiptPhone('0774144004')}</strong></span>
-                    <span className="text-red-700">{l('Support:', 'شکایات:')} <strong className="font-mono" dir="ltr">{formatReceiptPhone('0711299680')}</strong></span>
+                  {/* Real Tiny Scannable QR Code on the 80x80 label */}
+                  <div className="shrink-0 flex items-center justify-center p-0.5 bg-white border border-neutral-300 rounded-md">
+                    <img 
+                      src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Farmaghan-transfers.vercel.app%2F" 
+                      alt="QR"
+                      className="w-7 h-7 object-contain"
+                      crossOrigin="anonymous"
+                    />
                   </div>
                 </div>
               </div>
@@ -867,15 +892,30 @@ export const PrintReceiptModal: React.FC = () => {
 
                 {/* Rules & Conditions & QR Code (Shifted directly onto the First Page) */}
                 <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70 flex flex-col justify-between">
-                  <div className="space-y-1.5">
-                    <div className="font-bold text-slate-800 text-xs flex items-center justify-between border-b border-slate-200 pb-1.5">
-                      <span>{l('Terms & Conditions:', 'شرایط و مقررات:')}</span>
-                      <span className="text-[10px] text-red-600 font-mono font-bold">ARMAGHAN SADEQ</span>
+                  <div className="flex gap-2.5">
+                    <div className="flex-1 space-y-1.5">
+                      <div className="font-bold text-slate-800 text-xs flex items-center justify-between border-b border-slate-200 pb-1.5">
+                        <span>{l('Terms & Conditions:', 'شرایط و مقررات:')}</span>
+                        <span className="text-[10px] text-red-600 font-mono font-bold">ARMAGHAN SADEQ</span>
+                      </div>
+                      <div className="text-[9.5px] text-slate-600 space-y-1 leading-tight">
+                        <p className="font-bold">{l('1. Bill valid 1 month. Accuracy is sender duty.', '۱. بل پس از یک ماه فاقد اعتبار است.')}</p>
+                        <p>{l('2. Illegal items forbidden. No company liability.', '۲. ارسال اموال غیرقانونی ممنوع است و شرکت مسئول حوادث نیست.')}</p>
+                        <p>{l('3. Returned items kept 1 month. Receipt required.', '۳. اجناس مسترد شده ۱ ماه نگهداری می‌شود. بل اصلی الزامی است.')}</p>
+                      </div>
                     </div>
-                    <div className="text-[10px] text-slate-600 space-y-1.5 leading-tight">
-                      <p className="font-bold">{l('1. Bill is valid for 1 month. Information accuracy is sender responsibility.', '۱. بل پس از یک ماه فاقد اعتبار بوده و صحت معلومات درجشده در آن بر عهده فرستنده است.')}</p>
-                      <p>{l('2. Illegal items prohibited. No liability for natural disasters or accidents.', '۲. ارسال اموال غیرقانونی ممنوع بوده و مسئولیت آن به عهده فرستنده میباشد؛ شرکت در برابر خسارات ناشی از حوادث طبیعی، آتشسوزی و تصادم مسئول نیست.')}</p>
-                      <p>{l('3. Returned items kept for 1 month. Original receipt required for payment.', '۳. اجناس مستردشده حداکثر یک ماه نگهداری میشود. هنگام دریافت پول، ارائه بل الزامی است و بدون بل پرداخت صورت نمیگیرد.')}</p>
+
+                    {/* Highly Scannable Real QR Code for armaghan-transfers.vercel.app */}
+                    <div className="shrink-0 flex flex-col items-center justify-center p-1.5 bg-white border border-slate-200 rounded-xl shadow-xs self-center">
+                      <img 
+                        src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https%3A%2F%2Farmaghan-transfers.vercel.app%2F" 
+                        alt="Armaghan Transfers System Login QR"
+                        className="w-18 h-18 object-contain"
+                        crossOrigin="anonymous"
+                      />
+                      <span className="text-[7.5px] font-black text-rose-700 tracking-tight text-center mt-1 uppercase" style={{ fontSize: '7.5px', lineHeight: '1' }}>
+                        {l('Scan to Track', 'پیگیری آنلاین')}
+                      </span>
                     </div>
                   </div>
 
