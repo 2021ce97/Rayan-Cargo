@@ -31,6 +31,7 @@ import {
   isSupabaseReady, 
   subscribeToSupabaseRealtime, 
   directSupabaseFetchAll,
+  directSupabaseFetchSingleShipment,
   directSupabaseInsertBranch,
   directSupabaseInsertUser,
   directSupabaseInsertShipment,
@@ -38,7 +39,13 @@ import {
   directSupabaseInsertExpense,
   directSupabaseInsertSettlement,
   directSupabaseWipeDummyData,
-  directSupabaseDeleteShipment
+  directSupabaseDeleteShipment,
+  directSupabaseVerifyUserLogin,
+  mapSupabaseRowToBranch,
+  mapSupabaseRowToUser,
+  mapSupabaseRowToShipment,
+  mapSupabaseRowToExpense,
+  mapSupabaseRowToSettlement
 } from '../lib/supabase';
 
 export interface AddBranchInput {
@@ -850,13 +857,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               if (directData.expenses && Array.isArray(directData.expenses)) {
                 safeSetState(setExpenses, directData.expenses, STORAGE_KEYS.EXPENSES);
               }
+              if (directData.settlements && Array.isArray(directData.settlements)) {
+                safeSetState(setRemittanceTransfers, directData.settlements, STORAGE_KEYS.REMITTANCES);
+              }
             }
           } catch (supErr) {
             console.warn('Direct Supabase fetch query notice:', supErr);
           }
         }
 
-        // 1. Health check
+        // 1. Health check (lightweight connection status check)
         const healthRes = await fetch('/api/health');
         if (healthRes.ok) {
           const healthData = await healthRes.json();
@@ -928,14 +938,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
             }
           }
-        }
 
-        // 6. Fetch Remittances
-        const remRes = await fetch('/api/remittances');
-        if (remRes.ok) {
-          const remData = await remRes.json();
-          if (remData.success && Array.isArray(remData.remittances)) {
-            safeSetState(setRemittanceTransfers, remData.remittances, STORAGE_KEYS.REMITTANCES);
+          // 6. Fetch Remittances (only when directDatabaseSyncSucceeded is false to avoid duplicate queries)
+          const remRes = await fetch('/api/remittances');
+          if (remRes.ok) {
+            const remData = await remRes.json();
+            if (remData.success && Array.isArray(remData.remittances)) {
+              safeSetState(setRemittanceTransfers, remData.remittances, STORAGE_KEYS.REMITTANCES);
+            }
           }
         }
       } catch (err) {
@@ -954,11 +964,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsSyncing(false);
   }, []);
 
-  // Supabase Real-time Channel Subscription (Instantly propagates database changes to all connected devices)
+  // Supabase Real-time Channel Subscription (Granular local state updates — NO full-table refetch)
   useEffect(() => {
     if (!isSupabaseReady()) return;
 
-    let realtimeTimer: any = null;
     const cleanup = subscribeToSupabaseRealtime({
       onStatusChange: (status) => {
         setRealtimeStatus(status as any);
@@ -967,20 +976,150 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       },
       onDataChanged: (table, eventType, newRow, oldRow) => {
-        console.log(`📡 Supabase postgres_changes on ${table} [${eventType}]:`, newRow || oldRow);
-        // Debounce real-time updates to prevent multiple rapid re-renders
-        if (realtimeTimer) clearTimeout(realtimeTimer);
-        realtimeTimer = setTimeout(() => {
-          syncWithDatabase(true);
-        }, 400);
+        console.log(`📡 Supabase postgres_changes on ${table} [${eventType}]`);
+        const evt = (eventType || '').toUpperCase();
+
+        if (table === 'shipments') {
+          if (evt === 'DELETE') {
+            const delId = oldRow?.id;
+            if (!delId) return;
+            setShipments(prev => {
+              if (!prev.some(s => s.id === delId)) return prev;
+              const next = prev.filter(s => s.id !== delId);
+              try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+            return;
+          }
+
+          if (newRow && newRow.id) {
+            // If payload has full shipment info, map directly; if truncated by Realtime, fetch just that single row
+            if (newRow.cn_number && newRow.sender && newRow.receiver) {
+              const mapped = sanitizeShipmentFinancials(mapSupabaseRowToShipment(newRow));
+              setShipments(prev => {
+                const exists = prev.some(s => s.id === mapped.id);
+                const next = exists
+                  ? prev.map(s => s.id === mapped.id ? mapped : s)
+                  : [mapped, ...prev];
+                try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(next)); } catch (_) {}
+                return next;
+              });
+            } else {
+              directSupabaseFetchSingleShipment(newRow.id).then(single => {
+                if (!single) return;
+                const sanitized = sanitizeShipmentFinancials(single);
+                setShipments(prev => {
+                  const exists = prev.some(s => s.id === sanitized.id);
+                  const next = exists
+                    ? prev.map(s => s.id === sanitized.id ? sanitized : s)
+                    : [sanitized, ...prev];
+                  try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(next)); } catch (_) {}
+                  return next;
+                });
+              });
+            }
+          }
+          return;
+        }
+
+        if (table === 'branches') {
+          if (evt === 'DELETE') {
+            const delId = oldRow?.id;
+            if (!delId) return;
+            setBranches(prev => {
+              const next = prev.filter(b => b.id !== delId);
+              try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+            return;
+          }
+          if (newRow && newRow.id) {
+            const mapped = mapSupabaseRowToBranch(newRow);
+            setBranches(prev => {
+              const exists = prev.some(b => b.id === mapped.id);
+              const next = exists ? prev.map(b => b.id === mapped.id ? mapped : b) : [...prev, mapped];
+              try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+          }
+          return;
+        }
+
+        if (table === 'users') {
+          if (evt === 'DELETE') {
+            const delId = oldRow?.id;
+            if (!delId) return;
+            setUsers(prev => {
+              const next = prev.filter(u => u.id !== delId);
+              try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+            return;
+          }
+          if (newRow && newRow.id) {
+            const mapped = mapSupabaseRowToUser(newRow);
+            setUsers(prev => {
+              const existing = prev.find(u => u.id === mapped.id);
+              const merged = existing ? { ...existing, ...mapped, password: existing.password } : mapped;
+              const next = existing ? prev.map(u => u.id === mapped.id ? merged : u) : [...prev, merged];
+              try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+          }
+          return;
+        }
+
+        if (table === 'branch_expenses') {
+          if (evt === 'DELETE') {
+            const delId = oldRow?.id;
+            if (!delId) return;
+            setExpenses(prev => {
+              const next = prev.filter(e => e.id !== delId);
+              try { localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+            return;
+          }
+          if (newRow && newRow.id) {
+            const mapped = mapSupabaseRowToExpense(newRow);
+            setExpenses(prev => {
+              const exists = prev.some(e => e.id === mapped.id);
+              const next = exists ? prev.map(e => e.id === mapped.id ? mapped : e) : [mapped, ...prev];
+              try { localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+          }
+          return;
+        }
+
+        if (table === 'branch_settlements') {
+          if (evt === 'DELETE') {
+            const delId = oldRow?.id;
+            if (!delId) return;
+            setRemittanceTransfers(prev => {
+              const next = prev.filter(r => r.id !== delId);
+              try { localStorage.setItem(STORAGE_KEYS.REMITTANCES, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+            return;
+          }
+          if (newRow && newRow.id) {
+            const mapped = mapSupabaseRowToSettlement(newRow);
+            setRemittanceTransfers(prev => {
+              const exists = prev.some(r => r.id === mapped.id);
+              const next = exists ? prev.map(r => r.id === mapped.id ? { ...r, ...mapped } : r) : [mapped, ...prev];
+              try { localStorage.setItem(STORAGE_KEYS.REMITTANCES, JSON.stringify(next)); } catch (_) {}
+              return next;
+            });
+          }
+        }
       }
     });
 
     return () => {
-      if (realtimeTimer) clearTimeout(realtimeTimer);
       cleanup();
     };
-  }, [syncWithDatabase]);
+  }, []);
 
   // Reset Entire System to Clean Slate (0 Parcels, 0 Expenses, Preserved Branches)
   const resetToCleanSlate = useCallback(async () => {
@@ -1042,7 +1181,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
-  // Sync once on load, purge legacy local storage, and sync every 30 seconds
+  // Sync once on initial load, and only re-sync on window focus if last sync was > 5 minutes ago
   useEffect(() => {
     // Purge old versions of local storage keys if present
     try {
@@ -1058,34 +1197,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('LocalStorage cleanup warning:', e);
     }
 
+    // Initial load sync once on startup
     syncWithDatabase(true);
-    const interval = setInterval(() => syncWithDatabase(true), 5000);
 
-    const handleFocus = () => {
-      syncWithDatabase(true);
-    };
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        syncWithDatabase(true);
+    // Optional focus/visibility refresh ONLY if last sync was more than 5 minutes ago (300,000 ms)
+    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+    const handleStaleVisibilityRefresh = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastSyncTimeRef.current > FIVE_MINUTES_MS) {
+        syncWithDatabase(false);
       }
     };
 
-    let bc: BroadcastChannel | null = null;
-    try {
-      bc = new BroadcastChannel('armaghan_cargo_sync');
-      bc.onmessage = () => {
-        syncWithDatabase(true);
-      };
-    } catch (e) {}
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibility);
+    document.addEventListener('visibilitychange', handleStaleVisibilityRefresh);
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      if (bc) bc.close();
+      document.removeEventListener('visibilitychange', handleStaleVisibilityRefresh);
     };
   }, [syncWithDatabase]);
 
@@ -1095,7 +1221,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleanPhone = identifier.replace(/[^0-9]/g, '');
     const cleanPass = password ? password.trim() : '';
     
-    // Asynchronously verify with server database in background to update cache
+    // Asynchronously verify with server database / targeted Supabase query in background
     fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1104,10 +1230,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .then(res => res.json())
       .then(data => {
         if (data.success && data.user) {
+          const safeUser = { ...data.user };
+          delete safeUser.password;
           setUsers(prev => {
-            const exists = prev.some(u => u.id === data.user.id);
-            if (!exists) return [data.user, ...prev];
-            return prev.map(u => u.id === data.user.id ? { ...u, ...data.user } : u);
+            const exists = prev.some(u => u.id === safeUser.id);
+            if (!exists) return [safeUser, ...prev];
+            return prev.map(u => u.id === safeUser.id ? { ...u, ...safeUser } : u);
           });
         }
       })
@@ -1224,6 +1352,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!passValid) {
+      // Targeted single-user check if user password was changed on another device (since bulk user sync omits passwords)
+      if (cleanPass && isSupabaseReady()) {
+        directSupabaseVerifyUserLogin(matched.id || clean, cleanPass).then(verifiedUser => {
+          if (verifiedUser) {
+            if (portalScope === 'customer' && verifiedUser.role !== 'customer') return;
+            if (portalScope === 'staff' && verifiedUser.role === 'customer') return;
+            loginWithUser(verifiedUser);
+          }
+        });
+      }
       return {
         success: false,
         errorReason: 'invalid_credentials',

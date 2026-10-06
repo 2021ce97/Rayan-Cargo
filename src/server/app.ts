@@ -183,10 +183,16 @@ api.post('/database/sync', async (req: Request, res: Response) => {
 });
 
 // 1. Branches API
+const SQL_BRANCH_COLS = 'id, name, name_fa, name_ps, code, province, city, address, phone, email, manager_name, tazkira_number, is_head_office, active_shipments_count, total_parcels_dispatched, total_parcels_received, total_revenue_afn, created_at';
+const SQL_USER_SAFE_COLS = 'id, name, email, phone, role, branch_id, password_changed_by_branch, last_password_change, status, avatar, created_at, last_login, preferences';
+const SQL_SHIPMENT_COLS = 'id, cn_number, origin_branch_id, destination_branch_id, current_branch_id, sender, receiver, package_info, financials, status, status_history, is_customer_prebooked, is_pre_booking, customer_user_id, booked_at, estimated_delivery, actual_delivery, pod_signature, receiver_id_proof, delivery_notes, booked_by_user_id, booked_by_user_name, dest_branch_commission, remittance_status, origin_remittance_due, customer_submission_at, customer_submission_reference, customer_submission_by, print_count, last_printed_at, last_printed_by';
+const SQL_EXPENSE_COLS = 'id, branch_id, category, amount, description, expense_date, paid_to, receipt_number, created_by_name, created_at';
+const SQL_SETTLEMENT_COLS = 'id, shipment_id, cn_number, origin_branch_id, destination_branch_id, branch_id, gross_collected_amount, dest_branch_commission, transportation_fee, origin_branch_commission, total_commission_kept, net_remitted_amount, commission_adjustment_type, commission_adjustment_amount, commission_adjustment_reason, transport_adjustment_type, transport_adjustment_amount, transport_adjustment_reason, settlement_channel, sarafi_reference_no, settlement_status, settled_by_user_name, settled_at, notes, created_at, parcel_ids';
+
 api.get('/branches', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
-    const { rows } = await db.query('SELECT * FROM branches ORDER BY is_head_office DESC, name ASC');
+    const { rows } = await db.query(`SELECT ${SQL_BRANCH_COLS} FROM branches ORDER BY is_head_office DESC, name ASC`);
     const cleanBranchMap: Record<string, { name: string; nameFa: string; namePs?: string }> = {
       'br_admin_hq': { name: 'Kabul', nameFa: 'کابل', namePs: 'کابل' },
       'br_mzk_02': { name: 'Mazar-i-Sharif', nameFa: 'مزار شریف', namePs: 'مزار شریف' },
@@ -337,11 +343,11 @@ api.delete('/branches/:id', async (req: Request, res: Response) => {
   }
 });
 
-// 2. Users API
+// 2. Users API (Strictly excludes password/password_hash from general listing)
 api.get('/users', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
-    const { rows } = await db.query('SELECT * FROM users ORDER BY created_at ASC');
+    const { rows } = await db.query(`SELECT ${SQL_USER_SAFE_COLS} FROM users ORDER BY created_at ASC`);
     const formatted = rows.map((r: any) => ({
       id: r.id,
       name: r.name,
@@ -349,7 +355,6 @@ api.get('/users', async (req: Request, res: Response) => {
       phone: r.phone,
       role: r.role,
       branchId: r.branch_id,
-      password: r.password,
       passwordChangedByBranch: r.password_changed_by_branch,
       lastPasswordChange: r.last_password_change,
       status: r.status,
@@ -472,7 +477,7 @@ api.post('/users/credentials', async (req: Request, res: Response) => {
 api.get('/shipments', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
-    const { rows } = await db.query('SELECT * FROM shipments ORDER BY booked_at DESC');
+    const { rows } = await db.query(`SELECT ${SQL_SHIPMENT_COLS} FROM shipments ORDER BY booked_at DESC LIMIT 500`);
     const formatted = rows.map((r: any) => {
       const packageInfo = typeof r.package_info === 'string' ? JSON.parse(r.package_info) : r.package_info;
       let financials = typeof r.financials === 'string' ? JSON.parse(r.financials) : (r.financials || {});
@@ -1197,11 +1202,11 @@ api.get('/expenses', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
     const { branchId } = req.query;
-    let query = 'SELECT * FROM branch_expenses ORDER BY expense_date DESC, created_at DESC';
+    let query = `SELECT ${SQL_EXPENSE_COLS} FROM branch_expenses ORDER BY expense_date DESC, created_at DESC LIMIT 500`;
     let params: any[] = [];
 
     if (branchId && branchId !== 'all') {
-      query = 'SELECT * FROM branch_expenses WHERE branch_id = $1 ORDER BY expense_date DESC, created_at DESC';
+      query = `SELECT ${SQL_EXPENSE_COLS} FROM branch_expenses WHERE branch_id = $1 ORDER BY expense_date DESC, created_at DESC LIMIT 500`;
       params = [branchId as string];
     }
 
@@ -1286,7 +1291,7 @@ api.delete('/expenses/:id', async (req: Request, res: Response) => {
 api.get('/settlements', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
-    const { rows } = await db.query('SELECT * FROM branch_settlements ORDER BY settled_at DESC LIMIT 100');
+    const { rows } = await db.query(`SELECT ${SQL_SETTLEMENT_COLS} FROM branch_settlements ORDER BY settled_at DESC LIMIT 100`);
     const formatted = rows.map((r: any) => ({
       id: r.id,
       shipmentId: r.shipment_id,
@@ -1351,7 +1356,7 @@ api.post('/settlements', async (req: Request, res: Response) => {
 api.get('/remittances', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
-    const { rows } = await db.query('SELECT * FROM branch_settlements ORDER BY created_at DESC LIMIT 100');
+    const { rows } = await db.query(`SELECT ${SQL_SETTLEMENT_COLS} FROM branch_settlements ORDER BY created_at DESC LIMIT 100`);
     const formatted = rows.map((r: any) => ({
       id: r.id,
       batchNumber: r.sarafi_reference_no ? `REM-${r.sarafi_reference_no}` : `REM-${r.id.slice(-5)}`,

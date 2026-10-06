@@ -14,10 +14,30 @@ const expressPlugin = (): Plugin => ({
 });
 
 export default defineConfig({
+  resolve: {
+    dedupe: ['react', 'react-dom']
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-dom/client',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'lucide-react',
+      'recharts',
+      'jspdf',
+      'html2canvas-pro',
+      'html2canvas',
+      'html-to-image',
+      'canvas-confetti'
+    ]
+  },
   server: {
     host: '0.0.0.0',
     port: 3000,
-    allowedHosts: true
+    allowedHosts: true,
+    hmr: false
   },
   preview: {
     host: '0.0.0.0',

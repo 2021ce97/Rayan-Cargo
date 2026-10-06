@@ -41,12 +41,9 @@ export const DeliveryPaymentSettlementModal: React.FC<DeliveryPaymentSettlementM
     branches,
     currentUser,
     language,
-    t,
     recordDeliveryPaymentSettlement,
     unlockDeliveryPaymentSettlement
   } = useApp();
-
-  if (!shipment) return null;
 
   const l = (en: string, fa: string, ps?: string) => {
     if (language === 'fa') return fa;
@@ -54,34 +51,37 @@ export const DeliveryPaymentSettlementModal: React.FC<DeliveryPaymentSettlementM
     return en;
   };
 
-  const isEligibleStatus =
-    shipment.status === 'delivered' ||
-    shipment.status === 'returned' ||
-    shipment.status === 'cancelled';
+  const isEligibleStatus = Boolean(
+    shipment && (
+      shipment.status === 'delivered' ||
+      shipment.status === 'returned' ||
+      shipment.status === 'cancelled'
+    )
+  );
 
-  const existingSettlement = shipment.paymentSettlement || shipment.financials?.paymentSettlement;
+  const existingSettlement = shipment?.paymentSettlement || shipment?.financials?.paymentSettlement;
   const isLocked = Boolean(existingSettlement?.locked);
 
-  const origBranch = branches.find(b => b.id === shipment.originBranchId);
-  const destBranch = branches.find(b => b.id === shipment.destinationBranchId);
+  const origBranch = branches.find(b => b.id === shipment?.originBranchId);
+  const destBranch = branches.find(b => b.id === shipment?.destinationBranchId);
 
   const originalProductPrice = Number(
-    shipment.financials?.originalProductPrice ??
+    shipment?.financials?.originalProductPrice ??
     existingSettlement?.originalProductPrice ??
-    shipment.packageInfo?.declaredValueAfn ??
-    shipment.financials?.productPrice ??
-    shipment.financials?.totalAmount ??
+    shipment?.packageInfo?.declaredValueAfn ??
+    shipment?.financials?.productPrice ??
+    shipment?.financials?.totalAmount ??
     0
   );
-  const fixedServiceFee = Number(shipment.financials?.serviceFee ?? shipment.transportationFee ?? 150);
-  const fixedDestCommission = Number(shipment.destBranchCommission ?? shipment.financials?.destBranchCommission ?? 70);
-  const discountAmount = Number(shipment.financials?.discountAmount ?? 0);
+  const fixedServiceFee = Number(shipment?.financials?.serviceFee ?? shipment?.transportationFee ?? 150);
+  const fixedDestCommission = Number(shipment?.destBranchCommission ?? shipment?.financials?.destBranchCommission ?? 70);
+  const discountAmount = Number(shipment?.financials?.discountAmount ?? 0);
 
   // Portion 1: Product Price State
   const [adjustmentType, setAdjustmentType] = useState<PriceAdjustmentType>('exact');
   const [adjustmentAmount, setAdjustmentAmount] = useState<number>(0);
   const [actualCollectedAmount, setActualCollectedAmount] = useState<number>(
-    shipment.status === 'delivered' ? originalProductPrice : 0
+    shipment?.status === 'delivered' ? originalProductPrice : 0
   );
   const [reasonCategory, setReasonCategory] = useState<string>('exact_payment');
   const [reportNote, setReportNote] = useState<string>('');
@@ -100,6 +100,7 @@ export const DeliveryPaymentSettlementModal: React.FC<DeliveryPaymentSettlementM
   const [showFeesPortion, setShowFeesPortion] = useState<boolean>(false);
 
   useEffect(() => {
+    if (!shipment) return;
     if (existingSettlement) {
       setAdjustmentType(existingSettlement.adjustmentType);
       setAdjustmentAmount(existingSettlement.adjustmentAmount);
@@ -142,9 +143,9 @@ export const DeliveryPaymentSettlementModal: React.FC<DeliveryPaymentSettlementM
       setReasonCategory('returned_or_cancelled');
       setReportNote('');
     }
-  }, [shipment.id, shipment.status, originalProductPrice, existingSettlement]);
+  }, [shipment?.id, shipment?.status, originalProductPrice, existingSettlement]);
 
-  if (!isEligibleStatus) return null;
+  if (!shipment || !isEligibleStatus) return null;
 
   // Reason catalogs with tri-lingual labels
   const reasonOptions = {
