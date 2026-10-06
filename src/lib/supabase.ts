@@ -266,22 +266,49 @@ export async function directSupabaseInsertSettlement(settlement: any): Promise<{
   try {
     const row = {
       id: settlement.id,
-      paying_branch_id: settlement.payingBranchId,
-      receiving_branch_id: settlement.receivingBranchId,
+      branch_id: settlement.fromBranchId || settlement.destinationBranchId || settlement.payingBranchId || 'br_admin_hq',
+      paying_branch_id: settlement.payingBranchId || settlement.fromBranchId,
+      receiving_branch_id: settlement.receivingBranchId || settlement.toBranchId || 'br_admin_hq',
       settlement_type: settlement.settlementType || 'origin_split',
-      amount_afn: settlement.amountAfn,
-      shipments_count: settlement.shipmentsCount || 0,
-      shipment_ids: settlement.shipmentIds || [],
-      settlement_date: settlement.settlementDate || new Date().toISOString(),
-      settled_by_user_id: settlement.settledByUserId,
-      settled_by_user_name: settlement.settledByUserName,
+      amount_afn: settlement.amountAfn || settlement.netRemittanceAmountAfn || settlement.netRemittedAmount || 0,
+      shipments_count: settlement.shipmentsCount || settlement.parcelCount || (settlement.parcelIds ? settlement.parcelIds.length : 0),
+      shipment_ids: settlement.shipmentIds || settlement.parcelIds || [],
+      parcel_ids: settlement.parcelIds || settlement.shipmentIds || [],
+      cn_number: settlement.batchNumber || settlement.cnNumber || `REM-${settlement.id}`,
+      origin_branch_id: settlement.originBranchId || 'br_admin_hq',
+      destination_branch_id: settlement.fromBranchId || settlement.destinationBranchId || 'br_admin_hq',
+      gross_collected_amount: settlement.totalCollectedAfn ?? settlement.grossCollectedAmount ?? 0,
+      dest_branch_commission: settlement.destCommissionAfn ?? settlement.destBranchCommission ?? 0,
+      transportation_fee: settlement.transportationFeeAfn ?? settlement.transportationFee ?? 0,
+      origin_branch_commission: settlement.originCommissionAfn ?? settlement.originBranchCommission ?? 0,
+      total_commission_kept: settlement.totalCommissionKeptAfn ?? settlement.totalCommissionKept ?? 0,
+      net_remitted_amount: settlement.netRemittanceAmountAfn ?? settlement.netRemittedAmount ?? settlement.amountAfn ?? 0,
+      
+      // Two Portions Adjustments
+      commission_adjustment_type: settlement.commissionAdjustmentType || 'exact',
+      commission_adjustment_amount: settlement.commissionAdjustmentAmount || 0,
+      commission_adjustment_reason: settlement.commissionAdjustmentReason || '',
+      transport_adjustment_type: settlement.transportAdjustmentType || 'exact',
+      transport_adjustment_amount: settlement.transportAdjustmentAmount || 0,
+      transport_adjustment_reason: settlement.transportAdjustmentReason || '',
+
+      settlement_date: settlement.settlementDate || settlement.submittedAt || new Date().toISOString(),
+      settled_by_user_id: settlement.settledByUserId || settlement.submittedByUserId || null,
+      settled_by_user_name: settlement.settledByUserName || settlement.submittedByUserName || 'Staff',
       reference_number: settlement.referenceNumber || '',
+      sarafi_reference_no: settlement.referenceNumber || '',
       payment_method: settlement.paymentMethod === 'hawala' ? 'sarafi_hawala'
         : settlement.paymentMethod === 'cash_handover' ? 'cash_courier'
         : settlement.paymentMethod === 'treasury' ? 'internal_offset'
-        : settlement.paymentMethod || 'cash',
-      status: settlement.status || 'completed',
-      created_at: settlement.createdAt || new Date().toISOString()
+        : settlement.paymentMethod || 'sarafi_hawala',
+      settlement_channel: settlement.paymentMethod === 'hawala' ? 'sarafi_hawala'
+        : settlement.paymentMethod === 'cash_handover' ? 'cash_courier'
+        : settlement.paymentMethod === 'treasury' ? 'internal_offset'
+        : settlement.paymentMethod || 'sarafi_hawala',
+      status: settlement.status || 'submitted_to_headoffice',
+      settlement_status: settlement.status === 'confirmed_by_headoffice' ? 'settled' : 'pending',
+      notes: settlement.notes || '',
+      created_at: settlement.createdAt || settlement.submittedAt || new Date().toISOString()
     };
 
     const { error } = await client

@@ -471,20 +471,20 @@ export const CustomerFinances: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-start">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full min-w-[760px] text-xs text-start">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60 text-[11px] font-bold text-slate-600 dark:text-slate-300">
                   <th className="py-3.5 px-4 text-start">#</th>
                   <th className="py-3.5 px-4 text-start">{t('your_cn_lbl') || 'Waybill CN'}</th>
-                  <th className="py-3.5 px-4 text-start">{language === 'fa' ? 'مسیر و گیرنده' : 'Route & Receiver'}</th>
-                  <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'وزن تأیید شده' : 'Confirmed Weight'}</th>
-                  <th className="py-3.5 px-4 text-end">{language === 'fa' ? 'ارزش جنس (فروش)' : 'Product Price'}</th>
-                  <th className="py-3.5 px-4 text-end">{language === 'fa' ? 'کمیشن نمایندگی' : 'Branch Comm.'}</th>
-                  <th className="py-3.5 px-4 text-end">{language === 'fa' ? 'کرایه انتقال' : 'Freight Fee'}</th>
-                  <th className="py-3.5 px-4 text-end font-black text-slate-900 dark:text-white">{language === 'fa' ? 'خالص قابل پرداخت' : 'Net Payout'}</th>
-                  <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'وضعیت تصفیه مالی' : 'Clearance Status'}</th>
-                  <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'عملیات و تأیید' : 'Action & Confirmation'}</th>
+                  <th className="py-3.5 px-4 text-start">{language === 'fa' ? 'مسیر و گیرنده' : language === 'ps' ? 'لاره او اخیستونکی' : 'Route & Receiver'}</th>
+                  <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'وزن تأیید شده' : language === 'ps' ? 'تایید شوی وزن' : 'Confirmed Weight'}</th>
+                  <th className="py-3.5 px-4 text-end">{language === 'fa' ? 'ارزش جنس (فروش)' : language === 'ps' ? 'د جنس بیه (پلور)' : 'Product Price'}</th>
+                  <th className="py-3.5 px-4 text-end">{language === 'fa' ? 'کمیشن نمایندگی' : language === 'ps' ? 'د څانګې کمیشن' : 'Branch Comm.'}</th>
+                  <th className="py-3.5 px-4 text-end">{language === 'fa' ? 'کرایه انتقال' : language === 'ps' ? 'د لېږد کرایه' : 'Freight Fee'}</th>
+                  <th className="py-3.5 px-4 text-end font-black text-slate-900 dark:text-white">{language === 'fa' ? 'خالص قابل پرداخت' : language === 'ps' ? 'خالصې تادیه کېدونکې پیسې' : 'Net Payout'}</th>
+                  <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'وضعیت تصفیه مالی' : language === 'ps' ? 'د مالي تصفیې حالت' : 'Clearance Status'}</th>
+                  <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'عملیات و تأیید' : language === 'ps' ? 'کړنې او تایید' : 'Action & Confirmation'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -540,7 +540,7 @@ export const CustomerFinances: React.FC = () => {
                           {s.packageInfo?.weightKg || 0} kg
                         </span>
                         <div className="text-[10px] text-slate-400 mt-0.5">
-                          {s.packageInfo?.pieces || 1} {language === 'fa' ? 'قطعه' : 'pcs'}
+                          {s.packageInfo?.pieces || 1} {language === 'fa' ? 'قطعه' : language === 'ps' ? 'دانې' : 'pcs'}
                         </div>
                       </td>
 
@@ -565,7 +565,7 @@ export const CustomerFinances: React.FC = () => {
                           <div className="inline-flex flex-col items-center">
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-200 border border-teal-300 dark:border-teal-800 flex items-center gap-1">
                               <CheckCheck className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{language === 'fa' ? 'تسویه کامل شد' : 'Fully Cleared'}</span>
+                              <span>{language === 'fa' ? 'تسویه کامل شد' : language === 'ps' ? 'تصفیه بشپړه شوه' : 'Fully Cleared'}</span>
                             </span>
                             {s.sellerPayoutConfirmedAt && (
                               <span className="text-[9px] text-slate-400 mt-0.5 font-mono">
@@ -579,10 +579,10 @@ export const CustomerFinances: React.FC = () => {
                           <div className="inline-flex flex-col items-center">
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-300 dark:border-blue-800 flex items-center gap-1">
                               <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                              <span>{language === 'fa' ? 'شعبه پرداخت کرد' : 'Disbursed by Branch'}</span>
+                              <span>{language === 'fa' ? 'شعبه پرداخت کرد' : language === 'ps' ? 'څانګې تادیه کړه' : 'Disbursed by Branch'}</span>
                             </span>
                             <span className="text-[9px] text-blue-600 font-semibold mt-0.5">
-                              {language === 'fa' ? 'لطفاً تأیید نمایید' : 'Please confirm'}
+                              {language === 'fa' ? 'لطفاً تأیید نمایید' : language === 'ps' ? 'مهرباني وکړئ تایید کړئ' : 'Please confirm'}
                             </span>
                           </div>
                         )}
@@ -591,7 +591,7 @@ export const CustomerFinances: React.FC = () => {
                           <div className="inline-flex flex-col items-center">
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>{language === 'fa' ? 'آماده تحویل در شعبه' : 'Ready at Origin Branch'}</span>
+                              <span>{language === 'fa' ? 'آماده تحویل در شعبه' : language === 'ps' ? 'په څانګه کې تسلیمۍ ته چمتو' : 'Ready at Origin Branch'}</span>
                             </span>
                             <span className="text-[9px] text-slate-400 mt-0.5">
                               {getBranchName(s.originBranchId)}
@@ -603,7 +603,7 @@ export const CustomerFinances: React.FC = () => {
                           <div className="inline-flex flex-col items-center">
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              <span>{language === 'fa' ? 'در راه (در حال انتقال)' : 'In Transit'}</span>
+                              <span>{language === 'fa' ? 'در راه (در حال انتقال)' : language === 'ps' ? 'په لاره (انتقال روان دی)' : 'In Transit'}</span>
                             </span>
                           </div>
                         )}
@@ -612,7 +612,7 @@ export const CustomerFinances: React.FC = () => {
                           <div className="inline-flex flex-col items-center">
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200 border border-red-300 dark:border-red-800 flex items-center gap-1">
                               <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
-                              <span>{language === 'fa' ? 'در حال بررسی مغایرت' : 'Dispute Under Review'}</span>
+                              <span>{language === 'fa' ? 'در حال بررسی مغایرت' : language === 'ps' ? 'د اختلافي څېړنې لاندې' : 'Dispute Under Review'}</span>
                             </span>
                           </div>
                         )}
@@ -628,10 +628,10 @@ export const CustomerFinances: React.FC = () => {
                                 type="button"
                                 onClick={() => confirmSellerPayoutReceived(s.id)}
                                 className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs flex items-center gap-1 transition-all cursor-pointer"
-                                title={language === 'fa' ? 'تأیید دریافت فیزیکی پول از شعبه' : 'Confirm Cash Handed Over'}
+                                title={language === 'fa' ? 'تأیید دریافت فیزیکی پول از شعبه' : language === 'ps' ? 'له څانګې د نغدو پیسو اخیستل تاییدول' : 'Confirm Cash Handed Over'}
                               >
                                 <Check className="w-3.5 h-3.5" />
-                                <span>{language === 'fa' ? 'تأیید دریافت وجه' : 'Confirm Received'}</span>
+                                <span>{language === 'fa' ? 'تأیید دریافت وجه' : language === 'ps' ? 'د پیسو اخیستل تاییدول' : 'Confirm Received'}</span>
                               </button>
 
                               <button
@@ -641,10 +641,10 @@ export const CustomerFinances: React.FC = () => {
                                   setDisputeReason('');
                                 }}
                                 className="px-2 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-50 text-red-600 dark:hover:bg-red-950/40 text-xs font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-                                title={language === 'fa' ? 'پول را تحویل نگرفته‌ام / ثبت اعتراض' : 'Did not receive cash / dispute'}
+                                title={language === 'fa' ? 'پول را تحویل نگرفته‌ام / ثبت اعتراض' : language === 'ps' ? 'پیسې مې نه دي اخیستي / شکایت' : 'Did not receive cash / dispute'}
                               >
                                 <AlertCircle className="w-3.5 h-3.5" />
-                                <span>{language === 'fa' ? 'نگرفته‌ام' : 'Not Received'}</span>
+                                <span>{language === 'fa' ? 'نگرفته‌ام' : language === 'ps' ? 'نه دي ترلاسه شوي' : 'Not Received'}</span>
                               </button>
                             </>
                           )}
@@ -652,7 +652,7 @@ export const CustomerFinances: React.FC = () => {
                           {/* If ready at branch, guide customer to visit branch */}
                           {pStatus === 'ready_for_payout' && (
                             <div className="text-[11px] text-slate-500 font-medium">
-                              <span>{language === 'fa' ? 'مراجعه به نمایندگی ' : 'Visit branch: '}</span>
+                              <span>{language === 'fa' ? 'مراجعه به نمایندگی ' : language === 'ps' ? 'څانګې ته ورتلل: ' : 'Visit branch: '}</span>
                               <strong className="text-slate-800 dark:text-slate-200">{getBranchName(s.originBranchId)}</strong>
                             </div>
                           )}
@@ -668,7 +668,7 @@ export const CustomerFinances: React.FC = () => {
                               className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-semibold cursor-pointer flex items-center gap-1"
                             >
                               <Search className="w-3 h-3" />
-                              <span>{language === 'fa' ? 'پیگیری' : 'Track'}</span>
+                              <span>{language === 'fa' ? 'پیگیری' : language === 'ps' ? 'پلټنه' : 'Track'}</span>
                             </button>
                           )}
 
@@ -676,14 +676,14 @@ export const CustomerFinances: React.FC = () => {
                           {pStatus === 'confirmed_by_customer' && (
                             <span className="text-[11px] text-teal-600 dark:text-teal-400 font-bold flex items-center gap-1">
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>{language === 'fa' ? 'حساب تصفیه شد' : 'Account Settled'}</span>
+                              <span>{language === 'fa' ? 'حساب تصفیه شد' : language === 'ps' ? 'حساب تصفیه شو' : 'Account Settled'}</span>
                             </span>
                           )}
 
                           {/* If in dispute */}
                           {pStatus === 'disputed' && (
                             <span className="text-[10px] text-red-600 font-semibold" title={s.sellerPayoutDisputeReason}>
-                              {language === 'fa' ? 'اطلاع به مدیر کل داده شد' : 'Notified Super Admin'}
+                              <span>{language === 'fa' ? 'اطلاع به مدیر کل داده شد' : language === 'ps' ? 'عمومي مدیر ته خبر ورکړل شو' : 'Notified Super Admin'}</span>
                             </span>
                           )}
 

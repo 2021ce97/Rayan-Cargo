@@ -824,6 +824,8 @@ CREATE TABLE IF NOT EXISTS shipments (
   seller_payout_notes TEXT,
   seller_payout_confirmed_at TIMESTAMPTZ,
   seller_payout_dispute_reason TEXT,
+  payment_settlement JSONB,
+  payment_settlement_locked BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -867,6 +869,12 @@ CREATE TABLE IF NOT EXISTS branch_settlements (
   dest_commissions_earned NUMERIC DEFAULT 0,
   branch_expenses_deducted NUMERIC DEFAULT 0,
   net_remitted_amount NUMERIC DEFAULT 0,
+  commission_adjustment_type TEXT DEFAULT 'exact',
+  commission_adjustment_amount NUMERIC DEFAULT 0,
+  commission_adjustment_reason TEXT,
+  transport_adjustment_type TEXT DEFAULT 'exact',
+  transport_adjustment_amount NUMERIC DEFAULT 0,
+  transport_adjustment_reason TEXT,
   settlement_channel TEXT DEFAULT 'sarafi_hawala',
   sarafi_reference_no TEXT,
   settlement_status TEXT DEFAULT 'settled',
@@ -959,6 +967,12 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
       `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS transportation_fee NUMERIC DEFAULT 0;`,
       `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS origin_branch_commission NUMERIC DEFAULT 0;`,
       `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS total_commission_kept NUMERIC DEFAULT 0;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS commission_adjustment_type TEXT DEFAULT 'exact';`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS commission_adjustment_amount NUMERIC DEFAULT 0;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS commission_adjustment_reason TEXT;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS transport_adjustment_type TEXT DEFAULT 'exact';`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS transport_adjustment_amount NUMERIC DEFAULT 0;`,
+      `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS transport_adjustment_reason TEXT;`,
       `ALTER TABLE branch_settlements ADD COLUMN IF NOT EXISTS parcel_ids JSONB DEFAULT '[]'::jsonb;`,
       `ALTER TABLE branch_settlements ALTER COLUMN branch_id SET DEFAULT 'br_admin_hq';`,
       `ALTER TABLE shipments ALTER COLUMN remittance_status SET DEFAULT 'pending';`,
@@ -973,7 +987,9 @@ export async function migrateSupabaseSchema(pool: pg.Pool): Promise<void> {
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_disbursed_by_user_name TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_notes TEXT;`,
       `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_confirmed_at TIMESTAMPTZ;`,
-      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_dispute_reason TEXT;`
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS seller_payout_dispute_reason TEXT;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS payment_settlement JSONB;`,
+      `ALTER TABLE shipments ADD COLUMN IF NOT EXISTS payment_settlement_locked BOOLEAN DEFAULT false;`
     ];
 
     for (const sql of columnMigrations) {

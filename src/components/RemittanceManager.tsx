@@ -22,10 +22,15 @@ import {
   Boxes,
   HelpCircle,
   Inbox,
-  Lock
+  Lock,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  TrendingDown,
+  Equal
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { BranchRemittanceTransfer, Shipment } from '../types';
+import { BranchRemittanceTransfer, Shipment, PriceAdjustmentType } from '../types';
 import { printElementUsingIframe } from '../utils/pdfExport';
 import { DeliveryPaymentSettlementModal } from './DeliveryPaymentSettlementModal';
 
@@ -44,6 +49,8 @@ export const RemittanceManager: React.FC = () => {
     rejectRemittanceByHeadOffice,
     branchOwedToHeadOffice,
     branchEarnedCommissions,
+    branchTotalSubmittedRemittances,
+    branchTotalConfirmedSettledRemittances,
     headOfficePendingRemittancesTotal,
     headOfficeSettledRevenueTotal,
     activeBranchId,
@@ -81,6 +88,7 @@ export const RemittanceManager: React.FC = () => {
   );
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('all');
+  const [showMoneyGuide, setShowMoneyGuide] = useState<boolean>(false);
 
   // Remit submission modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -88,21 +96,52 @@ export const RemittanceManager: React.FC = () => {
   const [customOriginBranchId, setCustomOriginBranchId] = useState<string>('br_admin_hq');
   const [customDestBranchId, setCustomDestBranchId] = useState<string>('br_herat');
   const [customTotalCollected, setCustomTotalCollected] = useState<number>(100);
-  const [customCommission, setCustomCommission] = useState<number>(30);
-  const [customNetToHq, setCustomNetToHq] = useState<number>(50);
+  
+  // Portion 1: Commission Details & Adjustments (Extra [+] / Less [-])
+  const [customBaseCommission, setCustomBaseCommission] = useState<number>(30);
+  const [commissionAdjType, setCommissionAdjType] = useState<PriceAdjustmentType>('exact');
+  const [commissionAdjAmount, setCommissionAdjAmount] = useState<number>(0);
+  const [commissionAdjReason, setCommissionAdjReason] = useState<string>('exact_commission');
+
+  // Portion 2: Transportation & Extra Service Fee Adjustments (Extra [+] / Less [-])
+  const [customBaseTransport, setCustomBaseTransport] = useState<number>(0);
+  const [transportAdjType, setTransportAdjType] = useState<PriceAdjustmentType>('exact');
+  const [transportAdjAmount, setTransportAdjAmount] = useState<number>(0);
+  const [transportAdjReason, setTransportAdjReason] = useState<string>('exact_transport');
+
   const [paymentMethod, setPaymentMethod] = useState<'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury'>('hawala');
   const [refNumber, setRefNumber] = useState('');
   const [agentName, setAgentName] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Recompute net to HQ whenever any money parameter changes
-  const recomputeNetToHq = (
-    collected: number,
-    destComm: number
-  ) => {
-    const net = Math.max(0, collected - destComm);
-    setCustomNetToHq(net);
-  };
+  // Effective Destination Commission retained by branch
+  const effectiveCommission = useMemo(() => {
+    let comm = Math.max(0, customBaseCommission);
+    if (commissionAdjType === 'extra') {
+      comm += Math.max(0, commissionAdjAmount);
+    } else if (commissionAdjType === 'less') {
+      comm = Math.max(0, comm - Math.max(0, commissionAdjAmount));
+    }
+    return comm;
+  }, [customBaseCommission, commissionAdjType, commissionAdjAmount]);
+
+  // Effective Transportation Fee
+  const effectiveTransport = useMemo(() => {
+    let trans = Math.max(0, customBaseTransport);
+    if (transportAdjType === 'extra') {
+      trans += Math.max(0, transportAdjAmount);
+    } else if (transportAdjType === 'less') {
+      trans = Math.max(0, trans - Math.max(0, transportAdjAmount));
+    }
+    return trans;
+  }, [customBaseTransport, transportAdjType, transportAdjAmount]);
+
+  // Net Remittance Amount to send to Main Branch (HQ)
+  const calculatedNetToHq = useMemo(() => {
+    // Destination branch retains ONLY its effective commission.
+    // All other collected funds (including product price and transportation fees) are remitted to Main Branch HQ.
+    return Math.max(0, customTotalCollected - effectiveCommission);
+  }, [customTotalCollected, effectiveCommission]);
 
   // Open modal for single or batch
   const handleOpenRemitModal = (parcels: Shipment[]) => {
@@ -110,35 +149,43 @@ export const RemittanceManager: React.FC = () => {
     const ids = parcels.map(p => p.id);
     setSelectedParcelIds(ids);
 
-    const totalColl = parcels.reduce((sum, p) => sum + (p.financials?.productPrice || p.financials?.totalAmount || 0), 0);
+    const totalColl = parcels.reduce((sum, p) => {
+      const settlement = p.paymentSettlement || p.financials?.paymentSettlement;
+      return sum + (settlement?.locked ? settlement.actualCollectedAmount : (p.financials?.totalAmount || p.financials?.productPrice || 0));
+    }, 0);
+
     const totalComm = parcels.reduce((sum, p) => {
+      const settlement = p.paymentSettlement || p.financials?.paymentSettlement;
+      if (settlement?.locked) return sum + settlement.fixedDestCommission;
       const comm = p.financials?.destBranchCommission || p.destBranchCommission || 70;
       return sum + comm;
     }, 0);
+
+    const totalTrans = parcels.reduce((sum, p) => {
+      const settlement = p.paymentSettlement || p.financials?.paymentSettlement;
+      if (settlement?.locked) return sum + settlement.fixedServiceFee;
+      return sum + (p.financials?.serviceFee || p.transportationFee || 150);
+    }, 0);
     
     const firstParcel = parcels[0];
-    const net = Math.max(0, totalColl - totalComm);
 
     setCustomOriginBranchId(firstParcel?.originBranchId || 'br_admin_hq');
     setCustomDestBranchId(firstParcel?.destinationBranchId || currentBranchId || 'br_herat');
     setCustomTotalCollected(totalColl);
-    setCustomCommission(totalComm);
-    setCustomNetToHq(net);
+    setCustomBaseCommission(totalComm);
+    setCommissionAdjType('exact');
+    setCommissionAdjAmount(0);
+    setCommissionAdjReason('exact_commission');
+
+    setCustomBaseTransport(totalTrans);
+    setTransportAdjType('exact');
+    setTransportAdjAmount(0);
+    setTransportAdjReason('exact_transport');
+
     setRefNumber(`HAW-${Math.floor(100000 + Math.random() * 900000)}`);
     setAgentName('Sarafi Khorasan / Kabul Central');
     setNotes(`Settlement for ${parcels.length} parcel(s) delivered by ${currentBranch?.name || 'Branch'}.`);
     setIsCreateModalOpen(true);
-  };
-
-  // Handlers for manual edits
-  const handleTotalCollectedChange = (newTotal: number) => {
-    setCustomTotalCollected(newTotal);
-    recomputeNetToHq(newTotal, customCommission);
-  };
-
-  const handleCommissionChange = (newComm: number) => {
-    setCustomCommission(newComm);
-    recomputeNetToHq(customTotalCollected, newComm);
   };
 
   // Submit Remittance
@@ -151,15 +198,21 @@ export const RemittanceManager: React.FC = () => {
       selectedParcelIds,
       fromBr,
       customTotalCollected,
-      customCommission,
-      customNetToHq,
+      customBaseCommission,
+      calculatedNetToHq,
       paymentMethod,
       refNumber,
       agentName,
       notes,
-      0, // transportationFee
+      customBaseTransport,
       0, // originCommission
-      customOriginBranchId
+      customOriginBranchId,
+      commissionAdjType,
+      commissionAdjAmount,
+      commissionAdjReason,
+      transportAdjType,
+      transportAdjAmount,
+      transportAdjReason
     );
 
     if (accepted) {
@@ -288,40 +341,102 @@ export const RemittanceManager: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Button */}
-        {!isSuperAdmin && (
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => handleOpenRemitModal(pendingDeliveredShipments)}
-            disabled={pendingDeliveredShipments.length === 0}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer ${
-              pendingDeliveredShipments.length > 0
-                ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700'
-            }`}
+            type="button"
+            onClick={() => setShowMoneyGuide(!showMoneyGuide)}
+            className="px-3.5 py-2.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
           >
-            <Send className="w-4 h-4" />
-            <span>{t('remit_all_delivered_btn')} ({pendingDeliveredShipments.length})</span>
+            <HelpCircle className="w-4 h-4 text-amber-500" />
+            <span>{t('how_money_works_title')}</span>
+            {showMoneyGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
-        )}
 
-        {isSuperAdmin && (
-          <button
-            onClick={() => {
-              setSelectedParcelIds([]);
-              setCustomTotalCollected(100);
-              setCustomCommission(30);
-              setCustomNetToHq(70);
-              setRefNumber(`HAW-${Math.floor(100000 + Math.random() * 900000)}`);
-              setAgentName('Sarafi Central');
-              setIsCreateModalOpen(true);
-            }}
-            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-600 dark:hover:bg-amber-700 font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{t('create_test_remittance_btn')}</span>
-          </button>
-        )}
+          {!isSuperAdmin && (
+            <button
+              onClick={() => handleOpenRemitModal(pendingDeliveredShipments)}
+              disabled={pendingDeliveredShipments.length === 0}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer ${
+                pendingDeliveredShipments.length > 0
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+              <span>{t('remit_all_delivered_btn')} ({pendingDeliveredShipments.length})</span>
+            </button>
+          )}
+
+          {isSuperAdmin && (
+            <button
+              onClick={() => {
+                setSelectedParcelIds([]);
+                setCustomTotalCollected(100);
+                setCustomBaseCommission(30);
+                setCommissionAdjType('exact');
+                setCommissionAdjAmount(0);
+                setCommissionAdjReason('exact_commission');
+                setCustomBaseTransport(20);
+                setTransportAdjType('exact');
+                setTransportAdjAmount(0);
+                setTransportAdjReason('exact_transport');
+                setRefNumber(`HAW-${Math.floor(100000 + Math.random() * 900000)}`);
+                setAgentName('Sarafi Central');
+                setIsCreateModalOpen(true);
+              }}
+              className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-amber-600 dark:hover:bg-amber-700 font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{t('create_test_remittance_btn')}</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Collapsible Educational Guide: How the Money System Works */}
+      {showMoneyGuide && (
+        <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-slate-50 to-emerald-500/10 dark:from-amber-950/30 dark:via-slate-900 dark:to-emerald-950/30 border border-amber-200 dark:border-amber-800/60 shadow-sm animate-in fade-in duration-200 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Banknote className="w-4 h-4 text-amber-600" />
+              <span>{t('how_money_works_title')}</span>
+            </h3>
+            <button
+              onClick={() => setShowMoneyGuide(false)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+              <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-400 tracking-wider">Step 1</span>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                {t('step1_cash_collected')}
+              </p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+              <span className="text-[10px] font-black uppercase text-blue-700 dark:text-blue-400 tracking-wider">Step 2</span>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                {t('step2_remit_deduct')}
+              </p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+              <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 tracking-wider">Step 3</span>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                {t('step3_hq_confirm')}
+              </p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+              <span className="text-[10px] font-black uppercase text-purple-700 dark:text-purple-400 tracking-wider">Step 4</span>
+              <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                {t('step4_seller_payout')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -385,30 +500,13 @@ export const RemittanceManager: React.FC = () => {
           </>
         ) : (
           <>
-            {/* Branch operational visibility */}
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>{t('stat_branch_parcels')}</span>
-                <Boxes className="w-4 h-4 text-red-600" />
-              </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">{branchShipments.length}</div>
-              <p className="text-[11px] text-slate-500">{t('stat_branch_parcels_desc')}</p>
-            </div>
-            <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>{t('stat_branch_customers')}</span>
-                <Building2 className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">{branchCustomerCount}</div>
-              <p className="text-[11px] text-slate-500">{t('stat_branch_customers_desc')}</p>
-            </div>
-            {/* Branch Stat 1: Ready to Remit to HQ */}
+            {/* Branch Stat 1: Ready to Remit to HQ (Cash on hand from delivered parcels) */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-400">
                 <span>{t('stat_owed_to_main_branch')}</span>
                 <Banknote className="w-4 h-4" />
               </div>
-              <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
+              <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
                 {branchOwedToHeadOffice.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -416,13 +514,13 @@ export const RemittanceManager: React.FC = () => {
               </p>
             </div>
 
-            {/* Branch Stat 2: My Earned Commissions */}
+            {/* Branch Stat 2: My Earned Commissions (Kept in branch profit) */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-400">
                 <span>{t('stat_my_earned_commission')}</span>
                 <CheckCircle2 className="w-4 h-4" />
               </div>
-              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
                 {branchEarnedCommissions.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -430,31 +528,31 @@ export const RemittanceManager: React.FC = () => {
               </p>
             </div>
 
-            {/* Branch Stat 3: Submitted to HQ (In Review) */}
+            {/* Branch Stat 3: Total Submitted to HQ (In Review) */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-blue-700 dark:text-blue-400">
-                <span>{t('stat_submitted_to_hq')}</span>
+                <span>{t('stat_total_submitted_hq')}</span>
                 <Clock className="w-4 h-4" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
-                {remittanceTransfers.filter(r => r.fromBranchId === currentBranchId && r.status === 'submitted_to_headoffice').reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0).toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {branchTotalSubmittedRemittances.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 {remittanceTransfers.filter(r => r.fromBranchId === currentBranchId && r.status === 'submitted_to_headoffice').length} {t('stat_submitted_to_hq_desc')}
               </p>
             </div>
 
-            {/* Branch Stat 4: Settled & Cleared by HQ */}
+            {/* Branch Stat 4: Total Confirmed & Settled with HQ */}
             <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                <span>{t('stat_settled_with_hq')}</span>
+                <span>{t('stat_total_confirmed_hq')}</span>
                 <Receipt className="w-4 h-4 text-emerald-600" />
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white">
-                {remittanceTransfers.filter(r => r.fromBranchId === currentBranchId && r.status === 'confirmed_by_headoffice').reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0).toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {branchTotalConfirmedSettledRemittances.toLocaleString()} <span className="text-xs font-normal text-slate-500">AFN</span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {t('stat_settled_with_hq_desc')}
+                {remittanceTransfers.filter(r => r.fromBranchId === currentBranchId && r.status === 'confirmed_by_headoffice').length} {t('stat_total_confirmed_hq_desc')}
               </p>
             </div>
           </>
@@ -913,27 +1011,24 @@ export const RemittanceManager: React.FC = () => {
               </button>
             </div>
 
-            {/* Live Financial Breakdown Card */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
+            {/* Live Financial Breakdown Card with Two Portions */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-4">
               <div className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center justify-between">
                 <span>{t('financial_calc_matrix_title')}</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">
+                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold">
                   {t('kabul_hq_owner_lbl')}
                 </span>
               </div>
 
               {/* Branch Route Selectors if manually creating */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
                     {t('origin_hub_lbl')}:
                   </label>
                   <select
                     value={customOriginBranchId}
-                    onChange={(e) => {
-                      const orig = e.target.value;
-                      setCustomOriginBranchId(orig);
-                    }}
+                    onChange={(e) => setCustomOriginBranchId(e.target.value)}
                     className="w-full h-8 px-2 font-medium bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
                   >
                     {branches.map(b => (
@@ -958,84 +1053,303 @@ export const RemittanceManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Grid of Money Inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {/* 1. Total collected input */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {t('input_collected_from_receiver')}:
-                  </label>
+              {/* Top Input: Total Collected from Receiver */}
+              <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                  {t('input_collected_from_receiver')}:
+                </label>
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
                     min="0"
                     value={customTotalCollected}
-                    onChange={(e) => handleTotalCollectedChange(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full h-9 px-3 font-mono font-black text-sm bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
+                    onChange={(e) => setCustomTotalCollected(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="flex-1 h-9 px-3 font-mono font-black text-sm bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white"
                     placeholder="100"
                   />
-                  <span className="text-[9px] text-slate-500">{t('input_total_cash_collected_sub')}</span>
+                  <span className="text-xs font-bold text-slate-500 font-mono">AFN</span>
                 </div>
-
-                {/* 2. Destination Branch Commission */}
-                <div>
-                  <label className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-1">
-                    {t('input_receiver_commission')}:
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={customCommission}
-                    onChange={(e) => handleCommissionChange(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full h-9 px-3 font-mono font-black text-sm text-emerald-600 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 rounded-xl"
-                    placeholder="30"
-                  />
-                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400">{t('input_receiver_comm_sub')}</span>
-                </div>
-
+                <span className="text-[10px] text-slate-500 block mt-1">{t('input_total_cash_collected_sub')}</span>
               </div>
 
-              {/* Total Retained Summary for Receiver Branch */}
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
-                <span className="font-bold text-emerald-900 dark:text-emerald-200">
-                  {t('total_retained_by_receiver_lbl') || 'Retained by Receiver'}:
-                </span>
-                <span className="font-mono font-black text-emerald-700 dark:text-emerald-400 text-sm">
-                  {customCommission} AFN
-                </span>
-              </div>
-
-              {/* Visual Money Distribution Bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[10px] text-slate-500">
-                  <span>{t('th_receiver')}: {customCommission} AFN</span>
-                  <span>{t('stat_submitted_to_hq')}: {customNetToHq} AFN</span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full flex overflow-hidden">
-                  <div 
-                    style={{ width: `${Math.min(100, Math.round((customCommission / (customTotalCollected || 1)) * 100))}%` }}
-                    className="bg-emerald-500 h-full" 
-                    title={t('remit_bar_receiver') || "Receiver Commission"}
-                  />
-                  <div 
-                    style={{ flex: 1 }}
-                    className="bg-amber-400 h-full" 
-                    title={t('remit_bar_hq') || "Head Office / Central Treasury"}
-                  />
-                </div>
-              </div>
-
-              {/* Net Remittance to HQ result */}
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-200 dark:border-amber-800 flex items-center justify-between shadow-inner">
-                <div>
-                  <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                    {t('net_remaining_to_send_hq')}:
+              {/* PORTION 1: BRANCH COMMISSION ADJUSTMENT */}
+              <div className="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px] font-black">1</span>
+                    <h4 className="text-xs font-black text-emerald-900 dark:text-emerald-200">
+                      {t('portion1_commission_title')}
+                    </h4>
                   </div>
-                  <div className="text-[10px] text-amber-700 dark:text-amber-400 font-mono">
-                    {customTotalCollected} - {customCommission} = {customNetToHq} AFN
+                  <span className="text-[10px] font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-700">
+                    {effectiveCommission.toLocaleString()} AFN
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                  {t('portion1_commission_desc')}
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
+                      {t('th_remit_commission')} (Base):
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={customBaseCommission}
+                      onChange={(e) => setCustomBaseCommission(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full h-8 px-2 font-mono text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
+                      {t('label_adjustment_type')}
+                    </label>
+                    <div className="grid grid-cols-3 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCommissionAdjType('exact');
+                          setCommissionAdjAmount(0);
+                        }}
+                        className={`h-8 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          commissionAdjType === 'exact'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <Equal className="w-3 h-3" />
+                        <span>{t('adj_mode_exact')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCommissionAdjType('extra')}
+                        className={`h-8 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          commissionAdjType === 'extra'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <TrendingUp className="w-3 h-3" />
+                        <span>{t('adj_mode_extra')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCommissionAdjType('less')}
+                        className={`h-8 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          commissionAdjType === 'less'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <TrendingDown className="w-3 h-3" />
+                        <span>{t('adj_mode_less')}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono">
-                  {customNetToHq.toLocaleString()} AFN
+
+                {commissionAdjType !== 'exact' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-emerald-200/50 dark:border-emerald-800/40">
+                    <div>
+                      <label className="block text-[10px] font-bold text-emerald-800 dark:text-emerald-300 mb-0.5">
+                        {t('commission_adj_amount_lbl')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={commissionAdjAmount}
+                        onChange={(e) => setCommissionAdjAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full h-8 px-2 font-mono text-xs font-black text-emerald-700 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-lg"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
+                        {t('commission_adj_reason_lbl')}
+                      </label>
+                      <select
+                        value={commissionAdjReason}
+                        onChange={(e) => setCommissionAdjReason(e.target.value)}
+                        className="w-full h-8 px-2 text-[10px] font-medium bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                      >
+                        <option value="reason_comm_heavy">{t('reason_comm_heavy')}</option>
+                        <option value="reason_comm_fragile">{t('reason_comm_fragile')}</option>
+                        <option value="reason_comm_volume">{t('reason_comm_volume')}</option>
+                        <option value="reason_comm_waiver">{t('reason_comm_waiver')}</option>
+                        <option value="reason_comm_other">{t('reason_comm_other')}</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* PORTION 2: TRANSPORTATION & EXTRA SERVICE FEE ADJUSTMENT */}
+              <div className="p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/60 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-md bg-blue-500/20 text-blue-700 dark:text-blue-300 flex items-center justify-center text-[10px] font-black">2</span>
+                    <h4 className="text-xs font-black text-blue-900 dark:text-blue-200">
+                      {t('portion2_transport_title')}
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold text-blue-700 dark:text-blue-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-blue-300 dark:border-blue-700">
+                    {effectiveTransport.toLocaleString()} AFN
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
+                  {t('portion2_transport_desc')}
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
+                      {t('base_transport_fee_lbl')}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={customBaseTransport}
+                      onChange={(e) => setCustomBaseTransport(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full h-8 px-2 font-mono text-xs font-bold bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
+                      {t('label_adjustment_type')}
+                    </label>
+                    <div className="grid grid-cols-3 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTransportAdjType('exact');
+                          setTransportAdjAmount(0);
+                        }}
+                        className={`h-8 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          transportAdjType === 'exact'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <Equal className="w-3 h-3" />
+                        <span>{t('adj_mode_exact')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTransportAdjType('extra')}
+                        className={`h-8 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          transportAdjType === 'extra'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <TrendingUp className="w-3 h-3" />
+                        <span>{t('adj_mode_extra')}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTransportAdjType('less')}
+                        className={`h-8 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          transportAdjType === 'less'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <TrendingDown className="w-3 h-3" />
+                        <span>{t('adj_mode_less')}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {transportAdjType !== 'exact' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-blue-200/50 dark:border-blue-800/40">
+                    <div>
+                      <label className="block text-[10px] font-bold text-blue-800 dark:text-blue-300 mb-0.5">
+                        {t('transport_adj_amount_lbl')}
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={transportAdjAmount}
+                        onChange={(e) => setTransportAdjAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full h-8 px-2 font-mono text-xs font-black text-blue-700 bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 rounded-lg"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-300 mb-0.5">
+                        {t('transport_adj_reason_lbl')}
+                      </label>
+                      <select
+                        value={transportAdjReason}
+                        onChange={(e) => setTransportAdjReason(e.target.value)}
+                        className="w-full h-8 px-2 text-[10px] font-medium bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200"
+                      >
+                        <option value="reason_trans_door">{t('reason_trans_door')}</option>
+                        <option value="reason_trans_storage">{t('reason_trans_storage')}</option>
+                        <option value="reason_trans_discount">{t('reason_trans_discount')}</option>
+                        <option value="reason_trans_other">{t('reason_trans_other')}</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* LIVE FINANCIAL CALCULATION MATRIX & NET RESULT */}
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-800/80 space-y-2 shadow-inner">
+                <div className="text-xs font-bold text-amber-950 dark:text-amber-100 flex items-center justify-between border-b border-amber-200 dark:border-amber-800 pb-2">
+                  <span>{t('breakdown_matrix_cash_collected')}</span>
+                  <span className="font-mono text-sm font-black">{customTotalCollected.toLocaleString()} AFN</span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300">
+                  <span>{t('breakdown_matrix_branch_commission')}</span>
+                  <span className="font-mono font-bold">- {effectiveCommission.toLocaleString()} AFN</span>
+                </div>
+                {effectiveTransport > 0 && (
+                  <div className="flex items-center justify-between text-xs text-blue-800 dark:text-blue-300">
+                    <span>{t('breakdown_matrix_transport_fee')}</span>
+                    <span className="font-mono font-bold">{effectiveTransport.toLocaleString()} AFN</span>
+                  </div>
+                )}
+
+                <div className="pt-2 border-t border-amber-200 dark:border-amber-800 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-black text-amber-950 dark:text-amber-100">
+                      {t('breakdown_matrix_net_hq')}
+                    </div>
+                    <div className="text-[10px] text-amber-700 dark:text-amber-400 font-mono">
+                      {customTotalCollected} - {effectiveCommission} = {calculatedNetToHq} AFN
+                    </div>
+                  </div>
+                  <div className="text-xl font-black text-amber-700 dark:text-amber-300 font-mono">
+                    {calculatedNetToHq.toLocaleString()} AFN
+                  </div>
+                </div>
+
+                {/* Money Distribution Bar */}
+                <div className="pt-1 space-y-1">
+                  <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                    <span>{t('branch_kept_lbl')}: {effectiveCommission} AFN</span>
+                    <span>{t('hq_net_lbl')}: {calculatedNetToHq} AFN</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full flex overflow-hidden">
+                    <div 
+                      style={{ width: `${Math.min(100, Math.round((effectiveCommission / (customTotalCollected || 1)) * 100))}%` }}
+                      className="bg-emerald-500 h-full" 
+                    />
+                    <div 
+                      style={{ flex: 1 }}
+                      className="bg-amber-400 h-full" 
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -1122,7 +1436,7 @@ export const RemittanceManager: React.FC = () => {
                 className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2 text-xs"
               >
                 <Send className="w-4 h-4" />
-                <span>{t('btn_submit_to_main_branch')} ({customNetToHq.toLocaleString()} AFN)</span>
+                <span>{t('btn_submit_to_main_branch')} ({calculatedNetToHq.toLocaleString()} AFN)</span>
               </button>
               <button
                 type="button"

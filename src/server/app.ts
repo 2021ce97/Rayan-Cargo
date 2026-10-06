@@ -1164,8 +1164,10 @@ api.patch('/shipments/:id', async (req: Request, res: Response) => {
         seller_payout_confirmed_at = COALESCE($8, seller_payout_confirmed_at),
         seller_payout_dispute_reason = COALESCE($9, seller_payout_dispute_reason),
         dest_branch_commission = $10,
-        financials = $11::jsonb
-      WHERE id = $12`,
+        financials = $11::jsonb,
+        payment_settlement = COALESCE($12::jsonb, payment_settlement),
+        payment_settlement_locked = COALESCE($13, payment_settlement_locked)
+      WHERE id = $14`,
       [
         updates.sellerPayoutStatus || null,
         updates.sellerPayoutDisbursedAt || null,
@@ -1178,6 +1180,8 @@ api.patch('/shipments/:id', async (req: Request, res: Response) => {
         updates.sellerPayoutDisputeReason || null,
         finalDestCommission,
         JSON.stringify(mergedFin),
+        updates.paymentSettlement ? JSON.stringify(updates.paymentSettlement) : (mergedFin.paymentSettlement ? JSON.stringify(mergedFin.paymentSettlement) : null),
+        updates.paymentSettlementLocked !== undefined ? updates.paymentSettlementLocked : (mergedFin.paymentSettlement?.locked ?? null),
         id
       ]
     );
@@ -1364,6 +1368,12 @@ api.get('/remittances', async (req: Request, res: Response) => {
       originCommissionAfn: parseFloat(r.origin_branch_commission || '0'),
       totalCommissionKeptAfn: parseFloat(r.total_commission_kept || r.dest_branch_commission || '0'),
       netRemittanceAmountAfn: parseFloat(r.net_remitted_amount || '0'),
+      commissionAdjustmentType: r.commission_adjustment_type || 'exact',
+      commissionAdjustmentAmount: parseFloat(r.commission_adjustment_amount || '0'),
+      commissionAdjustmentReason: r.commission_adjustment_reason || '',
+      transportAdjustmentType: r.transport_adjustment_type || 'exact',
+      transportAdjustmentAmount: parseFloat(r.transport_adjustment_amount || '0'),
+      transportAdjustmentReason: r.transport_adjustment_reason || '',
       paymentMethod: (r.settlement_channel || 'hawala') as any,
       referenceNumber: r.sarafi_reference_no,
       status: r.settlement_status === 'settled' ? 'confirmed_by_headoffice' : r.settlement_status === 'disputed' ? 'rejected' : 'submitted_to_headoffice',
@@ -1407,9 +1417,11 @@ api.post('/remittances', async (req: Request, res: Response) => {
       `INSERT INTO branch_settlements (
         id, shipment_id, cn_number, origin_branch_id, destination_branch_id,
         gross_collected_amount, dest_branch_commission, transportation_fee, origin_branch_commission, total_commission_kept, net_remitted_amount,
+        commission_adjustment_type, commission_adjustment_amount, commission_adjustment_reason,
+        transport_adjustment_type, transport_adjustment_amount, transport_adjustment_reason,
         settlement_channel, sarafi_reference_no, settlement_status,
         settled_by_user_name, settled_at, notes, created_at, parcel_ids
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
       ON CONFLICT (id) DO UPDATE SET
         settlement_status = EXCLUDED.settlement_status,
         notes = EXCLUDED.notes`,
@@ -1418,6 +1430,8 @@ api.post('/remittances', async (req: Request, res: Response) => {
         r.originBranchId || 'br_admin_hq', r.fromBranchId || 'br_hrt',
         r.totalCollectedAfn || 0, r.destCommissionAfn || 0, r.transportationFeeAfn || 0,
         r.originCommissionAfn || 0, r.totalCommissionKeptAfn || 0, r.netRemittanceAmountAfn || 0,
+        r.commissionAdjustmentType || 'exact', r.commissionAdjustmentAmount || 0, r.commissionAdjustmentReason || null,
+        r.transportAdjustmentType || 'exact', r.transportAdjustmentAmount || 0, r.transportAdjustmentReason || null,
         settlementChannel,
         r.referenceNumber || r.batchNumber || null,
         r.status === 'confirmed_by_headoffice' ? 'settled' : 'pending',

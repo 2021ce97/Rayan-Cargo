@@ -150,6 +150,14 @@ interface AppContextType {
       reasonCategory: string;
       reasonLabel: string;
       reportNote?: string;
+      commissionAdjustmentType?: PriceAdjustmentType;
+      commissionAdjustmentAmount?: number;
+      commissionReasonCategory?: string;
+      commissionReasonLabel?: string;
+      serviceFeeAdjustmentType?: PriceAdjustmentType;
+      serviceFeeAdjustmentAmount?: number;
+      serviceFeeReasonCategory?: string;
+      serviceFeeReasonLabel?: string;
     }
   ) => boolean;
   unlockDeliveryPaymentSettlement: (shipmentId: string, reason?: string) => boolean;
@@ -190,12 +198,20 @@ interface AppContextType {
     notes?: string,
     transportationFee?: number,
     originCommission?: number,
-    originBranchId?: string
+    originBranchId?: string,
+    commissionAdjustmentType?: PriceAdjustmentType,
+    commissionAdjustmentAmount?: number,
+    commissionAdjustmentReason?: string,
+    transportAdjustmentType?: PriceAdjustmentType,
+    transportAdjustmentAmount?: number,
+    transportAdjustmentReason?: string
   ) => boolean;
   confirmRemittanceByHeadOffice: (transferId: string, confirmationNotes?: string) => boolean;
   rejectRemittanceByHeadOffice: (transferId: string, rejectionReason: string) => boolean;
   branchOwedToHeadOffice: number;
   branchEarnedCommissions: number;
+  branchTotalSubmittedRemittances: number;
+  branchTotalConfirmedSettledRemittances: number;
   headOfficePendingRemittancesTotal: number;
   headOfficeSettledRevenueTotal: number;
   filteredShipments: Shipment[];
@@ -1751,9 +1767,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveViewState('customer_portal');
       return;
     }
+    if (role !== 'customer' && (view === 'customer_portal' || view === 'customer_finances' || view === 'customer_history')) {
+      setActiveViewState('dashboard');
+      return;
+    }
     setActiveViewState(view);
   };
-  const activeView = (currentUser.role === 'customer' && activeViewState !== 'tracking' && activeViewState !== 'customer_history' && activeViewState !== 'customer_portal' && activeViewState !== 'customer_finances') ? 'customer_portal' : activeViewState;
+  const activeView = (currentUser.role === 'customer' && activeViewState !== 'tracking' && activeViewState !== 'customer_history' && activeViewState !== 'customer_portal' && activeViewState !== 'customer_finances') 
+    ? 'customer_portal' 
+    : (currentUser.role !== 'customer' && (activeViewState === 'customer_portal' || activeViewState === 'customer_finances' || activeViewState === 'customer_history'))
+      ? 'dashboard'
+      : activeViewState;
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [selectedShipmentForReceipt, setSelectedShipmentForReceipt] = useState<Shipment | null>(null);
   const [trackedShipment, setTrackedShipment] = useState<Shipment | null>(null);
@@ -2000,6 +2024,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0);
   }, [remittanceTransfers]);
 
+  const branchTotalSubmittedRemittances = React.useMemo(() => {
+    return remittanceTransfers
+      .filter(r => (currentTargetBranch === 'all' ? true : r.fromBranchId === currentTargetBranch) && r.status === 'submitted_to_headoffice')
+      .reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0);
+  }, [remittanceTransfers, currentTargetBranch]);
+
+  const branchTotalConfirmedSettledRemittances = React.useMemo(() => {
+    return remittanceTransfers
+      .filter(r => (currentTargetBranch === 'all' ? true : r.fromBranchId === currentTargetBranch) && r.status === 'confirmed_by_headoffice')
+      .reduce((sum, r) => sum + r.netRemittanceAmountAfn, 0);
+  }, [remittanceTransfers, currentTargetBranch]);
+
   // Create Batch Remittance (Branch -> Head Office)
   const createBatchRemittance = (
     parcelIds: string[], 
@@ -2013,7 +2049,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notes?: string,
     transportationFee: number = 0,
     originCommission: number = 0,
-    originBranchId?: string
+    originBranchId?: string,
+    commissionAdjustmentType: PriceAdjustmentType = 'exact',
+    commissionAdjustmentAmount: number = 0,
+    commissionAdjustmentReason: string = '',
+    transportAdjustmentType: PriceAdjustmentType = 'exact',
+    transportAdjustmentAmount: number = 0,
+    transportAdjustmentReason: string = ''
   ): boolean => {
     const normalizedParcelIds = Array.from(new Set(parcelIds));
     const selectedParcels = shipments.filter(s =>
@@ -2048,8 +2090,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return sum + (settlement?.locked ? settlement.actualCollectedAmount : (s.financials?.totalAmount || 0));
         }, 0)
       : Math.max(0, totalCollected);
-    const calculatedCommission = Math.max(0, totalCommissionKept);
-    const calculatedTransport = Math.max(0, transportationFee);
+
+    // Compute Destination Branch Commission with Portion 1 Adjustments (Extra [+] / Less [-])
+    let calculatedCommission = Math.max(0, totalCommissionKept);
+    if (commissionAdjustmentType === 'extra') {
+      calculatedCommission += Math.max(0, commissionAdjustmentAmount);
+    } else if (commissionAdjustmentType === 'less') {
+      calculatedCommission = Math.max(0, calculatedCommission - Math.max(0, commissionAdjustmentAmount));
+    }
+
+    // Compute Transportation Fee with Portion 2 Adjustments (Extra [+] / Less [-])
+    let calculatedTransport = Math.max(0, transportationFee);
+    if (transportAdjustmentType === 'extra') {
+      calculatedTransport += Math.max(0, transportAdjustmentAmount);
+    } else if (transportAdjustmentType === 'less') {
+      calculatedTransport = Math.max(0, calculatedTransport - Math.max(0, transportAdjustmentAmount));
+    }
+
     const calculatedOriginCommission = Math.max(0, originCommission);
     // Destination branch keeps ONLY its commission (calculatedCommission). Transportation fee is remitted to HQ!
     const calculatedNet = Math.max(0, calculatedCollected - calculatedCommission - calculatedOriginCommission);
@@ -2083,6 +2140,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       originCommissionAfn: calculatedOriginCommission,
       totalCommissionKeptAfn: destTotalRetained + calculatedOriginCommission,
       netRemittanceAmountAfn: calculatedNet,
+      
+      // Two Portions: Commission & Transportation Adjustment Options
+      commissionAdjustmentType,
+      commissionAdjustmentAmount,
+      commissionAdjustmentReason,
+      transportAdjustmentType,
+      transportAdjustmentAmount,
+      transportAdjustmentReason,
+
       paymentMethod,
       referenceNumber: referenceNumber || `REF-${randomCode}`,
       transferAgentName: transferAgentName || 'Sarafi Central',
@@ -2105,17 +2171,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           note: `Financial Settlement & Remittance ${batchNumber}: Collected ${calculatedCollected} AFN. Destination commission kept: ${calculatedCommission} AFN (no transport kept by branch). Sender branch commission: ${calculatedOriginCommission} AFN. Net to Main Branch HQ: ${calculatedNet} AFN (${paymentMethod.toUpperCase()}: ${referenceNumber || 'N/A'}). Awaiting HQ confirmation.`,
           updatedBy: currentUser.name
         };
-        return {
+        const updatedS = {
           ...s,
-          remittanceStatus: 'submitted_to_headoffice',
+          remittanceStatus: 'submitted_to_headoffice' as const,
           remittanceBatchId: batchId,
           statusHistory: [...(s.statusHistory || []), historyItem]
         };
+        directSupabaseInsertShipment(updatedS);
+        return updatedS;
       }
       return s;
     }));
 
     setRemittanceTransfers(prev => [newTransfer, ...prev]);
+
+    // Direct Supabase Mutation
+    directSupabaseInsertSettlement(newTransfer);
 
     // Send to /api/remittances
     fetch('/api/remittances', {
@@ -2251,6 +2322,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return b;
       }));
     }
+
+    // Direct Supabase Mutation for Settled Transfer
+    directSupabaseInsertSettlement(updatedTransfer);
 
     fetch(`/api/remittances/${transferId}/confirm`, {
       method: 'PATCH',
@@ -3432,6 +3506,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       reasonCategory: string;
       reasonLabel: string;
       reportNote?: string;
+      commissionAdjustmentType?: PriceAdjustmentType;
+      commissionAdjustmentAmount?: number;
+      commissionReasonCategory?: string;
+      commissionReasonLabel?: string;
+      serviceFeeAdjustmentType?: PriceAdjustmentType;
+      serviceFeeAdjustmentAmount?: number;
+      serviceFeeReasonCategory?: string;
+      serviceFeeReasonLabel?: string;
     }
   ): boolean => {
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
@@ -3524,14 +3606,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    // Rule #2: Service Fee and Destination Branch Commission stay FIXED.
-    // Only the Product Money (Remittance to Main/Sender Branch & Seller Payout) goes up or down!
+    // Calculate Destination Branch Commission Adjustments (Portion 2A)
+    const commType: PriceAdjustmentType = input.commissionAdjustmentType || 'exact';
+    const commDiff = commType === 'exact' ? 0 : Math.max(0, Math.round(Number(input.commissionAdjustmentAmount) || 0));
+    let effectiveDestCommission = fixedDestCommission;
+    if (commType === 'extra') {
+      effectiveDestCommission = fixedDestCommission + commDiff;
+    } else if (commType === 'less') {
+      effectiveDestCommission = Math.max(0, fixedDestCommission - Math.min(fixedDestCommission, commDiff));
+    }
+
+    // Calculate Transportation / Service Fee Adjustments (Portion 2B)
+    const feeType: PriceAdjustmentType = input.serviceFeeAdjustmentType || 'exact';
+    const feeDiff = feeType === 'exact' ? 0 : Math.max(0, Math.round(Number(input.serviceFeeAdjustmentAmount) || 0));
+    let effectiveServiceFee = fixedServiceFee;
+    if (feeType === 'extra') {
+      effectiveServiceFee = fixedServiceFee + feeDiff;
+    } else if (feeType === 'less') {
+      effectiveServiceFee = Math.max(0, fixedServiceFee - Math.min(fixedServiceFee, feeDiff));
+    }
+
+    // Dynamic Financial Reconciliation
+    // Destination branch retains effectiveDestCommission
+    // HQ/Main branch receives Remittance = Actual Collected - effectiveDestCommission
+    // Seller Payout = Actual Collected - effectiveDestCommission - effectiveServiceFee + discountAmount
     const reconciledRemittanceDue = target.status === 'delivered'
-      ? Math.max(0, actualCollectedAmount - fixedDestCommission)
-      : (actualCollectedAmount > 0 ? Math.max(0, actualCollectedAmount - fixedDestCommission) : 0);
+      ? Math.max(0, actualCollectedAmount - effectiveDestCommission)
+      : (actualCollectedAmount > 0 ? Math.max(0, actualCollectedAmount - effectiveDestCommission) : 0);
 
     const reconciledSellerPayout = target.status === 'delivered'
-      ? Math.max(0, actualCollectedAmount - fixedDestCommission - fixedServiceFee + discountAmount)
+      ? Math.max(0, actualCollectedAmount - effectiveDestCommission - effectiveServiceFee + discountAmount)
       : 0;
 
     const reconciliationId = `REC-${target.cnNumber}-${Date.now().toString().slice(-4)}`;
@@ -3546,6 +3650,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       fixedServiceFee,
       fixedDestCommission,
       discountAmount,
+
+      // Portion 2A: Commission
+      commissionAdjustmentType: commType,
+      commissionAdjustmentAmount: commDiff,
+      commissionReasonCategory: input.commissionReasonCategory || 'exact_commission',
+      commissionReasonLabel: input.commissionReasonLabel || (commType === 'exact' ? 'Standard Commission' : 'Commission Adjustment'),
+      effectiveDestCommission,
+
+      // Portion 2B: Service Fee
+      serviceFeeAdjustmentType: feeType,
+      serviceFeeAdjustmentAmount: feeDiff,
+      serviceFeeReasonCategory: input.serviceFeeReasonCategory || 'exact_service_fee',
+      serviceFeeReasonLabel: input.serviceFeeReasonLabel || (feeType === 'exact' ? 'Standard Service Fee' : 'Service Fee Adjustment'),
+      effectiveServiceFee,
+
       reconciledRemittanceDue,
       reconciledSellerPayout,
       reasonCategory: input.reasonCategory || 'exact_payment',
@@ -3566,7 +3685,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ? `Customer PAID EXTRA +${adjustmentAmount.toLocaleString()} AFN (Original: ${originalProductPrice.toLocaleString()} AFN ➔ Collected: ${actualCollectedAmount.toLocaleString()} AFN)`
       : `Customer PAID LESS -${adjustmentAmount.toLocaleString()} AFN (Original: ${originalProductPrice.toLocaleString()} AFN ➔ Collected: ${actualCollectedAmount.toLocaleString()} AFN)`;
 
-    const reportHistoryNote = `[Payment Locked & Reported to ${origBranch?.name || 'Sender/Main Branch'} • #${reconciliationId}] ${adjustmentSummaryText}. Reason: ${settlementRecord.reasonLabel}${settlementRecord.reportNote ? ` (${settlementRecord.reportNote})` : ''}. Fixed Dest Comm: ${fixedDestCommission} AFN | Fixed Service Fee: ${fixedServiceFee} AFN | Auto-Queued Remittance to HQ/Sender Branch: ${reconciledRemittanceDue.toLocaleString()} AFN | Reconciled Seller Payout: ${reconciledSellerPayout.toLocaleString()} AFN.`;
+    const commSummaryText = commType === 'exact'
+      ? `Dest Comm: ${effectiveDestCommission} AFN (Fixed)`
+      : `Dest Comm: ${effectiveDestCommission} AFN (${commType === 'extra' ? `+${commDiff}` : `-${commDiff}`} ${settlementRecord.commissionReasonLabel})`;
+
+    const feeSummaryText = feeType === 'exact'
+      ? `Service Fee: ${effectiveServiceFee} AFN (Fixed)`
+      : `Service Fee: ${effectiveServiceFee} AFN (${feeType === 'extra' ? `+${feeDiff}` : `-${feeDiff}`} ${settlementRecord.serviceFeeReasonLabel})`;
+
+    const reportHistoryNote = `[Payment Locked & Reported to ${origBranch?.name || 'Sender/Main Branch'} • #${reconciliationId}] ${adjustmentSummaryText}. Reason: ${settlementRecord.reasonLabel}${settlementRecord.reportNote ? ` (${settlementRecord.reportNote})` : ''}. ${commSummaryText} | ${feeSummaryText} | Auto-Queued Remittance to HQ/Sender Branch: ${reconciledRemittanceDue.toLocaleString()} AFN | Reconciled Seller Payout: ${reconciledSellerPayout.toLocaleString()} AFN.`;
 
     const newHistoryItem = {
       id: `st_pay_${Date.now()}`,
@@ -3586,8 +3713,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       originalProductPrice,
       productPrice: effectiveProductPrice,
       totalAmount: effectiveProductPrice,
-      serviceFee: fixedServiceFee,
-      destBranchCommission: fixedDestCommission,
+      serviceFee: effectiveServiceFee,
+      destBranchCommission: effectiveDestCommission,
       discountAmount,
       sellerPayout: reconciledSellerPayout,
       amountPaid: actualCollectedAmount,
@@ -3601,7 +3728,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...target,
       paymentSettlement: settlementRecord,
       paymentSettlementLocked: true,
-      destBranchCommission: fixedDestCommission,
+      destBranchCommission: effectiveDestCommission,
       originRemittanceDue: reconciledRemittanceDue,
       remittanceStatus: (target.status === 'delivered' || actualCollectedAmount > 0) ? 'pending' : 'not_applicable',
       sellerPayoutStatus: target.status === 'delivered' ? 'ready_for_payout' : 'pending_delivery',
@@ -3844,6 +3971,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         rejectRemittanceByHeadOffice,
         branchOwedToHeadOffice,
         branchEarnedCommissions,
+        branchTotalSubmittedRemittances,
+        branchTotalConfirmedSettledRemittances,
         headOfficePendingRemittancesTotal,
         headOfficeSettledRevenueTotal,
         filteredShipments,

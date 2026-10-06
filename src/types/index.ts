@@ -187,9 +187,24 @@ export interface DeliveryPaymentSettlement {
   adjustmentType: PriceAdjustmentType; // 'exact' | 'extra' | 'less'
   adjustmentAmount: number; // Difference amount in AFN (>= 0)
   actualCollectedAmount: number; // Actual cash collected from customer at destination
-  fixedServiceFee: number; // Service fee remains fixed
-  fixedDestCommission: number; // Destination branch commission remains fixed
+  fixedServiceFee: number; // Original service fee from booking
+  fixedDestCommission: number; // Original destination branch commission from booking
   discountAmount: number; // Discount applied at booking
+  
+  // Destination Branch Commission Adjustments (Portion 2A)
+  commissionAdjustmentType?: PriceAdjustmentType; // 'exact' | 'extra' | 'less'
+  commissionAdjustmentAmount?: number;
+  commissionReasonCategory?: string;
+  commissionReasonLabel?: string;
+  effectiveDestCommission: number; // Final commission retained by destination branch
+
+  // Transportation / Service Fee Adjustments (Portion 2B)
+  serviceFeeAdjustmentType?: PriceAdjustmentType; // 'exact' | 'extra' | 'less'
+  serviceFeeAdjustmentAmount?: number;
+  serviceFeeReasonCategory?: string;
+  serviceFeeReasonLabel?: string;
+  effectiveServiceFee: number; // Final service fee for the transport network
+
   reconciledRemittanceDue: number; // Net amount to remit to Main / Sender Branch
   reconciledSellerPayout: number; // Net amount payable to Seller
   reasonCategory: string;
@@ -226,6 +241,15 @@ export interface BranchRemittanceTransfer {
   originCommissionAfn?: number; // Commission credited to origin branch if provincial sender (e.g. 20 AFN for Faryab)
   totalCommissionKeptAfn: number; // Total commissions retained across branches (dest + origin)
   netRemittanceAmountAfn: number; // Remaining balance remitted to Main Branch
+  
+  // Two Portions: Commission & Transportation Adjustment Options
+  commissionAdjustmentType?: PriceAdjustmentType; // 'exact' | 'extra' | 'less'
+  commissionAdjustmentAmount?: number;
+  commissionAdjustmentReason?: string;
+  transportAdjustmentType?: PriceAdjustmentType; // 'exact' | 'extra' | 'less'
+  transportAdjustmentAmount?: number;
+  transportAdjustmentReason?: string;
+
   paymentMethod: 'hawala' | 'bank_transfer' | 'cash_handover' | 'treasury';
   referenceNumber?: string; // Hawala code, Sarafi voucher, or Bank transaction ID
   transferAgentName?: string; // Sarafi agent name or bank branch
@@ -254,6 +278,15 @@ export interface BranchSettlementRecord {
   destTotalRetained: number; // e.g. 50 AFN
   originBranchCommission?: number; // e.g. 20 AFN (if provincial sender)
   netRemittedAmount: number; // e.g. 50 AFN or 30 AFN
+  
+  // Two Portions Adjustments
+  commissionAdjustmentType?: PriceAdjustmentType;
+  commissionAdjustmentAmount?: number;
+  commissionAdjustmentReason?: string;
+  transportAdjustmentType?: PriceAdjustmentType;
+  transportAdjustmentAmount?: number;
+  transportAdjustmentReason?: string;
+
   settlementChannel: string;
   sarafiReferenceNo?: string;
   sarafiName?: string;
