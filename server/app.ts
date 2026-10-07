@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import { config as loadEnv } from 'dotenv';
 import { 
   getDbPool, 
   initDatabase, 
@@ -6,12 +7,14 @@ import {
   getDatabaseInfo, 
   SUPABASE_SCHEMA_SQL, 
   connectToSupabase,
-  DEFAULT_SUPABASE_DATABASE_URL,
   sanitizeConnectionString,
   syncAllDataToStore,
   withTransaction
 } from './db.ts';
-import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS } from '../data/initialData.ts';
+
+// Prefer this project's .env during local development. If no .env file exists,
+// deployment-provided environment variables are left unchanged.
+loadEnv({ override: true, quiet: true });
 
 // Sanitize DATABASE_URL if provided
 if (process.env.DATABASE_URL) {
@@ -72,26 +75,50 @@ function authRateLimiter(maxAttempts = 30, windowMs = 60 * 1000) {
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
-// 3. Lazy / Eager Supabase DB initialization
+// 3. Lazy Supabase DB initialization
 let dbInitialized = false;
-async function ensureDbReady() {
-  if (!dbInitialized) {
-    try {
-      await initDatabase(INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS);
-      dbInitialized = true;
-    } catch (err: any) {
-      console.info('ℹ️ DB initialization notice:', err?.message || err);
-    }
-  }
-}
-ensureDbReady().catch((e) => console.info('ℹ️ DB ready notice:', e?.message || e));
+let dbInitialization: Promise<void> | null = null;
+let lastDbInitializationError: Error | null = null;
+let lastDbInitializationAttempt = 0;
+const DB_RETRY_DELAY_MS = 30_000;
 
+async function ensureDbReady() {
+  if (dbInitialized) return;
+  if (dbInitialization) return dbInitialization;
+
+  const now = Date.now();
+  if (lastDbInitializationError && now - lastDbInitializationAttempt < DB_RETRY_DELAY_MS) {
+    throw lastDbInitializationError;
+  }
+
+  lastDbInitializationAttempt = now;
+  dbInitialization = (async () => {
+    try {
+      await initDatabase();
+      dbInitialized = true;
+      lastDbInitializationError = null;
+    } catch (err: any) {
+      lastDbInitializationError = err instanceof Error ? err : new Error(String(err));
+      console.error('Supabase database connection failed:', lastDbInitializationError.message);
+      throw lastDbInitializationError;
+    } finally {
+      dbInitialization = null;
+    }
+  })();
+
+  return dbInitialization;
+}
 // Middleware to ensure DB is initialized before query
 app.use(async (req: Request, res: Response, next: NextFunction) => {
-  if (!dbInitialized) {
+  try {
     await ensureDbReady();
+    next();
+  } catch {
+    res.status(503).json({
+      success: false,
+      error: 'Supabase database is temporarily unavailable. Check DATABASE_URL and retry shortly.'
+    });
   }
-  next();
 });
 
 // API Router
@@ -103,7 +130,7 @@ api.get('/health', async (req: Request, res: Response) => {
     const db = getDbPool();
     const { rows } = await db.query('SELECT NOW() as server_time, version() as pg_version');
     const { rows: bCount } = await db.query('SELECT COUNT(*) as count FROM branches');
-    const { rows: uCount } = await db.query('SELECT COUNT(*) as count FROM users');
+    const { rows: uCount } = await db.query('SELECT (SELECT COUNT(*) FROM staff_users) + (SELECT COUNT(*) FROM super_admin_profiles) as count');
     const { rows: sCount } = await db.query('SELECT COUNT(*) as count FROM shipments');
 
     res.json({
@@ -145,7 +172,7 @@ api.get('/database/info', async (req: Request, res: Response) => {
     }
 
     const { rows: bCount } = await db.query('SELECT COUNT(*) as count FROM branches');
-    const { rows: uCount } = await db.query('SELECT COUNT(*) as count FROM users');
+    const { rows: uCount } = await db.query('SELECT (SELECT COUNT(*) FROM staff_users) + (SELECT COUNT(*) FROM super_admin_profiles) as count');
     const { rows: sCount } = await db.query('SELECT COUNT(*) as count FROM shipments');
     const { rows: eCount } = await db.query('SELECT COUNT(*) as count FROM branch_expenses');
     const { rows: stCount } = await db.query('SELECT COUNT(*) as count FROM branch_settlements');
@@ -184,7 +211,7 @@ api.post('/database/sync', async (req: Request, res: Response) => {
 
 // 1. Branches API
 const SQL_BRANCH_COLS = 'id, name, name_fa, name_ps, code, province, city, address, phone, email, manager_name, tazkira_number, is_head_office, active_shipments_count, total_parcels_dispatched, total_parcels_received, total_revenue_afn, created_at';
-const SQL_USER_SAFE_COLS = 'id, name, email, phone, role, branch_id, password_changed_by_branch, last_password_change, status, avatar, created_at, last_login, preferences';
+const SQL_USER_SAFE_COLS = 'id, name, email, phone, role, branch_id, password_changed_by_branch, last_password_change, status, avatar, created_at, last_login_at AS last_login, preferences';
 const SQL_SHIPMENT_COLS = 'id, cn_number, origin_branch_id, destination_branch_id, current_branch_id, sender, receiver, package_info, financials, status, status_history, is_customer_prebooked, is_pre_booking, customer_user_id, booked_at, estimated_delivery, actual_delivery, pod_signature, receiver_id_proof, delivery_notes, booked_by_user_id, booked_by_user_name, dest_branch_commission, remittance_status, origin_remittance_due, customer_submission_at, customer_submission_reference, customer_submission_by, print_count, last_printed_at, last_printed_by';
 const SQL_EXPENSE_COLS = 'id, branch_id, category, amount, description, expense_date, paid_to, receipt_number, created_by_name, created_at';
 const SQL_SETTLEMENT_COLS = 'id, shipment_id, cn_number, origin_branch_id, destination_branch_id, branch_id, gross_collected_amount, dest_branch_commission, transportation_fee, origin_branch_commission, total_commission_kept, net_remitted_amount, commission_adjustment_type, commission_adjustment_amount, commission_adjustment_reason, transport_adjustment_type, transport_adjustment_amount, transport_adjustment_reason, settlement_channel, sarafi_reference_no, settlement_status, settled_by_user_name, settled_at, notes, created_at, parcel_ids';
@@ -293,17 +320,17 @@ api.post('/branches', async (req: Request, res: Response) => {
     const initialPass = b.initialPassword?.trim() || `${cleanCode.toLowerCase().replace(/[^a-z0-9]/g, '')}123`;
     const userId = `usr_${branchId}`;
     await db.query(
-      `INSERT INTO users (
-        id, name, email, phone, role, branch_id, password, password_changed_by_branch,
-        status, created_at, last_login
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO staff_users (
+        id, name, email, phone, role, branch_id, password_hash, password_changed_by_branch,
+        status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, crypt($7, gen_salt('bf', 12)), $8, $9, $10)
       ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
         phone = EXCLUDED.phone,
         name = EXCLUDED.name`,
       [
         userId, b.managerName || `${b.name} Manager`, b.email.toLowerCase(),
-        b.phone, 'branch_manager', branchId, initialPass, false, 'active', now, 'Never'
+        b.phone, 'branch_manager', branchId, initialPass, false, 'active', now
       ]
     );
 
@@ -334,7 +361,7 @@ api.delete('/branches/:id', async (req: Request, res: Response) => {
     }
 
     // Delete associated branch users
-    await db.query('DELETE FROM users WHERE branch_id = $1', [branchId]);
+    await db.query('DELETE FROM staff_users WHERE branch_id = $1', [branchId]);
     // Delete branch
     await db.query('DELETE FROM branches WHERE id = $1', [branchId]);
     res.json({ success: true });
@@ -347,7 +374,7 @@ api.delete('/branches/:id', async (req: Request, res: Response) => {
 api.get('/users', async (req: Request, res: Response) => {
   try {
     const db = getDbPool();
-    const { rows } = await db.query(`SELECT ${SQL_USER_SAFE_COLS} FROM users ORDER BY created_at ASC`);
+    const { rows } = await db.query(`SELECT ${SQL_USER_SAFE_COLS} FROM staff_users ORDER BY created_at ASC`);
     const formatted = rows.map((r: any) => ({
       id: r.id,
       name: r.name,
@@ -379,7 +406,7 @@ api.post('/users/change-password', async (req: Request, res: Response) => {
     const now = new Date().toISOString();
 
     await db.query(
-      `UPDATE users SET password = $1, password_changed_by_branch = true, last_password_change = $2 WHERE id = $3`,
+      `UPDATE staff_users SET password_hash = crypt($1, gen_salt('bf', 12)), password_changed_by_branch = true, last_password_change = $2 WHERE id = $3`,
       [newPassword.trim(), now, userId]
     );
 
@@ -398,7 +425,7 @@ api.post('/users/preferences', async (req: Request, res: Response) => {
     }
     
     await db.query(
-      `UPDATE users SET preferences = $1 WHERE id = $2`,
+      `UPDATE staff_users SET preferences = $1 WHERE id = $2`,
       [JSON.stringify(preferences || {}), userId]
     );
     res.json({ success: true });
@@ -426,9 +453,9 @@ api.post('/users/credentials', async (req: Request, res: Response) => {
     const targetUserId = userId || `usr_${branchId}`;
 
     const updateRes = await db.query(
-      `UPDATE users SET 
+      `UPDATE staff_users SET 
         email = COALESCE($1, email),
-        password = COALESCE($2, password),
+        password_hash = CASE WHEN $2::text IS NULL THEN password_hash ELSE crypt($2, gen_salt('bf', 12)) END,
         name = COALESCE($3, name),
         phone = COALESCE($4, phone),
         password_changed_by_branch = false
@@ -439,18 +466,18 @@ api.post('/users/credentials', async (req: Request, res: Response) => {
     if (!updateRes.rowCount || updateRes.rowCount === 0) {
       const now = new Date().toISOString();
       await db.query(
-        `INSERT INTO users (
-          id, name, email, phone, role, branch_id, password, password_changed_by_branch, status, created_at, last_login
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `INSERT INTO staff_users (
+          id, name, email, phone, role, branch_id, password_hash, password_changed_by_branch, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, crypt($7, gen_salt('bf', 12)), $8, $9, $10)
         ON CONFLICT (id) DO UPDATE SET
           email = EXCLUDED.email,
-          password = EXCLUDED.password,
+          password_hash = EXCLUDED.password_hash,
           name = EXCLUDED.name,
           phone = EXCLUDED.phone`,
         [
           targetUserId, cleanName || 'Branch Manager', cleanEmail || `${branchId || 'branch'}@armaghansadeq.af`,
           cleanPhone || '', 'branch_manager', branchId || targetUserId, cleanPass || 'branch123',
-          false, 'active', now, 'Never'
+          false, 'active', now
         ]
       );
     }
@@ -1633,13 +1660,13 @@ api.post('/auth/customer-signup', authRateLimiter(20, 60 * 1000), async (req: Re
     const cleanEmail = (email && email.trim()) ? email.trim().toLowerCase() : `cust_${phone.replace(/[^0-9]/g, '')}@rayancustomer.af`;
 
     await db.query(
-      `INSERT INTO users (
-        id, name, email, phone, role, branch_id, password, status, created_at, last_login
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO staff_users (
+        id, name, email, phone, role, branch_id, password_hash, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, crypt($7, gen_salt('bf', 12)), $8, $9)
       ON CONFLICT (id) DO NOTHING`,
       [
-        userId, name.trim(), cleanEmail, phone.trim(), 'customer', 'customer',
-        password?.trim() || 'customer123', 'active', now, 'Just now'
+        userId, name.trim(), cleanEmail, phone.trim(), 'customer', null,
+        password?.trim() || 'customer123', 'active', now
       ]
     );
 
@@ -1675,103 +1702,37 @@ api.post('/auth/login', authRateLimiter(30, 60 * 1000), async (req: Request, res
     const cleanPhone = identifier.replace(/[^0-9]/g, '');
     const cleanPass = (password || '').trim();
 
-    const { rows } = await db.query('SELECT * FROM users');
-    const { rows: bRows } = await db.query('SELECT * FROM branches');
-    
-    let matched = rows.find((r: any) => {
-      const uEmail = (r.email || '').toLowerCase().trim();
-      const uId = (r.id || '').toLowerCase().trim();
-      const uName = (r.name || '').toLowerCase().trim();
-      const uPhone = (r.phone || '').replace(/[^0-9]/g, '');
-
-      const emailMatch = uEmail === clean;
-      const idMatch = uId === clean;
-      const nameMatch = clean.length >= 3 && uName === clean;
-      const phoneMatch = cleanPhone.length >= 5 && uPhone.length >= 5 && (uPhone.includes(cleanPhone) || cleanPhone.includes(uPhone));
-      const adminAliasMatch = (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin') && (r.role === 'super_admin' || r.id === 'usr_admin');
-
-      const b = bRows.find((b: any) => b.id === r.branch_id);
-      const bCode = (b?.code || '').toLowerCase().trim();
-      const bCleanCode = bCode.replace(/[^a-z0-9]/g, '');
-      const cleanNoHyphen = clean.replace(/[^a-z0-9]/g, '');
-      const branchCodeMatch = bCode && (bCode === clean || bCleanCode === cleanNoHyphen);
-      const branchEmailMatch = b && b.email && b.email.toLowerCase().trim() === clean;
-      const branchNameMatch = b && (
-        (b.name && b.name.toLowerCase().trim() === clean) ||
-        (b.city && b.city.toLowerCase().trim() === clean) ||
-        (b.province && b.province.toLowerCase().trim() === clean)
-      );
-
-      return emailMatch || idMatch || nameMatch || phoneMatch || adminAliasMatch || branchCodeMatch || branchEmailMatch || branchNameMatch;
-    });
-
-    if (!matched) {
-      const matchedBranch = bRows.find((b: any) => {
-        const bCode = (b.code || '').toLowerCase().trim();
-        const bCleanCode = bCode.replace(/[^a-z0-9]/g, '');
-        const cleanNoHyphen = clean.replace(/[^a-z0-9]/g, '');
-        return bCode === clean || bCleanCode === cleanNoHyphen || (b.email && b.email.toLowerCase().trim() === clean);
-      });
-      if (matchedBranch) {
-        matched = {
-          id: `usr_${matchedBranch.id}`,
-          name: matchedBranch.manager_name || `${matchedBranch.name} Manager`,
-          email: matchedBranch.email || `${matchedBranch.code.toLowerCase()}@armaghansadeq.af`,
-          phone: matchedBranch.phone || '',
-          role: 'branch_manager',
-          branch_id: matchedBranch.id,
-          password: `${matchedBranch.code.toLowerCase().replace(/[^a-z0-9]/g, '')}123`,
-          password_changed_by_branch: false,
-          last_password_change: null,
-          status: 'active',
-          avatar: null,
-          created_at: new Date().toISOString(),
-          last_login: 'Never'
-        };
-      }
-    }
-
-    if (!matched && (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
-      if (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123') {
-        return res.json({
-          success: true,
-          user: {
-            id: 'usr_admin',
-            name: 'Central System Admin',
-            email: 'armaghansadeq@cargo.af',
-            phone: '+93 79 900 1122',
-            role: 'super_admin',
-            branchId: 'all',
-            password: 'Armaghanrayan123',
-            passwordChangedByBranch: false,
-            status: 'active',
-            createdAt: new Date().toISOString(),
-            lastLogin: 'Just now'
-          }
-        });
-      }
-    }
+    const cleanCode = clean.replace(/[^a-z0-9]/g, '');
+    const { rows } = await db.query(
+      `SELECT u.*, u.last_login_at AS last_login
+       FROM staff_users u
+       LEFT JOIN branches b ON b.id = u.branch_id
+       WHERE (
+         lower(u.email) = $1 OR lower(u.id) = $1 OR
+         (length($3) >= 3 AND lower(u.name) = $1) OR
+         (length($2) >= 5 AND regexp_replace(u.phone, '[^0-9]', '', 'g') LIKE '%' || $2 || '%') OR
+         lower(b.email) = $1 OR lower(b.code) = $1 OR
+         regexp_replace(lower(b.code), '[^a-z0-9]', '', 'g') = $3 OR
+         lower(b.name) = $1 OR lower(b.city) = $1 OR lower(b.province) = $1
+       )
+       AND u.status = 'active'
+       LIMIT 1`,
+      [clean, cleanPhone, cleanCode]
+    );
+    const matched = rows[0];
 
     if (!matched) {
       return res.status(401).json({ success: false, message: 'Account not found. Please verify your email or phone.' });
     }
 
-    const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'armaghansadeq@cargo.af' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
-    let passValid = false;
-    const dbPass = (matched.password || '').trim();
-    if (!cleanPass && !dbPass) {
-      passValid = true;
-    } else if (cleanPass) {
-      if (dbPass && (dbPass === cleanPass || dbPass.toLowerCase() === cleanPass.toLowerCase())) {
-        passValid = true;
-      } else if (isSuperAdmin && (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123')) {
-        passValid = true;
-      }
-    }
-
-    if (!passValid) {
+    const passwordCheck = await db.query(
+      'SELECT password_hash = crypt($1, password_hash) AS valid FROM staff_users WHERE id = $2',
+      [cleanPass, matched.id]
+    );
+    if (!passwordCheck.rows[0]?.valid) {
       return res.status(401).json({ success: false, message: 'Invalid password. Please check your password.' });
     }
+    await db.query('UPDATE staff_users SET last_login_at = now() WHERE id = $1', [matched.id]);
 
     const formatted = {
       id: matched.id,
@@ -1779,8 +1740,7 @@ api.post('/auth/login', authRateLimiter(30, 60 * 1000), async (req: Request, res
       email: matched.email,
       phone: matched.phone,
       role: matched.role,
-      branchId: matched.branch_id,
-      password: matched.password,
+      branchId: matched.role === 'customer' ? 'customer' : matched.branch_id,
       passwordChangedByBranch: matched.password_changed_by_branch,
       lastPasswordChange: matched.last_password_change,
       status: matched.status,
@@ -1895,14 +1855,14 @@ api.post('/system/reset-clean-slate', async (req: Request, res: Response) => {
       });
     }
 
-    await wipeDatabaseClean(INITIAL_BRANCHES, INITIAL_USERS);
+    await wipeDatabaseClean();
     res.json({
       success: true,
       message: 'System database wiped clean. 0 parcels, 0 expenses, branches preserved with 0 counters.',
-      branches: INITIAL_BRANCHES,
+      branches: [],
       shipments: [],
       expenses: [],
-      users: INITIAL_USERS
+      users: []
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

@@ -24,7 +24,6 @@ import {
   PriceAdjustmentType
 } from '../types';
 import { translations } from '../i18n/translations';
-import { INITIAL_BRANCHES, INITIAL_USERS, INITIAL_SHIPMENTS, INITIAL_EXPENSES } from '../data/initialData';
 import { useI18n } from './I18nContext';
 import { 
   getSupabase, 
@@ -41,6 +40,8 @@ import {
   directSupabaseWipeDummyData,
   directSupabaseDeleteShipment,
   directSupabaseVerifyUserLogin,
+  signInSuperAdminWithSupabase,
+  signOutSupabase,
   mapSupabaseRowToBranch,
   mapSupabaseRowToUser,
   mapSupabaseRowToShipment,
@@ -96,8 +97,8 @@ interface AppContextType {
   isDarkMode: boolean;
   toggleDarkMode: () => void;
   isAuthenticated: boolean;
-  login: (identifier: string, password?: string, portalScope?: 'customer' | 'staff' | 'any') => LoginResult;
-  signupCustomer: (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string) => boolean;
+  login: (identifier: string, password?: string, portalScope?: 'customer' | 'staff' | 'any') => Promise<LoginResult>;
+  signupCustomer: (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string) => Promise<boolean>;
   loginWithUser: (user: User) => void;
   logout: () => void;
   currentUser: User;
@@ -377,64 +378,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const lastSyncTimeRef = useRef<number>(0);
   const [realtimeStatus, setRealtimeStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'SUBSCRIBED' | 'TIMED_OUT'>('DISCONNECTED');
 
-  // Branches - Ensure initial branches are always loaded if empty
-  const [branches, setBranches] = useState<Branch[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.BRANCHES);
-    if (saved) {
-      try { 
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      } catch (e) { console.error(e); }
-    }
-    return INITIAL_BRANCHES;
-  });
-
-  // Users - Ensure initial super admin and branch manager accounts are always preserved
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-    const userMap = new Map<string, User>();
-    INITIAL_USERS.forEach(u => userMap.set(u.id, u));
-
-    if (saved) {
-      try { 
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          parsed.forEach((u: any) => {
-            if (u && u.id) {
-              userMap.set(u.id, { ...userMap.get(u.id), ...u });
-            }
-          });
-        }
-      } catch (e) { console.error(e); }
-    }
-
-    // Ensure all registered branches have a corresponding manager user
-    INITIAL_BRANCHES.forEach(b => {
-      if (b.isHeadOffice || b.id === 'br_admin_hq') return;
-      const hasUser = Array.from(userMap.values()).some(u => u.branchId === b.id);
-      if (!hasUser) {
-        const uId = `usr_${b.id}`;
-        const codeClean = (b.code || 'branch').toLowerCase().replace(/[^a-z0-9]/g, '');
-        userMap.set(uId, {
-          id: uId,
-          name: b.managerName || `${b.name} Manager`,
-          email: (b.email || `${codeClean}@armaghansadeq.af`).toLowerCase(),
-          phone: b.phone || '',
-          role: 'branch_manager',
-          branchId: b.id,
-          password: `${codeClean}123`,
-          passwordChangedByBranch: false,
-          status: 'active',
-          createdAt: b.createdAt || new Date().toISOString(),
-          lastLogin: 'Never'
-        });
-      }
-    });
-
-    return Array.from(userMap.values());
-  });
+  // Supabase is the only source of domain data; local state starts empty.
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   // Helper to normalize and sanitize CN numbers to start from 1500 sequentially
   const sanitizeCnList = (list: Shipment[]): Shipment[] => {
@@ -465,18 +411,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Shipments
-  const [shipments, setShipments] = useState<Shipment[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.SHIPMENTS);
-    if (saved) {
-      try {
-        const parsed: Shipment[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return sanitizeCnList(parsed);
-        }
-      } catch (e) { console.error(e); }
-    }
-    return sanitizeCnList(INITIAL_SHIPMENTS);
-  });
+  const [shipments, setShipments] = useState<Shipment[]>([]);
 
   // Helper to generate the next sequential CN / Barcode number starting from 1500 with prefix ARM-
   const getNextSequentialCn = (currentList: Shipment[], _isPreBooking: boolean = false): string => {
@@ -500,13 +435,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Branch Expenses
-  const [expenses, setExpenses] = useState<BranchExpense[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.EXPENSES);
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return INITIAL_EXPENSES;
-  });
+  const [expenses, setExpenses] = useState<BranchExpense[]>([]);
 
   // Receipt Print Mode: Standard A4 or Mini Thermal (58mm/80mm POS receipt)
   const [receiptPrintMode, setReceiptPrintModeState] = useState<'a4' | 'thermal'>(() => {
@@ -533,7 +462,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (e) {
       console.warn('Failed to parse current user:', e);
     }
-    return users.find(u => u && u.role === 'super_admin') || INITIAL_USERS[0] || ({} as User);
+    return users.find(u => u && u.role === 'super_admin') || {
+      id: '',
+      name: '',
+      email: '',
+      phone: '',
+      role: 'super_admin',
+      branchId: 'all',
+      status: 'inactive',
+      createdAt: ''
+    };
   });
 
   // Active branch context
@@ -741,6 +679,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const performSync = async () => {
       const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T, storageKey: string) => {
+        void storageKey;
+        setter(newData);
+        return;
         setter(prev => {
           if (Array.isArray(prev) && Array.isArray(newData)) {
             if (storageKey === STORAGE_KEYS.USERS) {
@@ -848,9 +789,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     return prev;
                   }
                   const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
-                  try {
-                    localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(merged));
-                  } catch (e) {}
                   return merged;
                 });
               }
@@ -922,9 +860,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   return prev;
                 }
                 const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
-                try {
-                  localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(merged));
-                } catch (e) {}
                 return merged;
               });
             }
@@ -986,7 +921,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setShipments(prev => {
               if (!prev.some(s => s.id === delId)) return prev;
               const next = prev.filter(s => s.id !== delId);
-              try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(next)); } catch (_) {}
               return next;
             });
             return;
@@ -1001,7 +935,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const next = exists
                   ? prev.map(s => s.id === mapped.id ? mapped : s)
                   : [mapped, ...prev];
-                try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(next)); } catch (_) {}
                 return next;
               });
             } else {
@@ -1013,7 +946,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   const next = exists
                     ? prev.map(s => s.id === sanitized.id ? sanitized : s)
                     : [sanitized, ...prev];
-                  try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(next)); } catch (_) {}
                   return next;
                 });
               });
@@ -1028,7 +960,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!delId) return;
             setBranches(prev => {
               const next = prev.filter(b => b.id !== delId);
-              try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(next)); } catch (_) {}
               return next;
             });
             return;
@@ -1038,20 +969,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setBranches(prev => {
               const exists = prev.some(b => b.id === mapped.id);
               const next = exists ? prev.map(b => b.id === mapped.id ? mapped : b) : [...prev, mapped];
-              try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(next)); } catch (_) {}
               return next;
             });
           }
           return;
         }
 
-        if (table === 'users') {
+        if (table === 'staff_users') {
           if (evt === 'DELETE') {
             const delId = oldRow?.id;
             if (!delId) return;
             setUsers(prev => {
               const next = prev.filter(u => u.id !== delId);
-              try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(next)); } catch (_) {}
               return next;
             });
             return;
@@ -1062,7 +991,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const existing = prev.find(u => u.id === mapped.id);
               const merged = existing ? { ...existing, ...mapped, password: existing.password } : mapped;
               const next = existing ? prev.map(u => u.id === mapped.id ? merged : u) : [...prev, merged];
-              try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(next)); } catch (_) {}
               return next;
             });
           }
@@ -1075,7 +1003,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!delId) return;
             setExpenses(prev => {
               const next = prev.filter(e => e.id !== delId);
-              try { localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(next)); } catch (_) {}
               return next;
             });
             return;
@@ -1085,7 +1012,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setExpenses(prev => {
               const exists = prev.some(e => e.id === mapped.id);
               const next = exists ? prev.map(e => e.id === mapped.id ? mapped : e) : [mapped, ...prev];
-              try { localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(next)); } catch (_) {}
               return next;
             });
           }
@@ -1098,7 +1024,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!delId) return;
             setRemittanceTransfers(prev => {
               const next = prev.filter(r => r.id !== delId);
-              try { localStorage.setItem(STORAGE_KEYS.REMITTANCES, JSON.stringify(next)); } catch (_) {}
               return next;
             });
             return;
@@ -1108,7 +1033,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setRemittanceTransfers(prev => {
               const exists = prev.some(r => r.id === mapped.id);
               const next = exists ? prev.map(r => r.id === mapped.id ? { ...r, ...mapped } : r) : [mapped, ...prev];
-              try { localStorage.setItem(STORAGE_KEYS.REMITTANCES, JSON.stringify(next)); } catch (_) {}
               return next;
             });
           }
@@ -1148,21 +1072,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      // 3. Reset client states
-      setBranches(INITIAL_BRANCHES);
+      // 3. Reset client state; branches and users remain in Supabase.
       setShipments([]);
       setExpenses([]);
-      setUsers(INITIAL_USERS);
-      setCurrentUser(INITIAL_USERS[0]);
       setActiveBranchIdState('all');
-
-      // 4. Update localStorage items
-      localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(INITIAL_BRANCHES));
-      localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify([]));
-      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, INITIAL_USERS[0].id);
       localStorage.setItem(STORAGE_KEYS.ACTIVE_BRANCH_ID, 'all');
+      await syncWithDatabase(true);
 
       // Clean old legacy storage keys
       for (let i = 0; i < localStorage.length; i++) {
@@ -1216,7 +1131,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [syncWithDatabase]);
 
   // Login methods
-  const login = (identifier: string, password?: string, portalScope: 'customer' | 'staff' | 'any' = 'any'): LoginResult => {
+  const login = async (identifier: string, password?: string, portalScope: 'customer' | 'staff' | 'any' = 'any'): Promise<LoginResult> => {
+    const remoteIdentifier = identifier.trim().toLowerCase();
+    const remotePassword = password?.trim() || '';
+    const adminAliases = ['admin', 'superadmin', 'armaghansadeq@cargo.af', 'admin@rayancargo.af'];
+
+    if (adminAliases.includes(remoteIdentifier)) {
+      if (portalScope === 'customer') {
+        return { success: false, errorReason: 'wrong_portal_staff', message: t('err_wrong_portal_staff') || 'Use the Branch & Staff Terminal for the Super Admin account.' };
+      }
+      const adminEmail = remoteIdentifier.includes('@') ? remoteIdentifier : 'armaghansadeq@cargo.af';
+      const adminAuth = await signInSuperAdminWithSupabase(adminEmail, remotePassword);
+      if ('message' in adminAuth) {
+        return { success: false, errorReason: 'invalid_credentials', message: adminAuth.message };
+      }
+      loginWithUser(adminAuth.user);
+      setActiveView('dashboard', 'super_admin');
+      return { success: true, user: adminAuth.user };
+    }
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: remoteIdentifier, password: remotePassword })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success || !result.user) {
+        return { success: false, errorReason: response.status === 404 ? 'not_found' : 'invalid_credentials', message: result.message || result.error || 'Authentication failed.' };
+      }
+      const remoteUser = result.user as User;
+      if (portalScope === 'customer' && remoteUser.role !== 'customer') {
+        return { success: false, errorReason: 'wrong_portal_staff', message: t('err_wrong_portal_staff') || 'Use the Branch & Staff Terminal for this account.', user: remoteUser };
+      }
+      if (portalScope === 'staff' && remoteUser.role === 'customer') {
+        return { success: false, errorReason: 'wrong_portal_customer', message: t('err_wrong_portal_customer') || 'Use the Customer Portal for this account.', user: remoteUser };
+      }
+      setUsers(prev => prev.some(u => u.id === remoteUser.id) ? prev.map(u => u.id === remoteUser.id ? remoteUser : u) : [...prev, remoteUser]);
+      loginWithUser(remoteUser);
+      setActiveView(remoteUser.role === 'customer' ? 'customer_portal' : 'dashboard', remoteUser.role);
+      return { success: true, user: remoteUser };
+    } catch (error: any) {
+      return { success: false, errorReason: 'invalid_credentials', message: error?.message || 'Supabase authentication service is unavailable.' };
+    }
+
+    /*
+     * Legacy local credential matching below is intentionally unreachable during
+     * the staged cutover and will be removed after production verification.
+     */
     const clean = identifier.trim().toLowerCase();
     const cleanPhone = identifier.replace(/[^0-9]/g, '');
     const cleanPass = password ? password.trim() : '';
@@ -1241,17 +1203,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch(e => console.warn('Background auth check notice:', e));
 
-    // Ensure freshest user state from localStorage cache
+    // Legacy code retained temporarily for type-safe rollback; never consult local storage.
     let currentUsers = users;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          currentUsers = parsed;
-        }
-      }
-    } catch (_) {}
 
     let matched = currentUsers.find(u => {
       const uEmail = (u.email || '').toLowerCase().trim();
@@ -1317,13 +1270,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    // Special fallback for Super Admin if user array was purged or desynchronized
-    if (!matched && (clean === 'admin' || clean === 'armaghansadeq@cargo.af' || clean === 'admin@rayancargo.af' || clean === 'superadmin')) {
-      if (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123') {
-        matched = INITIAL_USERS[0];
-      }
-    }
-
     if (!matched) {
       return {
         success: false,
@@ -1333,20 +1279,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     const isSuperAdmin = matched.role === 'super_admin' || matched.email?.toLowerCase() === 'armaghansadeq@cargo.af' || matched.email?.toLowerCase() === 'admin@rayancargo.af' || matched.id === 'usr_admin';
+
+    if (isSuperAdmin) {
+      if (portalScope === 'customer') {
+        return { success: false, errorReason: 'wrong_portal_staff', message: t('err_wrong_portal_staff') || 'This is an Administrator account. Please use the Branch & Staff Terminal.', user: matched };
+      }
+      const authEmail = matched.email?.trim() || (clean.includes('@') ? clean : '');
+      if (!authEmail) return { success: false, errorReason: 'invalid_credentials', message: 'The Super Admin profile needs a valid email address for Supabase authentication.' };
+      const authResult = await signInSuperAdminWithSupabase(authEmail, cleanPass);
+      if ('message' in authResult) return { success: false, errorReason: 'invalid_credentials', message: (authResult as any).message };
+      matched = (authResult as any).user;
+    }
     const b = branches.find(b => b.id === matched?.branchId);
     const bCodeClean = (b?.code || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const defaultBranchPass = bCodeClean ? `${bCodeClean}123` : '';
 
     let passValid = false;
     const userPass = (matched.password || '').trim();
-    if (!cleanPass && !userPass) {
+    if (isSuperAdmin) {
+      passValid = true;
+    } else if (!cleanPass && !userPass) {
       passValid = true;
     } else if (cleanPass) {
       if (userPass && (userPass === cleanPass || userPass.toLowerCase() === cleanPass.toLowerCase())) {
         passValid = true;
       } else if (defaultBranchPass && cleanPass.toLowerCase() === defaultBranchPass.toLowerCase()) {
-        passValid = true;
-      } else if (isSuperAdmin && (cleanPass === 'Armaghanrayan123' || cleanPass === 'admin123')) {
         passValid = true;
       }
     }
@@ -1411,48 +1368,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Customer Signup
-  const signupCustomer = (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string): boolean => {
-    const now = new Date().toISOString();
-    const newUserId = `usr_cust_${Date.now().toString().slice(-6)}`;
+  const signupCustomer = async (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string): Promise<boolean> => {
     const cleanEmail = (email && email.trim()) ? email.trim().toLowerCase() : `cust_${phone.replace(/[^0-9]/g, '')}@rayancustomer.af`;
-    
-    const newUser: User = {
-      id: newUserId,
-      name: name.trim(),
-      email: cleanEmail,
-      phone: phone.trim(),
-      role: 'customer',
-      branchId: 'customer',
-      nationalId: tazkiraNumber?.trim() || '',
-      tazkiraNumber: tazkiraNumber?.trim() || '',
-      city: city?.trim() || 'Kabul',
-      password: password?.trim() || 'customer123',
-      passwordChangedByBranch: false,
-      status: 'active',
-      createdAt: now,
-      lastLogin: 'Just now'
-    };
-
-    setUsers(prev => [...prev, newUser]);
-    setCurrentUser(newUser);
-    setIsAuthenticated(true);
-    sessionStorage.setItem(STORAGE_KEYS.IS_AUTH, 'true');
-    localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
-    setActiveBranchId('customer');
-    setActiveView('customer_portal', 'customer');
-
-    // Persist to Supabase Database (both direct client and backend API)
-    directSupabaseInsertUser(newUser);
-
-    fetch('/api/auth/customer-signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, email, password })
-    }).catch(err => console.error('Error in customer signup:', err));
-
-    showToast(`Account created! Welcome, ${name.trim()}.`);
-    return true;
+    try {
+      const response = await fetch('/api/auth/customer-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, email: cleanEmail, password, tazkiraNumber, city })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success || !result.user) return false;
+      const newUser = result.user as User;
+      setUsers(prev => [...prev.filter(u => u.id !== newUser.id), newUser]);
+      loginWithUser(newUser);
+      setActiveView('customer_portal', 'customer');
+      showToast(`Account created! Welcome, ${name.trim()}.`);
+      return true;
+    } catch (error) {
+      console.error('Supabase customer signup failed:', error);
+      return false;
+    }
   };
 
   const loginWithUser = (user: User) => {
@@ -1472,6 +1407,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
+    void signOutSupabase();
     setIsAuthenticated(false);
     sessionStorage.removeItem(STORAGE_KEYS.IS_AUTH);
     localStorage.removeItem(STORAGE_KEYS.IS_AUTH);
@@ -1495,7 +1431,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setUsers(prev => {
       const updated = prev.map(u => u.id === currentUser.id ? updatedUser : u);
-      try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
     setCurrentUser(updatedUser);
@@ -1618,7 +1553,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const updated = exists 
         ? prev.map(u => (u.id === finalUser.id || (finalUser.branchId && u.branchId === finalUser.branchId)) ? finalUser : u)
         : [...prev, finalUser];
-      try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
 
@@ -1626,7 +1560,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const fb = finalBranch;
       setBranches(prev => {
         const updated = prev.map(b => b.id === fb.id ? fb : b);
-        try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(updated)); } catch (_) {}
         return updated;
       });
     }
@@ -1711,12 +1644,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setBranches(prev => {
       const updated = [...prev, newBranch];
-      try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
     setUsers(prev => {
       const updated = [...prev, newUser];
-      try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
 
@@ -1757,12 +1688,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setBranches(prev => {
       const updated = prev.filter(b => b.id !== branchId);
-      try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
     setUsers(prev => {
       const updated = prev.filter(u => u.branchId !== branchId);
-      try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
 
@@ -1798,7 +1727,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setBranches(prev => {
       const updated = prev.map(b => b.id === branchId ? updatedBranch : b);
-      try { localStorage.setItem(STORAGE_KEYS.BRANCHES, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
 
@@ -1825,7 +1753,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const updated = exists 
           ? prev.map(u => (u.branchId === branchId || u.id === finalUserObj.id) ? finalUserObj : u)
           : [...prev, finalUserObj];
-        try { localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated)); } catch (_) {}
         return updated;
       });
 
@@ -1863,29 +1790,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Remittance Transfers state
-  const [remittanceTransfers, setRemittanceTransfers] = useState<BranchRemittanceTransfer[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.REMITTANCES);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error parsing saved remittances:', e);
-      }
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.REMITTANCES, JSON.stringify(remittanceTransfers));
-  }, [remittanceTransfers]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(shipments));
-  }, [shipments]);
+  const [remittanceTransfers, setRemittanceTransfers] = useState<BranchRemittanceTransfer[]>([]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, currentUser.id);
@@ -2993,7 +2898,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setShipments(prev => {
       const updated = prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s);
-      try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
 
@@ -3034,7 +2938,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setShipments(prev => {
       const updated = prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s);
-      try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
 
@@ -3068,7 +2971,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setShipments(prev => {
       const updated = prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s);
-      try { localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(updated)); } catch (_) {}
       return updated;
     });
 

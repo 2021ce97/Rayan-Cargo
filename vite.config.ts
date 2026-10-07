@@ -1,7 +1,7 @@
 import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import app from './src/server/app';
+import app from './server/app';
 
 const expressPlugin = (): Plugin => ({
   name: 'express-api-plugin',
@@ -28,8 +28,6 @@ export default defineConfig({
       'recharts',
       'jspdf',
       'html2canvas-pro',
-      'html2canvas',
-      'html-to-image',
       'canvas-confetti'
     ]
   },

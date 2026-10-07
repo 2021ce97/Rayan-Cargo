@@ -9,7 +9,9 @@ let activeRealtimeChannel: RealtimeChannel | null = null;
 
 export function getStoredAnonKey(): string {
   try {
-    const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
+    const envKey =
+      (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ||
+      (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY;
     if (envKey && typeof envKey === 'string' && envKey.trim()) {
       return envKey.trim();
     }
@@ -48,7 +50,9 @@ export function getSupabase(): SupabaseClient | null {
           }
         },
         auth: {
-          persistSession: false
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
         }
       });
       console.log('⚡ Supabase Client initialized with Project:', SUPABASE_URL);
@@ -62,6 +66,49 @@ export function getSupabase(): SupabaseClient | null {
 
 export function isSupabaseReady(): boolean {
   return !!getStoredAnonKey();
+}
+
+export type SupabaseAdminAuthResult =
+  | { success: true; user: User }
+  | { success: false; message: string };
+
+/** Authenticate a Super Admin with Supabase Auth, then verify the app profile. */
+export async function signInSuperAdminWithSupabase(email: string, password: string): Promise<SupabaseAdminAuthResult> {
+  const client = getSupabase();
+  if (!client) return { success: false, message: 'Supabase authentication is not configured.' };
+  const { data: authData, error: authError } = await client.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+  if (authError || !authData.user) return { success: false, message: authError?.message || 'Supabase authentication failed.' };
+  const { data: linkedProfile } = await client.from('super_admin_profiles').select('*').eq('auth_user_id', authData.user.id).maybeSingle();
+  const resolvedProfile = linkedProfile || (await client.from('super_admin_profiles').select('*').ilike('email', authData.user.email || email).maybeSingle()).data;
+  if (!resolvedProfile) {
+    await client.auth.signOut();
+    return { success: false, message: 'Your Supabase account is not linked to an application user profile.' };
+  }
+  if (resolvedProfile.status !== 'active') {
+    await client.auth.signOut();
+    return { success: false, message: 'This Supabase account is not an active Super Admin.' };
+  }
+  return {
+    success: true,
+    user: {
+      id: resolvedProfile.legacy_user_id || authData.user.id,
+      name: resolvedProfile.name,
+      email: resolvedProfile.email,
+      phone: resolvedProfile.phone || '',
+      role: 'super_admin',
+      branchId: 'all',
+      status: resolvedProfile.status,
+      avatar: resolvedProfile.avatar || undefined,
+      preferences: resolvedProfile.preferences || undefined,
+      createdAt: resolvedProfile.created_at,
+      lastLogin: resolvedProfile.last_login_at || 'Just now'
+    }
+  };
+}
+
+export async function signOutSupabase(): Promise<void> {
+  const client = getSupabase();
+  if (client) await client.auth.signOut();
 }
 
 /**
@@ -110,39 +157,10 @@ export async function directSupabaseInsertBranch(branch: Branch): Promise<{ succ
 }
 
 export async function directSupabaseInsertUser(user: User): Promise<{ success: boolean; error?: any }> {
-  const client = getSupabase();
-  if (!client) return { success: false, error: 'Supabase client not initialized' };
-
-  try {
-    const row = {
-      id: user.id,
-      name: user.name,
-      email: user.email || null,
-      phone: user.phone,
-      role: user.role,
-      branch_id: user.branchId,
-      password: user.password || '',
-      password_changed_by_branch: user.passwordChangedByBranch || false,
-      last_password_change: user.lastPasswordChange || null,
-      status: user.status || 'active',
-      avatar: user.avatar || null,
-      created_at: user.createdAt || new Date().toISOString(),
-      last_login: user.lastLogin || 'Just now',
-      preferences: user.preferences || null
-    };
-
-    const { error } = await client
-      .from('users')
-      .upsert(row, { onConflict: 'id' });
-
-    if (error) {
-      console.warn('directSupabaseInsertUser warning:', error.message);
-      return { success: false, error: error.message };
-    }
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message };
-  }
+  // Password hashing and role routing are server-only operations.
+  // User mutations are persisted by the Supabase-backed /api/users endpoints.
+  void user;
+  return { success: true };
 }
 
 export async function directSupabaseInsertShipment(shipment: Shipment): Promise<{ success: boolean; error?: any }> {
@@ -385,13 +403,13 @@ export async function directSupabaseDeleteShipment(shipmentId: string): Promise<
 export const SUPABASE_BRANCH_COLUMNS = 'id,name,name_fa,name_ps,code,province,city,address,phone,email,manager_name,tazkira_number,is_head_office,active_shipments_count,total_parcels_dispatched,total_parcels_received,total_revenue_afn,created_at';
 
 // Strictly excludes password / password_hash from general user listing to protect credentials & reduce egress
-export const SUPABASE_USER_SAFE_COLUMNS = 'id,name,email,phone,role,branch_id,password_changed_by_branch,last_password_change,status,avatar,created_at,last_login,preferences';
+export const SUPABASE_USER_SAFE_COLUMNS = 'id,name,email,phone,role,branch_id,password_changed_by_branch,last_password_change,status,avatar,created_at,last_login_at,preferences';
 
 export const SUPABASE_SHIPMENT_COLUMNS = 'id,cn_number,origin_branch_id,destination_branch_id,current_branch_id,sender,receiver,package_info,financials,status,status_history,booked_at,estimated_delivery,actual_delivery,pod_signature,receiver_id_proof,delivery_notes,booked_by_user_id,booked_by_user_name,is_customer_prebooked,is_pre_booking,customer_user_id,dest_branch_commission,remittance_status,origin_remittance_due,customer_submission_at,customer_submission_reference,customer_submission_by,seller_payout_status,seller_payout_disbursed_at,seller_payout_method,seller_payout_voucher_ref,seller_payout_disbursed_by_branch_id,seller_payout_disbursed_by_user_name,seller_payout_confirmed_at,seller_payout_dispute_reason,seller_payout_notes';
 
 export const SUPABASE_EXPENSE_COLUMNS = 'id,branch_id,category,amount,description,expense_date,paid_to,receipt_number,created_by_name,created_at';
 
-export const SUPABASE_SETTLEMENT_COLUMNS = 'id,branch_id,paying_branch_id,receiving_branch_id,settlement_type,amount_afn,shipments_count,shipment_ids,parcel_ids,cn_number,origin_branch_id,destination_branch_id,gross_collected_amount,dest_branch_commission,transportation_fee,origin_branch_commission,total_commission_kept,net_remitted_amount,commission_adjustment_type,commission_adjustment_amount,commission_adjustment_reason,transport_adjustment_type,transport_adjustment_amount,transport_adjustment_reason,settlement_date,settled_by_user_id,settled_by_user_name,reference_number,sarafi_reference_no,payment_method,settlement_channel,status,settlement_status,notes,created_at';
+export const SUPABASE_SETTLEMENT_COLUMNS = 'id,branch_id,shipment_id,parcel_ids,cn_number,origin_branch_id,destination_branch_id,gross_collected_amount,dest_branch_commission,transportation_fee,origin_branch_commission,total_commission_kept,net_remitted_amount,commission_adjustment_type,commission_adjustment_amount,commission_adjustment_reason,transport_adjustment_type,transport_adjustment_amount,transport_adjustment_reason,settled_by_user_name,sarafi_reference_no,settlement_channel,settlement_status,settled_at,notes,created_at';
 
 export function mapSupabaseRowToBranch(b: any): Branch {
   return {
@@ -430,7 +448,7 @@ export function mapSupabaseRowToUser(u: any): User {
     status: u.status || 'active',
     avatar: u.avatar || undefined,
     createdAt: u.created_at,
-    lastLogin: u.last_login || 'Never',
+    lastLogin: u.last_login_at || u.last_login || 'Never',
     preferences: typeof u.preferences === 'string' ? JSON.parse(u.preferences) : u.preferences
   };
 }
@@ -439,26 +457,10 @@ export function mapSupabaseRowToUser(u: any): User {
  * Targeted single-user login verification against Supabase without downloading passwords in general user listings
  */
 export async function directSupabaseVerifyUserLogin(identifierOrUserId: string, candidatePassword: string): Promise<User | null> {
-  const client = getSupabase();
-  if (!client || !identifierOrUserId || !candidatePassword) return null;
-  try {
-    const clean = identifierOrUserId.trim().toLowerCase();
-    const { data, error } = await client
-      .from('users')
-      .select(`${SUPABASE_USER_SAFE_COLUMNS},password`)
-      .or(`id.eq.${clean},email.ilike.${clean},phone.ilike.%${clean.replace(/[^0-9]/g, '') || clean}%`)
-      .limit(5);
-    if (error || !data || data.length === 0) return null;
-    const cleanPass = candidatePassword.trim();
-    const matchedRow = data.find((r: any) => {
-      const stored = String(r.password || r.password_hash || '').trim();
-      return stored && (stored === cleanPass || stored.toLowerCase() === cleanPass.toLowerCase());
-    });
-    if (!matchedRow) return null;
-    return mapSupabaseRowToUser(matchedRow);
-  } catch {
-    return null;
-  }
+  // Staff passwords are bcrypt hashes and are verified only by /api/auth/login.
+  void identifierOrUserId;
+  void candidatePassword;
+  return null;
 }
 
 export function mapSupabaseRowToShipment(s: any): Shipment {
@@ -607,11 +609,32 @@ export async function directSupabaseFetchAll(): Promise<{
   try {
     const [bRes, uRes, sRes, eRes, setRes] = await Promise.all([
       client.from('branches').select(SUPABASE_BRANCH_COLUMNS).order('created_at', { ascending: true }),
-      client.from('users').select(SUPABASE_USER_SAFE_COLUMNS).order('created_at', { ascending: true }),
+      client.from('staff_users').select(SUPABASE_USER_SAFE_COLUMNS).order('created_at', { ascending: true }),
       client.from('shipments').select(SUPABASE_SHIPMENT_COLUMNS).order('booked_at', { ascending: false }).limit(500),
       client.from('branch_expenses').select(SUPABASE_EXPENSE_COLUMNS).order('created_at', { ascending: false }).limit(500),
       client.from('branch_settlements').select(SUPABASE_SETTLEMENT_COLUMNS).order('created_at', { ascending: false }).limit(500)
     ]);
+
+    const failedQuery = [
+      ['branches', bRes.error],
+      ['staff_users', uRes.error],
+      ['shipments', sRes.error],
+      ['branch_expenses', eRes.error],
+      ['branch_settlements', setRes.error]
+    ].find(([, error]) => Boolean(error));
+
+    if (failedQuery) {
+      const [table, error] = failedQuery as [string, any];
+      console.warn('Direct Supabase query failed; using server API fallback:', table, error?.message || error);
+      return { success: false, error: table + ': ' + (error?.message || 'query failed') };
+    }
+
+    // Protected tables return an empty array (not an error) when the current
+    // browser session has no matching RLS policy. Use the PostgreSQL API
+    // fallback in that case so staff sessions still receive server-authorized data.
+    if (!bRes.data?.length || !uRes.data?.length) {
+      return { success: false, error: 'Protected Supabase rows are unavailable to the current browser session' };
+    }
 
     const branches: Branch[] = (bRes.data || []).map(mapSupabaseRowToBranch);
     const users: User[] = (uRes.data || []).map(mapSupabaseRowToUser);
@@ -666,8 +689,8 @@ export function subscribeToSupabaseRealtime(handlers: RealtimeSyncHandlers): () 
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'users' },
-        (payload) => handlers.onDataChanged('users', payload.eventType, payload.new, payload.old)
+        { event: '*', schema: 'public', table: 'staff_users' },
+        (payload) => handlers.onDataChanged('staff_users', payload.eventType, payload.new, payload.old)
       )
       .on(
         'postgres_changes',

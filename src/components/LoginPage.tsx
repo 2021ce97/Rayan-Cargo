@@ -72,7 +72,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleBranchLoginSubmit = (e: React.FormEvent) => {
+  const handleBranchLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBranchLoginError('');
     setWrongPortalCustomerDetected(false);
@@ -86,7 +86,7 @@ export const LoginPage: React.FC = () => {
     }
 
     setIsSubmittingBranch(true);
-    const res = login(identifier.trim(), password, 'staff');
+    const res = await login(identifier.trim(), password, 'staff');
     setIsSubmittingBranch(false);
 
     if (!res.success) {
@@ -99,7 +99,7 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleCustomerAuthSubmit = (e: React.FormEvent) => {
+  const handleCustomerAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setCustomerAuthError('');
     setCustomerAuthSuccess('');
@@ -110,7 +110,7 @@ export const LoginPage: React.FC = () => {
         setCustomerAuthError(t('err_fill_required_fields') || 'Please provide your full name, phone number or email, and password.');
         return;
       }
-      const success = signupCustomer(
+      const success = await signupCustomer(
         customerName.trim(),
         customerPhone.trim() || '0700000000',
         customerEmail.trim() || `${customerPhone.trim()}@customer.armaghansadeq.af`,
@@ -130,7 +130,7 @@ export const LoginPage: React.FC = () => {
         setCustomerAuthError(t('err_enter_password') || 'Please enter your password.');
         return;
       }
-      const res = login(customerIdentifier.trim(), customerPassword, 'customer');
+      const res = await login(customerIdentifier.trim(), customerPassword, 'customer');
       if (!res.success) {
         if (res.errorReason === 'wrong_portal_staff') {
           setWrongPortalStaffDetected(true);

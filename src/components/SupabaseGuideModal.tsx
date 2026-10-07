@@ -255,16 +255,16 @@ export const SupabaseGuideModal: React.FC<SupabaseGuideModalProps> = ({ isOpen, 
                   )}
                   <div>
                     <div className="font-extrabold text-sm">
-                      {dbInfo?.isRealDb ? 'Connected to Supabase PostgreSQL Database' : 'In-Memory Ultra-Fast Database Engine Active'}
+                      {dbInfo?.isRealDb ? 'Connected to Supabase PostgreSQL Database' : 'Supabase PostgreSQL Connection Required'}
                     </div>
                     <p className="text-xs mt-1 text-slate-600">
                       {dbInfo?.isRealDb
                         ? 'Your app is directly reading and writing all records to your cloud Supabase database.'
-                        : 'Running with local in-memory zero-latency storage. To connect your remote Supabase database, add DATABASE_URL in Settings.'}
+                        : 'Local database fallback is disabled. Add a valid DATABASE_URL before using the application.'}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-600">
                       <span className="font-semibold text-slate-800">Connection URI:</span>
-                      <span className="bg-white/80 px-2 py-0.5 rounded border border-slate-200">{dbInfo?.connectionUrl || 'Local Engine'}</span>
+                      <span className="bg-white/80 px-2 py-0.5 rounded border border-slate-200">{dbInfo?.connectionUrl || 'Not configured'}</span>
                     </div>
                   </div>
                 </div>
