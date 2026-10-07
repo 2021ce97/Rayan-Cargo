@@ -13,6 +13,7 @@ import {
   Receipt,
   Percent
 } from 'lucide-react';
+import { edgeApiFetch as fetch } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
 import { Branch } from '../types';
 

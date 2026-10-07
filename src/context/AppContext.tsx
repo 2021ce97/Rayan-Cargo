@@ -40,6 +40,7 @@ import {
   directSupabaseWipeDummyData,
   directSupabaseDeleteShipment,
   directSupabaseVerifyUserLogin,
+  edgeApiFetch as fetch,
   signInSuperAdminWithSupabase,
   signOutSupabase,
   mapSupabaseRowToBranch,
@@ -1098,6 +1099,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync once on initial load, and only re-sync on window focus if last sync was > 5 minutes ago
   useEffect(() => {
+    // Protected Edge routes must not run before a Super Admin or staff session exists.
+    if (!isAuthenticated) return;
+
     // Purge old versions of local storage keys if present
     try {
       const keysToRemove: string[] = [];
@@ -1128,7 +1132,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       document.removeEventListener('visibilitychange', handleStaleVisibilityRefresh);
     };
-  }, [syncWithDatabase]);
+  }, [syncWithDatabase, isAuthenticated]);
 
   // Login methods
   const login = async (identifier: string, password?: string, portalScope: 'customer' | 'staff' | 'any' = 'any'): Promise<LoginResult> => {

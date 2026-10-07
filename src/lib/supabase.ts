@@ -3,6 +3,7 @@ import { Branch, User, Shipment, BranchExpense } from '../types';
 
 export const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://wgdmwuhkuanxykwqvpyp.supabase.co';
 export const STORAGE_KEY_SUPABASE_ANON = 'rayan_cargo_supabase_anon_key';
+export const STORAGE_KEY_STAFF_SESSION = 'rayan_cargo_staff_session';
 
 let supabaseInstance: SupabaseClient | null = null;
 let activeRealtimeChannel: RealtimeChannel | null = null;
@@ -78,6 +79,7 @@ export async function signInSuperAdminWithSupabase(email: string, password: stri
   if (!client) return { success: false, message: 'Supabase authentication is not configured.' };
   const { data: authData, error: authError } = await client.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
   if (authError || !authData.user) return { success: false, message: authError?.message || 'Supabase authentication failed.' };
+  sessionStorage.removeItem(STORAGE_KEY_STAFF_SESSION);
   const { data: linkedProfile } = await client.from('super_admin_profiles').select('*').eq('auth_user_id', authData.user.id).maybeSingle();
   const resolvedProfile = linkedProfile || (await client.from('super_admin_profiles').select('*').ilike('email', authData.user.email || email).maybeSingle()).data;
   if (!resolvedProfile) {
@@ -107,8 +109,44 @@ export async function signInSuperAdminWithSupabase(email: string, password: stri
 }
 
 export async function signOutSupabase(): Promise<void> {
+  const staffSession = sessionStorage.getItem(STORAGE_KEY_STAFF_SESSION);
+  if (staffSession) {
+    await edgeApiFetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+  }
   const client = getSupabase();
   if (client) await client.auth.signOut();
+  sessionStorage.removeItem(STORAGE_KEY_STAFF_SESSION);
+}
+
+/** Route former /api calls to the Supabase Edge Function. */
+export async function edgeApiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  if (!raw.startsWith('/api/')) return globalThis.fetch(input, init);
+
+  const client = getSupabase();
+  if (!client) throw new Error('Supabase is not configured.');
+  const anonKey = getStoredAnonKey();
+  const { data } = await client.auth.getSession();
+  const staffSession = sessionStorage.getItem(STORAGE_KEY_STAFF_SESSION) || '';
+  const headers = new Headers(init.headers || {});
+  headers.set('apikey', anonKey);
+  headers.set('authorization', 'Bearer ' + (data.session?.access_token || anonKey));
+  if (staffSession) headers.set('x-staff-session', staffSession);
+  if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
+
+  const response = await globalThis.fetch(
+    SUPABASE_URL + '/functions/v1/backend' + raw.slice('/api'.length),
+    { ...init, headers }
+  );
+
+  if (response.ok && (raw === '/api/auth/login' || raw === '/api/auth/customer-signup')) {
+    const payload = await response.clone().json().catch(() => null);
+    if (payload?.sessionToken) sessionStorage.setItem(STORAGE_KEY_STAFF_SESSION, payload.sessionToken);
+  }
+  if (response.status === 401 && raw !== '/api/auth/login') {
+    sessionStorage.removeItem(STORAGE_KEY_STAFF_SESSION);
+  }
+  return response;
 }
 
 /**
@@ -157,8 +195,8 @@ export async function directSupabaseInsertBranch(branch: Branch): Promise<{ succ
 }
 
 export async function directSupabaseInsertUser(user: User): Promise<{ success: boolean; error?: any }> {
-  // Password hashing and role routing are server-only operations.
-  // User mutations are persisted by the Supabase-backed /api/users endpoints.
+  // Password hashing and role routing are Edge Function operations.
+  // User mutations are persisted by the Supabase backend function.
   void user;
   return { success: true };
 }
@@ -457,7 +495,7 @@ export function mapSupabaseRowToUser(u: any): User {
  * Targeted single-user login verification against Supabase without downloading passwords in general user listings
  */
 export async function directSupabaseVerifyUserLogin(identifierOrUserId: string, candidatePassword: string): Promise<User | null> {
-  // Staff passwords are bcrypt hashes and are verified only by /api/auth/login.
+  // Staff passwords are bcrypt hashes and are verified only by the Edge Function.
   void identifierOrUserId;
   void candidatePassword;
   return null;

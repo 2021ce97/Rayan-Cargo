@@ -8,14 +8,12 @@ import {
   Lock,
   KeyRound,
   Menu,
-  X,
-  Database
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserRole, Branch } from '../types';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { ArmaghanLogo } from './ArmaghanLogo';
-import { SupabaseGuideModal } from './SupabaseGuideModal';
 import { SystemSettingsModal } from './SystemSettingsModal';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { Settings as SettingsIcon } from 'lucide-react';
@@ -35,17 +33,13 @@ export const Header: React.FC = () => {
     toastMessage,
     logout,
     isMobileSidebarOpen,
-    setIsMobileSidebarOpen,
-    dbStatus,
-    realtimeStatus,
-    isSyncing
+    setIsMobileSidebarOpen
   } = useApp();
 
   const [searchCn, setSearchCn] = useState('');
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isDbModalOpen, setIsDbModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -301,12 +295,6 @@ export const Header: React.FC = () => {
       <ChangePasswordModal 
         isOpen={isPasswordModalOpen} 
         onClose={() => setIsPasswordModalOpen(false)} 
-      />
-
-      {/* Supabase Database & Real-Time Sync Guide Modal */}
-      <SupabaseGuideModal 
-        isOpen={isDbModalOpen} 
-        onClose={() => setIsDbModalOpen(false)} 
       />
 
       {/* System Settings Modal */}
