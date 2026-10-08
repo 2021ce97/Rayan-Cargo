@@ -48,6 +48,7 @@ export const UserManagement: React.FC = () => {
   const [tempPassword, setTempPassword] = useState('');
   const [copied, setCopied] = useState(false);
   const [provisionSuccess, setProvisionSuccess] = useState(false);
+  const [isSavingCredentials, setIsSavingCredentials] = useState(false);
 
   // Add new branch modal
   const [isAddBranchOpen, setIsAddBranchOpen] = useState(false);
@@ -85,23 +86,30 @@ export const UserManagement: React.FC = () => {
     setProvisionSuccess(false);
   };
 
-  const handleSaveProvision = (e: React.FormEvent) => {
+  const handleSaveProvision = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!provisionUser || !tempPassword.trim() || !provisionEmail.trim()) return;
+    if (!provisionUser || !tempPassword.trim() || !provisionEmail.trim() || isSavingCredentials) return;
 
-    resetBranchUserCredentials(
-      provisionUser.id, 
-      provisionEmail.trim().toLowerCase(), 
-      tempPassword.trim(),
-      provisionUser.name,
-      provisionUser.phone,
-      provisionUser.branchId
-    );
-    setProvisionSuccess(true);
-    setTimeout(() => {
-      setProvisionSuccess(false);
-      setProvisionUser(null);
-    }, 2000);
+    setIsSavingCredentials(true);
+    try {
+      const saved = await resetBranchUserCredentials(
+        provisionUser.id,
+        provisionEmail.trim().toLowerCase(),
+        tempPassword.trim(),
+        provisionUser.name,
+        provisionUser.phone,
+        provisionUser.branchId
+      );
+      if (saved) {
+        setProvisionSuccess(true);
+        setTimeout(() => {
+          setProvisionSuccess(false);
+          setProvisionUser(null);
+        }, 2000);
+      }
+    } finally {
+      setIsSavingCredentials(false);
+    }
   };
 
   const handleCopy = () => {
@@ -382,6 +390,7 @@ export const UserManagement: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setProvisionUser(null)}
+                  disabled={isSavingCredentials}
                   className="text-slate-400 hover:text-slate-600 font-bold cursor-pointer"
                 >
                   ✕
@@ -443,9 +452,10 @@ export const UserManagement: React.FC = () => {
 
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-md cursor-pointer transition-colors"
+                    disabled={isSavingCredentials}
+                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-wait text-white rounded-xl font-bold shadow-md cursor-pointer transition-colors"
                   >
-                    {t('save_and_issue_btn')}
+                    {isSavingCredentials ? 'Saving…' : t('save_and_issue_btn')}
                   </button>
                 </div>
               </form>

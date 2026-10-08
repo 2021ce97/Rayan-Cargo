@@ -176,7 +176,7 @@ interface AppContextType {
   canUserUpdateStatus: (shipment: Shipment) => StatusPermissionResult;
   changePassword: (newPassword: string) => boolean;
   updateUserPreferences: (prefs: UserPreferences) => boolean;
-  resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string, targetBranchId?: string) => boolean;
+  resetBranchUserCredentials: (userId: string, emailOrPassword: string, initialPassword?: string, name?: string, phone?: string, targetBranchId?: string) => Promise<boolean>;
   addBranch: (input: AddBranchInput) => { branch: Branch; user: User };
   updateBranch: (branchId: string, updates: Partial<Branch>) => boolean;
   deleteBranch: (branchId: string) => boolean;
@@ -1483,14 +1483,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Super Admin provisions email and password for a branch
-  const resetBranchUserCredentials = (
+  const resetBranchUserCredentials = async (
     userIdOrBranchId: string, 
     emailOrPassword: string, 
     initialPassword?: string,
     name?: string,
     phone?: string,
     targetBranchId?: string
-  ): boolean => {
+  ): Promise<boolean> => {
     // Resolve branch ID
     const resolvedBranchId = targetBranchId || 
       (userIdOrBranchId.startsWith('br_') ? userIdOrBranchId : null) || 
@@ -1551,57 +1551,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    // Update React states and LocalStorage
-    setUsers(prev => {
-      const exists = prev.some(u => u.id === finalUser.id || (finalUser.branchId && u.branchId === finalUser.branchId));
-      const updated = exists 
-        ? prev.map(u => (u.id === finalUser.id || (finalUser.branchId && u.branchId === finalUser.branchId)) ? finalUser : u)
-        : [...prev, finalUser];
-      return updated;
-    });
-
-    if (finalBranch) {
-      const fb = finalBranch;
-      setBranches(prev => {
-        const updated = prev.map(b => b.id === fb.id ? fb : b);
-        return updated;
-      });
+    if (currentUser?.role !== 'super_admin') {
+      showToast('Only a Super Admin can change branch credentials.', 'error');
+      return false;
+    }
+    if (!finalUser.email || !finalUser.email.includes('@') || !targetPassword || targetPassword.length < 6) {
+      showToast('Enter a valid email and a password with at least 6 characters.', 'error');
+      return false;
     }
 
-    // Direct Supabase upsert (instant sync)
-    directSupabaseInsertUser(finalUser);
-    if (finalBranch) {
-      directSupabaseInsertBranch(finalBranch);
-    }
-
-    // Backend database update
-    fetch('/api/users/credentials', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'X-User-Role': currentUser?.role || 'super_admin'
-      },
-      body: JSON.stringify({
-        userId: finalUser.id,
-        branchId: finalUser.branchId,
-        email: finalUser.email,
-        password: finalUser.password,
-        name: finalUser.name,
-        phone: finalUser.phone,
-        userRole: currentUser?.role || 'super_admin'
-      })
-    }).catch(err => console.error('Error provisioning credentials in backend:', err));
-
-    if (finalBranch) {
-      fetch('/api/branches', {
+    try {
+      const credentialResponse = await fetch('/api/users/credentials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finalBranch)
-      }).catch(err => console.error('Error updating branch in backend:', err));
-    }
+        body: JSON.stringify({
+          userId: finalUser.id,
+          branchId: finalUser.branchId,
+          email: finalUser.email,
+          password: targetPassword,
+          name: finalUser.name,
+          phone: finalUser.phone
+        })
+      });
+      const credentialResult = await credentialResponse.json().catch(() => null);
+      if (!credentialResponse.ok || !credentialResult?.success) {
+        throw new Error(credentialResult?.error || 'The credentials could not be saved.');
+      }
 
-    showToast(t('credentials_success_msg') || 'Branch credentials updated and saved securely.');
-    return true;
+      const savedUser: User = {
+        ...finalUser,
+        id: credentialResult.user?.id || finalUser.id,
+        password: targetPassword,
+        passwordChangedByBranch: false,
+        lastPasswordChange: credentialResult.user?.lastPasswordChange || new Date().toISOString()
+      };
+      setUsers(prev => {
+        const exists = prev.some(u => u.id === savedUser.id || (savedUser.branchId && u.branchId === savedUser.branchId));
+        return exists
+          ? prev.map(u => (u.id === savedUser.id || (savedUser.branchId && u.branchId === savedUser.branchId)) ? savedUser : u)
+          : [...prev, savedUser];
+      });
+
+      if (finalBranch) {
+        const branchResponse = await fetch('/api/branches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalBranch)
+        });
+        const branchResult = await branchResponse.json().catch(() => null);
+        if (!branchResponse.ok || !branchResult?.success) {
+          throw new Error(branchResult?.error || 'Credentials changed, but branch contact details could not be saved.');
+        }
+        setBranches(prev => prev.map(b => b.id === finalBranch.id ? finalBranch : b));
+      }
+
+      showToast(t('credentials_success_msg') || 'Branch credentials updated and saved securely.', 'success');
+      return true;
+    } catch (error: any) {
+      console.error('Error provisioning branch credentials:', error);
+      showToast(error?.message || 'Failed to update branch credentials.', 'error');
+      return false;
+    }
   };
 
   // Super Admin adds a brand new branch terminal
