@@ -12,7 +12,9 @@ import {
   UserPlus,
   LogIn,
   CheckCircle2,
-  Package
+  Package,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus } from '../types';
@@ -41,6 +43,7 @@ export const LoginPage: React.FC = () => {
   // Branch / Staff Login Form State
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showBranchPassword, setShowBranchPassword] = useState(false);
   const [branchLoginError, setBranchLoginError] = useState('');
   const [isSubmittingBranch, setIsSubmittingBranch] = useState(false);
   const [wrongPortalCustomerDetected, setWrongPortalCustomerDetected] = useState(false);
@@ -49,6 +52,7 @@ export const LoginPage: React.FC = () => {
   const [customerAuthMode, setCustomerAuthMode] = useState<'signin' | 'signup'>('signin');
   const [customerIdentifier, setCustomerIdentifier] = useState('');
   const [customerPassword, setCustomerPassword] = useState('');
+  const [showCustomerPassword, setShowCustomerPassword] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -592,13 +596,22 @@ export const LoginPage: React.FC = () => {
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type="password"
+                      type={showCustomerPassword ? 'text' : 'password'}
                       required
                       value={customerPassword}
                       onChange={(e) => setCustomerPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+                      className="w-full ps-10 pe-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomerPassword(value => !value)}
+                      className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                      aria-label={showCustomerPassword ? 'Hide password' : 'Show password'}
+                      title={showCustomerPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showCustomerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -703,13 +716,22 @@ export const LoginPage: React.FC = () => {
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type="password"
+                      type={showBranchPassword ? 'text' : 'password'}
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={t('login_password_placeholder')}
-                      className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+                      className="w-full ps-10 pe-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowBranchPassword(value => !value)}
+                      className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                      aria-label={showBranchPassword ? 'Hide password' : 'Show password'}
+                      title={showBranchPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showBranchPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 

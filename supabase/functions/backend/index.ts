@@ -14,6 +14,21 @@ const hash = async (value: string) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
 };
+const credentialKey = async () => {
+  const source = Deno.env.get('BRANCH_CREDENTIALS_ENCRYPTION_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const raw = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('rayan-cargo:branch-credentials:v1:' + source));
+  return crypto.subtle.importKey('raw', raw, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+};
+const encryptCredential = async (value:string) => {
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await credentialKey(),new TextEncoder().encode(value)));
+  return btoa(String.fromCharCode(...iv,...encrypted));
+};
+const decryptCredential = async (value:string) => {
+  const packed=Uint8Array.from(atob(value),c=>c.charCodeAt(0));
+  const decrypted=await crypto.subtle.decrypt({name:'AES-GCM',iv:packed.slice(0,12)},await credentialKey(),packed.slice(12));
+  return new TextDecoder().decode(decrypted);
+};
 const safeUser = (r: any) => ({
   id:r.id,name:r.name,email:r.email||'',phone:r.phone||'',role:r.role,branchId:r.branch_id||'customer',
   passwordChangedByBranch:r.password_changed_by_branch||false,lastPasswordChange:r.last_password_change||undefined,
@@ -155,6 +170,18 @@ Deno.serve(async(req)=>{
       const {error}=await db.from('branches').upsert(branchRow(body),{onConflict:'id'});if(error)throw error;
       return json({success:true,branch:body});
     }
+    const credentialPathParts=path.split('/').filter(Boolean);
+    if(credentialPathParts.length===3&&credentialPathParts[0]==='branches'&&credentialPathParts[2]==='credentials'&&req.method==='GET'){
+      if(!admin)return json({success:false,error:'Super Admin required.'},403);
+      const branchId=decodeURIComponent(credentialPathParts[1]);
+      const {data:secret,error}=await db.from('branch_credential_secrets')
+        .select('staff_user_id,encrypted_password,updated_at').eq('branch_id',branchId).maybeSingle();
+      if(error)throw error;
+      if(!secret)return json({success:false,error:'No displayable password is stored yet. Save this branch credential once to add it to the secure vault.'},404);
+      const {data:user,error:userError}=await db.from('staff_users').select('email').eq('id',secret.staff_user_id).single();
+      if(userError)throw userError;
+      return json({success:true,credentials:{email:user.email,password:await decryptCredential(secret.encrypted_password),updatedAt:secret.updated_at}});
+    }
     if(/^\/branches\/[^/]+$/.test(path)&&req.method==='DELETE'){
       if(!admin)return json({success:false,error:'Super Admin required.'},403);
       const id=path.split('/')[2];const {data:t}=await db.from('branches').select('is_head_office').eq('id',id).maybeSingle();
@@ -199,6 +226,10 @@ Deno.serve(async(req)=>{
       if(result.error)throw result.error;
       const {error}=await db.rpc('set_staff_password',{p_user_id:targetId,p_password:password});
       if(error)throw error;
+      const stored=await db.from('branch_credential_secrets').upsert({
+        branch_id:branchId,staff_user_id:targetId,encrypted_password:await encryptCredential(password),updated_at:new Date().toISOString()
+      },{onConflict:'branch_id'});
+      if(stored.error)throw stored.error;
       const updated=await db.from('staff_users')
         .update({password_changed_by_branch:false})
         .eq('id',targetId)
