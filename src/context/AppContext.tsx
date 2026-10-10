@@ -123,7 +123,7 @@ interface AppContextType {
   trackedShipment: Shipment | null;
   trackByCnNumber: (cn: string) => Shipment | null;
   addShipment: (shipmentData: Omit<Shipment, 'id' | 'cnNumber' | 'statusHistory' | 'bookedAt'>) => Shipment;
-  createCustomerPreBooking: (input: CustomerPreBookingInput) => Shipment;
+  createCustomerPreBooking: (input: CustomerPreBookingInput) => Promise<Shipment>;
   confirmCustomerPreBooking: (shipmentId: string, details: {
     weightKg?: number;
     pieces?: number;
@@ -2476,7 +2476,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Customer Pre-booking
-  const createCustomerPreBooking = (input: CustomerPreBookingInput): Shipment => {
+  const createCustomerPreBooking = async (input: CustomerPreBookingInput): Promise<Shipment> => {
     if (!input.productPriceAfn || Number(input.productPriceAfn) <= 0) {
       throw new Error('Product Price is mandatory and must be greater than 0.');
     }
@@ -2560,19 +2560,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       bookedByUserName: currentUser.name
     };
 
-    setShipments(prev => [newShipment, ...prev]);
-
-    // Persist to Supabase Database (direct client & backend API)
-    directSupabaseInsertShipment(newShipment);
-
-    fetch('/api/shipments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newShipment)
-    }).catch(err => console.error('Error pre-booking in Supabase:', err));
-
-    showToast(`Parcel pre-booked with CN #${newCn}! Hand over to ${originBranch?.name || 'Origin Branch'} for weighing and price determination.`);
-    return newShipment;
+    try {
+      const response=await fetch('/api/shipments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newShipment)
+      });
+      const result=await response.json().catch(()=>null);
+      if(!response.ok||!result?.success||!result?.shipment){
+        throw new Error(result?.error||'The parcel could not be saved to Supabase.');
+      }
+      const savedShipment=sanitizeShipmentFinancials(result.shipment as Shipment);
+      setShipments(prev => {
+        const withoutDuplicate=prev.filter(s=>s.id!==savedShipment.id&&s.cnNumber!==savedShipment.cnNumber);
+        return [savedShipment,...withoutDuplicate];
+      });
+      showToast(`Parcel pre-booked with CN #${savedShipment.cnNumber}! Hand over to ${originBranch?.name || 'Origin Branch'} for weighing and price determination.`, 'success');
+      return savedShipment;
+    } catch(error:any) {
+      console.error('Error pre-booking in Supabase:',error);
+      showToast(error?.message||'Failed to save the parcel. Please try again.', 'error');
+      throw error;
+    }
   };
 
   // Helper to verify if the current user represents or has authority over the origin branch

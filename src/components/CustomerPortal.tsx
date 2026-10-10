@@ -53,6 +53,7 @@ export const CustomerPortal: React.FC = () => {
 
   const [submittedCn, setSubmittedCn] = useState<string | null>(null);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
   // Pre-booking form state
   const [originBranchId, setOriginBranchId] = useState(branches[0]?.id || 'br_kabul');
@@ -113,8 +114,9 @@ export const CustomerPortal: React.FC = () => {
     }
   };
 
-  const handlePreBookSubmit = (e: React.FormEvent) => {
+  const handlePreBookSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(isSubmittingBooking)return;
     if (!receiverName.trim() || !receiverPhone.trim()) {
       alert(t('fill_contacts_warning') || 'Please fill in receiver contact details.');
       return;
@@ -144,23 +146,21 @@ export const CustomerPortal: React.FC = () => {
       paymentPreference: paymentPreference === 'pay_on_delivery' ? 'to_pay' : 'pay_at_branch'
     };
 
-    const newBooking = createCustomerPreBooking(input);
-    setSubmittedCn(newBooking.cnNumber);
-    
-    // Reset form fields
-    resetForm();
-
-    // Immediately close the order entry page/modal so user is not confused and cannot double-submit
-    setIsAddOrderOpen(false);
-
     try {
+      setIsSubmittingBooking(true);
+      const newBooking = await createCustomerPreBooking(input);
+      setSubmittedCn(newBooking.cnNumber);
+      resetForm();
+      setIsAddOrderOpen(false);
       confetti({
         particleCount: 80,
         spread: 60,
         origin: { y: 0.6 }
       });
-    } catch {
-      // safe fallback
+    } catch(error:any) {
+      alert(error?.message||'The parcel could not be saved. Please try again.');
+    } finally {
+      setIsSubmittingBooking(false);
     }
   };
 
@@ -913,6 +913,7 @@ export const CustomerPortal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddOrderOpen(false)}
+                  disabled={isSubmittingBooking}
                   className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer text-center"
                 >
                   {t('btn_cancel') || 'Cancel'}
@@ -920,10 +921,11 @@ export const CustomerPortal: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  disabled={isSubmittingBooking}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:bg-red-300 disabled:cursor-wait text-white font-bold text-xs shadow-lg shadow-red-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <Package className="w-4 h-4" />
-                  <span>{t('submit_prebook_btn') || 'Save & Book Consignment'}</span>
+                  <span>{isSubmittingBooking?'Saving…':(t('submit_prebook_btn') || 'Save & Book Consignment')}</span>
                 </button>
               </div>
 

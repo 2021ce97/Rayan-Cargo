@@ -249,8 +249,27 @@ Deno.serve(async(req)=>{
     if(path==='/shipments'&&req.method==='POST'){
       const row=shipmentRow(body);
       if(!admin&&actor.role==='branch_manager'&&row.origin_branch_id!==actor.branchId)return json({success:false,error:'Forbidden branch.'},403);
-      if(actor.role==='customer'){row.customer_user_id=actor.id;row.is_customer_prebooked=true;row.is_pre_booking=true}
-      const {error}=await db.from('shipments').upsert(row,{onConflict:'id'});if(error)throw error;return json({success:true,shipment:body});
+      if(actor.role==='customer'){
+        row.customer_user_id=actor.id;
+        row.booked_by_user_id=actor.id;
+        row.is_customer_prebooked=true;
+        row.is_pre_booking=true;
+        row.status='pre_booked';
+        let lastError:any=null;
+        for(let attempt=0;attempt<5;attempt++){
+          const generated=await db.rpc('next_shipment_cn');
+          if(generated.error)throw generated.error;
+          row.cn_number=generated.data;
+          const inserted=await db.from('shipments').insert(row).select('*').single();
+          if(!inserted.error)return json({success:true,shipment:mapShipment(inserted.data)},201);
+          lastError=inserted.error;
+          if(inserted.error.code!=='23505')throw inserted.error;
+        }
+        throw lastError||new Error('Could not allocate a unique consignment number.');
+      }
+      const {data,error}=await db.from('shipments').upsert(row,{onConflict:'id'}).select('*').single();
+      if(error)throw error;
+      return json({success:true,shipment:mapShipment(data)});
     }
     const sm=path.match(/^\/shipments\/([^/]+)(?:\/(status|print))?$/);
     if(sm&&['PUT','PATCH','DELETE','POST'].includes(req.method)){
