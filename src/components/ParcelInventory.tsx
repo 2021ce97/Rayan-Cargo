@@ -71,14 +71,9 @@ export const ParcelInventory: React.FC = () => {
     disburseSellerPayout
   } = useApp();
 
-  // Auto-sync parcels immediately on mount and poll periodically
+  // Cross-tab writes request an incremental refresh. AppContext owns the initial
+  // load and its low-frequency, visibility-aware fallback refresh.
   useEffect(() => {
-    syncWithDatabase();
-
-    const pollInterval = setInterval(() => {
-      syncWithDatabase();
-    }, 25000);
-
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'armaghan_shipments' || e.key === 'armaghan_sync_signal') {
         syncWithDatabase();
@@ -97,7 +92,6 @@ export const ParcelInventory: React.FC = () => {
     }
 
     return () => {
-      clearInterval(pollInterval);
       window.removeEventListener('storage', handleStorage);
       if (bc) bc.close();
     };

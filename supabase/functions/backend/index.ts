@@ -9,7 +9,14 @@ const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SE
   auth: { persistSession: false }
 });
 const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
+  new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' } });
+const BRANCH_COLUMNS='id,name,name_fa,name_ps,code,province,city,address,phone,email,manager_name,tazkira_number,is_head_office,active_shipments_count,total_parcels_dispatched,total_parcels_received,total_revenue_afn,created_at,updated_at';
+const USER_COLUMNS='id,branch_id,name,email,phone,role,password_changed_by_branch,last_password_change,status,avatar,preferences,last_login_at,created_at,updated_at';
+const SHIPMENT_LIST_COLUMNS='id,cn_number,origin_branch_id,destination_branch_id,current_branch_id,sender,receiver,package_info,financials,status,status_history,booked_at,estimated_delivery,actual_delivery,delivery_notes,booked_by_user_id,booked_by_user_name,is_customer_prebooked,is_pre_booking,customer_user_id,dest_branch_commission,remittance_status,origin_remittance_due,seller_payout_status,seller_payout_disbursed_at,seller_payout_method,seller_payout_voucher_ref,seller_payout_disbursed_by_branch_id,seller_payout_disbursed_by_user_name,seller_payout_confirmed_at,seller_payout_dispute_reason,seller_payout_notes,updated_at';
+const SHIPMENT_DETAIL_COLUMNS=SHIPMENT_LIST_COLUMNS+',pod_signature,receiver_id_proof';
+const EXPENSE_COLUMNS='id,branch_id,category,amount,description,expense_date,paid_to,receipt_number,created_by_name,created_at,updated_at';
+const SETTLEMENT_COLUMNS='id,branch_id,shipment_id,parcel_ids,cn_number,origin_branch_id,destination_branch_id,gross_collected_amount,dest_branch_commission,transportation_fee,origin_branch_commission,total_commission_kept,net_remitted_amount,commission_adjustment_type,commission_adjustment_amount,commission_adjustment_reason,transport_adjustment_type,transport_adjustment_amount,transport_adjustment_reason,settled_by_user_name,sarafi_reference_no,settlement_channel,settlement_status,settled_at,notes,created_at,updated_at';
+const pageSize=(url:URL,maximum=100)=>Math.min(Math.max(Number(url.searchParams.get('limit'))||50,1),maximum);
 const hash = async (value: string) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -121,6 +128,23 @@ const shipmentRow=(s:any)=>({
   seller_payout_dispute_reason:s.sellerPayoutDisputeReason||null,seller_payout_notes:s.sellerPayoutNotes||null,
   created_at:s.createdAt||s.bookedAt||new Date().toISOString()
 });
+const shipmentPatch=(s:any)=>{
+  const pairs:Record<string,string>={
+    cnNumber:'cn_number',originBranchId:'origin_branch_id',destinationBranchId:'destination_branch_id',currentBranchId:'current_branch_id',
+    sender:'sender',receiver:'receiver',packageInfo:'package_info',packageDetails:'package_info',financials:'financials',status:'status',
+    statusHistory:'status_history',estimatedDelivery:'estimated_delivery',actualDelivery:'actual_delivery',podSignature:'pod_signature',
+    receiverIdProof:'receiver_id_proof',deliveryNotes:'delivery_notes',destBranchCommission:'dest_branch_commission',
+    remittanceStatus:'remittance_status',originRemittanceDue:'origin_remittance_due',customerSubmissionAt:'customer_submission_at',
+    customerSubmissionReference:'customer_submission_reference',customerSubmissionBy:'customer_submission_by',
+    sellerPayoutStatus:'seller_payout_status',sellerPayoutDisbursedAt:'seller_payout_disbursed_at',sellerPayoutMethod:'seller_payout_method',
+    sellerPayoutVoucherRef:'seller_payout_voucher_ref',sellerPayoutDisbursedByBranchId:'seller_payout_disbursed_by_branch_id',
+    sellerPayoutDisbursedByUserName:'seller_payout_disbursed_by_user_name',sellerPayoutConfirmedAt:'seller_payout_confirmed_at',
+    sellerPayoutDisputeReason:'seller_payout_dispute_reason',sellerPayoutNotes:'seller_payout_notes'
+  };
+  const result:Record<string,unknown>={};
+  for(const [source,target] of Object.entries(pairs))if(Object.prototype.hasOwnProperty.call(s,source))result[target]=s[source];
+  return result;
+};
 
 Deno.serve(async(req)=>{
   if(req.method==='OPTIONS')return new Response('ok',{headers:cors});
@@ -146,7 +170,7 @@ Deno.serve(async(req)=>{
       return json({success:true,user:data,sessionToken:token,expiresAt},201);
     }
     if(path.startsWith('/track/')&&req.method==='GET'){
-      const {data}=await db.from('shipments').select('*').ilike('cn_number',decodeURIComponent(path.slice(7))).maybeSingle();
+      const {data}=await db.from('shipments').select(SHIPMENT_DETAIL_COLUMNS).ilike('cn_number',decodeURIComponent(path.slice(7))).maybeSingle();
       return data?json({success:true,shipment:mapShipment(data)}):json({success:false,error:'Shipment not found.'},404);
     }
     const actor=await getActor(req);
@@ -158,11 +182,30 @@ Deno.serve(async(req)=>{
       return json({success:true});
     }
     if(path==='/health'&&req.method==='GET'){
-      const [b,u,s]=await Promise.all([db.from('branches').select('*',{count:'exact',head:true}),db.from('staff_users').select('*',{count:'exact',head:true}),db.from('shipments').select('*',{count:'exact',head:true})]);
-      return json({status:'online',connected:true,database:'Supabase Edge Functions',stats:{branches:b.count||0,users:(u.count||0)+1,shipments:s.count||0}});
+      return json({status:'online',connected:true,database:'Supabase Edge Functions',serverTime:new Date().toISOString()});
+    }
+    if(path==='/sync'&&req.method==='GET'){
+      const url=new URL(req.url),since=url.searchParams.get('since'),limit=pageSize(url,100);
+      let b:any=db.from('branches').select(BRANCH_COLUMNS).order('created_at');
+      let u:any=db.from('staff_users').select(USER_COLUMNS).order('created_at');
+      let s:any=db.from('shipments').select(SHIPMENT_LIST_COLUMNS).order('booked_at',{ascending:false}).limit(limit);
+      let e:any=db.from('branch_expenses').select(EXPENSE_COLUMNS).order('created_at',{ascending:false}).limit(limit);
+      let t:any=db.from('branch_settlements').select(SETTLEMENT_COLUMNS).order('created_at',{ascending:false}).limit(limit);
+      if(since){b=b.gt('updated_at',since);u=u.gt('updated_at',since);s=s.gt('updated_at',since);e=e.gt('updated_at',since);t=t.gt('updated_at',since)}
+      if(!admin)u=u.eq('id',actor.id);
+      if(actor.role==='branch_manager'){
+        s=s.or('origin_branch_id.eq.'+actor.branchId+',destination_branch_id.eq.'+actor.branchId+',current_branch_id.eq.'+actor.branchId);
+        e=e.eq('branch_id',actor.branchId);
+        t=t.or('branch_id.eq.'+actor.branchId+',origin_branch_id.eq.'+actor.branchId+',destination_branch_id.eq.'+actor.branchId);
+      }else if(actor.role==='customer'){
+        s=s.eq('customer_user_id',actor.id);e=e.limit(0);t=t.limit(0);
+      }
+      const [br,us,sh,ex,se]=await Promise.all([b,u,s,e,t]);
+      const failed=[br,us,sh,ex,se].find((result:any)=>result.error);if(failed?.error)throw failed.error;
+      return json({success:true,serverTime:new Date().toISOString(),incremental:!!since,branches:(br.data||[]).map(mapBranch),users:(us.data||[]).map(safeUser),shipments:(sh.data||[]).map(mapShipment),expenses:(ex.data||[]).map(mapExpense),remittances:(se.data||[]).map(mapSettlement)});
     }
     if(path==='/branches'&&req.method==='GET'){
-      const {data,error}=await db.from('branches').select('*').order('created_at');if(error)throw error;
+      const {data,error}=await db.from('branches').select(BRANCH_COLUMNS).order('created_at');if(error)throw error;
       return json({success:true,branches:(data||[]).map(mapBranch)});
     }
     if(path==='/branches'&&req.method==='POST'){
@@ -189,7 +232,7 @@ Deno.serve(async(req)=>{
       const {error}=await db.from('branches').delete().eq('id',id);if(error)throw error;return json({success:true});
     }
     if(path==='/users'&&req.method==='GET'){
-      let q=db.from('staff_users').select('id,branch_id,name,email,phone,role,password_changed_by_branch,last_password_change,status,avatar,preferences,last_login_at,created_at').order('created_at');
+      let q=db.from('staff_users').select(USER_COLUMNS).order('created_at');
       if(!admin)q=q.eq('id',actor.id);const {data,error}=await q;if(error)throw error;
       return json({success:true,users:(data||[]).map(safeUser)});
     }
@@ -241,10 +284,11 @@ Deno.serve(async(req)=>{
       return json({success:true,user:safeUser(updated.data)});
     }
     if(path==='/shipments'&&req.method==='GET'){
-      let q=db.from('shipments').select('*').order('booked_at',{ascending:false}).limit(500);
+      const url=new URL(req.url),limit=pageSize(url),offset=Math.max(Number(url.searchParams.get('offset'))||0,0);
+      let q=db.from('shipments').select(SHIPMENT_LIST_COLUMNS,{count:'exact'}).order('booked_at',{ascending:false}).range(offset,offset+limit-1);
       if(actor.role==='branch_manager')q=q.or('origin_branch_id.eq.'+actor.branchId+',destination_branch_id.eq.'+actor.branchId+',current_branch_id.eq.'+actor.branchId);
       if(actor.role==='customer')q=q.eq('customer_user_id',actor.id);
-      const {data,error}=await q;if(error)throw error;return json({success:true,shipments:(data||[]).map(mapShipment)});
+      const {data,error,count}=await q;if(error)throw error;return json({success:true,shipments:(data||[]).map(mapShipment),page:{offset,limit,total:count||0,hasMore:offset+(data?.length||0)<(count||0)}});
     }
     if(path==='/shipments'&&req.method==='POST'){
       const row=shipmentRow(body);
@@ -260,65 +304,77 @@ Deno.serve(async(req)=>{
           const generated=await db.rpc('next_shipment_cn');
           if(generated.error)throw generated.error;
           row.cn_number=generated.data;
-          const inserted=await db.from('shipments').insert(row).select('*').single();
+          const inserted=await db.from('shipments').insert(row).select(SHIPMENT_DETAIL_COLUMNS).single();
           if(!inserted.error)return json({success:true,shipment:mapShipment(inserted.data)},201);
           lastError=inserted.error;
           if(inserted.error.code!=='23505')throw inserted.error;
         }
         throw lastError||new Error('Could not allocate a unique consignment number.');
       }
-      const {data,error}=await db.from('shipments').upsert(row,{onConflict:'id'}).select('*').single();
+      const {data,error}=await db.from('shipments').upsert(row,{onConflict:'id'}).select(SHIPMENT_DETAIL_COLUMNS).single();
       if(error)throw error;
       return json({success:true,shipment:mapShipment(data)});
     }
     const sm=path.match(/^\/shipments\/([^/]+)(?:\/(status|print))?$/);
     if(sm&&['PUT','PATCH','DELETE','POST'].includes(req.method)){
       const id=sm[1],action=sm[2];
+      if(!admin){
+        const {data:target,error:targetError}=await db.from('shipments').select('customer_user_id,origin_branch_id,destination_branch_id,current_branch_id').eq('id',id).maybeSingle();
+        if(targetError)throw targetError;if(!target)return json({success:false,error:'Shipment not found.'},404);
+        const allowed=actor.role==='customer'
+          ? target.customer_user_id===actor.id
+          : [target.origin_branch_id,target.destination_branch_id,target.current_branch_id].includes(actor.branchId);
+        if(!allowed)return json({success:false,error:'Forbidden shipment.'},403);
+      }
       if(req.method==='DELETE'){if(!admin)return json({success:false,error:'Super Admin required.'},403);const {error}=await db.from('shipments').delete().eq('id',id);if(error)throw error}
-      else if(action==='status'){const update:any={status:body.status,status_history:body.statusHistory||body.history||[]};Object.assign(update,body.extraFields||{});const {error}=await db.from('shipments').update(update).eq('id',id);if(error)throw error}
+      else if(action==='status'){
+        const update:any=shipmentPatch({...body,...(body.extraFields||{})});
+        const {error}=await db.from('shipments').update(update).eq('id',id);if(error)throw error
+      }
       else if(action==='print'){const {data:c}=await db.from('shipments').select('print_count').eq('id',id).maybeSingle();const {error}=await db.from('shipments').update({print_count:Number(c?.print_count||0)+1,last_printed_at:new Date().toISOString(),last_printed_by:actor.id}).eq('id',id);if(error)throw error}
+      else if(req.method==='PATCH'){
+        const {error}=await db.from('shipments').update(shipmentPatch(body)).eq('id',id);if(error)throw error
+      }
       else{const {error}=await db.from('shipments').upsert(shipmentRow({...body,id}),{onConflict:'id'});if(error)throw error}
       return json({success:true});
     }
     if(path==='/expenses'&&req.method==='GET'){
-      let q=db.from('branch_expenses').select('*').order('created_at',{ascending:false});if(!admin&&actor.role==='branch_manager')q=q.eq('branch_id',actor.branchId);
-      const {data,error}=await q;if(error)throw error;return json({success:true,expenses:(data||[]).map(mapExpense)});
+      if(actor.role==='customer')return json({success:false,error:'Forbidden.'},403);
+      const url=new URL(req.url),limit=pageSize(url),offset=Math.max(Number(url.searchParams.get('offset'))||0,0);
+      let q=db.from('branch_expenses').select(EXPENSE_COLUMNS,{count:'exact'}).order('created_at',{ascending:false}).range(offset,offset+limit-1);if(!admin)q=q.eq('branch_id',actor.branchId);
+      const {data,error,count}=await q;if(error)throw error;return json({success:true,expenses:(data||[]).map(mapExpense),page:{offset,limit,total:count||0}});
     }
     if(path==='/expenses'&&req.method==='POST'){
+      if(actor.role==='customer')return json({success:false,error:'Forbidden.'},403);
       if(!admin&&body.branchId!==actor.branchId)return json({success:false,error:'Forbidden branch.'},403);
       const row={id:body.id,branch_id:body.branchId,category:body.category,amount:body.amount,description:body.description,expense_date:body.expenseDate,paid_to:body.paidTo||'',receipt_number:body.receiptNumber||'',created_by_name:body.createdByName||'',created_at:body.createdAt||new Date().toISOString()};
       const {error}=await db.from('branch_expenses').upsert(row,{onConflict:'id'});if(error)throw error;return json({success:true,expense:body});
     }
-    if(/^\/expenses\/[^/]+$/.test(path)&&req.method==='DELETE'){const {error}=await db.from('branch_expenses').delete().eq('id',path.split('/')[2]);if(error)throw error;return json({success:true})}
+    if(/^\/expenses\/[^/]+$/.test(path)&&req.method==='DELETE'){
+      if(actor.role==='customer')return json({success:false,error:'Forbidden.'},403);
+      let q=db.from('branch_expenses').delete().eq('id',path.split('/')[2]);if(!admin)q=q.eq('branch_id',actor.branchId);
+      const {error}=await q;if(error)throw error;return json({success:true})
+    }
     if((path==='/settlements'||path==='/remittances')&&req.method==='GET'){
-      const {data,error}=await db.from('branch_settlements').select('*').order('created_at',{ascending:false});if(error)throw error;
-      const rows=(data||[]).map(mapSettlement);return json({success:true,settlements:rows,remittances:rows});
+      if(actor.role==='customer')return json({success:false,error:'Forbidden.'},403);
+      const url=new URL(req.url),limit=pageSize(url),offset=Math.max(Number(url.searchParams.get('offset'))||0,0);
+      let q=db.from('branch_settlements').select(SETTLEMENT_COLUMNS,{count:'exact'}).order('created_at',{ascending:false}).range(offset,offset+limit-1);
+      if(!admin)q=q.or('branch_id.eq.'+actor.branchId+',origin_branch_id.eq.'+actor.branchId+',destination_branch_id.eq.'+actor.branchId);
+      const {data,error,count}=await q;if(error)throw error;
+      const rows=(data||[]).map(mapSettlement);return json({success:true,settlements:rows,remittances:rows,page:{offset,limit,total:count||0}});
     }
     if((path==='/settlements'||path==='/remittances')&&req.method==='POST'){
+      if(actor.role==='customer')return json({success:false,error:'Forbidden.'},403);
+      if(!admin&&body.fromBranchId!==actor.branchId&&body.destinationBranchId!==actor.branchId)return json({success:false,error:'Forbidden branch.'},403);
       const row={id:body.id,branch_id:body.fromBranchId||body.destinationBranchId||actor.branchId,shipment_id:body.shipmentId||null,parcel_ids:body.parcelIds||[],cn_number:body.batchNumber||body.cnNumber||('REM-'+body.id),origin_branch_id:body.originBranchId||actor.branchId,destination_branch_id:body.fromBranchId||body.destinationBranchId||actor.branchId,gross_collected_amount:body.totalCollectedAfn||0,dest_branch_commission:body.destCommissionAfn||0,transportation_fee:body.transportationFeeAfn||0,origin_branch_commission:body.originCommissionAfn||0,total_commission_kept:body.totalCommissionKeptAfn||0,net_remitted_amount:body.netRemittanceAmountAfn||0,settlement_channel:body.paymentMethod==='hawala'?'sarafi_hawala':body.paymentMethod||'sarafi_hawala',sarafi_reference_no:body.referenceNumber||'',settlement_status:body.status==='confirmed_by_headoffice'?'settled':'pending',settled_by_user_name:body.submittedByUserName||'Staff',settled_at:body.submittedAt||new Date().toISOString(),notes:body.notes||'',created_at:body.createdAt||body.submittedAt||new Date().toISOString()};
       const {error}=await db.from('branch_settlements').upsert(row,{onConflict:'id'});if(error)throw error;return json({success:true});
     }
     const rm=path.match(/^\/remittances\/([^/]+)\/(confirm|reject)$/);
     if(rm&&req.method==='PATCH'){if(!admin)return json({success:false,error:'Super Admin required.'},403);const status=rm[2]==='confirm'?'settled':'rejected';const {error}=await db.from('branch_settlements').update({settlement_status:status,notes:body.notes||body.reason||''}).eq('id',rm[1]);if(error)throw error;return json({success:true})}
     if(path==='/analytics/revenue-overview'&&req.method==='GET'){
-      const [{data:branches},{data:shipments},{data:expenses}]=await Promise.all([
-        db.from('branches').select('id,name,name_fa,name_ps,code,city,province'),
-        db.from('shipments').select('origin_branch_id,destination_branch_id,status,financials,dest_branch_commission'),
-        db.from('branch_expenses').select('branch_id,amount')
-      ]);
-      const rows=(branches||[]).map((b:any)=>{
-        const related=(shipments||[]).filter((s:any)=>s.origin_branch_id===b.id||s.destination_branch_id===b.id);
-        const gross=related.reduce((sum:number,s:any)=>sum+Number(s.financials?.totalAmount||s.financials?.productPrice||0),0);
-        const commissions=related.reduce((sum:number,s:any)=>sum+Number(s.dest_branch_commission||s.financials?.destBranchCommission||0),0);
-        const costs=(expenses||[]).filter((e:any)=>e.branch_id===b.id).reduce((sum:number,e:any)=>sum+Number(e.amount||0),0);
-        const net=gross-commissions-costs;
-        return {branchId:b.id,name:b.name,nameFa:b.name_fa,namePs:b.name_ps,code:b.code,city:b.city,province:b.province,grossFreight:gross,destCodCollected:gross,destCommission:commissions,expenses:costs,netProfit:net,profitMarginPercent:gross?net/gross*100:0,dispatchedVolume:related.filter((s:any)=>s.origin_branch_id===b.id).length,receivedVolume:related.filter((s:any)=>s.destination_branch_id===b.id).length};
-      });
-      const gross=rows.reduce((sum:number,r:any)=>sum+r.grossFreight,0);
-      const commissions=rows.reduce((sum:number,r:any)=>sum+r.destCommission,0);
-      const costs=rows.reduce((sum:number,r:any)=>sum+r.expenses,0);
-      const net=gross-commissions-costs;
-      return json({success:true,summary:{consolidatedGrossFreight:gross,consolidatedDestCommissions:commissions,consolidatedExpenses:costs,consolidatedNetProfit:net,consolidatedMarginPercent:gross?net/gross*100:0},branches:rows});
+      if(!admin)return json({success:false,error:'Super Admin required.'},403);
+      const {data,error}=await db.rpc('get_revenue_overview');if(error)throw error;
+      return json({success:true,...data});
     }
     if(path==='/system/reset-clean-slate'&&req.method==='POST'){if(!admin)return json({success:false,error:'Super Admin required.'},403);await Promise.all([db.from('branch_settlements').delete().neq('id',''),db.from('branch_expenses').delete().neq('id',''),db.from('shipments').delete().neq('id','')]);return json({success:true})}
     return json({success:false,error:'Edge route not found.'},404);

@@ -29,16 +29,7 @@ import {
   getSupabase, 
   isSupabaseReady, 
   subscribeToSupabaseRealtime, 
-  directSupabaseFetchAll,
   directSupabaseFetchSingleShipment,
-  directSupabaseInsertBranch,
-  directSupabaseInsertUser,
-  directSupabaseInsertShipment,
-  directSupabaseUpdateShipmentStatus,
-  directSupabaseInsertExpense,
-  directSupabaseInsertSettlement,
-  directSupabaseWipeDummyData,
-  directSupabaseDeleteShipment,
   directSupabaseVerifyUserLogin,
   edgeApiFetch as fetch,
   signInSuperAdminWithSupabase,
@@ -377,6 +368,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const isSyncingRef = useRef<boolean>(false);
   const syncQueuedRef = useRef<boolean>(false);
   const lastSyncTimeRef = useRef<number>(0);
+  const lastServerSyncRef = useRef<string>('');
   const [realtimeStatus, setRealtimeStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'SUBSCRIBED' | 'TIMED_OUT'>('DISCONNECTED');
 
   // Supabase is the only source of domain data; local state starts empty.
@@ -662,7 +654,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   }, [shipments, language, dismissToast]);
 
-  // Sync with Supabase PostgreSQL
+  // Sync through one role-aware Edge endpoint. Subsequent refreshes ask only for
+  // records changed since the previous successful response.
   const syncWithDatabase = useCallback(async (force = false) => {
     const now = Date.now();
     if (isSyncingRef.current) {
@@ -679,213 +672,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsSyncing(true);
 
     const performSync = async () => {
-      const safeSetState = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T, storageKey: string) => {
-        void storageKey;
-        setter(newData);
-        return;
-        setter(prev => {
-          if (Array.isArray(prev) && Array.isArray(newData)) {
-            if (storageKey === STORAGE_KEYS.USERS) {
-              const prevMap = new Map((prev as any[]).map(u => [u.id, u]));
-              let hasUserDiff = false;
-              const mergedUsers = (newData as any[]).map(nu => {
-                const pu = prevMap.get(nu.id);
-                if (!pu) {
-                  hasUserDiff = true;
-                  return nu;
-                }
-                const effectivePassword = nu.password || pu.password;
-                const isDiff = pu.email !== nu.email ||
-                  pu.name !== nu.name ||
-                  pu.phone !== nu.phone ||
-                  pu.role !== nu.role ||
-                  pu.branchId !== nu.branchId ||
-                  pu.password !== effectivePassword ||
-                  pu.status !== nu.status;
-                if (isDiff) hasUserDiff = true;
-                return {
-                  ...pu,
-                  ...nu,
-                  password: effectivePassword
-                };
-              });
-              if (!hasUserDiff && prev.length === mergedUsers.length) {
-                return prev;
-              }
-              try {
-                localStorage.setItem(storageKey, JSON.stringify(mergedUsers));
-              } catch (_) {}
-              return mergedUsers as any;
-            }
-
-            if (prev.length === newData.length) {
-              let identical = true;
-              for (let i = 0; i < prev.length; i++) {
-                const p = prev[i] as any;
-                const n = newData[i] as any;
-                if (
-                  !p || !n || 
-                  p.id !== n.id || 
-                  p.email !== n.email ||
-                  p.password !== n.password ||
-                  p.name !== n.name ||
-                  p.phone !== n.phone ||
-                  p.managerName !== n.managerName ||
-                  p.code !== n.code ||
-                  p.tazkiraNumber !== n.tazkiraNumber ||
-                  p.status !== n.status || 
-                  p.updatedAt !== n.updatedAt ||
-                  (p.statusHistory && n.statusHistory && p.statusHistory.length !== n.statusHistory.length)
-                ) {
-                  identical = false;
-                  break;
-                }
-              }
-              if (identical) {
-                return prev;
-              }
-            }
-          }
-          const prevStr = JSON.stringify(prev);
-          const newStr = JSON.stringify(newData);
-          if (prevStr !== newStr) {
-            try {
-              localStorage.setItem(storageKey, newStr);
-            } catch (e) {
-              // ignore quota error
-            }
-            return newData;
-          }
-          return prev;
-        });
-      };
-
       try {
-        let directDatabaseSyncSucceeded = false;
-        // 0. Direct Supabase Query (if client configured with Anon Key)
-        if (isSupabaseReady()) {
-          try {
-            const directData = await directSupabaseFetchAll();
-            if (directData.success) {
-              directDatabaseSyncSucceeded = true;
-              if (directData.branches && Array.isArray(directData.branches) && directData.branches.length > 0) {
-                safeSetState(setBranches, directData.branches, STORAGE_KEYS.BRANCHES);
-              }
-              if (directData.users && Array.isArray(directData.users) && directData.users.length > 0) {
-                safeSetState(setUsers, directData.users, STORAGE_KEYS.USERS);
-              }
-              if (directData.shipments && Array.isArray(directData.shipments)) {
-                setShipments(prev => {
-                  const map = new Map(prev.map(s => [s.id, sanitizeShipmentFinancials(s)]));
-                  let hasChanges = false;
-                  directData.shipments!.forEach((inc: Shipment) => {
-                    const existing = map.get(inc.id);
-                    const sanitized = sanitizeShipmentFinancials(inc);
-                    if (!existing || existing.status !== sanitized.status || existing.financials?.paymentStatus !== sanitized.financials?.paymentStatus) {
-                      hasChanges = true;
-                    }
-                    map.set(inc.id, sanitized);
-                  });
-                  if (!hasChanges && map.size === prev.length) {
-                    return prev;
-                  }
-                  const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
-                  return merged;
-                });
-              }
-              if (directData.expenses && Array.isArray(directData.expenses)) {
-                safeSetState(setExpenses, directData.expenses, STORAGE_KEYS.EXPENSES);
-              }
-              if (directData.settlements && Array.isArray(directData.settlements)) {
-                safeSetState(setRemittanceTransfers, directData.settlements, STORAGE_KEYS.REMITTANCES);
-              }
-            }
-          } catch (supErr) {
-            console.warn('Direct Supabase fetch query notice:', supErr);
-          }
-        }
+        const since = force ? '' : lastServerSyncRef.current;
+        const response = await fetch(`/api/sync?limit=100${since ? `&since=${encodeURIComponent(since)}` : ''}`);
+        if (!response.ok) throw new Error(`Sync failed (${response.status})`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error || 'Sync failed');
 
-        // 1. Health check (lightweight connection status check)
-        const healthRes = await fetch('/api/health');
-        if (healthRes.ok) {
-          const healthData = await healthRes.json();
-          setDbStatus(prev => {
-            const newStatus = {
-              connected: healthData.connected,
-              database: healthData.database || 'Supabase PostgreSQL',
-              serverTime: healthData.serverTime,
-              stats: healthData.stats
-            };
-            if (JSON.stringify(prev) !== JSON.stringify(newStatus)) return newStatus;
-            return prev;
-          });
-        }
-
-        // The direct Supabase result is authoritative when available. The API remains a fallback.
-        if (!directDatabaseSyncSucceeded) {
-          // 2. Fetch Branches
-          const branchRes = await fetch('/api/branches');
-          if (branchRes.ok) {
-            const branchData = await branchRes.json();
-            if (branchData.success && Array.isArray(branchData.branches) && branchData.branches.length > 0) {
-              safeSetState(setBranches, branchData.branches, STORAGE_KEYS.BRANCHES);
-            }
-          }
-
-          // 3. Fetch Users
-          const userRes = await fetch('/api/users');
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            if (userData.success && Array.isArray(userData.users) && userData.users.length > 0) {
-              safeSetState(setUsers, userData.users, STORAGE_KEYS.USERS);
-            }
-          }
-
-          // 4. Fetch Shipments
-          const shipRes = await fetch('/api/shipments');
-          if (shipRes.ok) {
-            const shipData = await shipRes.json();
-            if (shipData.success && Array.isArray(shipData.shipments)) {
-              setShipments(prev => {
-                const map = new Map(prev.map(s => [s.id, sanitizeShipmentFinancials(s)]));
-                let hasChanges = false;
-                shipData.shipments.forEach((inc: Shipment) => {
-                  const existing = map.get(inc.id);
-                  const sanitized = sanitizeShipmentFinancials(inc);
-                  if (!existing || existing.status !== sanitized.status || existing.financials?.paymentStatus !== sanitized.financials?.paymentStatus) {
-                    hasChanges = true;
-                  }
-                  map.set(inc.id, sanitized);
-                });
-                if (!hasChanges && map.size === prev.length) {
-                  return prev;
-                }
-                const merged = Array.from(map.values()).sort((a: any, b: any) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
-                return merged;
-              });
-            }
-          }
-
-          // 5. Fetch Expenses
-          const expRes = await fetch('/api/expenses');
-          if (expRes.ok) {
-            const expData = await expRes.json();
-            if (expData.success && Array.isArray(expData.expenses)) {
-              safeSetState(setExpenses, expData.expenses, STORAGE_KEYS.EXPENSES);
-            }
-          }
-
-          // 6. Fetch Remittances (only when directDatabaseSyncSucceeded is false to avoid duplicate queries)
-          const remRes = await fetch('/api/remittances');
-          if (remRes.ok) {
-            const remData = await remRes.json();
-            if (remData.success && Array.isArray(remData.remittances)) {
-              safeSetState(setRemittanceTransfers, remData.remittances, STORAGE_KEYS.REMITTANCES);
-            }
-          }
-        }
+        const mergeById = <T extends { id: string }>(previous: T[], incoming: T[]): T[] => {
+          const merged = new Map(previous.map(item => [item.id, item]));
+          incoming.forEach(item => merged.set(item.id, { ...merged.get(item.id), ...item }));
+          return Array.from(merged.values());
+        };
+        const initial = !data.incremental;
+        if (Array.isArray(data.branches)) setBranches((prev) => initial ? data.branches : mergeById(prev, data.branches));
+        if (Array.isArray(data.users)) setUsers((prev) => initial ? data.users : mergeById(prev, data.users));
+        if (Array.isArray(data.shipments)) setShipments((prev) => {
+          const incoming = data.shipments.map(sanitizeShipmentFinancials);
+          const next = initial ? incoming : mergeById(prev, incoming);
+          return next.sort((a: Shipment, b: Shipment) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime());
+        });
+        if (Array.isArray(data.expenses)) setExpenses((prev) => initial ? data.expenses : mergeById(prev, data.expenses));
+        if (Array.isArray(data.remittances)) setRemittanceTransfers((prev) => initial ? data.remittances : mergeById(prev, data.remittances));
+        lastServerSyncRef.current = data.serverTime || new Date().toISOString();
+        setDbStatus({ connected: true, database: 'Supabase Edge Functions', serverTime: data.serverTime });
       } catch (err) {
-        console.warn('Database sync encountered a network hiccup, fallback cached data active:', err);
+        console.warn('Database sync encountered a network hiccup; cached data remains active:', err);
+        setDbStatus(prev => ({ ...prev, connected: false }));
       }
     };
 
@@ -902,7 +715,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Supabase Real-time Channel Subscription (Granular local state updates — NO full-table refetch)
   useEffect(() => {
-    if (!isSupabaseReady()) return;
+    // Custom staff/customer sessions are authorized by the Edge Function, not by
+    // Supabase Auth. Only the Supabase-authenticated administrator can safely use
+    // Postgres Changes; other roles use the incremental /sync endpoint below.
+    if (!isSupabaseReady() || currentUser.role !== 'super_admin') return;
 
     const cleanup = subscribeToSupabaseRealtime({
       onStatusChange: (status) => {
@@ -1044,7 +860,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       cleanup();
     };
-  }, []);
+  }, [currentUser.role]);
 
   // Reset Entire System to Clean Slate (0 Parcels, 0 Expenses, Preserved Branches)
   const resetToCleanSlate = useCallback(async () => {
@@ -1064,16 +880,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
       });
 
-      // 2. Also wipe direct Supabase tables if direct client configured
-      if (isSupabaseReady()) {
-        try {
-          await directSupabaseWipeDummyData();
-        } catch (sbErr) {
-          console.warn('Direct Supabase wipe notice:', sbErr);
-        }
-      }
-
-      // 3. Reset client state; branches and users remain in Supabase.
+      // Reset client state; branches and users remain in Supabase.
       setShipments([]);
       setExpenses([]);
       setActiveBranchIdState('all');
@@ -1119,6 +926,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Initial load sync once on startup
     syncWithDatabase(true);
 
+    // Low-frequency incremental fallback for custom staff/customer sessions.
+    // It pauses in background tabs and normally returns only changed rows.
+    const INCREMENTAL_REFRESH_MS = 2 * 60 * 1000;
+    const incrementalTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') syncWithDatabase(false);
+    }, INCREMENTAL_REFRESH_MS);
+
     // Optional focus/visibility refresh ONLY if last sync was more than 5 minutes ago (300,000 ms)
     const FIVE_MINUTES_MS = 5 * 60 * 1000;
     const handleStaleVisibilityRefresh = () => {
@@ -1130,6 +944,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     document.addEventListener('visibilitychange', handleStaleVisibilityRefresh);
 
     return () => {
+      window.clearInterval(incrementalTimer);
       document.removeEventListener('visibilitychange', handleStaleVisibilityRefresh);
     };
   }, [syncWithDatabase, isAuthenticated]);
@@ -1440,7 +1255,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(updatedUser);
 
     // Direct Supabase upsert
-    directSupabaseInsertUser(updatedUser);
 
     // Backend database update
     fetch('/api/users/change-password', {
@@ -1666,8 +1480,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     // Persist to Supabase Database (direct client & backend API)
-    directSupabaseInsertBranch(newBranch);
-    directSupabaseInsertUser(newUser);
 
     fetch('/api/branches', {
       method: 'POST',
@@ -1770,7 +1582,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updated;
       });
 
-      directSupabaseInsertUser(finalUserObj);
       fetch('/api/users/credentials', {
         method: 'POST',
         headers: {
@@ -1790,7 +1601,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Persist to direct Supabase & API
-    directSupabaseInsertBranch(updatedBranch);
 
     // Persist to database
     fetch('/api/branches', {
@@ -2234,7 +2044,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           remittanceBatchId: batchId,
           statusHistory: [...(s.statusHistory || []), historyItem]
         };
-        directSupabaseInsertShipment(updatedS);
         return updatedS;
       }
       return s;
@@ -2242,37 +2051,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setRemittanceTransfers(prev => [newTransfer, ...prev]);
 
-    // Direct Supabase Mutation
-    directSupabaseInsertSettlement(newTransfer);
-
     // Send to /api/remittances
     fetch('/api/remittances', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTransfer)
     }).catch(err => console.warn('Remittance sync error:', err));
-
-    // Send to /api/settlements
-    fetch('/api/settlements', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: `stl_${batchId}`,
-        shipmentId: parcelIds[0] || null,
-        cnNumber: batchNumber,
-        originBranchId: originBranchId || 'br_admin_hq',
-        destinationBranchId: fromBranchId,
-        grossCollectedAmount: calculatedCollected,
-        destBranchCommission: calculatedCommission,
-        netRemittedAmount: calculatedNet,
-        settlementChannel: paymentMethod,
-        sarafiReferenceNo: referenceNumber,
-        settlementStatus: 'pending_confirmation',
-        settledByUserName: currentUser.name,
-        settledAt: now,
-        notes: notes || `Settlement for ${normalizedParcelIds.length} parcel(s)`
-      })
-    }).catch(err => console.warn('Settlement sync error:', err));
 
     showToast(`✓ Settlement & Remittance ${batchNumber} (${calculatedNet.toLocaleString()} AFN) submitted to Main Branch for verification!`);
     return true;
@@ -2381,7 +2165,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Direct Supabase Mutation for Settled Transfer
-    directSupabaseInsertSettlement(updatedTransfer);
 
     fetch(`/api/remittances/${transferId}/confirm`, {
       method: 'PATCH',
@@ -2452,7 +2235,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setExpenses(prev => [newExp, ...prev]);
 
     // Persist to Supabase Database (direct client & backend API)
-    directSupabaseInsertExpense(newExp);
 
     fetch('/api/expenses', {
       method: 'POST',
@@ -2799,8 +2581,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     // Direct Supabase status and shipment update
-    directSupabaseInsertShipment(updatedShipment);
-    directSupabaseUpdateShipmentStatus(target.id, targetStatus, updatedShipment.statusHistory);
 
     fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
@@ -2924,7 +2704,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    directSupabaseInsertShipment(updatedShipment);
 
     fetch(`/api/shipments/${target.id}`, {
       method: 'PATCH',
@@ -2964,7 +2743,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    directSupabaseInsertShipment(updatedShipment);
 
     fetch(`/api/shipments/${target.id}`, {
       method: 'PATCH',
@@ -2997,7 +2775,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    directSupabaseInsertShipment(updatedShipment);
 
     fetch(`/api/shipments/${target.id}`, {
       method: 'PATCH',
@@ -3121,14 +2898,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Backend admin edit PUT sync network error:', err);
     }
 
-    // Direct Supabase sync if enabled
-    try {
-      directSupabaseInsertShipment(sanitized);
-      directSupabaseUpdateShipmentStatus(sanitized.id, sanitized.status, sanitized.statusHistory);
-    } catch (sbErr) {
-      // Fallback
-    }
-
     showToast(t('parcel_edited_success') || 'Parcel information and financials updated successfully!', 'success');
 
 
@@ -3151,11 +2920,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Update state immediately
     setShipments(prev => prev.filter(s => s.id !== target.id && s.cnNumber !== target.cnNumber));
     
-    // Supabase Sync
-    if (isSupabaseReady()) {
-      await directSupabaseDeleteShipment(target.id);
-    }
-
     // Try to notify backend if it exists
     try {
       await fetch(`/api/shipments/${target.id}`, {
@@ -3215,11 +2979,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setShipments(prev => prev.map(s => s.id === target.id ? updatedShipment : s));
-    directSupabaseUpdateShipmentStatus(target.id, target.status, updatedShipment.statusHistory, {
-      customer_submission_at: submissionTimestamp,
-      customer_submission_reference: updatedShipment.customerSubmissionReference,
-      customer_submission_by: currentUser.name
-    });
     fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -3357,7 +3116,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     // Persist directly to Supabase Database (direct client & backend API)
-    directSupabaseInsertShipment(newShipment);
 
     fetch('/api/shipments', {
       method: 'POST',
@@ -3425,7 +3183,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTrackedShipment(updatedShipment);
     }
 
-    directSupabaseUpdateShipmentStatus(target.id, target.status, newHistory);
     
     fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
@@ -3526,7 +3283,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     // Persist to Supabase Database (direct client & backend API)
-    directSupabaseUpdateShipmentStatus(target.id, newStatus, newHistory);
 
     fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
@@ -3807,8 +3563,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTrackedShipment(updatedShipment);
     }
 
-    directSupabaseInsertShipment(updatedShipment);
-    directSupabaseUpdateShipmentStatus(target.id, target.status, newHistory);
 
     fetch(`/api/shipments/${target.id}/status`, {
       method: 'PATCH',
