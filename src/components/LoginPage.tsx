@@ -20,6 +20,29 @@ import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus } from '../types';
 import { ArmaghanLogo } from './ArmaghanLogo';
 
+const normalizeAfghanPhone = (value: string) => {
+  let digits=value.replace(/[^0-9]/g,'');
+  if(digits.startsWith('0093'))digits=digits.slice(2);
+  if(digits.length===11&&digits.startsWith('93'))digits='0'+digits.slice(2);
+  if(digits.length===9&&digits.startsWith('7'))digits='0'+digits;
+  return digits;
+};
+
+const formatAfghanPhone = (value: string) => {
+  const digits=value.replace(/[^0-9]/g,'');
+  if(value.trim().startsWith('+')||(digits.startsWith('93')&&digits.length>10)){
+    const intl=digits.replace(/^00/,'').slice(0,11);
+    return ['+'+intl.slice(0,2),intl.slice(2,5),intl.slice(5,8),intl.slice(8,11)].filter(Boolean).join(' ');
+  }
+  const local=digits.slice(0,10);
+  return [local.slice(0,4),local.slice(4,7),local.slice(7,10)].filter(Boolean).join(' ');
+};
+
+const formatTazkira = (value: string) => {
+  const digits=value.replace(/[^0-9]/g,'').slice(0,13);
+  return [digits.slice(0,4),digits.slice(4,8),digits.slice(8,13)].filter(Boolean).join('-');
+};
+
 export const LoginPage: React.FC = () => {
   const { 
     t, 
@@ -61,6 +84,7 @@ export const LoginPage: React.FC = () => {
   const [customerAuthError, setCustomerAuthError] = useState('');
   const [customerAuthSuccess, setCustomerAuthSuccess] = useState('');
   const [wrongPortalStaffDetected, setWrongPortalStaffDetected] = useState(false);
+  const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false);
 
   const handleTrackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +129,7 @@ export const LoginPage: React.FC = () => {
 
   const handleCustomerAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(isSubmittingCustomer)return;
     setCustomerAuthError('');
     setCustomerAuthSuccess('');
     setWrongPortalStaffDetected(false);
@@ -114,16 +139,34 @@ export const LoginPage: React.FC = () => {
         setCustomerAuthError(t('err_fill_required_fields') || 'Please provide your full name, phone number or email, and password.');
         return;
       }
-      const success = await signupCustomer(
-        customerName.trim(),
-        customerPhone.trim() || '0700000000',
-        customerEmail.trim() || `${customerPhone.trim()}@customer.armaghansadeq.af`,
-        customerPassword,
-        customerTazkira.trim(),
-        customerCity.trim()
-      );
-      if (!success) {
-        setCustomerAuthError(t('err_reg_failed') || 'Customer registration failed. Please check your information and try again.');
+      const normalizedPhone=normalizeAfghanPhone(customerPhone);
+      if(normalizedPhone.length!==10||!normalizedPhone.startsWith('07')){
+        setCustomerAuthError('Enter a valid Afghan mobile number, for example 0799 123 456.');
+        return;
+      }
+      if(customerPassword.length<6){
+        setCustomerAuthError('Password must contain at least 6 characters.');
+        return;
+      }
+      if(customerTazkira.replace(/[^0-9]/g,'').length!==13){
+        setCustomerAuthError('Tazkira number must contain exactly 13 digits in the format 1234-5678-90123.');
+        return;
+      }
+      setIsSubmittingCustomer(true);
+      try {
+        const result = await signupCustomer(
+          customerName.trim(),
+          normalizedPhone,
+          customerEmail.trim(),
+          customerPassword,
+          formatTazkira(customerTazkira),
+          customerCity.trim()
+        );
+        if (!result.success) {
+          setCustomerAuthError(result.message || t('err_reg_failed') || 'Customer registration failed. Please check your information and try again.');
+        }
+      } finally {
+        setIsSubmittingCustomer(false);
       }
     } else {
       if (!customerIdentifier.trim()) {
@@ -134,14 +177,19 @@ export const LoginPage: React.FC = () => {
         setCustomerAuthError(t('err_enter_password') || 'Please enter your password.');
         return;
       }
-      const res = await login(customerIdentifier.trim(), customerPassword, 'customer');
-      if (!res.success) {
-        if (res.errorReason === 'wrong_portal_staff') {
-          setWrongPortalStaffDetected(true);
-          setCustomerAuthError(t('err_wrong_portal_staff') || res.message || 'This is an Administrator / Branch Staff account. Please switch to the Branch & Staff Terminal tab.');
-        } else {
-          setCustomerAuthError(res.message || t('err_invalid_customer_creds') || 'Account not found or password incorrect. If you are new, please Sign Up.');
+      setIsSubmittingCustomer(true);
+      try {
+        const res = await login(customerIdentifier.trim(), customerPassword, 'customer');
+        if (!res.success) {
+          if (res.errorReason === 'wrong_portal_staff') {
+            setWrongPortalStaffDetected(true);
+            setCustomerAuthError(t('err_wrong_portal_staff') || res.message || 'This is an Administrator / Branch Staff account. Please switch to the Branch & Staff Terminal tab.');
+          } else {
+            setCustomerAuthError(res.message || t('err_invalid_customer_creds') || 'Account not found or password incorrect. If you are new, please Sign Up.');
+          }
         }
+      } finally {
+        setIsSubmittingCustomer(false);
       }
     }
   };
@@ -516,11 +564,13 @@ export const LoginPage: React.FC = () => {
                         <div className="relative">
                           <Phone className="w-4 h-4 text-slate-400 absolute start-3.5 top-1/2 -translate-y-1/2" />
                           <input
-                            type="text"
+                            type="tel"
                             required
                             value={customerPhone}
-                            onChange={(e) => setCustomerPhone(e.target.value)}
+                            onChange={(e) => setCustomerPhone(formatAfghanPhone(e.target.value))}
                             placeholder="0799 123 456"
+                            inputMode="tel"
+                            autoComplete="tel"
                             className="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none font-mono"
                           />
                         </div>
@@ -564,10 +614,17 @@ export const LoginPage: React.FC = () => {
                         type="text"
                         required
                         value={customerTazkira}
-                        onChange={(e) => setCustomerTazkira(e.target.value)}
-                        placeholder="e.g. TK-892341 or 1402-12345"
+                        onChange={(e) => setCustomerTazkira(formatTazkira(e.target.value))}
+                        placeholder="1234-5678-90123"
+                        inputMode="numeric"
+                        maxLength={15}
+                        pattern="[0-9]{4}-[0-9]{4}-[0-9]{5}"
+                        aria-describedby="customer-tazkira-help"
                         className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-red-500 focus:outline-none font-mono"
                       />
+                      <p id="customer-tazkira-help" className="mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                        Enter 13 digits. Dashes are added automatically: 1234-5678-90123.
+                      </p>
                     </div>
                   </>
                 ) : (
@@ -617,10 +674,11 @@ export const LoginPage: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  disabled={isSubmittingCustomer}
+                  className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-wait text-white font-bold text-xs shadow-md shadow-red-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   {customerAuthMode === 'signup' ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
-                  <span>{customerAuthMode === 'signup' ? (t('btn_create_account_prebook') || 'Create Customer Account & Continue') : (t('btn_signin_customer') || 'Sign In as Customer')}</span>
+                  <span>{isSubmittingCustomer?'Please wait…':(customerAuthMode === 'signup' ? (t('btn_create_account_prebook') || 'Create Customer Account & Continue') : (t('btn_signin_customer') || 'Sign In as Customer'))}</span>
                 </button>
               </form>
 

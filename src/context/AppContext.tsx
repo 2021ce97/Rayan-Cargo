@@ -90,7 +90,7 @@ interface AppContextType {
   toggleDarkMode: () => void;
   isAuthenticated: boolean;
   login: (identifier: string, password?: string, portalScope?: 'customer' | 'staff' | 'any') => Promise<LoginResult>;
-  signupCustomer: (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string) => Promise<boolean>;
+  signupCustomer: (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string) => Promise<{success:boolean;message?:string}>;
   loginWithUser: (user: User) => void;
   logout: () => void;
   currentUser: User;
@@ -1187,25 +1187,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Customer Signup
-  const signupCustomer = async (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string): Promise<boolean> => {
-    const cleanEmail = (email && email.trim()) ? email.trim().toLowerCase() : `cust_${phone.replace(/[^0-9]/g, '')}@rayancustomer.af`;
+  const signupCustomer = async (name: string, phone: string, email: string, password?: string, tazkiraNumber?: string, city?: string): Promise<{success:boolean;message?:string}> => {
+    const cleanEmail = email.trim().toLowerCase();
     try {
       const response = await fetch('/api/auth/customer-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, phone, email: cleanEmail, password, tazkiraNumber, city })
       });
-      const result = await response.json();
-      if (!response.ok || !result.success || !result.user) return false;
+      const result = await response.json().catch(()=>null);
+      if (!response.ok || !result?.success || !result?.user) {
+        return {success:false,message:result?.error||'Customer registration failed. Please check your information.'};
+      }
       const newUser = result.user as User;
       setUsers(prev => [...prev.filter(u => u.id !== newUser.id), newUser]);
       loginWithUser(newUser);
       setActiveView('customer_portal', 'customer');
       showToast(`Account created! Welcome, ${name.trim()}.`);
-      return true;
-    } catch (error) {
+      return {success:true};
+    } catch (error:any) {
       console.error('Supabase customer signup failed:', error);
-      return false;
+      return {success:false,message:error?.message||'Supabase authentication service is unavailable.'};
     }
   };
 

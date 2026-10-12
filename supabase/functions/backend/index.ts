@@ -159,15 +159,29 @@ Deno.serve(async(req)=>{
       return data?json({success:true,user:data,sessionToken:token,expiresAt}):json({success:false,error:'Invalid credentials.'},401);
     }
     if(path==='/auth/customer-signup'&&req.method==='POST'){
-      if(!body.name||!body.phone||!body.password)return json({success:false,error:'Name, phone and password are required.'},400);
+      if(!body.name||!body.phone||!body.password||!body.tazkiraNumber)return json({success:false,error:'Name, phone, Tazkira number, and password are required.'},400);
       const id='usr_customer_'+crypto.randomUUID();
-      const email=String(body.email||('cust_'+String(body.phone).replace(/\D/g,'')+'@rayancustomer.af')).toLowerCase();
-      const {error}=await db.rpc('register_customer_with_password',{p_id:id,p_name:String(body.name).trim(),p_email:email,p_phone:String(body.phone).trim(),p_password:String(body.password),p_preferences:{tazkiraNumber:body.tazkiraNumber||'',city:body.city||''}});
-      if(error)return json({success:false,error:error.message},400);
       const token=crypto.randomUUID()+crypto.randomUUID();
       const expiresAt=new Date(Date.now()+12*60*60*1000).toISOString();
-      const {data}=await db.rpc('create_staff_session',{p_identifier:email,p_password:body.password,p_token_hash:await hash(token),p_expires_at:expiresAt});
-      return json({success:true,user:data,sessionToken:token,expiresAt},201);
+      const {data,error}=await db.rpc('register_customer_and_create_session',{
+        p_id:id,p_name:String(body.name).trim(),p_email:String(body.email||'').trim(),
+        p_phone:String(body.phone).trim(),p_password:String(body.password),
+        p_tazkira:String(body.tazkiraNumber).trim(),p_city:String(body.city||'').trim(),
+        p_token_hash:await hash(token),p_expires_at:expiresAt
+      });
+      if(error)return json({success:false,error:error.message},400);
+      if(!data?.success){
+        const messages:any={
+          phone_exists:'An account already exists for this phone number. Please sign in instead.',
+          email_exists:'An account already exists for this email address. Please sign in instead.',
+          invalid_phone:'Enter a valid Afghan mobile number such as 0799 123 456 or +93 799 123 456.',
+          invalid_name:'Enter your full name.',
+          weak_password:'Password must contain at least 6 characters.',
+          invalid_tazkira:'Tazkira number must contain exactly 13 digits.'
+        };
+        return json({success:false,error:messages[data?.reason]||'Customer registration failed.'},409);
+      }
+      return json({success:true,user:data.user,sessionToken:token,expiresAt},201);
     }
     if(path.startsWith('/track/')&&req.method==='GET'){
       const {data}=await db.from('shipments').select(SHIPMENT_DETAIL_COLUMNS).ilike('cn_number',decodeURIComponent(path.slice(7))).maybeSingle();
