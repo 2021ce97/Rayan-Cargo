@@ -13,9 +13,10 @@ const json = (body: unknown, status = 200) =>
 const BRANCH_COLUMNS='id,name,name_fa,name_ps,code,province,city,address,phone,email,manager_name,tazkira_number,is_head_office,active_shipments_count,total_parcels_dispatched,total_parcels_received,total_revenue_afn,created_at,updated_at';
 const USER_COLUMNS='id,branch_id,name,email,phone,role,password_changed_by_branch,last_password_change,status,avatar,preferences,last_login_at,created_at,updated_at';
 const SHIPMENT_LIST_COLUMNS='id,cn_number,origin_branch_id,destination_branch_id,current_branch_id,sender,receiver,package_info,financials,status,status_history,booked_at,estimated_delivery,actual_delivery,delivery_notes,booked_by_user_id,booked_by_user_name,is_customer_prebooked,is_pre_booking,customer_user_id,dest_branch_commission,remittance_status,origin_remittance_due,seller_payout_status,seller_payout_disbursed_at,seller_payout_method,seller_payout_voucher_ref,seller_payout_disbursed_by_branch_id,seller_payout_disbursed_by_user_name,seller_payout_confirmed_at,seller_payout_dispute_reason,seller_payout_notes,updated_at';
+const SHIPMENT_CORE_COLUMNS='id,cn_number,origin_branch_id,destination_branch_id,current_branch_id,sender,receiver,package_info,financials,status,status_history,booked_at,estimated_delivery,actual_delivery,delivery_notes,booked_by_user_id,booked_by_user_name,is_customer_prebooked,is_pre_booking,customer_user_id,dest_branch_commission,remittance_status,origin_remittance_due,updated_at';
 const SHIPMENT_DETAIL_COLUMNS=SHIPMENT_LIST_COLUMNS+',pod_signature,receiver_id_proof';
 const EXPENSE_COLUMNS='id,branch_id,category,amount,description,expense_date,paid_to,receipt_number,created_by_name,created_at,updated_at';
-const SETTLEMENT_COLUMNS='id,branch_id,shipment_id,parcel_ids,cn_number,origin_branch_id,destination_branch_id,gross_collected_amount,dest_branch_commission,transportation_fee,origin_branch_commission,total_commission_kept,net_remitted_amount,commission_adjustment_type,commission_adjustment_amount,commission_adjustment_reason,transport_adjustment_type,transport_adjustment_amount,transport_adjustment_reason,settled_by_user_name,sarafi_reference_no,settlement_channel,settlement_status,settled_at,notes,created_at,updated_at';
+const SETTLEMENT_COLUMNS='id,shipment_id,parcel_ids,cn_number,origin_branch_id,destination_branch_id,gross_collected_amount,dest_branch_commission,transportation_fee,origin_branch_commission,total_commission_kept,net_remitted_amount,settled_by_user_name,sarafi_reference_no,settlement_channel,settlement_status,settled_at,notes,created_at,updated_at';
 const pageSize=(url:URL,maximum=100)=>Math.min(Math.max(Number(url.searchParams.get('limit'))||50,1),maximum);
 const hash = async (value: string) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
@@ -215,8 +216,31 @@ Deno.serve(async(req)=>{
         s=s.eq('customer_user_id',actor.id);e=e.limit(0);t=t.limit(0);
       }
       const [br,us,sh,ex,se]=await Promise.all([b,u,s,e,t]);
-      const failed=[br,us,sh,ex,se].find((result:any)=>result.error);if(failed?.error)throw failed.error;
-      return json({success:true,serverTime:new Date().toISOString(),incremental:!!since,branches:(br.data||[]).map(mapBranch),users:(us.data||[]).map(safeUser),shipments:(sh.data||[]).map(mapShipment),expenses:(ex.data||[]).map(mapExpense),remittances:(se.data||[]).map(mapSettlement)});
+      let shipmentResult:any=sh;
+      if(sh.error){
+        console.warn('Full shipment sync failed; retrying core columns:',sh.error.message);
+        let fallback:any=db.from('shipments').select(SHIPMENT_CORE_COLUMNS).order('booked_at',{ascending:false}).limit(limit);
+        if(since)fallback=fallback.gt('updated_at',since);
+        if(actor.role==='branch_manager')fallback=fallback.or('origin_branch_id.eq.'+actor.branchId+',destination_branch_id.eq.'+actor.branchId+',current_branch_id.eq.'+actor.branchId);
+        else if(actor.role==='customer')fallback=fallback.eq('customer_user_id',actor.id);
+        shipmentResult=await fallback;
+      }
+      const coreFailed=[br,us,shipmentResult].find((result:any)=>result.error);
+      if(coreFailed?.error)throw coreFailed.error;
+      if(ex.error)console.warn('Optional branch_expenses sync failed:',ex.error.message);
+      if(se.error)console.warn('Optional branch_settlements sync failed:',se.error.message);
+      return json({
+        success:true,serverTime:new Date().toISOString(),incremental:!!since,
+        branches:(br.data||[]).map(mapBranch),
+        users:(us.data||[]).map(safeUser),
+        shipments:(shipmentResult.data||[]).map(mapShipment),
+        expenses:(ex.error?[]:(ex.data||[])).map(mapExpense),
+        remittances:(se.error?[]:(se.data||[])).map(mapSettlement),
+        warnings:[
+          ...(ex.error?['branch_expenses: '+ex.error.message]:[]),
+          ...(se.error?['branch_settlements: '+se.error.message]:[])
+        ]
+      });
     }
     if(path==='/branches'&&req.method==='GET'){
       const {data,error}=await db.from('branches').select(BRANCH_COLUMNS).order('created_at');if(error)throw error;
