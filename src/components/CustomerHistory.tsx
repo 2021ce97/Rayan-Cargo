@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, ShipmentStatus } from '../types';
+import { getExactShipmentCn, normalizeShipmentCn, useRemoteShipmentSearch } from '../hooks/useRemoteShipmentSearch';
 
 export const CustomerHistory: React.FC = () => {
   const { 
@@ -39,10 +40,16 @@ export const CustomerHistory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'delivered'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const { exactCn, isSearchingRemote, remoteSearchError } = useRemoteShipmentSearch(searchTerm, customerShipments);
 
   // Filtered customer shipments list
   const filteredList = useMemo(() => {
     return customerShipments.filter(s => {
+      const exactSearchCn = getExactShipmentCn(searchTerm);
+      if (exactSearchCn) {
+        return normalizeShipmentCn(s.cnNumber) === normalizeShipmentCn(exactSearchCn);
+      }
+
       // Status Filter
       if (statusFilter === 'pending') {
         if (s.status !== 'pre_booked') return false;
@@ -205,6 +212,9 @@ export const CustomerHistory: React.FC = () => {
                 ✕
               </button>
             )}
+            {isSearchingRemote && (
+              <span className="absolute end-9 top-1/2 -translate-y-1/2 text-[10px] font-bold text-red-500">Searching…</span>
+            )}
           </div>
 
           {/* Status Tabs */}
@@ -271,7 +281,7 @@ export const CustomerHistory: React.FC = () => {
                 ? 'می‌توانید همین حالا اولین بسته کارگو خود را ثبت اولیه (Pre-Book) کنید و به نمایندگی تحویل دهید.'
                 : language === 'ps'
                 ? 'تاسو کولی شئ همدا اوس خپل لومړنی بار ثبت کړئ.'
-                : 'Pre-book your first consignment online and drop it off at your nearest branch.'}
+                : remoteSearchError || (exactCn ? `No parcel linked to your account was found for ${exactCn}.` : 'Pre-book your first consignment online and drop it off at your nearest branch.')}
             </p>
           </div>
           <div>

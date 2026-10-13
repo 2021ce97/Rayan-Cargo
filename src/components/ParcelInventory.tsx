@@ -46,6 +46,7 @@ import { EditShipmentModal } from './EditShipmentModal';
 import { CombinedBranchReceiptModal } from './CombinedBranchReceiptModal';
 import { ReportDeliveryIssueModal } from './ReportDeliveryIssueModal';
 import { DeliveryPaymentSettlementModal } from './DeliveryPaymentSettlementModal';
+import { getExactShipmentCn, normalizeShipmentCn, useRemoteShipmentSearch } from '../hooks/useRemoteShipmentSearch';
 
 type SortField = 'date' | 'weight' | 'amount' | 'cn' | 'status';
 type SortOrder = 'asc' | 'desc';
@@ -54,6 +55,7 @@ type InventoryTab = 'all' | 'in_transit' | 'arrived' | 'delivered' | 'submitted'
 export const ParcelInventory: React.FC = () => {
   const { language, t } = useI18n();
   const { 
+    shipments,
     filteredShipments, 
     branches, 
     currentUser,
@@ -271,11 +273,17 @@ export const ParcelInventory: React.FC = () => {
 
   // Base list of shipments
   const baseShipmentList = filteredShipments;
+  const requestedExactCn = getExactShipmentCn(searchTerm);
+  const searchableShipmentList = currentUser.role === 'super_admin' && requestedExactCn
+    ? shipments
+    : baseShipmentList;
+  const { exactCn, isSearchingRemote, remoteSearchError } = useRemoteShipmentSearch(searchTerm, searchableShipmentList);
 
   // Filter and sort parcels
   const processedParcels = useMemo(() => {
-    let result = baseShipmentList.filter(s => {
+    let result = searchableShipmentList.filter(s => {
       const query = debouncedSearchTerm.toLowerCase().trim();
+      const exactSearchCn = getExactShipmentCn(debouncedSearchTerm);
       const matchesSearch = !query || 
         s.cnNumber.toLowerCase().includes(query) ||
         s.sender.name.toLowerCase().includes(query) ||
@@ -285,6 +293,12 @@ export const ParcelInventory: React.FC = () => {
         s.receiver.phone.includes(query) ||
         s.receiver.city.toLowerCase().includes(query) ||
         s.packageInfo.description.toLowerCase().includes(query);
+
+      // An exact CN search should find the parcel regardless of the currently
+      // selected inventory tab/status/destination filters.
+      if (exactSearchCn) {
+        return normalizeShipmentCn(s.cnNumber) === normalizeShipmentCn(exactSearchCn);
+      }
 
       const matchesStatus = selectedStatus === 'all' || s.status === selectedStatus;
       const matchesDestinationBranch = selectedDestinationBranch === 'all' || s.destinationBranchId === selectedDestinationBranch;
@@ -328,7 +342,7 @@ export const ParcelInventory: React.FC = () => {
     });
 
     return result;
-  }, [baseShipmentList, debouncedSearchTerm, selectedStatus, selectedDestinationBranch, activeTab, sortField, sortOrder]);
+  }, [searchableShipmentList, debouncedSearchTerm, selectedStatus, selectedDestinationBranch, activeTab, sortField, sortOrder]);
 
   // Open status modal (Physical status only)
   const handleOpenStatusModal = (shipment: Shipment) => {
@@ -717,7 +731,9 @@ export const ParcelInventory: React.FC = () => {
               placeholder="Search by CN #, Sender, Receiver, Phone..."
               className="w-full h-9.5 ps-9 pe-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
             />
-            {searchTerm && (
+            {isSearchingRemote ? (
+              <Loader2 className="absolute end-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500 animate-spin" />
+            ) : searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
                 className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
@@ -825,7 +841,9 @@ export const ParcelInventory: React.FC = () => {
                   <td colSpan={9} className="p-10 text-center text-slate-400">
                     <Boxes className="w-9 h-9 mx-auto mb-2 opacity-30" />
                     <p className="font-bold text-xs">{t('no_shipments_found') || 'No parcels found'}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Try searching with a different keyword or resetting filters</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {remoteSearchError || (exactCn ? `No accessible parcel found for ${exactCn}` : 'Try searching with a different keyword or resetting filters')}
+                    </p>
                   </td>
                 </tr>
               ) : (

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Shipment, SellerPayoutStatus } from '../types';
+import { getExactShipmentCn, normalizeShipmentCn, useRemoteShipmentSearch } from '../hooks/useRemoteShipmentSearch';
 
 export const CustomerFinances: React.FC = () => {
   const { 
@@ -42,6 +43,7 @@ export const CustomerFinances: React.FC = () => {
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'ready' | 'disbursed' | 'confirmed' | 'in_transit' | 'disputed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const { exactCn, isSearchingRemote, remoteSearchError } = useRemoteShipmentSearch(searchTerm, customerShipments);
   
   // Dispute modal state
   const [disputeShipment, setDisputeShipment] = useState<Shipment | null>(null);
@@ -145,6 +147,11 @@ export const CustomerFinances: React.FC = () => {
   // Filtered shipments list
   const filteredShipments = useMemo(() => {
     return customerShipments.filter(s => {
+      const exactSearchCn = getExactShipmentCn(searchTerm);
+      if (exactSearchCn) {
+        return normalizeShipmentCn(s.cnNumber) === normalizeShipmentCn(exactSearchCn);
+      }
+
       const pStatus = getPayoutStatus(s);
 
       if (activeFilter === 'ready' && pStatus !== 'ready_for_payout') return false;
@@ -454,6 +461,9 @@ export const CustomerFinances: React.FC = () => {
               placeholder={language === 'fa' ? 'جستجو بر اساس بارنامه، گیرنده، شهر...' : 'Search CN, receiver, city...'}
               className="w-full ps-9 pe-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-red-500"
             />
+            {isSearchingRemote && (
+              <span className="absolute end-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-red-500">Searching…</span>
+            )}
           </div>
         </div>
 
@@ -467,7 +477,7 @@ export const CustomerFinances: React.FC = () => {
               {language === 'fa' ? 'هیچ ردیفی با این فیلتر یافت نشد' : 'No records found for current filter'}
             </div>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              {language === 'fa' ? 'فیلتر دیگری را انتخاب کنید یا بار جدیدی را ثبت فرمایید.' : 'Try changing your filter or book new consignments.'}
+              {remoteSearchError || (exactCn ? `No finance record linked to your account was found for ${exactCn}.` : (language === 'fa' ? 'فیلتر دیگری را انتخاب کنید یا بار جدیدی را ثبت فرمایید.' : 'Try changing your filter or book new consignments.'))}
             </p>
           </div>
         ) : (

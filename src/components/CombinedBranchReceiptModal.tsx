@@ -34,6 +34,7 @@ import { printElementUsingIframe, generateBranchBulkDispatchPdf, generateThermal
 import { BarcodeGenerator } from './BarcodeGenerator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
+import { useRemoteShipmentSearch } from '../hooks/useRemoteShipmentSearch';
 
 export interface CombinedBranchReceiptModalProps {
   isOpen: boolean;
@@ -92,6 +93,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
   const [batchRefNumber, setBatchRefNumber] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isDispatching, setIsDispatching] = useState(false);
+  const { isSearchingRemote } = useRemoteShipmentSearch(searchTerm, allShipments, isOpen);
 
   const stickerPrintRef = useRef<HTMLDivElement>(null);
   const prevIsOpenRef = useRef(false);
@@ -721,6 +723,9 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                   placeholder={localized.searchPlaceholder}
                   className={`w-full ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500`}
                 />
+                {isSearchingRemote && (
+                  <span className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-2.5 text-[10px] font-bold text-red-500`}>Searching…</span>
+                )}
               </div>
 
               {/* Parcels List */}
