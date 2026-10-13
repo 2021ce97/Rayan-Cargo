@@ -30,7 +30,7 @@ export const TrackingPortal: React.FC = () => {
   const { 
     t, 
     trackedShipment, 
-    trackByCnNumber, 
+    lookupShipmentByCnNumber,
     branches, 
     setSelectedShipmentForReceipt,
     shipments
@@ -39,6 +39,8 @@ export const TrackingPortal: React.FC = () => {
   const [inputCn, setInputCn] = useState(trackedShipment ? trackedShipment.cnNumber : '');
   const [searched, setSearched] = useState(!!trackedShipment);
   const [notFound, setNotFound] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -49,17 +51,25 @@ export const TrackingPortal: React.FC = () => {
     }
   }, [trackedShipment]);
 
-  const handleSearch = (cnToSearch?: string) => {
+  const handleSearch = async (cnToSearch?: string) => {
     const target = (cnToSearch || inputCn).trim();
-    if (!target) return;
+    if (!target || isSearching) return;
 
-    const result = trackByCnNumber(target);
     setSearched(true);
-    if (!result) {
-      setNotFound(true);
-    } else {
-      setNotFound(false);
-      setInputCn(result.cnNumber);
+    setNotFound(false);
+    setSearchError('');
+    setIsSearching(true);
+    try {
+      const result = await lookupShipmentByCnNumber(target);
+      if (!result) {
+        setNotFound(true);
+      } else {
+        setInputCn(result.cnNumber);
+      }
+    } catch (error) {
+      setSearchError(error instanceof Error ? error.message : 'Tracking service is temporarily unavailable. Please try again.');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -153,9 +163,10 @@ export const TrackingPortal: React.FC = () => {
               </div>
               <button
                 type="submit"
-                className="h-12 px-8 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 font-extrabold rounded-xl transition-all shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer"
+                disabled={isSearching}
+                className="h-12 px-8 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 disabled:opacity-60 disabled:cursor-wait text-slate-950 font-extrabold rounded-xl transition-all shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{t('track_btn')}</span>
+                <span>{isSearching ? 'Searching…' : t('track_btn')}</span>
                 <ArrowRight className="w-4 h-4 rtl:rotate-180" />
               </button>
             </form>
@@ -193,6 +204,14 @@ export const TrackingPortal: React.FC = () => {
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
             {t('verify_cn_prompt')}
           </p>
+        </div>
+      )}
+
+      {searchError && (
+        <div className="p-8 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-center space-y-3 shadow-sm">
+          <AlertTriangle className="w-8 h-8 text-amber-600 mx-auto" />
+          <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">Tracking service unavailable</h3>
+          <p className="text-xs text-amber-700 dark:text-amber-300">{searchError}</p>
         </div>
       )}
 

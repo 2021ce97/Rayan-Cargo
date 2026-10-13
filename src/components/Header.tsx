@@ -28,7 +28,7 @@ export const Header: React.FC = () => {
     branches, 
     activeBranchId, 
     setActiveBranchId,
-    trackByCnNumber,
+    lookupShipmentByCnNumber,
     setActiveView,
     toastMessage,
     logout,
@@ -42,10 +42,10 @@ export const Header: React.FC = () => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const handleSearchSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchCn.trim()) return;
-    trackByCnNumber(searchCn);
+    await lookupShipmentByCnNumber(searchCn).catch(() => null);
     setActiveView('tracking');
     setIsMobileSearchOpen(false);
   };

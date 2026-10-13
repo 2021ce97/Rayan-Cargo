@@ -113,6 +113,7 @@ interface AppContextType {
   setReceiptPrintMode: (mode: 'a4' | 'thermal') => void;
   trackedShipment: Shipment | null;
   trackByCnNumber: (cn: string) => Shipment | null;
+  lookupShipmentByCnNumber: (cn: string) => Promise<Shipment | null>;
   addShipment: (shipmentData: Omit<Shipment, 'id' | 'cnNumber' | 'statusHistory' | 'bookedAt'>) => Shipment;
   createCustomerPreBooking: (input: CustomerPreBookingInput) => Promise<Shipment>;
   confirmCustomerPreBooking: (shipmentId: string, details: {
@@ -1669,6 +1670,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return found;
     }
     return null;
+  };
+
+  // Always query Supabase for typed tracking searches. The in-memory shipment
+  // list is intentionally limited for public users and can briefly lag realtime.
+  const lookupShipmentByCnNumber = async (cn: string): Promise<Shipment | null> => {
+    const compact = cn.trim().toUpperCase().replace(/\s+/g, '');
+    const armMatch = compact.match(/^ARM-?(\d+)$/);
+    const normalized = armMatch ? `ARM-${armMatch[1]}` : compact;
+    if (!normalized) return null;
+    setTrackedShipment(null);
+
+    try {
+      const response = await fetch(`/api/track/${encodeURIComponent(normalized)}`);
+      const payload = await response.json().catch(() => null);
+
+      if (response.status === 404) {
+        setTrackedShipment(null);
+        return null;
+      }
+      if (!response.ok || !payload?.shipment) {
+        throw new Error(payload?.error || 'Tracking service is temporarily unavailable.');
+      }
+
+      const freshShipment = sanitizeShipmentFinancials(payload.shipment as Shipment);
+      setShipments(previous => {
+        const exists = previous.some(item => item.id === freshShipment.id);
+        return exists
+          ? previous.map(item => item.id === freshShipment.id ? freshShipment : item)
+          : [freshShipment, ...previous];
+      });
+      setTrackedShipment(freshShipment);
+      return freshShipment;
+    } catch (error) {
+      // Signed-in users can still use the last synchronized copy during a brief
+      // connection interruption, but a missing local record is not called "not found".
+      const cached = trackByCnNumber(normalized);
+      if (cached) return cached;
+      throw error;
+    }
   };
 
   // Filter shipments based on active branch selection and user role
@@ -3757,6 +3797,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setReceiptPrintMode,
         trackedShipment,
         trackByCnNumber,
+        lookupShipmentByCnNumber,
         addShipment,
         createCustomerPreBooking,
         confirmCustomerPreBooking,

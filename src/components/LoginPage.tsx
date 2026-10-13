@@ -50,7 +50,7 @@ export const LoginPage: React.FC = () => {
     setLanguage, 
     login, 
     signupCustomer,
-    trackByCnNumber,
+    lookupShipmentByCnNumber,
     setSelectedShipmentForReceipt
   } = useApp();
 
@@ -62,6 +62,8 @@ export const LoginPage: React.FC = () => {
   const [trackedItem, setTrackedItem] = useState<Shipment | null>(null);
   const [searched, setSearched] = useState(false);
   const [trackError, setTrackError] = useState(false);
+  const [trackServiceError, setTrackServiceError] = useState('');
+  const [isTracking, setIsTracking] = useState(false);
 
   // Branch / Staff Login Form State
   const [identifier, setIdentifier] = useState('');
@@ -86,17 +88,27 @@ export const LoginPage: React.FC = () => {
   const [wrongPortalStaffDetected, setWrongPortalStaffDetected] = useState(false);
   const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false);
 
-  const handleTrackSubmit = (e: React.FormEvent) => {
+  const handleTrackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchCn.trim()) return;
+    if (!searchCn.trim() || isTracking) return;
     setSearched(true);
-    const res = trackByCnNumber(searchCn);
-    if (res) {
-      setTrackedItem(res);
-      setTrackError(false);
-    } else {
+    setTrackError(false);
+    setTrackServiceError('');
+    setIsTracking(true);
+    try {
+      const res = await lookupShipmentByCnNumber(searchCn);
+      if (res) {
+        setTrackedItem(res);
+        setSearchCn(res.cnNumber);
+      } else {
+        setTrackedItem(null);
+        setTrackError(true);
+      }
+    } catch (error) {
       setTrackedItem(null);
-      setTrackError(true);
+      setTrackServiceError(error instanceof Error ? error.message : 'Tracking service is temporarily unavailable. Please try again.');
+    } finally {
+      setIsTracking(false);
     }
   };
 
@@ -332,9 +344,10 @@ export const LoginPage: React.FC = () => {
                     </div>
                     <button
                       type="submit"
-                      className="h-12 px-8 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 font-extrabold rounded-xl transition-all shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                      disabled={isTracking}
+                      className="h-12 px-8 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 disabled:opacity-60 disabled:cursor-wait text-slate-950 font-extrabold rounded-xl transition-all shadow-lg shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer shrink-0"
                     >
-                      <span>{t('track_btn')}</span>
+                      <span>{isTracking ? 'Searching…' : t('track_btn')}</span>
                       <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                     </button>
                   </form>
@@ -446,6 +459,14 @@ export const LoginPage: React.FC = () => {
                 <p className="text-xs text-red-700 dark:text-red-300">
                   {t('verify_cn_prompt')}
                 </p>
+              </div>
+            )}
+
+            {trackServiceError && (
+              <div className="p-6 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-center space-y-2">
+                <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
+                <h3 className="text-sm font-bold text-amber-900 dark:text-amber-200">Tracking service unavailable</h3>
+                <p className="text-xs text-amber-700 dark:text-amber-300">{trackServiceError}</p>
               </div>
             )}
 

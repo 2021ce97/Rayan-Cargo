@@ -18,6 +18,11 @@ const SHIPMENT_DETAIL_COLUMNS=SHIPMENT_LIST_COLUMNS+',pod_signature,receiver_id_
 const EXPENSE_COLUMNS='id,branch_id,category,amount,description,expense_date,paid_to,receipt_number,created_by_name,created_at,updated_at';
 const SETTLEMENT_COLUMNS='id,shipment_id,parcel_ids,cn_number,origin_branch_id,destination_branch_id,gross_collected_amount,dest_branch_commission,transportation_fee,origin_branch_commission,total_commission_kept,net_remitted_amount,settled_by_user_name,sarafi_reference_no,settlement_channel,settlement_status,settled_at,notes,created_at,updated_at';
 const pageSize=(url:URL,maximum=100)=>Math.min(Math.max(Number(url.searchParams.get('limit'))||50,1),maximum);
+const normalizeCn=(value:string)=>{
+  const compact=value.trim().toUpperCase().replace(/\s+/g,'');
+  const match=compact.match(/^ARM-?(\d+)$/);
+  return match?`ARM-${match[1]}`:compact;
+};
 const hash = async (value: string) => {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -185,7 +190,10 @@ Deno.serve(async(req)=>{
       return json({success:true,user:data.user,sessionToken:token,expiresAt},201);
     }
     if(path.startsWith('/track/')&&req.method==='GET'){
-      const {data}=await db.from('shipments').select(SHIPMENT_DETAIL_COLUMNS).ilike('cn_number',decodeURIComponent(path.slice(7))).maybeSingle();
+      const cn=normalizeCn(decodeURIComponent(path.slice(7)));
+      if(!cn)return json({success:false,error:'A consignment number is required.'},400);
+      const {data,error}=await db.from('shipments').select(SHIPMENT_DETAIL_COLUMNS).eq('cn_number',cn).limit(1).maybeSingle();
+      if(error)throw error;
       return data?json({success:true,shipment:mapShipment(data)}):json({success:false,error:'Shipment not found.'},404);
     }
     const actor=await getActor(req);
