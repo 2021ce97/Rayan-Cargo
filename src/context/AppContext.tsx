@@ -40,6 +40,7 @@ import {
   mapSupabaseRowToExpense,
   mapSupabaseRowToSettlement
 } from '../lib/supabase';
+import { getExactShipmentCn, normalizeShipmentCn } from '../lib/shipmentSearch';
 
 export interface AddBranchInput {
   name: string;
@@ -1658,9 +1659,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const cleaned = cn.trim().toUpperCase();
     if (!cleaned) return null;
 
+    const exactCn = getExactShipmentCn(cleaned);
+
     const found = shipments.find(s => 
-      s.cnNumber.toUpperCase() === cleaned ||
-      s.cnNumber.replace(/[^A-Z0-9]/g, '') === cleaned.replace(/[^A-Z0-9]/g, '') ||
+      (exactCn
+        ? normalizeShipmentCn(s.cnNumber) === normalizeShipmentCn(exactCn)
+        : normalizeShipmentCn(s.cnNumber) === normalizeShipmentCn(cleaned)) ||
       s.receiver.phone.includes(cleaned) ||
       s.sender.phone.includes(cleaned)
     );
@@ -1675,9 +1679,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Always query Supabase for typed tracking searches. The in-memory shipment
   // list is intentionally limited for public users and can briefly lag realtime.
   const lookupShipmentByCnNumber = async (cn: string): Promise<Shipment | null> => {
-    const compact = cn.trim().toUpperCase().replace(/\s+/g, '');
-    const armMatch = compact.match(/^ARM-?(\d+)$/);
-    const normalized = armMatch ? `ARM-${armMatch[1]}` : compact;
+    const normalized = getExactShipmentCn(cn) || cn.trim().toUpperCase().replace(/\s+/g, '');
     if (!normalized) return null;
     setTrackedShipment(null);
 

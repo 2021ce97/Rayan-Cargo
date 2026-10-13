@@ -35,6 +35,7 @@ import { BarcodeGenerator } from './BarcodeGenerator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import { useRemoteShipmentSearch } from '../hooks/useRemoteShipmentSearch';
+import { shipmentCnMatches } from '../lib/shipmentSearch';
 
 export interface CombinedBranchReceiptModalProps {
   isOpen: boolean;
@@ -275,7 +276,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
       const q = searchTerm.toLowerCase().trim();
       if (!q) return true;
       return (
-        s.cnNumber.toLowerCase().includes(q) ||
+        shipmentCnMatches(s.cnNumber, searchTerm) ||
         s.receiver.name.toLowerCase().includes(q) ||
         s.receiver.phone.includes(q) ||
         s.sender.name.toLowerCase().includes(q) ||

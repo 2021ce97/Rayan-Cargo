@@ -1,15 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Shipment } from '../types';
+import { getExactShipmentCn, normalizeShipmentCn } from '../lib/shipmentSearch';
 
-export const normalizeShipmentCn = (value: string): string =>
-  value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-
-export const getExactShipmentCn = (value: string): string | null => {
-  const compact = normalizeShipmentCn(value);
-  const match = compact.match(/^ARM(\d+)$/);
-  return match ? `ARM-${match[1]}` : null;
-};
+export { getExactShipmentCn, normalizeShipmentCn } from '../lib/shipmentSearch';
 
 /**
  * Hydrates an exact ARM consignment-number search from Supabase when that

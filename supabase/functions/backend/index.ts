@@ -19,8 +19,8 @@ const EXPENSE_COLUMNS='id,branch_id,category,amount,description,expense_date,pai
 const SETTLEMENT_COLUMNS='id,shipment_id,parcel_ids,cn_number,origin_branch_id,destination_branch_id,gross_collected_amount,dest_branch_commission,transportation_fee,origin_branch_commission,total_commission_kept,net_remitted_amount,settled_by_user_name,sarafi_reference_no,settlement_channel,settlement_status,settled_at,notes,created_at,updated_at';
 const pageSize=(url:URL,maximum=100)=>Math.min(Math.max(Number(url.searchParams.get('limit'))||50,1),maximum);
 const normalizeCn=(value:string)=>{
-  const compact=value.trim().toUpperCase().replace(/\s+/g,'');
-  const match=compact.match(/^ARM-?(\d+)$/);
+  const compact=value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const match=compact.match(/^(?:ARM)?(\d+)$/);
   return match?`ARM-${match[1]}`:compact;
 };
 const hash = async (value: string) => {
