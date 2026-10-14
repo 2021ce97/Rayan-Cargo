@@ -381,9 +381,9 @@ export const DeliveryPaymentSettlementModal: React.FC<DeliveryPaymentSettlementM
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in">
+    <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in">
       <div 
-        className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto max-h-[96vh] flex flex-col"
+        className="app-modal-surface bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto max-h-[96vh] flex flex-col"
         dir={language === 'fa' || language === 'ps' ? 'rtl' : 'ltr'}
       >
         
@@ -432,7 +432,7 @@ export const DeliveryPaymentSettlementModal: React.FC<DeliveryPaymentSettlementM
         </div>
 
         {/* Scrollable Modal Content */}
-        <div className="p-3 sm:p-5 space-y-4 overflow-y-auto text-xs">
+        <div className="app-modal-scroll p-3 sm:p-5 space-y-4 overflow-y-auto text-xs">
           
           {/* Waybill & Route Info */}
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 grid grid-cols-1 sm:grid-cols-3 gap-2.5">

@@ -984,7 +984,7 @@ export const BranchManagement: React.FC = () => {
 
       {/* Super Admin: Read-only stored branch credentials */}
       {viewCredentials && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 space-y-5">
             <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
@@ -1038,7 +1038,7 @@ export const BranchManagement: React.FC = () => {
 
       {/* Super Admin: Edit Branch & Tazkira Credentials Modal */}
       {editingBranch && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95 my-8">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1306,7 +1306,7 @@ export const BranchManagement: React.FC = () => {
       {/* Admin Provision / Reset Credentials Modal */}
       {provisionBranch && (() => {
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95 space-y-4">
               
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1398,7 +1398,7 @@ export const BranchManagement: React.FC = () => {
 
       {/* Add New Branch Modal */}
       {isAddBranchOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95 my-8">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1741,7 +1741,7 @@ export const BranchManagement: React.FC = () => {
         const isCodeMatched = deleteConfirmCode.trim().toUpperCase() === branchToDelete.code.toUpperCase();
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95 space-y-4">
               
               {/* Header */}

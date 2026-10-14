@@ -10,8 +10,8 @@ export const SystemSettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
   const userPrintMode = currentUser.preferences?.receiptPrintMode || 'auto';
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+    <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="app-modal-surface bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col my-auto">
         <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-slate-300" />
@@ -22,7 +22,7 @@ export const SystemSettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onCl
           </button>
         </div>
 
-        <div className="p-6 flex-1 overflow-y-auto space-y-8 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+        <div className="app-modal-scroll p-6 flex-1 overflow-y-auto space-y-8 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
           
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 pb-2 border-b border-slate-200 dark:border-slate-800">

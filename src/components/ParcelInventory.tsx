@@ -125,6 +125,7 @@ export const ParcelInventory: React.FC = () => {
   const [statusModalShipment, setStatusModalShipment] = useState<Shipment | null>(null);
   const [statusChoice, setStatusChoice] = useState<ShipmentStatus>('in_transit');
   const [statusNote, setStatusNote] = useState('');
+  const [isSavingStatus, setIsSavingStatus] = useState(false);
   const [paymentSettlementShipment, setPaymentSettlementShipment] = useState<Shipment | null>(null);
 
   const [detailsModalShipment, setDetailsModalShipment] = useState<Shipment | null>(null);
@@ -361,12 +362,16 @@ export const ParcelInventory: React.FC = () => {
 
   // Save physical status progression (Payment & Report is unlocked separately after status is Delivered, Returned, or Cancelled)
   const handleSaveStatus = async () => {
-    if (!statusModalShipment) return;
+    if (!statusModalShipment || isSavingStatus) return;
     const finalNote = statusNote.trim();
-
-    const ok = await updateShipmentStatus(statusModalShipment.id, statusChoice, finalNote || undefined);
-    if (ok) {
-      setStatusModalShipment(null);
+    setIsSavingStatus(true);
+    try {
+      const ok = await updateShipmentStatus(statusModalShipment.id, statusChoice, finalNote || undefined);
+      if (ok) {
+        setStatusModalShipment(null);
+      }
+    } finally {
+      setIsSavingStatus(false);
     }
   };
 
@@ -1100,7 +1105,7 @@ export const ParcelInventory: React.FC = () => {
         ];
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto animate-in fade-in zoom-in-95">
               
               {/* Header */}
@@ -1210,9 +1215,10 @@ export const ParcelInventory: React.FC = () => {
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       onClick={handleSaveStatus}
-                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-colors"
+                      disabled={isSavingStatus}
+                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-wait text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-colors"
                     >
-                      Apply Status Change
+                      {isSavingStatus ? 'Saving Status…' : 'Apply Status Change'}
                     </button>
                     <button
                       onClick={() => setStatusModalShipment(null)}
@@ -1265,7 +1271,7 @@ export const ParcelInventory: React.FC = () => {
         const destB = branches.find(b => b.id === submissionModalShipment.destinationBranchId);
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto animate-in fade-in zoom-in-95">
               
               {/* Header */}
@@ -1397,8 +1403,8 @@ export const ParcelInventory: React.FC = () => {
 
       {/* MODAL: COMPREHENSIVE MANAGE & DOSSIER MODAL */}
       {detailsModalShipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
+        <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto animate-in fade-in zoom-in-95">
             
             {/* Header */}
             <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -1524,7 +1530,7 @@ export const ParcelInventory: React.FC = () => {
             )}
 
             {/* Tracking History */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 max-h-56 overflow-y-auto">
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
               <ShipmentStatusTimeline 
                 history={detailsModalShipment.statusHistory}
                 currentStatus={detailsModalShipment.status}
@@ -1962,7 +1968,7 @@ export const ParcelInventory: React.FC = () => {
 
       {/* MODAL: PRE-BOOKING WEIGH & CONFIRM */}
       {confirmModalShipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 my-auto animate-in fade-in zoom-in-95">
             <div className="flex items-start justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
@@ -2182,7 +2188,7 @@ export const ParcelInventory: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmShipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 p-5 animate-in fade-in zoom-in-95 space-y-4">
             <div className="flex items-center gap-3 text-red-600">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">

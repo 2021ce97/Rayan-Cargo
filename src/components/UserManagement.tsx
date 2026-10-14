@@ -373,7 +373,7 @@ export const UserManagement: React.FC = () => {
         const branch = branches.find(b => b.id === provisionUser.branchId);
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95 space-y-4">
               
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -467,7 +467,7 @@ export const UserManagement: React.FC = () => {
 
       {/* Add New Branch Modal */}
       {isAddBranchOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95 my-8">
             
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -780,7 +780,7 @@ export const UserManagement: React.FC = () => {
 
       {/* Clean Slate Confirmation Modal */}
       {isResetConfirmOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 animate-in fade-in zoom-in-95">
             <div className="flex items-center gap-3 text-red-600 mb-3">
               <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">

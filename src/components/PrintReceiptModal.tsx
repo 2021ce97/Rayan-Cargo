@@ -188,8 +188,8 @@ export const PrintReceiptModal: React.FC = () => {
   const l = (enText: string, dariText: string) => language === 'dari' ? dariText : enText;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col max-h-full border border-slate-200 dark:border-slate-800">
+    <div className="app-modal-overlay fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <div className="app-modal-surface bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col max-h-full border border-slate-200 dark:border-slate-800">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 rounded-t-3xl shrink-0">
@@ -296,7 +296,7 @@ export const PrintReceiptModal: React.FC = () => {
         {/* 1. THERMAL POS RECEIPT FORMAT (80MM CONTINUOUS ROLL)     */}
         {/* ======================================================== */}
         {printFormat === 'thermal_80mm' && (
-          <div className="p-4 bg-slate-200 dark:bg-slate-900 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
+          <div className="app-modal-scroll p-4 bg-slate-200 dark:bg-slate-900 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
             {/* 80mm Printer Setup Help Panel */}
             {showPrinterGuide && (
               <div className="w-full max-w-md bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-400 rounded-2xl p-4 mb-4 text-xs shadow-lg animate-in fade-in slide-in-from-top-2">
@@ -522,7 +522,7 @@ export const PrintReceiptModal: React.FC = () => {
         {/* 2. THERMAL LABEL FORMAT (80x80 SQUARE STICKER)           */}
         {/* ======================================================== */}
         {printFormat === 'thermal_80x80' && (
-          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
+          <div className="app-modal-scroll p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
               <span className="w-8 h-px bg-slate-300"></span>
               Print Preview (80x80 Label)
@@ -653,7 +653,7 @@ export const PrintReceiptModal: React.FC = () => {
         {/* 3. STANDARD A4 PRINT FORMAT (FULL RECEIPT/WAYBILL)       */}
         {/* ======================================================== */}
         {printFormat === 'standard' && (
-          <div className="p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
+          <div className="app-modal-scroll p-4 bg-slate-200 overflow-y-auto max-h-[78vh] flex flex-col items-center flex-1">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
               <span className="w-12 h-px bg-slate-300"></span>
               Print Preview (A4)

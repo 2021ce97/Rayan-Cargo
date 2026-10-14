@@ -364,16 +364,32 @@ Deno.serve(async(req)=>{
     const sm=path.match(/^\/shipments\/([^/]+)(?:\/(status|print))?$/);
     if(sm&&['PUT','PATCH','DELETE','POST'].includes(req.method)){
       const id=sm[1],action=sm[2];
+      let target:any=null;
       if(!admin){
-        const {data:target,error:targetError}=await db.from('shipments').select('customer_user_id,origin_branch_id,destination_branch_id,current_branch_id').eq('id',id).maybeSingle();
+        const {data:resolvedTarget,error:targetError}=await db.from('shipments').select('customer_user_id,origin_branch_id,destination_branch_id,current_branch_id').eq('id',id).maybeSingle();
+        target=resolvedTarget;
         if(targetError)throw targetError;if(!target)return json({success:false,error:'Shipment not found.'},404);
         const allowed=actor.role==='customer'
           ? target.customer_user_id===actor.id
           : [target.origin_branch_id,target.destination_branch_id,target.current_branch_id].includes(actor.branchId);
-        if(!allowed)return json({success:false,error:'Forbidden shipment.'},403);
+        if(!allowed)return json({success:false,error:'This parcel is not assigned to your branch.'},403);
       }
       if(req.method==='DELETE'){if(!admin)return json({success:false,error:'Super Admin required.'},403);const {error}=await db.from('shipments').delete().eq('id',id);if(error)throw error}
       else if(action==='status'){
+        if(!admin){
+          if(actor.role!=='branch_manager')return json({success:false,error:'Only branch staff can update parcel status.'},403);
+          const nextStatus=String(body.status||'');
+          const atOrigin=target.origin_branch_id===actor.branchId;
+          const atDestination=target.destination_branch_id===actor.branchId;
+          const originStatuses=['verified','booked','in_transit'];
+          const destinationStatuses=['received_at_branch','out_for_delivery','delivered','returned','cancelled'];
+          const statusAllowed=(atOrigin&&originStatuses.includes(nextStatus))||(atDestination&&destinationStatuses.includes(nextStatus));
+          if(!statusAllowed){
+            return json({success:false,error:atDestination
+              ?'The destination branch can set Received, Out for Delivery, Delivered, Returned, or Cancelled.'
+              :'The origin branch can set Verified, Booked, or In Transit.'},403);
+          }
+        }
         const update:any=shipmentPatch({...body,...(body.extraFields||{})});
         const {error}=await db.from('shipments').update(update).eq('id',id);if(error)throw error
       }

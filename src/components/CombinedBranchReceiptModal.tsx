@@ -444,7 +444,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
   };
 
   // One-click Dispatch to Transit Execution
-  const handleDispatchBatch = () => {
+  const handleDispatchBatch = async () => {
     if (selectedShipments.length === 0) {
       showToast(localized.selectAtLeastOne);
       return;
@@ -456,8 +456,8 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
       const note = `Dispatched in Bulk Batch ${batchRefNumber} from ${currentSenderBranch.name} to ${currentDestBranch.name}`;
       for (const s of selectedShipments) {
         if (s.status === 'booked' || s.status === 'received_at_branch' || s.status === 'verified' || s.status === 'pre_booked') {
-          updateShipmentStatus(s.id, 'in_transit', note, currentSenderBranch.name);
-          updatedCount++;
+          const updated = await updateShipmentStatus(s.id, 'in_transit', note, currentSenderBranch.name);
+          if (updated) updatedCount++;
         }
       }
       showToast(
@@ -478,9 +478,9 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
+    <div className="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[95vh] overflow-hidden my-auto"
+        className="app-modal-surface relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[95vh] overflow-hidden my-auto"
         id="carton-sticker-modal"
         dir={isRTL ? 'rtl' : 'ltr'}
       >
@@ -549,7 +549,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
         </div>
 
         {/* MODAL BODY (TWO COLUMNS: CONTROLS & LIVE STICKER PREVIEW) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="app-modal-scroll flex-1 overflow-y-auto p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
           
           {/* LEFT COLUMN: PURE CLEAN SENDER & RECEIVER BRANCH SELECTION + PARCEL PICKER (5 COLS) */}
           <div className="lg:col-span-5 flex flex-col gap-4">

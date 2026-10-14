@@ -21,6 +21,38 @@
   }
 }
 
+/*
+ * Keep every application dialog reachable on short screens. Centering an
+ * oversized flex item can place part of it outside the scrollable area, so
+ * modal overlays start at the top and let auto margins center only dialogs
+ * that actually fit. Individual flex-column dialogs still use their own
+ * `.app-modal-scroll` region.
+ */
+.app-modal-overlay {
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-modal-overlay > * {
+  margin-block: auto;
+}
+
+.app-modal-surface {
+  min-height: 0;
+  max-height: calc(100dvh - 1rem);
+}
+
+.app-modal-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
 @media print {
   @page {
     size: A4 portrait;

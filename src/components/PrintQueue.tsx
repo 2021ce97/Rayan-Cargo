@@ -16,8 +16,8 @@ export const PrintQueue = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div className="app-modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="app-modal-surface bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh] my-auto">
         <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-amber-400" />
@@ -28,7 +28,7 @@ export const PrintQueue = ({ onClose }: { onClose: () => void }) => {
           </button>
         </div>
 
-        <div className="p-4 flex-1 overflow-y-auto bg-slate-50">
+        <div className="app-modal-scroll p-4 flex-1 overflow-y-auto bg-slate-50">
           {queue.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
               <Printer className="w-12 h-12 mx-auto mb-3 opacity-20" />

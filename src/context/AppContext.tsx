@@ -142,7 +142,7 @@ interface AppContextType {
   adminEditShipment: (shipmentId: string, input: AdminEditShipmentInput) => Promise<boolean>;
   deleteShipment: (shipmentId: string) => Promise<boolean>;
   submitParcelForCollection: (shipmentId: string, reference?: string, customSubmittedAt?: string) => boolean;
-  updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => boolean;
+  updateShipmentStatus: (shipmentId: string, newStatus: ShipmentStatus, note?: string, location?: string, driverName?: string, driverPhone?: string) => Promise<boolean>;
   recordDeliveryPaymentSettlement: (
     shipmentId: string,
     input: {
@@ -3090,7 +3090,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     
     if (isDestination) {
-      allowedStatuses.push('received_at_branch', 'delivered', 'returned', 'cancelled');
+      allowedStatuses.push('received_at_branch', 'out_for_delivery', 'delivered', 'returned', 'cancelled');
     }
 
     if (allowedStatuses.length > 0) {
@@ -3245,14 +3245,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Update Shipment Status (Physical Status Only - Payment & Price Adjustment is handled separately after Delivered/Returned/Cancelled)
-  const updateShipmentStatus = (
+  const updateShipmentStatus = async (
     shipmentId: string, 
     newStatus: ShipmentStatus, 
     note?: string, 
     location?: string,
     driverName?: string,
     driverPhone?: string
-  ): boolean => {
+  ): Promise<boolean> => {
     const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
     if (!target) {
       console.warn('updateShipmentStatus: Shipment not found for ID/CN:', shipmentId);
@@ -3320,27 +3320,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deliveryIssue: newStatus === 'delivered' ? undefined : target.deliveryIssue
     };
 
+    // Save first so the UI never reports success for a change rejected by the
+    // database, an expired session, or branch authorization.
+    try {
+      const response = await fetch(`/api/shipments/${target.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+          statusHistory: newHistory,
+          actualDelivery,
+          financials: newFinancials,
+          currentBranchId,
+          sellerPayoutStatus: updatedShipment.sellerPayoutStatus,
+          userRole: currentUser.role,
+          userBranchId: currentUser.branchId
+        })
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success === false) {
+        const fallback = response.status === 401
+          ? 'Your login session expired. Please sign in again.'
+          : response.status === 403
+          ? 'This account is not authorized to update that parcel. Confirm that you are signed in to its destination branch.'
+          : response.status === 404
+          ? 'This parcel no longer exists in the database. Refresh the inventory and try again.'
+          : 'The parcel status could not be saved. Please try again.';
+        throw new Error(payload?.error || fallback);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The parcel status could not be saved. Please try again.';
+      console.error('Error updating shipment status:', error);
+      showToast(message, 'error', 'Status Update Failed');
+      return false;
+    }
+
     setShipments(prev => prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s));
 
     if (trackedShipment && (trackedShipment.id === target.id || trackedShipment.cnNumber === target.cnNumber)) {
       setTrackedShipment(updatedShipment);
     }
-
-    // Persist to Supabase Database (direct client & backend API)
-
-    fetch(`/api/shipments/${target.id}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        status: newStatus,
-        statusHistory: newHistory,
-        actualDelivery,
-        financials: newFinancials,
-        currentBranchId,
-        userRole: currentUser.role,
-        userBranchId: currentUser.branchId
-      })
-    }).catch(err => console.error('Error updating status in Supabase:', err));
 
     if (requiresPaymentStage && !existingSettlement?.locked) {
       showToast(
