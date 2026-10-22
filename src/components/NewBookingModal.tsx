@@ -27,6 +27,7 @@ import {
 } from '../types';
 import confetti from 'canvas-confetti';
 import { BranchSearchSelect } from './BranchSearchSelect';
+import { getBranchAddress, getBranchDisplayName, getBranchLocality } from '../utils/branchDisplay';
 
 export const NewBookingModal: React.FC = () => {
   const { 
@@ -40,38 +41,6 @@ export const NewBookingModal: React.FC = () => {
     setActiveView,
     showToast 
   } = useApp();
-
-  const getLocalizedBranchName = (b: any | undefined) => {
-    if (!b) return '';
-    const cleanMap: Record<string, { en: string; fa: string; ps: string }> = {
-      'br_admin_hq': { en: 'Kabul', fa: 'کابل', ps: 'کابل' },
-      'br_mzk_02': { en: 'Mazar-i-Sharif', fa: 'مزار شریف', ps: 'مزار شریف' },
-      'br_hrt_03': { en: 'Herat', fa: 'هرات', ps: 'هرات' },
-      'br_kdh_04': { en: 'Kandahar', fa: 'کندهار', ps: 'کندهار' },
-      'br_kho06_0281': { en: 'Khost', fa: 'خوست', ps: 'خوست' },
-      'br_far01_8916': { en: 'Maymana', fa: 'میمنه', ps: 'میمنه' },
-      'br_jaw08_6896': { en: 'Sheberghan', fa: 'شبرغان', ps: 'شبرغان' },
-      'br_tak08_7293': { en: 'Taloqan', fa: 'تالقان', ps: 'تالقان' },
-      'br_bad09_9209': { en: 'Faizabad', fa: 'فیض آباد', ps: 'فیض آباد' },
-      'br_gzn12_8926': { en: 'Ghazni', fa: 'غزنی', ps: 'غزنی' },
-      'br_nan014_3445': { en: 'Jalalabad', fa: 'جلال‌آباد', ps: 'جلال اباد' },
-      'br_kun010_8767': { en: 'Kunduz', fa: 'کندز', ps: 'کندز' },
-      'br_nim013_1433': { en: 'Nimroz', fa: 'نیمروز', ps: 'نیمروز' },
-      'br_sar011_2621': { en: 'Sar-e Pol', fa: 'سرپل', ps: 'سرپل' }
-    };
-    if (b.id && cleanMap[b.id]) {
-      const entry = cleanMap[b.id];
-      if (language === 'fa') return entry.fa;
-      if (language === 'ps') return entry.ps;
-      return entry.en;
-    }
-    if (b.isHeadOffice || b.code === 'KBL-HQ' || b.id === 'br_admin_hq') {
-      return (language === 'fa' || language === 'ps') ? 'کابل' : 'Kabul';
-    }
-    if (language === 'fa') return (b.nameFa || b.city || b.name || '').replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
-    if (language === 'ps') return (b.namePs || b.city || b.name || '').replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
-    return (b.name || b.city || '').replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
-  };
 
   // Deduplicate and filter out any stray or duplicate branches
   const sanitizedBranches = React.useMemo(() => {
@@ -459,16 +428,20 @@ export const NewBookingModal: React.FC = () => {
             </div>
 
             {/* Route visual arrow */}
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-              <div className="font-bold text-slate-700">
-                {getLocalizedBranchName(originBranchObj)}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs">
+              <div className="min-w-0">
+                <div className="font-black text-slate-800 truncate">{getBranchDisplayName(originBranchObj, language)}</div>
+                <div className="text-[10px] text-slate-500 truncate">{getBranchLocality(originBranchObj)}</div>
+                <div className="text-[10px] text-slate-500 truncate">{getBranchAddress(originBranchObj)}</div>
               </div>
               <div className="flex items-center gap-1.5 text-red-600 font-bold font-mono">
                 <span>-----------</span>
                 <ArrowRight className="w-4 h-4" />
               </div>
-              <div className="font-bold text-red-700">
-                {getLocalizedBranchName(destBranchObj)}
+              <div className="min-w-0 text-end">
+                <div className="font-black text-red-700 truncate">{getBranchDisplayName(destBranchObj, language)}</div>
+                <div className="text-[10px] text-slate-500 truncate">{getBranchLocality(destBranchObj)}</div>
+                <div className="text-[10px] text-slate-500 truncate">{getBranchAddress(destBranchObj)}</div>
               </div>
             </div>
 

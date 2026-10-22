@@ -29,6 +29,7 @@ import {
 import { usePrintQueue } from '../hooks/usePrintQueue';
 import { Save } from 'lucide-react';
 import { formatReceiptPhone } from '../types';
+import { getBranchAddress, getBranchDisplayName, getBranchLocality } from '../utils/branchDisplay';
 
 export const PrintReceiptModal: React.FC = () => {
   const { 
@@ -75,6 +76,13 @@ export const PrintReceiptModal: React.FC = () => {
   const shipment = selectedShipmentForReceipt;
   const originBranch = branches.find(b => b.id === shipment.originBranchId);
   const destBranch = branches.find(b => b.id === shipment.destinationBranchId);
+  const branchLanguage = language === 'dari' ? 'fa' : 'en';
+  const originBranchName = getBranchDisplayName(originBranch, branchLanguage);
+  const destinationBranchName = getBranchDisplayName(destBranch, branchLanguage);
+  const originBranchLocality = getBranchLocality(originBranch) || shipment.sender.city;
+  const destinationBranchLocality = getBranchLocality(destBranch) || shipment.receiver.city;
+  const originBranchAddress = getBranchAddress(originBranch);
+  const destinationBranchAddress = getBranchAddress(destBranch);
 
   const priceVal = Number(shipment.financials?.productPrice) || Number(shipment.packageInfo?.declaredValueAfn) || Number(shipment.financials?.totalAmount) || 3000;
   const sFeeVal = typeof shipment.financials?.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
@@ -398,7 +406,7 @@ export const PrintReceiptModal: React.FC = () => {
 
               {/* Compact Route Info */}
               <div className="text-center bg-black text-white font-black py-1 text-[11px] mb-1.5 uppercase tracking-wider" dir="ltr">
-                {originBranch?.city?.toUpperCase() || 'KABUL'} ➔ {destBranch?.city?.toUpperCase() || 'DESTINATION'}
+                {originBranchLocality.toUpperCase() || 'KABUL'} ➔ {destinationBranchLocality.toUpperCase() || 'DESTINATION'}
               </div>
 
               {/* Sender & Receiver Side-by-Side Table */}
@@ -415,7 +423,8 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="bg-black text-white font-mono font-black text-[9.5px] px-1.5 py-0.5 rounded tracking-wide text-center" dir="ltr">
                       ☎ {formatReceiptPhone(shipment.sender.phone)}
                     </div>
-                    <div className="text-[8px] text-slate-700 font-bold mt-0.5">{l('Origin:', 'مبدأ:')} {originBranch?.city} ({originBranch?.name})</div>
+                    <div className="text-[8px] text-slate-700 font-bold mt-0.5">{l('Origin:', 'مبدأ:')} {originBranchName} — {originBranchLocality}</div>
+                    {originBranchAddress && <div className="text-[7px] text-slate-600 mt-0.5 break-words">{originBranchAddress}</div>}
                   </div>
                 </div>
 
@@ -431,7 +440,8 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="bg-black text-white font-mono font-black text-[9.5px] px-1.5 py-0.5 rounded tracking-wide text-center" dir="ltr">
                       ☎ {formatReceiptPhone(shipment.receiver.phone)}
                     </div>
-                    <div className="text-[8px] text-slate-700 font-bold mt-0.5">{l('Dest:', 'مقصد:')} {destBranch?.city} ({destBranch?.name})</div>
+                    <div className="text-[8px] text-slate-700 font-bold mt-0.5">{l('Dest:', 'مقصد:')} {destinationBranchName} — {destinationBranchLocality}</div>
+                    {destinationBranchAddress && <div className="text-[7px] text-slate-600 mt-0.5 break-words">{destinationBranchAddress}</div>}
                   </div>
                 </div>
               </div>
@@ -488,7 +498,7 @@ export const PrintReceiptModal: React.FC = () => {
                 {/* 3 Structured Contact Badges */}
                 <div className="pt-1.5 border-t border-black/20 space-y-1 text-start">
                   <div className="bg-slate-100 p-1 rounded border border-black/15 flex items-center justify-between text-[8.5px]">
-                    <span className="font-bold text-slate-800">{l(`Receiver Branch (${destBranch?.city || 'Dest Hub'}):`, `تماس نمایندگی مقصد (${destBranch?.city || 'نمایندگی'}):`)}</span>
+                    <span className="font-bold text-slate-800">{l(`Receiver Branch (${destinationBranchName || 'Dest Hub'}):`, `تماس نمایندگی مقصد (${destinationBranchName || 'نمایندگی'}):`)}</span>
                     <span className="font-mono font-black text-slate-950 bg-white px-1 py-0.2 rounded border border-black/20" dir="ltr">
                       ☎ {formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XX XXX XXX'}
                     </span>
@@ -562,7 +572,10 @@ export const PrintReceiptModal: React.FC = () => {
               
               {/* Route Banner */}
               <div className="text-center bg-black text-white font-black py-1 text-[11px] uppercase tracking-wide rounded-xs my-1" dir="ltr">
-                {(originBranch?.city || shipment.sender.city || 'KABUL').toUpperCase()} ➔ {(destBranch?.city || shipment.receiver.city || 'DESTINATION').toUpperCase()}
+                <div>{(originBranchLocality || 'KABUL').toUpperCase()} ➔ {(destinationBranchLocality || 'DESTINATION').toUpperCase()}</div>
+                <div className="text-[6.5px] font-bold normal-case tracking-normal truncate mt-0.5">
+                  {originBranchName}: {originBranchAddress || originBranchLocality} • {destinationBranchName}: {destinationBranchAddress || destinationBranchLocality}
+                </div>
               </div>
               
               {/* Parties Box Side-by-Side */}
@@ -626,7 +639,7 @@ export const PrintReceiptModal: React.FC = () => {
                 <div className="pt-1 border-t border-black/20 flex gap-1.5 items-stretch justify-between text-start">
                   <div className="flex-1 space-y-0.5">
                     <div className="flex items-center justify-between text-[7.5px] font-bold">
-                      <span className="text-slate-800">{l(`Dest Hub (${destBranch?.city || 'Dest'}):`, `نمایندگی مقصد (${destBranch?.city || 'مقصد'}):`)}</span>
+                      <span className="text-slate-800">{l(`Dest Hub (${destinationBranchName || 'Dest'}):`, `نمایندگی مقصد (${destinationBranchName || 'مقصد'}):`)}</span>
                       <span className="font-mono font-black" dir="ltr">{formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XX XXX XXX'}</span>
                     </div>
                     <div className="flex items-center justify-between text-[7px] text-slate-700">
@@ -762,9 +775,15 @@ export const PrintReceiptModal: React.FC = () => {
                       <span className="text-slate-500 font-semibold">{l('City / Origin Hub:', 'ولایت / نمایندگی مبدأ:')}</span>
                       <span className="font-bold flex items-center gap-1 text-slate-800">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        {shipment.sender.city} ({originBranch?.name})
+                        {originBranchName} — {originBranchLocality}
                       </span>
                     </div>
+                    {originBranchAddress && (
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-slate-500 font-semibold shrink-0">{l('Branch Address:', 'آدرس نمایندگی:')}</span>
+                        <span className="font-semibold text-slate-700 text-end">{originBranchAddress}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -803,9 +822,15 @@ export const PrintReceiptModal: React.FC = () => {
                       <span className="text-slate-500 font-semibold">{l('City / Dest Hub:', 'مقصد / نمایندگی توزیع:')}</span>
                       <span className="font-bold flex items-center gap-1 text-slate-800">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        {shipment.receiver.city} ({destBranch?.name})
+                        {destinationBranchName} — {destinationBranchLocality}
                       </span>
                     </div>
+                    {destinationBranchAddress && (
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-slate-500 font-semibold shrink-0">{l('Branch Address:', 'آدرس نمایندگی:')}</span>
+                        <span className="font-semibold text-slate-700 text-end">{destinationBranchAddress}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -927,7 +952,7 @@ export const PrintReceiptModal: React.FC = () => {
                       {/* 1. Destination Branch */}
                       <div className="bg-white p-1.5 rounded-lg border border-slate-200 flex flex-col justify-between">
                         <span className="text-[8px] font-bold text-rose-700 uppercase tracking-tight truncate">
-                          {l(`1. Dest (${destBranch?.city || 'Hub'}):`, `۱. نمایندگی (${destBranch?.city || 'مقصد'}):`)}
+                          {l(`1. Dest (${destinationBranchName || 'Hub'}):`, `۱. نمایندگی (${destinationBranchName || 'مقصد'}):`)}
                         </span>
                         <span className="font-mono font-black text-slate-950 text-[9.5px] mt-0.5 tracking-tight" dir="ltr">
                           ☎ {formatReceiptPhone(destBranch?.phone || destBranch?.managerPhone) || '07XX XXX XXX'}

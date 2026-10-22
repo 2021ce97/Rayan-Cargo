@@ -303,6 +303,12 @@ export const BranchManagement: React.FC = () => {
   const handleSaveEditBranch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingBranch || isSavingEdit) return;
+    if (
+      !editFormData.name.trim() ||
+      !editFormData.province.trim() ||
+      !editFormData.city.trim() ||
+      !editFormData.address.trim()
+    ) return;
 
     // Validate 13-digit CNIC / Tazkira
     const tazkiraVal = validateTazkira(editFormData.tazkiraNumber);
@@ -410,21 +416,24 @@ export const BranchManagement: React.FC = () => {
     if (
       !newBranchData.name.trim() || 
       !newBranchData.code.trim() || 
-      !newBranchData.email.trim()
+      !newBranchData.email.trim() ||
+      !newBranchData.province.trim() ||
+      !newBranchData.city.trim() ||
+      !newBranchData.address.trim()
     ) {
       return;
     }
 
     const result = addBranch({
-      name: newBranchData.name,
-      nameFa: newBranchData.nameFa || newBranchData.name,
-      namePs: newBranchData.namePs || newBranchData.name,
-      code: newBranchData.code,
-      province: newBranchData.province,
-      city: newBranchData.city || `${newBranchData.province} City`,
-      address: newBranchData.address,
-      phone: newBranchData.phone,
-      email: newBranchData.email,
+      name: newBranchData.name.trim(),
+      nameFa: newBranchData.nameFa.trim() || newBranchData.name.trim(),
+      namePs: newBranchData.namePs.trim() || newBranchData.name.trim(),
+      code: newBranchData.code.trim().toUpperCase(),
+      province: newBranchData.province.trim(),
+      city: newBranchData.city.trim(),
+      address: newBranchData.address.trim(),
+      phone: newBranchData.phone.trim(),
+      email: newBranchData.email.trim().toLowerCase(),
       managerName: newBranchData.managerName || `${newBranchData.province} Branch Officer`,
       tazkiraNumber: newBranchData.tazkiraNumber.trim(),
       initialPassword: newBranchData.initialPassword || `${newBranchData.code.toLowerCase().replace(/[^a-z0-9]/g, '')}123`

@@ -36,6 +36,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import { useRemoteShipmentSearch } from '../hooks/useRemoteShipmentSearch';
 import { shipmentCnMatches } from '../lib/shipmentSearch';
+import { getBranchAddress, getBranchDisplayName, getBranchFullLabel, getBranchLocality } from '../utils/branchDisplay';
 
 export interface CombinedBranchReceiptModalProps {
   isOpen: boolean;
@@ -61,7 +62,6 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
     recordStickerPrint
   } = useApp();
   const { language: globalLang } = useI18n();
-  const { getLocalizedBranchName: i18nGetLocalizedBranchName } = useI18n();
 
   // Local language switcher for the Carton Sticker & Modal
   const [modalLang, setModalLang] = useState<Language>(globalLang);
@@ -71,15 +71,10 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
   const l = (en: string, fa: string) => (modalLang === 'fa' || modalLang === 'ps') ? fa : en;
 
   // Sync global getLocalizedBranchName to work with modalLang
-  const getLocalizedBranchName = useCallback((b: Branch | undefined, lang?: Language) => {
-    // We ignore the lang param and use the branch data or translations directly if we must,
-    // but the i18nGetLocalizedBranchName is already bound to global language.
-    // To respect modalLang, we'll implement a local version or use the global one if it's fine.
-    // The safest is to use the global one but here we need it for modalLang.
-    if (!b) return '';
-    const name = (modalLang === 'fa' && b.nameFa) ? b.nameFa : ((modalLang === 'ps' && b.namePs) ? b.namePs : b.name);
-    return name.replace(/Armaghan Sadeq|Transfers sadeq|انتقالات ارمغان صادق|انتقالات صادق/gi, '').trim() || b.city;
-  }, [modalLang]);
+  const getLocalizedBranchName = useCallback(
+    (branch?: Branch) => getBranchDisplayName(branch, modalLang),
+    [modalLang]
+  );
 
   const getCleanBranchName = (b: Branch | undefined) => getLocalizedBranchName(b);
 
@@ -576,7 +571,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                 >
                   {uniqueBranches.map(b => (
                     <option key={b.id} value={b.id}>
-                      {getBranchLabel(b)}
+                      {getBranchFullLabel(b, modalLang)}
                     </option>
                   ))}
                 </select>
@@ -601,7 +596,7 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                 >
                   {destinationBranches.map(b => (
                     <option key={b.id} value={b.id}>
-                      {getBranchLabel(b)}
+                      {getBranchFullLabel(b, modalLang)}
                     </option>
                   ))}
                 </select>
@@ -951,12 +946,18 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                     <div className="text-xl font-black text-white tracking-tight my-0.5 uppercase">
                       {getBranchLabel(currentDestBranch)}
                     </div>
+                    <div className="text-[7px] font-bold text-slate-200 truncate">
+                      {getBranchLocality(currentDestBranch)} • {getBranchAddress(currentDestBranch)}
+                    </div>
                   </div>
 
                   {/* 3. Origin Hub Banner */}
                   <div className="text-[9px] font-bold text-black border border-black p-1 rounded mb-2 flex items-center justify-between">
                     <span className="text-slate-600">{localized.origin}</span>
                     <span className="font-black">{getBranchLabel(currentSenderBranch)}</span>
+                  </div>
+                  <div className="text-[7px] text-slate-700 font-bold truncate border border-t-0 border-black px-1 py-0.5 -mt-2 mb-2">
+                    {getBranchLocality(currentSenderBranch)} • {getBranchAddress(currentSenderBranch)}
                   </div>
 
                   {/* 4. High-Contrast 2x2 Metrics Table */}
@@ -1070,6 +1071,9 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                     <div className="text-2xl sm:text-3xl font-black text-white tracking-tight my-0.5">
                       {getBranchLabel(currentDestBranch)}
                     </div>
+                    <div className="text-[9px] font-bold text-slate-200">
+                      {getBranchLocality(currentDestBranch)} • {getBranchAddress(currentDestBranch)}
+                    </div>
                   </div>
 
                   {/* 3. METRIC HIGHLIGHTS GRID */}
@@ -1116,11 +1120,13 @@ export const CombinedBranchReceiptModal: React.FC<CombinedBranchReceiptModalProp
                     <div className="min-w-0">
                       <span className="text-slate-500 text-[10px] block">{localized.origin}</span>
                       <span className="text-blue-800 font-black truncate">{getBranchLabel(currentSenderBranch)}</span>
+                      <span className="text-slate-500 text-[9px] block truncate">{getBranchLocality(currentSenderBranch)} • {getBranchAddress(currentSenderBranch)}</span>
                     </div>
                     <ArrowRight className={`w-4 h-4 text-red-600 shrink-0 mx-2 ${isRTL ? 'rotate-180' : ''}`} />
                     <div className="text-end min-w-0">
                       <span className="text-slate-500 text-[10px] block">{localized.destination}</span>
                       <span className="text-red-700 font-black truncate">{getBranchLabel(currentDestBranch)}</span>
+                      <span className="text-slate-500 text-[9px] block truncate">{getBranchLocality(currentDestBranch)} • {getBranchAddress(currentDestBranch)}</span>
                     </div>
                   </div>
 

@@ -2,6 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, Check, Building2, MapPin, X, Lock } from 'lucide-react';
 import { Branch } from '../types';
 import { useApp } from '../context/AppContext';
+import {
+  getBranchAddress,
+  getBranchDisplayName,
+  getBranchLocality,
+  getBranchSearchText
+} from '../utils/branchDisplay';
 
 interface BranchSearchSelectProps {
   branches: Branch[];
@@ -45,13 +51,6 @@ export const BranchSearchSelect: React.FC<BranchSearchSelectProps> = ({
       .trim();
   };
 
-  const getLocalizedBranchName = (b?: Branch | null): string => {
-    if (!b) return '';
-    if (language === 'fa' && b.nameFa) return b.nameFa;
-    if (language === 'ps' && b.namePs) return b.namePs;
-    return b.name || b.city || b.code;
-  };
-
   const selectedBranch = branches.find(b => b.id === selectedBranchId);
 
   // Filter branches based on search query and excluded branch ID
@@ -60,21 +59,7 @@ export const BranchSearchSelect: React.FC<BranchSearchSelectProps> = ({
     if (!searchQuery.trim()) return true;
 
     const query = normalize(searchQuery);
-    const nameEn = normalize(b.name);
-    const nameFa = normalize(b.nameFa);
-    const namePs = normalize(b.namePs);
-    const city = normalize(b.city);
-    const province = normalize(b.province);
-    const code = normalize(b.code);
-
-    return (
-      nameEn.includes(query) ||
-      nameFa.includes(query) ||
-      namePs.includes(query) ||
-      city.includes(query) ||
-      province.includes(query) ||
-      code.includes(query)
-    );
+    return normalize(getBranchSearchText(b)).includes(query);
   });
 
   // Handle outside click to close dropdown
@@ -162,7 +147,7 @@ export const BranchSearchSelect: React.FC<BranchSearchSelectProps> = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-xs text-slate-900 dark:text-white truncate">
-                  {getLocalizedBranchName(selectedBranch)}
+                  {getBranchDisplayName(selectedBranch, language)}
                 </span>
                 <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-mono font-bold">
                   {selectedBranch.code}
@@ -170,8 +155,13 @@ export const BranchSearchSelect: React.FC<BranchSearchSelectProps> = ({
               </div>
               <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
                 <MapPin className="w-2.5 h-2.5 shrink-0" />
-                <span>{selectedBranch.city} {selectedBranch.province ? `• ${selectedBranch.province}` : ''}</span>
+                <span>{getBranchLocality(selectedBranch) || selectedBranch.code}</span>
               </div>
+              {getBranchAddress(selectedBranch) && (
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate ps-3.5">
+                  {getBranchAddress(selectedBranch)}
+                </div>
+              )}
             </div>
           ) : (
             <span className="text-slate-400 dark:text-slate-500 font-medium">
@@ -203,7 +193,7 @@ export const BranchSearchSelect: React.FC<BranchSearchSelectProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={language === 'fa' ? 'جستجوی نام شهر، ولایت یا کد نمایندگی...' : language === 'ps' ? 'د ښار، ولایت یا کوډ له مخې لټون...' : 'Search by name, city, province or code...'}
+              placeholder={language === 'fa' ? 'جستجوی نام، شهر/ولسوالی، آدرس یا کد...' : language === 'ps' ? 'د نوم، ښار/ولسوالۍ، پته یا کوډ له مخې لټون...' : 'Search name, city/district, address or code...'}
               className="w-full bg-transparent text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none font-medium"
             />
             {searchQuery && (
@@ -242,7 +232,7 @@ export const BranchSearchSelect: React.FC<BranchSearchSelectProps> = ({
             ) : (
               filteredBranches.map(branch => {
                 const isSelected = branch.id === selectedBranchId;
-                const localizedName = getLocalizedBranchName(branch);
+                const localizedName = getBranchDisplayName(branch, language);
 
                 return (
                   <button
@@ -280,8 +270,13 @@ export const BranchSearchSelect: React.FC<BranchSearchSelectProps> = ({
                         </div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5 truncate">
                           <MapPin className="w-2.5 h-2.5 shrink-0" />
-                          <span>{branch.city} {branch.province ? `(${branch.province})` : ''} {branch.phone ? `• ☎ ${branch.phone}` : ''}</span>
+                          <span>{getBranchLocality(branch) || branch.code} {branch.phone ? `• ☎ ${branch.phone}` : ''}</span>
                         </div>
+                        {getBranchAddress(branch) && (
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate ps-3.5 mt-0.5">
+                            {getBranchAddress(branch)}
+                          </div>
+                        )}
                       </div>
                     </div>
 

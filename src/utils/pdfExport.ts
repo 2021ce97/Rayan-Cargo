@@ -1,9 +1,20 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import { Shipment, Branch, formatReceiptPhone } from '../types';
+import { getBranchAddress, getBranchDisplayName, getBranchLocality } from './branchDisplay';
 
 const PRINT_IFRAME_ID = 'rayan_print_iframe';
 let isPrintInProgress = false;
+
+const clipPdfText = (value: string, maxLength = 58): string =>
+  value.length > maxLength ? `${value.slice(0, Math.max(0, maxLength - 3))}...` : value;
+
+const getPdfBranchSummary = (branch?: Branch, fallback = 'Branch'): string => {
+  if (!branch) return fallback;
+  const name = getBranchDisplayName(branch, 'en');
+  const locality = getBranchLocality(branch);
+  return clipPdfText([name, locality].filter(Boolean).join(' - ') || fallback);
+};
 
 function drawPageBorder(doc: jsPDF, pageWidth: number, pageHeight: number, inset = 4): void {
   doc.setDrawColor(15, 23, 42);
@@ -521,6 +532,10 @@ export async function generateA4PdfFromElement(
 
 export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
   try {
+    const originHub = getPdfBranchSummary(originBranch, shipment.sender.city || 'Origin Branch');
+    const destinationHub = getPdfBranchSummary(destBranch, shipment.receiver.city || 'Destination Branch');
+    const originHubAddress = getBranchAddress(originBranch) || 'Address not recorded';
+    const destinationHubAddress = getBranchAddress(destBranch) || 'Address not recorded';
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -581,7 +596,7 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
 
     // 3. SENDER & RECEIVER TWO-COLUMN BOXES
     const colWidth = (contentWidth - 4) / 2; // 93mm each
-    const boxHeight = 27;
+    const boxHeight = 32;
 
     // Sender Box
     doc.setFillColor(255, 255, 255);
@@ -607,8 +622,9 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
     if (shipment.sender.nationalId) {
       doc.text(`Tazkira / ID: ${shipment.sender.nationalId}`, margin + 3, y + 18.5);
     }
-    doc.text(`Origin: ${originBranch?.city || shipment.sender.city} (${originBranch?.name || shipment.sender.province || 'AFG'})`, margin + 3, y + (shipment.sender.nationalId ? 22.5 : 18.5));
-    doc.text(`Address: ${shipment.sender.address.substring(0, 36)}`, margin + 3, y + (shipment.sender.nationalId ? 26 : 22.5));
+    doc.text(`Origin Hub: ${originHub}`, margin + 3, y + (shipment.sender.nationalId ? 22.5 : 18.5));
+    doc.text(`Hub Address: ${clipPdfText(originHubAddress, 46)}`, margin + 3, y + (shipment.sender.nationalId ? 26.5 : 22.5));
+    doc.text(`Sender Address: ${clipPdfText(shipment.sender.address, 43)}`, margin + 3, y + (shipment.sender.nationalId ? 30.5 : 26.5));
 
     // Receiver Box (Emerald Accent)
     const rxX = margin + colWidth + 4;
@@ -638,8 +654,9 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
       doc.text(`Receiver Tazkira: ${receiverTazkiraNumber}`, rxX + 3, y + 18.5);
       doc.setFont('helvetica', 'normal');
     }
-    doc.text(`Destination: ${destBranch?.city || shipment.receiver.city} (${destBranch?.name || shipment.receiver.province || 'AFG'})`, rxX + 3, y + (receiverTazkiraNumber ? 22.5 : 18.5));
-    doc.text(`Address: ${shipment.receiver.address.substring(0, 36)}`, rxX + 3, y + (receiverTazkiraNumber ? 26 : 22.5));
+    doc.text(`Destination Hub: ${destinationHub}`, rxX + 3, y + (receiverTazkiraNumber ? 22.5 : 18.5));
+    doc.text(`Hub Address: ${clipPdfText(destinationHubAddress, 46)}`, rxX + 3, y + (receiverTazkiraNumber ? 26.5 : 22.5));
+    doc.text(`Receiver Address: ${clipPdfText(shipment.receiver.address, 41)}`, rxX + 3, y + (receiverTazkiraNumber ? 30.5 : 26.5));
 
     y += boxHeight + 3;
 
@@ -878,6 +895,10 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
  */
 export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
   try {
+    const originHub = getPdfBranchSummary(originBranch, shipment.sender.city || 'Origin Branch');
+    const destinationHub = getPdfBranchSummary(destBranch, shipment.receiver.city || 'Destination Branch');
+    const originHubAddress = getBranchAddress(originBranch) || 'Address not recorded';
+    const destinationHubAddress = getBranchAddress(destBranch) || 'Address not recorded';
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -938,7 +959,7 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
 
     // 3. SENDER (SELLER) & RECEIVER SUMMARY BOXES
     const colWidth = (contentWidth - 4) / 2; // 93mm each
-    const boxHeight = 25;
+    const boxHeight = 30;
 
     // Seller Box
     doc.setFillColor(255, 255, 255);
@@ -961,8 +982,9 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 14);
-    doc.text(`Origin Hub: ${originBranch?.name || shipment.sender.city}`, margin + 3, y + 18.5);
-    doc.text(`Address: ${shipment.sender.address.substring(0, 36)}`, margin + 3, y + 22.5);
+    doc.text(`Origin Hub: ${originHub}`, margin + 3, y + 18.5);
+    doc.text(`Hub Address: ${clipPdfText(originHubAddress, 46)}`, margin + 3, y + 22.5);
+    doc.text(`Sender Address: ${clipPdfText(shipment.sender.address, 43)}`, margin + 3, y + 26.5);
 
     // Receiver Summary Box
     const rxX = margin + colWidth + 4;
@@ -982,8 +1004,9 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.text(`Phone: ${shipment.receiver.phone}`, rxX + 3, y + 14);
-    doc.text(`Destination Hub: ${destBranch?.name || shipment.receiver.city}`, rxX + 3, y + 18.5);
-    doc.text(`Address: ${shipment.receiver.address.substring(0, 36)}`, rxX + 3, y + 22.5);
+    doc.text(`Destination Hub: ${destinationHub}`, rxX + 3, y + 18.5);
+    doc.text(`Hub Address: ${clipPdfText(destinationHubAddress, 46)}`, rxX + 3, y + 22.5);
+    doc.text(`Receiver Address: ${clipPdfText(shipment.receiver.address, 41)}`, rxX + 3, y + 26.5);
 
     y += boxHeight + 3;
 
@@ -1449,7 +1472,7 @@ export function generateCombinedCustomerPdf(
     // RECEIVER / CONSIGNEE (PERSON A) PROFILE CARD
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, y, contentWidth, 24, 2, 2, 'FD');
+    doc.roundedRect(margin, y, contentWidth, 29, 2, 2, 'FD');
 
     doc.setFillColor(225, 29, 72);
     doc.rect(margin, y, contentWidth, 6, 'F');
@@ -1467,15 +1490,17 @@ export function generateCombinedCustomerPdf(
     doc.setFontSize(8.5);
     doc.text(`Phone: ${customer.phone}`, margin + 4, y + 17);
     doc.text(`City / Address: ${customer.city || destBranch?.city || 'Afghanistan'}, ${customer.address || 'Local Address'}`, margin + 4, y + 22);
+    doc.text(`Delivery Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, margin + 4, y + 27);
 
     const tazkiraVal = customer.receiverTazkira || customer.nationalId;
     doc.setFont('helvetica', 'bold');
     doc.text(`Tazkira / ID: ${tazkiraVal || 'Recorded on Delivery'}`, margin + 100, y + 12);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Destination Hub: ${destBranch?.name || customer.city || 'Destination Branch'}`, margin + 100, y + 17);
-    doc.text(`Delivery Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, margin + 100, y + 22);
+    doc.text(`Destination Hub: ${getPdfBranchSummary(destBranch, customer.city || 'Destination Branch')}`, margin + 100, y + 17);
+    doc.text(`City / District: ${getBranchLocality(destBranch) || customer.city || 'Not recorded'}`, margin + 100, y + 22);
+    doc.text(`Branch Address: ${clipPdfText(getBranchAddress(destBranch) || 'Address not recorded', 42)}`, margin + 100, y + 27);
 
-    y += 28;
+    y += 33;
 
     // CONSOLIDATED TOTALS BAR
     const totalPcs = shipments.reduce((sum, s) => sum + (s.packageInfo.pieces || 1), 0);
@@ -1648,6 +1673,10 @@ export function generateBranchBulkDispatchPdf(
   branches: Branch[] = []
 ): boolean {
   try {
+    const originBranchSummary = getPdfBranchSummary(dispatchInfo.originBranch, 'Kabul Central HQ');
+    const destinationBranchSummary = getPdfBranchSummary(dispatchInfo.destinationBranch, 'Target Branch');
+    const originBranchAddress = getBranchAddress(dispatchInfo.originBranch) || 'Address not recorded';
+    const destinationBranchAddress = getBranchAddress(dispatchInfo.destinationBranch) || 'Address not recorded';
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -1692,7 +1721,7 @@ export function generateBranchBulkDispatchPdf(
     // ROUTING & VEHICLE HANDOVER INFO CARD
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(margin, y, contentWidth, 23, 2, 2, 'FD');
+    doc.roundedRect(margin, y, contentWidth, 29, 2, 2, 'FD');
 
     doc.setFillColor(225, 29, 72);
     doc.rect(margin, y, contentWidth, 5.5, 'F');
@@ -1704,19 +1733,21 @@ export function generateBranchBulkDispatchPdf(
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
-    doc.text(`Origin Branch: ${dispatchInfo.originBranch?.name || 'Kabul Central HQ'} (${dispatchInfo.originBranch?.code || 'HQ'})`, margin + 4, y + 10.5);
-    doc.text(`Destination Branch: ${dispatchInfo.destinationBranch?.name || 'Target Branch'} (${dispatchInfo.destinationBranch?.code || 'DEST'})`, margin + 4, y + 15.5);
+    doc.text(`Origin Branch: ${clipPdfText(originBranchSummary, 38)} (${dispatchInfo.originBranch?.code || 'HQ'})`, margin + 4, y + 10.5);
+    doc.text(`Origin Address: ${clipPdfText(originBranchAddress, 40)}`, margin + 4, y + 15.5);
+    doc.text(`Destination Branch: ${clipPdfText(destinationBranchSummary, 34)} (${dispatchInfo.destinationBranch?.code || 'DEST'})`, margin + 4, y + 20.5);
+    doc.text(`Destination Address: ${clipPdfText(destinationBranchAddress, 37)}`, margin + 4, y + 25.5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text(`Dispatch Date: ${dispatchInfo.dispatchDate || new Date().toLocaleString()}`, margin + 4, y + 20.5);
 
     doc.setFont('helvetica', 'bold');
     doc.text(`Driver / Courier: ${dispatchInfo.driverName || 'Designated Driver'}`, margin + 100, y + 10.5);
     doc.setFont('helvetica', 'normal');
     doc.text(`Vehicle / Plate: ${dispatchInfo.vehiclePlate || 'Transit Vehicle'}`, margin + 100, y + 15.5);
     doc.text(`Seal / Bag No: ${dispatchInfo.sealNumber || 'N/A'}`, margin + 100, y + 20.5);
+    doc.text(`Dispatch Date: ${dispatchInfo.dispatchDate || new Date().toLocaleString()}`, margin + 100, y + 25.5);
 
-    y += 26;
+    y += 32;
 
     // CONSOLIDATED TOTALS BAR
     const totalPcs = shipments.reduce((sum, s) => sum + (s.packageInfo.pieces || 1), 0);
@@ -1827,7 +1858,7 @@ export function generateBranchBulkDispatchPdf(
     doc.text('1. Origin Dispatch Officer', margin + 4, y + 11.5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
-    doc.text(`Hub: ${dispatchInfo.originBranch?.name || 'Origin Hub'}`, margin + 4, y + 16);
+    doc.text(`Hub: ${getPdfBranchSummary(dispatchInfo.originBranch, 'Origin Hub')}`, margin + 4, y + 16);
     doc.text('Sign / Stamp: ___________________', margin + 4, y + 31);
 
     // Col 2: Driver
@@ -1848,7 +1879,7 @@ export function generateBranchBulkDispatchPdf(
     doc.text('3. Destination Receiving Officer', margin + 2 + colW * 2 + 4, y + 11.5);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
-    doc.text(`Terminal: ${dispatchInfo.destinationBranch?.name || 'Dest Terminal'}`, margin + 2 + colW * 2 + 4, y + 16);
+    doc.text(`Terminal: ${getPdfBranchSummary(dispatchInfo.destinationBranch, 'Dest Terminal')}`, margin + 2 + colW * 2 + 4, y + 16);
     doc.text('Received in Good Condition: [ ]', margin + 2 + colW * 2 + 4, y + 20.5);
     doc.text('Sign / Stamp: ___________________', margin + 2 + colW * 2 + 4, y + 31);
 
@@ -1912,16 +1943,17 @@ export function generateBranchBagStickerPdf(
     // GIANT DESTINATION BRANCH BANNER (Super High Visibility)
     let y = margin + 26;
     doc.setFillColor(15, 23, 42); // Deep Slate
-    doc.rect(margin + 2, y, contentWidth - 4, 30, 'F');
+    doc.rect(margin + 2, y, contentWidth - 4, 36, 'F');
 
     doc.setTextColor(248, 250, 252);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text('DESTINATION TERMINAL / نمایندگی مقصد:', margin + 6, y + 8);
 
-    const destName = dispatchInfo.destinationBranch?.name || 'DESTINATION BRANCH';
+    const destName = getBranchDisplayName(dispatchInfo.destinationBranch, 'en') || 'DESTINATION BRANCH';
     const destCode = dispatchInfo.destinationBranch?.code || 'DEST';
-    const destCity = dispatchInfo.destinationBranch?.city || '';
+    const destLocality = getBranchLocality(dispatchInfo.destinationBranch);
+    const destAddress = getBranchAddress(dispatchInfo.destinationBranch) || 'Address not recorded';
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
@@ -1930,26 +1962,29 @@ export function generateBranchBagStickerPdf(
 
     doc.setFontSize(11);
     doc.setTextColor(253, 224, 71); // Yellow accent
-    doc.text(`PROVINCE / CITY: ${destCity.toUpperCase()}`, margin + 6, y + 26);
+    doc.text(`CITY / DISTRICT: ${destLocality.toUpperCase()}`, margin + 6, y + 26);
+    doc.setFontSize(8);
+    doc.text(`ADDRESS: ${clipPdfText(destAddress, 75)}`, margin + 6, y + 32);
 
-    y += 34;
+    y += 40;
 
     // ORIGIN & BATCH BARCODE CARD
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.4);
-    doc.roundedRect(margin + 2, y, contentWidth - 4, 26, 2, 2, 'FD');
+    doc.roundedRect(margin + 2, y, contentWidth - 4, 31, 2, 2, 'FD');
 
     const batchNo = dispatchInfo.batchNumber || `AST-DSP-${Date.now().toString().slice(-6)}`;
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.text(`ORIGIN HUB: ${dispatchInfo.originBranch?.name || 'Kabul Central HQ'}`, margin + 6, y + 7);
+    doc.text(`ORIGIN HUB: ${getPdfBranchSummary(dispatchInfo.originBranch, 'Kabul Central HQ')}`, margin + 6, y + 7);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text(`Driver / Courier: ${dispatchInfo.driverName || 'Designated Driver'} (${dispatchInfo.vehiclePlate || 'Transit Van'})`, margin + 6, y + 13);
-    doc.text(`Date & Time: ${dispatchInfo.dispatchDate || new Date().toLocaleString()}`, margin + 6, y + 19);
-    doc.text(`Master Seal / Bag #: ${dispatchInfo.sealNumber || 'SEAL-OK'}`, margin + 6, y + 24);
+    doc.text(`ORIGIN ADDRESS: ${clipPdfText(getBranchAddress(dispatchInfo.originBranch) || 'Address not recorded', 64)}`, margin + 6, y + 12);
+    doc.text(`Driver / Courier: ${dispatchInfo.driverName || 'Designated Driver'} (${dispatchInfo.vehiclePlate || 'Transit Van'})`, margin + 6, y + 17);
+    doc.text(`Date & Time: ${dispatchInfo.dispatchDate || new Date().toLocaleString()}`, margin + 6, y + 22);
+    doc.text(`Master Seal / Bag #: ${dispatchInfo.sealNumber || 'SEAL-OK'}`, margin + 6, y + 27);
 
     // Batch Badge on right
     doc.setFillColor(225, 29, 72);
@@ -1961,7 +1996,7 @@ export function generateBranchBagStickerPdf(
     doc.setFontSize(11);
     doc.text(batchNo, margin + contentWidth - 62, y + 17);
 
-    y += 30;
+    y += 35;
 
     // KEY BULK METRICS HIGHLIGHT BOX (Huge Bold Numbers)
     const totalPcs = shipments.reduce((sum, s) => sum + (s.packageInfo.pieces || 1), 0);
@@ -2210,8 +2245,12 @@ export function generateThermalLabelPdf(
   thermalSize: '80mm' | '80x80' | '100x150' = '80mm'
 ): boolean {
   try {
-    const originName = originBranch?.city || shipment.sender.city || 'Origin';
-    const destName = destBranch?.city || shipment.receiver.city || 'Destination';
+    const originName = getBranchDisplayName(originBranch, 'en') || shipment.sender.city || 'Origin';
+    const destName = getBranchDisplayName(destBranch, 'en') || shipment.receiver.city || 'Destination';
+    const originBranchDetails = getBranchLocality(originBranch) || shipment.sender.city || 'Origin';
+    const destinationBranchDetails = getBranchLocality(destBranch) || shipment.receiver.city || 'Destination';
+    const originHubAddress = getBranchAddress(originBranch) || 'Address not recorded';
+    const destinationHubAddress = getBranchAddress(destBranch) || 'Address not recorded';
     const thermalPrice = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
     const thermalServiceFee = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : 150;
     const thermalDestComm = typeof shipment.financials.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : 70;
@@ -2226,7 +2265,7 @@ export function generateThermalLabelPdf(
       const pageWidth = 80;
       const margin = 4;
       const contentWidth = pageWidth - margin * 2; // 72mm printable area
-      const pageHeight = 142; // Compact height without duplicate CN or extra bottom padding
+      const pageHeight = 150; // Includes complete origin and destination branch details.
 
       const doc = new jsPDF({
         orientation: 'portrait',
@@ -2271,7 +2310,7 @@ export function generateThermalLabelPdf(
       doc.rect(margin, y, contentWidth, 9, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(10);
-      doc.text(`${originName.toUpperCase()} ➔ ${destName.toUpperCase()}`, margin + contentWidth / 2, y + 6, { align: 'center' });
+      doc.text(`${clipPdfText(originName, 18).toUpperCase()} ➔ ${clipPdfText(destName, 18).toUpperCase()}`, margin + contentWidth / 2, y + 6, { align: 'center' });
 
       y += 11;
 
@@ -2281,7 +2320,7 @@ export function generateThermalLabelPdf(
       doc.setLineWidth(0.2);
       
       // Sender Box
-      doc.rect(margin, y, colW, 23);
+      doc.rect(margin, y, colW, 27);
       doc.setFillColor(receiptRole === 'seller' ? 220 : 245, receiptRole === 'seller' ? 235 : 247, receiptRole === 'seller' ? 252 : 250);
       doc.rect(margin, y, colW, 4, 'F');
       doc.setTextColor(0, 0, 0);
@@ -2303,10 +2342,12 @@ export function generateThermalLabelPdf(
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Origin: ${originName}`, margin + 1.5, y + 18.5);
+      doc.text(`Origin: ${clipPdfText(originName, 22)}`, margin + 1.5, y + 18.5);
+      doc.setFontSize(5.5);
+      doc.text(clipPdfText(`${originBranchDetails} | ${originHubAddress}`, 32), margin + 1.5, y + 23);
 
       // Receiver Box
-      doc.rect(margin + colW + 3, y, colW, 23);
+      doc.rect(margin + colW + 3, y, colW, 27);
       doc.setFillColor(receiptRole === 'buyer' ? 220 : 245, receiptRole === 'buyer' ? 252 : 247, receiptRole === 'buyer' ? 235 : 250);
       doc.rect(margin + colW + 3, y, colW, 4, 'F');
       doc.setFontSize(6.5);
@@ -2327,9 +2368,11 @@ export function generateThermalLabelPdf(
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Dest: ${destName}`, margin + colW + 4.5, y + 18.5);
+      doc.text(`Dest: ${clipPdfText(destName, 22)}`, margin + colW + 4.5, y + 18.5);
+      doc.setFontSize(5.5);
+      doc.text(clipPdfText(`${destinationBranchDetails} | ${destinationHubAddress}`, 32), margin + colW + 4.5, y + 23);
 
-      y += 25;
+      y += 29;
 
       // SPECS (Weight, Pieces, Category, Service)
       doc.setLineWidth(0.2);
@@ -2450,7 +2493,7 @@ export function generateThermalLabelPdf(
       doc.rect(margin, y, contentWidth, 7, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(8.5);
-      doc.text(`${originName.toUpperCase()} ➔ ${destName.toUpperCase()}`, margin + contentWidth / 2, y + 4.8, { align: 'center' });
+      doc.text(`${clipPdfText(originName, 18).toUpperCase()} ➔ ${clipPdfText(destName, 18).toUpperCase()}`, margin + contentWidth / 2, y + 4.8, { align: 'center' });
 
       y += 10;
 
@@ -2476,6 +2519,9 @@ export function generateThermalLabelPdf(
       doc.setFontSize(7.5);
       doc.text(shipment.sender.phone, margin + 1.5, y + 14);
       doc.text(shipment.receiver.phone, margin + colW + 4.5, y + 14);
+      doc.setFontSize(5.2);
+      doc.text(clipPdfText(`${originName}: ${originHubAddress}`, 31), margin + 1.5, y + 18);
+      doc.text(clipPdfText(`${destName}: ${destinationHubAddress}`, 31), margin + colW + 4.5, y + 18);
 
       y += 23;
 
@@ -2586,12 +2632,12 @@ export function generateThermalLabelPdf(
     doc.setFontSize(8);
     doc.text('ROUTE / HUB DESTINATION', margin + 4, y + 4.5);
     doc.setFontSize(11);
-    doc.text(`${originName.toUpperCase()} ➔ ${destName.toUpperCase()}`, margin + 4, y + 11.5);
+    doc.text(`${clipPdfText(originName, 22).toUpperCase()} ➔ ${clipPdfText(destName, 22).toUpperCase()}`, margin + 4, y + 11.5);
 
     y += 16;
 
     // SENDER & RECEIVER BOXES
-    const boxH = 34;
+    const boxH = 39;
     doc.setDrawColor(15, 23, 42);
     doc.rect(margin, y, contentWidth, boxH);
 
@@ -2610,7 +2656,8 @@ export function generateThermalLabelPdf(
     doc.text(`Phone: ${shipment.sender.phone}`, margin + 3, y + 15);
     doc.text(`Address: ${shipment.sender.address.substring(0, 42)}`, margin + 3, y + 20);
     doc.text(`Province/City: ${shipment.sender.province} / ${shipment.sender.city}`, margin + 3, y + 25);
-    doc.text(`Branch: ${originBranch?.name || 'Head Office'}`, margin + 3, y + 30);
+    doc.text(`Branch: ${getPdfBranchSummary(originBranch, 'Head Office')}`, margin + 3, y + 30);
+    doc.text(`Branch Address: ${clipPdfText(originHubAddress, 50)}`, margin + 3, y + 35);
 
     y += boxH + 3;
 
@@ -2631,7 +2678,8 @@ export function generateThermalLabelPdf(
     doc.text(`Phone: ${shipment.receiver.phone} ${shipment.receiver.altPhone ? `/ ${shipment.receiver.altPhone}` : ''}`, margin + 3, y + 15);
     doc.text(`Address: ${shipment.receiver.address.substring(0, 42)}`, margin + 3, y + 20);
     doc.text(`Province/City: ${shipment.receiver.province} / ${shipment.receiver.city}`, margin + 3, y + 25);
-    doc.text(`Branch: ${destBranch?.name || 'Destination Hub'}`, margin + 3, y + 30);
+    doc.text(`Branch: ${getPdfBranchSummary(destBranch, 'Destination Hub')}`, margin + 3, y + 30);
+    doc.text(`Branch Address: ${clipPdfText(destinationHubAddress, 50)}`, margin + 3, y + 35);
 
     y += boxH + 3;
 
