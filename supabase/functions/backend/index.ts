@@ -256,8 +256,8 @@ Deno.serve(async(req)=>{
     }
     if(path==='/branches'&&req.method==='POST'){
       if(!admin)return json({success:false,error:'Super Admin required.'},403);
-      const {error}=await db.from('branches').upsert(branchRow(body),{onConflict:'id'});if(error)throw error;
-      return json({success:true,branch:body});
+      const {data,error}=await db.from('branches').upsert(branchRow(body),{onConflict:'id'}).select(BRANCH_COLUMNS).single();if(error)throw error;
+      return json({success:true,branch:mapBranch(data)});
     }
     const credentialPathParts=path.split('/').filter(Boolean);
     if(credentialPathParts.length===3&&credentialPathParts[0]==='branches'&&credentialPathParts[2]==='credentials'&&req.method==='GET'){
@@ -296,8 +296,8 @@ Deno.serve(async(req)=>{
       const branchId=String(body.branchId||'').trim();
       const email=String(body.email||'').trim().toLowerCase();
       const password=String(body.password||'');
-      if(!requestedId||!branchId||!email.includes('@')||password.length<6){
-        return json({success:false,error:'User, branch, valid email, and a password of at least 6 characters are required.'},400);
+      if(!requestedId||!branchId||!email.includes('@')||(password&&password.length<6)){
+        return json({success:false,error:'User, branch, and a valid email are required. A new password must contain at least 6 characters.'},400);
       }
 
       let {data:existing,error:lookupError}=await db.from('staff_users').select('id').eq('id',requestedId).maybeSingle();
@@ -308,25 +308,30 @@ Deno.serve(async(req)=>{
         existing=byBranch.data;
       }
       const targetId=existing?.id||requestedId;
+      if(!existing&&!password)return json({success:false,error:'A password of at least 6 characters is required when creating a branch user.'},400);
       const row={id:targetId,branch_id:branchId,name:String(body.name||'Branch Manager').trim(),email,phone:String(body.phone||'').trim(),role:'branch_manager',status:'active'};
       const result=existing
         ?await db.from('staff_users').update(row).eq('id',targetId)
         :await db.from('staff_users').insert({...row,password_hash:'pending'});
       if(result.error)throw result.error;
-      const {error}=await db.rpc('set_staff_password',{p_user_id:targetId,p_password:password});
-      if(error)throw error;
-      const stored=await db.from('branch_credential_secrets').upsert({
-        branch_id:branchId,staff_user_id:targetId,encrypted_password:await encryptCredential(password),updated_at:new Date().toISOString()
-      },{onConflict:'branch_id'});
-      if(stored.error)throw stored.error;
+      if(password){
+        const {error}=await db.rpc('set_staff_password',{p_user_id:targetId,p_password:password});
+        if(error)throw error;
+        const stored=await db.from('branch_credential_secrets').upsert({
+          branch_id:branchId,staff_user_id:targetId,encrypted_password:await encryptCredential(password),updated_at:new Date().toISOString()
+        },{onConflict:'branch_id'});
+        if(stored.error)throw stored.error;
+      }
       const updated=await db.from('staff_users')
         .update({password_changed_by_branch:false})
         .eq('id',targetId)
         .select('id,branch_id,name,email,phone,role,password_changed_by_branch,last_password_change,status,avatar,preferences,last_login_at,created_at')
         .single();
       if(updated.error)throw updated.error;
-      const revoked=await db.from('staff_sessions').update({revoked_at:new Date().toISOString()}).eq('staff_user_id',targetId).is('revoked_at',null);
-      if(revoked.error)throw revoked.error;
+      if(password){
+        const revoked=await db.from('staff_sessions').update({revoked_at:new Date().toISOString()}).eq('staff_user_id',targetId).is('revoked_at',null);
+        if(revoked.error)throw revoked.error;
+      }
       return json({success:true,user:safeUser(updated.data)});
     }
     if(path==='/shipments'&&req.method==='GET'){

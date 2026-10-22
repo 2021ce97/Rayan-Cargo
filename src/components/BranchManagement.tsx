@@ -81,6 +81,7 @@ export const BranchManagement: React.FC = () => {
   const [provisionPhone, setProvisionPhone] = useState('');
   const [copiedInfo, setCopiedInfo] = useState(false);
   const [provisionSuccess, setProvisionSuccess] = useState(false);
+  const [isSavingProvision, setIsSavingProvision] = useState(false);
 
   // Edit Branch & Tazkira Modal state (Super Admin)
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -99,6 +100,7 @@ export const BranchManagement: React.FC = () => {
     password: ''
   });
   const [editTazkiraError, setEditTazkiraError] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Delete Branch Confirmation Modal state
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
@@ -235,27 +237,38 @@ export const BranchManagement: React.FC = () => {
     setProvisionSuccess(false);
   };
 
-  const handleSaveProvision = (e: React.FormEvent) => {
+  const handleSaveProvision = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!provisionBranch || !tempPassword.trim() || !provisionEmail.trim()) return;
+    if (!provisionBranch || !tempPassword.trim() || !provisionEmail.trim() || isSavingProvision) return;
 
     const branchUser = users.find(u => u.branchId === provisionBranch.id);
     const targetUserId = branchUser?.id || `usr_${provisionBranch.id}`;
-    
-    resetBranchUserCredentials(
-      targetUserId,
-      provisionEmail.trim().toLowerCase(),
-      tempPassword.trim(),
-      provisionManagerName.trim() || provisionBranch.managerName,
-      provisionPhone.trim() || provisionBranch.phone,
-      provisionBranch.id
-    );
 
-    setProvisionSuccess(true);
-    setTimeout(() => {
-      setProvisionSuccess(false);
-      setProvisionBranch(null);
-    }, 2000);
+    setIsSavingProvision(true);
+    try {
+      const managerName = provisionManagerName.trim() || provisionBranch.managerName;
+      const phone = provisionPhone.trim() || provisionBranch.phone;
+      const email = provisionEmail.trim().toLowerCase();
+      const branchSaved = await updateBranch(provisionBranch.id, { email, managerName, phone });
+      if (!branchSaved) return;
+      const credentialsSaved = await resetBranchUserCredentials(
+        targetUserId,
+        email,
+        tempPassword.trim(),
+        managerName,
+        phone,
+        provisionBranch.id
+      );
+      if (!credentialsSaved) return;
+
+      setProvisionSuccess(true);
+      setTimeout(() => {
+        setProvisionSuccess(false);
+        setProvisionBranch(null);
+      }, 2000);
+    } finally {
+      setIsSavingProvision(false);
+    }
   };
 
   const handleCopyCredentials = () => {
@@ -287,9 +300,9 @@ export const BranchManagement: React.FC = () => {
     setEditTazkiraError('');
   };
 
-  const handleSaveEditBranch = (e: React.FormEvent) => {
+  const handleSaveEditBranch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingBranch) return;
+    if (!editingBranch || isSavingEdit) return;
 
     // Validate 13-digit CNIC / Tazkira
     const tazkiraVal = validateTazkira(editFormData.tazkiraNumber);
@@ -301,32 +314,48 @@ export const BranchManagement: React.FC = () => {
     const cleanEmail = editFormData.email.trim().toLowerCase();
     const cleanPassword = editFormData.password.trim();
 
-    updateBranch(editingBranch.id, {
-      name: editFormData.name.trim(),
-      nameFa: editFormData.nameFa.trim() || editFormData.name.trim(),
-      namePs: editFormData.namePs.trim() || editFormData.name.trim(),
-      code: editFormData.code.trim().toUpperCase(),
-      province: editFormData.province.trim(),
-      city: editFormData.city.trim(),
-      address: editFormData.address.trim(),
-      phone: editFormData.phone.trim(),
-      email: cleanEmail,
-      managerName: editFormData.managerName.trim(),
-      tazkiraNumber: editFormData.tazkiraNumber.trim()
-    });
+    setIsSavingEdit(true);
+    try {
+      const managerName = editFormData.managerName.trim();
+      const phone = editFormData.phone.trim();
+      const branchSaved = await updateBranch(editingBranch.id, {
+        name: editFormData.name.trim(),
+        nameFa: editFormData.nameFa.trim() || editFormData.name.trim(),
+        namePs: editFormData.namePs.trim() || editFormData.name.trim(),
+        code: editFormData.code.trim().toUpperCase(),
+        province: editFormData.province.trim(),
+        city: editFormData.city.trim(),
+        address: editFormData.address.trim(),
+        phone,
+        email: cleanEmail,
+        managerName,
+        tazkiraNumber: editFormData.tazkiraNumber.trim()
+      });
+      if (!branchSaved) return;
 
-    const branchUser = users.find(u => u.branchId === editingBranch.id);
-    const targetUserId = branchUser?.id || `usr_${editingBranch.id}`;
-    resetBranchUserCredentials(
-      targetUserId,
-      cleanEmail,
-      cleanPassword || branchUser?.password || `${editingBranch.code.toLowerCase().replace(/[^a-z0-9]/g, '')}123`,
-      editFormData.managerName.trim(),
-      editFormData.phone.trim(),
-      editingBranch.id
-    );
+      const branchUser = users.find(u => u.branchId === editingBranch.id);
+      const profileChanged = !!branchUser && (
+        cleanEmail !== (branchUser.email || '').trim().toLowerCase() ||
+        managerName !== (branchUser.name || '').trim() ||
+        phone !== (branchUser.phone || '').trim()
+      );
+      if (cleanPassword || profileChanged) {
+        const targetUserId = branchUser?.id || `usr_${editingBranch.id}`;
+        const credentialsSaved = await resetBranchUserCredentials(
+          targetUserId,
+          cleanEmail,
+          cleanPassword,
+          managerName,
+          phone,
+          editingBranch.id
+        );
+        if (!credentialsSaved) return;
+      }
 
-    setEditingBranch(null);
+      setEditingBranch(null);
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   const handleOpenAddBranch = () => {
@@ -1291,9 +1320,10 @@ export const BranchManagement: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-md shadow-red-600/20 transition-all cursor-pointer"
+                  disabled={isSavingEdit}
+                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-wait text-white font-bold shadow-md shadow-red-600/20 transition-all cursor-pointer"
                 >
-                  {t('btn_save_branch_changes')}
+                  {isSavingEdit ? 'Saving…' : t('btn_save_branch_changes')}
                 </button>
               </div>
 
@@ -1384,9 +1414,10 @@ export const BranchManagement: React.FC = () => {
 
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-md cursor-pointer transition-colors"
+                    disabled={isSavingProvision}
+                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-wait text-white rounded-xl font-bold shadow-md cursor-pointer transition-colors"
                   >
-                    {t('save_and_issue_btn')}
+                    {isSavingProvision ? 'Saving…' : t('save_and_issue_btn')}
                   </button>
                 </div>
               </form>
