@@ -22,6 +22,23 @@ function drawPageBorder(doc: jsPDF, pageWidth: number, pageHeight: number, inset
   doc.rect(inset, inset, pageWidth - inset * 2, pageHeight - inset * 2, 'S');
 }
 
+function drawOutlinedPhoneBadge(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  width: number,
+  text: string
+): void {
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.25);
+  doc.rect(x, y, width, 4.5, 'FD');
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text(text, x + 1.5, y + 3.5);
+}
+
 async function waitForRenderedElement(element: HTMLElement): Promise<void> {
   if (document.fonts?.ready) {
     await document.fonts.ready;
@@ -2331,13 +2348,8 @@ export function generateThermalLabelPdf(
       doc.setFont('helvetica', 'bold');
       doc.text(shipment.sender.name.substring(0, 20), margin + 1.5, y + 8);
       
-      // Bold Highlighted Contact Phone Badge
-      doc.setFillColor(0, 0, 0);
-      doc.rect(margin + 1.5, y + 9.5, colW - 3, 4.5, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`TEL: ${shipment.sender.phone}`, margin + 3, y + 13);
+      // Ink-friendly phone badge: white background, black border and text.
+      drawOutlinedPhoneBadge(doc, margin + 1.5, y + 9.5, colW - 3, `TEL: ${shipment.sender.phone}`);
 
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(6.5);
@@ -2357,13 +2369,8 @@ export function generateThermalLabelPdf(
       doc.setFont('helvetica', 'bold');
       doc.text(shipment.receiver.name.substring(0, 20), margin + colW + 4.5, y + 8);
       
-      // Bold Highlighted Contact Phone Badge
-      doc.setFillColor(0, 0, 0);
-      doc.rect(margin + colW + 4.5, y + 9.5, colW - 3, 4.5, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(7.5);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`TEL: ${shipment.receiver.phone}`, margin + colW + 6, y + 13);
+      // Ink-friendly phone badge: white background, black border and text.
+      drawOutlinedPhoneBadge(doc, margin + colW + 4.5, y + 9.5, colW - 3, `TEL: ${shipment.receiver.phone}`);
 
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(6.5);

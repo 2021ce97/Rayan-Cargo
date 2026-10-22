@@ -420,7 +420,7 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="font-black text-[11px] leading-tight break-words">{shipment.sender.name}</div>
                   </div>
                   <div className="mt-1">
-                    <div className="bg-black text-white font-mono font-black text-[9.5px] px-1.5 py-0.5 rounded tracking-wide text-center" dir="ltr">
+                    <div className="bg-white text-slate-950 border border-slate-500 font-mono font-black text-[9.5px] px-1.5 py-0.5 rounded tracking-wide text-center" dir="ltr">
                       ☎ {formatReceiptPhone(shipment.sender.phone)}
                     </div>
                     <div className="text-[8px] text-slate-700 font-bold mt-0.5">{l('Origin:', 'مبدأ:')} {originBranchName} — {originBranchLocality}</div>
@@ -437,7 +437,7 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="font-black text-[11px] leading-tight break-words">{shipment.receiver.name}</div>
                   </div>
                   <div className="mt-1">
-                    <div className="bg-black text-white font-mono font-black text-[9.5px] px-1.5 py-0.5 rounded tracking-wide text-center" dir="ltr">
+                    <div className="bg-white text-slate-950 border border-slate-500 font-mono font-black text-[9.5px] px-1.5 py-0.5 rounded tracking-wide text-center" dir="ltr">
                       ☎ {formatReceiptPhone(shipment.receiver.phone)}
                     </div>
                     <div className="text-[8px] text-slate-700 font-bold mt-0.5">{l('Dest:', 'مقصد:')} {destinationBranchName} — {destinationBranchLocality}</div>
@@ -590,7 +590,7 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="font-black text-[10.5px] leading-tight truncate">{shipment.sender.name}</div>
                   </div>
                   <div className="mt-0.5">
-                    <div className="bg-black text-white font-mono font-black text-[8.5px] px-1 py-0.2 rounded-xs tracking-tight text-center" dir="ltr">
+                    <div className="bg-white text-black border border-black font-mono font-black text-[8.5px] px-1 py-0.2 rounded-xs tracking-tight text-center" dir="ltr">
                       ☎ {formatReceiptPhone(shipment.sender.phone)}
                     </div>
                   </div>
@@ -606,7 +606,7 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="font-black text-[10.5px] leading-tight truncate">{shipment.receiver.name}</div>
                   </div>
                   <div className="mt-0.5">
-                    <div className="bg-black text-white font-mono font-black text-[8.5px] px-1 py-0.2 rounded-xs tracking-tight text-center" dir="ltr">
+                    <div className="bg-white text-black border border-black font-mono font-black text-[8.5px] px-1 py-0.2 rounded-xs tracking-tight text-center" dir="ltr">
                       ☎ {formatReceiptPhone(shipment.receiver.phone)}
                     </div>
                   </div>
@@ -762,11 +762,11 @@ export const PrintReceiptModal: React.FC = () => {
                       <span className="font-black text-slate-900 text-[13px]">{shipment.sender.name}</span>
                     </div>
                     
-                    {/* BOLD BLACK BADGE CONTACT NUMBER */}
+                    {/* Ink-friendly outlined contact number */}
                     <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
                       <span className="text-slate-500 font-semibold">{l('Contact Number:', 'شماره تماس:')}</span>
-                      <div className="bg-slate-950 text-white px-2.5 py-1 rounded-lg font-mono font-black text-xs tracking-wider flex items-center gap-1.5 shadow-xs" dir="ltr">
-                        <Phone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <div className="bg-white text-slate-950 border border-slate-400 px-2.5 py-1 rounded-lg font-mono font-black text-xs tracking-wider flex items-center gap-1.5" dir="ltr">
+                        <Phone className="w-3.5 h-3.5 text-slate-900 shrink-0" />
                         <span>{formatReceiptPhone(shipment.sender.phone)}</span>
                       </div>
                     </div>
@@ -809,11 +809,11 @@ export const PrintReceiptModal: React.FC = () => {
                       <span className="font-black text-slate-900 text-[13px]">{shipment.receiver.name}</span>
                     </div>
 
-                    {/* BOLD BLACK BADGE CONTACT NUMBER */}
+                    {/* Ink-friendly outlined contact number */}
                     <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
                       <span className="text-slate-500 font-semibold">{l('Contact Number:', 'شماره تماس:')}</span>
-                      <div className="bg-slate-950 text-white px-2.5 py-1 rounded-lg font-mono font-black text-xs tracking-wider flex items-center gap-1.5 shadow-xs" dir="ltr">
-                        <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <div className="bg-white text-slate-950 border border-slate-400 px-2.5 py-1 rounded-lg font-mono font-black text-xs tracking-wider flex items-center gap-1.5" dir="ltr">
+                        <Phone className="w-3.5 h-3.5 text-slate-900 shrink-0" />
                         <span>{formatReceiptPhone(shipment.receiver.phone)}</span>
                       </div>
                     </div>
