@@ -907,7 +907,8 @@ export function generateReceiverReceiptPdf(shipment: Shipment, originBranch?: Br
 
 /**
  * Dedicated Vector jsPDF generator for Seller Receipt (Template 2).
- * Displays: Product Price, Service Fee, Destination Commission, Discount, and Net Seller Payout.
+ * Displays: Product Price, combined Shipping Cost, Discount, and Net Seller Payout.
+ * Service fee and destination commission remain separate in shipment accounting.
  * Formatted strictly for a single A4 page with 3 Helpline Contacts shifted to the upper-middle page body.
  */
 export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Branch, destBranch?: Branch): boolean {
@@ -1074,11 +1075,12 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('MERCHANT SETTLEMENT & COMMISSION STATEMENT (صورت حساب و کمیسیون فروشنده)', margin + 3, y + 3.6);
+    doc.text('MERCHANT SETTLEMENT STATEMENT (صورت حساب فروشنده)', margin + 3, y + 3.6);
 
     const productPriceVal = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
     const serviceFeeVal = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
     const destCommVal = typeof shipment.financials.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : (shipment.destBranchCommission || 70);
+    const combinedShippingCostVal = serviceFeeVal + destCommVal;
     const discountVal = shipment.financials.discountAmount || 0;
     const sellerPayoutVal = (typeof shipment.financials.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
       ? shipment.financials.sellerPayout
@@ -1095,29 +1097,20 @@ export function generateSellerReceiptPdf(shipment: Shipment, originBranch?: Bran
     doc.setTextColor(15, 23, 42);
     doc.text(`${productPriceVal.toLocaleString()} AFN`, margin + 65, statY);
 
-    // Line 2: Service Fee
+    // Line 2: Combined sender-copy shipping cost (display only)
     statY += 4.5;
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('2. Service & Handling Fee (هزینه ارسال کسر شده):', margin + 3, statY);
+    doc.text('2. Shipping Cost (هزینه ارسال):', margin + 3, statY);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(225, 29, 72);
-    doc.text(`-${serviceFeeVal.toLocaleString()} AFN`, margin + 65, statY);
+    doc.text(`-${combinedShippingCostVal.toLocaleString()} AFN`, margin + 65, statY);
 
-    // Line 3: Destination Commission
+    // Line 3: Discount
     statY += 4.5;
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(51, 65, 85);
-    doc.text('3. Dest. Branch Commission (کمیسیون مقصد کسر شده):', margin + 3, statY);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(225, 29, 72);
-    doc.text(`-${destCommVal.toLocaleString()} AFN`, margin + 65, statY);
-
-    // Line 4: Discount
-    statY += 4.5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(51, 65, 85);
-    doc.text('4. Fee Discount Applied (تخفیف اعمال شده):', margin + 3, statY);
+    doc.text('3. Shipping Discount (تخفیف هزینه ارسال):', margin + 3, statY);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(discountVal > 0 ? 22 : 15, discountVal > 0 ? 163 : 23, discountVal > 0 ? 74 : 42);
     doc.text(discountVal > 0 ? `+${discountVal.toLocaleString()} AFN` : `0 AFN`, margin + 65, statY);
@@ -2269,8 +2262,10 @@ export function generateThermalLabelPdf(
     const originHubAddress = getBranchAddress(originBranch) || 'Address not recorded';
     const destinationHubAddress = getBranchAddress(destBranch) || 'Address not recorded';
     const thermalPrice = shipment.financials.productPrice || shipment.packageInfo?.declaredValueAfn || shipment.financials.totalAmount || 3000;
-    const thermalServiceFee = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : 150;
-    const thermalDestComm = typeof shipment.financials.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : 70;
+    const thermalServiceFee = typeof shipment.financials.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
+    const thermalDestComm = typeof shipment.financials.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : (shipment.destBranchCommission || 70);
+    // Sender-copy display only. The stored fee and commission are not merged.
+    const thermalShippingCost = thermalServiceFee + thermalDestComm;
     const thermalPayout = (typeof shipment.financials.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
       ? shipment.financials.sellerPayout
       : Math.max(0, thermalPrice - thermalServiceFee - thermalDestComm);
@@ -2411,7 +2406,7 @@ export function generateThermalLabelPdf(
         doc.setTextColor(100, 116, 139);
         doc.setFontSize(6);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Item: ${thermalPrice} | Fee: ${thermalServiceFee} | Comm: ${thermalDestComm}`, margin + 3, y + 15.5);
+        doc.text(`Item: ${thermalPrice} | Shipping Cost (هزینه ارسال): ${thermalShippingCost}`, margin + 3, y + 15.5);
       } else {
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(7);

@@ -87,6 +87,8 @@ export const PrintReceiptModal: React.FC = () => {
   const priceVal = Number(shipment.financials?.productPrice) || Number(shipment.packageInfo?.declaredValueAfn) || Number(shipment.financials?.totalAmount) || 3000;
   const sFeeVal = typeof shipment.financials?.serviceFee === 'number' && shipment.financials.serviceFee > 0 ? shipment.financials.serviceFee : (shipment.packageInfo?.isFragile ? 200 : 150);
   const dCommVal = typeof shipment.financials?.destBranchCommission === 'number' && shipment.financials.destBranchCommission > 0 ? shipment.financials.destBranchCommission : (shipment.destBranchCommission || 70);
+  // Sender-copy display only. Accounting continues to store these as two separate values.
+  const combinedShippingCostVal = sFeeVal + dCommVal;
   const discountVal = Number(shipment.financials?.discountAmount) || 0;
   
   const payoutVal = (typeof shipment.financials?.sellerPayout === 'number' && shipment.financials.sellerPayout > 0)
@@ -481,7 +483,7 @@ export const PrintReceiptModal: React.FC = () => {
                     <div className="text-[9px] font-black text-slate-900 uppercase">{l('SELLER PAYOUT (AFTER DEDUCTIONS)', 'پرداختی فروشنده (بعد از وضع مصارف)')}</div>
                     <div className="text-[18px] font-black text-emerald-600 mt-0.5">{payoutVal.toLocaleString()} AFN</div>
                     <div className="text-[8.5px] font-bold text-slate-500 mt-1">
-                      {l(`Item: ${priceVal} | Fee: ${sFeeVal} | Comm: ${dCommVal}${discountVal > 0 ? ` | Disc: ${discountVal}` : ''}`, `قیمت: ${priceVal} | هزینه ارسال: ${sFeeVal} | کمیشن: ${dCommVal}${discountVal > 0 ? ` | تخفیف: ${discountVal}` : ''}`)}
+                      {l(`Item: ${priceVal} | Shipping Cost (هزینه ارسال): ${combinedShippingCostVal}${discountVal > 0 ? ` | Disc: ${discountVal}` : ''}`, `قیمت: ${priceVal} | هزینه ارسال: ${combinedShippingCostVal}${discountVal > 0 ? ` | تخفیف: ${discountVal}` : ''}`)}
                     </div>
                   </>
                 )}
@@ -884,12 +886,8 @@ export const PrintReceiptModal: React.FC = () => {
                           <span className="font-bold">{priceVal.toLocaleString()} AFN</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-slate-500">{l('Freight Fee:', 'فیس خدمات (کرایه):')}</span>
-                          <span className="font-bold text-red-600">-{sFeeVal.toLocaleString()} AFN</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">{l('Destination Comm:', 'کمیسیون مقصد:')}</span>
-                          <span className="font-bold text-red-600">-{dCommVal.toLocaleString()} AFN</span>
+                          <span className="text-slate-500">{l('Shipping Cost (هزینه ارسال):', 'هزینه ارسال:')}</span>
+                          <span className="font-bold text-red-600">-{combinedShippingCostVal.toLocaleString()} AFN</span>
                         </div>
                         {discountVal > 0 && (
                           <div className="flex justify-between">
