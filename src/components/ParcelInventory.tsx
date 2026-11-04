@@ -41,6 +41,11 @@ import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { Shipment, ShipmentStatus, PaymentStatus } from '../types';
 import { generateThermalLabelPdf } from '../utils/pdfExport';
+import {
+  getParcelPaymentCategory,
+  PAYMENT_CATEGORY_ORDER,
+  ParcelPaymentCategory
+} from '../utils/parcelPaymentStatus';
 import { ShipmentStatusTimeline } from './ShipmentStatusTimeline';
 import { EditShipmentModal } from './EditShipmentModal';
 import { CombinedBranchReceiptModal } from './CombinedBranchReceiptModal';
@@ -51,6 +56,16 @@ import { getExactShipmentCn, normalizeShipmentCn, useRemoteShipmentSearch } from
 type SortField = 'date' | 'weight' | 'amount' | 'cn' | 'status';
 type SortOrder = 'asc' | 'desc';
 type InventoryTab = 'all' | 'in_transit' | 'arrived' | 'delivered' | 'submitted' | 'prebooked';
+
+const PAYMENT_CATEGORY_STYLES: Record<ParcelPaymentCategory, string> = {
+  not_due: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+  awaiting_lock: 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800',
+  branch_locked: 'bg-blue-100 text-blue-900 border-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800',
+  remittance_sent: 'bg-violet-100 text-violet-900 border-violet-300 dark:bg-violet-950 dark:text-violet-200 dark:border-violet-800',
+  hq_received: 'bg-cyan-100 text-cyan-900 border-cyan-300 dark:bg-cyan-950 dark:text-cyan-200 dark:border-cyan-800',
+  sender_paid: 'bg-emerald-100 text-emerald-900 border-emerald-400 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-700',
+  disputed: 'bg-rose-100 text-rose-900 border-rose-400 dark:bg-rose-950 dark:text-rose-200 dark:border-rose-800'
+};
 
 export const ParcelInventory: React.FC = () => {
   const { language, t } = useI18n();
@@ -115,7 +130,49 @@ export const ParcelInventory: React.FC = () => {
 
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedDestinationBranch, setSelectedDestinationBranch] = useState<string>('all');
+  const [selectedPaymentCategory, setSelectedPaymentCategory] = useState<'all' | ParcelPaymentCategory>('all');
   const [activeTab, setActiveTab] = useState<InventoryTab>('all');
+
+  const paymentCategoryLabels: Record<ParcelPaymentCategory, string> = language === 'fa'
+    ? {
+        not_due: 'هنوز موعد پرداخت نیست',
+        awaiting_lock: 'در انتظار قفل پرداخت',
+        branch_locked: 'پرداخت شعبه قفل شد',
+        remittance_sent: 'حواله شعبه ارسال شد',
+        hq_received: 'وجه در مرکز دریافت شد',
+        sender_paid: 'وجه فروشنده پرداخت شد',
+        disputed: 'اعتراض پرداخت'
+      }
+    : language === 'ps'
+    ? {
+        not_due: 'تادیه لا نه ده رسېدلې',
+        awaiting_lock: 'د تادیې قفل ته انتظار',
+        branch_locked: 'د څانګې تادیه قفل شوه',
+        remittance_sent: 'د څانګې حواله ولېږل شوه',
+        hq_received: 'مرکزي دفتر پیسې ترلاسه کړې',
+        sender_paid: 'لېږونکي ته پیسې ورکړل شوې',
+        disputed: 'د تادیې اعتراض'
+      }
+    : {
+        not_due: 'Payment Not Due',
+        awaiting_lock: 'Awaiting Payment Lock',
+        branch_locked: 'Branch Payment Locked',
+        remittance_sent: 'Branch Transfer Sent',
+        hq_received: 'Funds Received at HQ',
+        sender_paid: 'Sender Paid',
+        disputed: 'Payment Disputed'
+      };
+
+  const getPaymentCategoryLabel = (category: ParcelPaymentCategory, shipment?: Shipment) => {
+    if (category === 'sender_paid' && shipment?.sellerPayoutStatus === 'confirmed_by_customer') {
+      return language === 'fa'
+        ? 'پرداخت فروشنده تأیید شد'
+        : language === 'ps'
+        ? 'د لېږونکي تادیه تایید شوه'
+        : 'Sender Paid & Confirmed';
+    }
+    return paymentCategoryLabels[category];
+  };
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('date');
@@ -303,6 +360,7 @@ export const ParcelInventory: React.FC = () => {
 
       const matchesStatus = selectedStatus === 'all' || s.status === selectedStatus;
       const matchesDestinationBranch = selectedDestinationBranch === 'all' || s.destinationBranchId === selectedDestinationBranch;
+      const matchesPaymentCategory = selectedPaymentCategory === 'all' || getParcelPaymentCategory(s) === selectedPaymentCategory;
 
       let matchesTab = true;
       if (activeTab === 'in_transit') {
@@ -317,7 +375,7 @@ export const ParcelInventory: React.FC = () => {
         matchesTab = s.status === 'pre_booked' || s.status === 'verified';
       }
 
-      return matchesSearch && matchesStatus && matchesDestinationBranch && matchesTab;
+      return matchesSearch && matchesStatus && matchesDestinationBranch && matchesPaymentCategory && matchesTab;
     });
 
     result.sort((a, b) => {
@@ -343,7 +401,7 @@ export const ParcelInventory: React.FC = () => {
     });
 
     return result;
-  }, [searchableShipmentList, debouncedSearchTerm, selectedStatus, selectedDestinationBranch, activeTab, sortField, sortOrder]);
+  }, [searchableShipmentList, debouncedSearchTerm, selectedStatus, selectedDestinationBranch, selectedPaymentCategory, activeTab, sortField, sortOrder]);
 
   // Open status modal (Physical status only)
   const handleOpenStatusModal = (shipment: Shipment) => {
@@ -516,7 +574,20 @@ export const ParcelInventory: React.FC = () => {
   const deliveredCount = baseShipmentList.filter(s => s.status === 'delivered').length;
   const submittedParcelCount = baseShipmentList.filter(s => !!s.customerSubmissionAt).length;
 
-  const isFiltered = searchTerm !== '' || selectedStatus !== 'all' || selectedDestinationBranch !== 'all';
+  const paymentCategoryCounts = useMemo(() => {
+    const counts = PAYMENT_CATEGORY_ORDER.reduce((result, category) => {
+      result[category] = 0;
+      return result;
+    }, {} as Record<ParcelPaymentCategory, number>);
+
+    baseShipmentList.forEach(shipment => {
+      counts[getParcelPaymentCategory(shipment)] += 1;
+    });
+
+    return counts;
+  }, [baseShipmentList]);
+
+  const isFiltered = searchTerm !== '' || selectedStatus !== 'all' || selectedDestinationBranch !== 'all' || selectedPaymentCategory !== 'all';
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300" id="parcel-inventory-page">
@@ -724,6 +795,62 @@ export const ParcelInventory: React.FC = () => {
           </div>
         </div>
 
+        {/* Financial payment-stage legend and quick filter */}
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-black text-slate-900 dark:text-white">
+                <DollarSign className="w-4 h-4 text-emerald-600" />
+                <span>
+                  {language === 'fa' ? 'رنگ‌بندی مراحل مالی' : language === 'ps' ? 'د مالي پړاوونو رنګونه' : 'Payment Stage Colors'}
+                </span>
+              </div>
+              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                {language === 'fa'
+                  ? 'هر بار فقط آخرین مرحله مالی خود را نشان می‌دهد. رنگ سبز فقط به معنی پرداخت وجه به فروشنده است.'
+                  : language === 'ps'
+                  ? 'هر بار خپل وروستی مالي پړاو ښيي. شین رنګ یوازې لېږونکي ته د پیسو د ورکړې معنا لري.'
+                  : 'Each parcel shows its latest financial stage. Green is reserved for money paid to the sender.'}
+              </p>
+            </div>
+            {selectedPaymentCategory !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setSelectedPaymentCategory('all')}
+                className="text-[10px] font-bold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+              >
+                {language === 'fa' ? 'نمایش همه مراحل' : language === 'ps' ? 'ټول پړاوونه ښودل' : 'Show all payment stages'}
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {PAYMENT_CATEGORY_ORDER.map(category => (
+              <button
+                type="button"
+                key={category}
+                onClick={() => setSelectedPaymentCategory(current => current === category ? 'all' : category)}
+                className={`px-2.5 py-1.5 rounded-xl border text-[10px] font-black inline-flex items-center gap-1.5 transition-all cursor-pointer ${PAYMENT_CATEGORY_STYLES[category]} ${
+                  selectedPaymentCategory === category ? 'ring-2 ring-offset-2 ring-slate-500 dark:ring-offset-slate-900' : 'hover:-translate-y-0.5'
+                }`}
+                title={language === 'fa' ? 'برای فیلتر کردن کلیک کنید' : 'Click to filter the inventory'}
+              >
+                {category === 'awaiting_lock' && <Clock className="w-3 h-3" />}
+                {category === 'branch_locked' && <Lock className="w-3 h-3" />}
+                {category === 'remittance_sent' && <Send className="w-3 h-3" />}
+                {category === 'hq_received' && <Inbox className="w-3 h-3" />}
+                {category === 'sender_paid' && <CheckCircle2 className="w-3 h-3" />}
+                {category === 'disputed' && <AlertTriangle className="w-3 h-3" />}
+                {category === 'not_due' && <Clock className="w-3 h-3" />}
+                <span>{paymentCategoryLabels[category]}</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-white/70 dark:bg-black/20 font-mono">
+                  {paymentCategoryCounts[category]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* 4. CLEAN SEARCH & COMPACT FILTERS */}
         <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center gap-3">
           {/* Search Box */}
@@ -786,6 +913,7 @@ export const ParcelInventory: React.FC = () => {
                 setSearchTerm('');
                 setSelectedStatus('all');
                 setSelectedDestinationBranch('all');
+                setSelectedPaymentCategory('all');
               }}
               className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg font-bold transition-colors cursor-pointer"
             >
@@ -925,8 +1053,9 @@ export const ParcelInventory: React.FC = () => {
                       <td className="p-3 text-center">
                         {(() => {
                           const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
-                          const isPaymentStageEligible = s.status === 'delivered' || s.status === 'returned' || s.status === 'cancelled';
                           const origPrice = s.financials?.originalProductPrice ?? settlement?.originalProductPrice ?? s.financials?.totalAmount ?? 0;
+                          const paymentCategory = getParcelPaymentCategory(s);
+                          const paymentCategoryLabel = getPaymentCategoryLabel(paymentCategory, s);
 
                           return (
                             <div className="flex flex-col items-center gap-1">
@@ -937,7 +1066,7 @@ export const ParcelInventory: React.FC = () => {
                               {settlement?.locked && settlement.adjustmentType !== 'exact' && s.status === 'delivered' && (
                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
                                   settlement.adjustmentType === 'extra'
-                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300'
+                                    ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300'
                                     : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300'
                                 }`} title={`Original Price: ${origPrice.toLocaleString()} AFN | Reason: ${settlement.reasonLabel}`}>
                                   {settlement.adjustmentType === 'extra'
@@ -946,32 +1075,25 @@ export const ParcelInventory: React.FC = () => {
                                 </span>
                               )}
 
-                              {isPaymentStageEligible ? (
-                                settlement?.locked ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => setPaymentSettlementShipment(s)}
-                                    className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 cursor-pointer transition-colors"
-                                    title={`Payment Locked (#${settlement.reconciliationId}) • Reported to Main/Sender Branch`}
-                                  >
-                                    <Lock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
-                                    <span>Payment Locked</span>
-                                  </button>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                                    <Clock className="w-2.5 h-2.5 text-amber-600 shrink-0" />
-                                    <span>Awaiting Payment Settlement</span>
-                                  </span>
-                                )
-                              ) : (
-                                <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                                  s.financials.paymentStatus === 'paid' 
-                                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' 
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                }`}>
-                                  {s.financials.paymentStatus === 'paid' ? 'PAID' : 'COD (To-Pay)'}
-                                </span>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => settlement?.locked && setPaymentSettlementShipment(s)}
+                                disabled={!settlement?.locked}
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-black border inline-flex items-center gap-1 transition-all ${PAYMENT_CATEGORY_STYLES[paymentCategory]} ${
+                                  settlement?.locked ? 'cursor-pointer hover:brightness-95' : 'cursor-default'
+                                }`}
+                                title={settlement?.locked
+                                  ? `${paymentCategoryLabel} • Reconciliation #${settlement.reconciliationId} • Click to view payment report`
+                                  : paymentCategoryLabel}
+                              >
+                                {(paymentCategory === 'not_due' || paymentCategory === 'awaiting_lock') && <Clock className="w-2.5 h-2.5 shrink-0" />}
+                                {paymentCategory === 'branch_locked' && <Lock className="w-2.5 h-2.5 shrink-0" />}
+                                {paymentCategory === 'remittance_sent' && <Send className="w-2.5 h-2.5 shrink-0" />}
+                                {paymentCategory === 'hq_received' && <Inbox className="w-2.5 h-2.5 shrink-0" />}
+                                {paymentCategory === 'sender_paid' && <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />}
+                                {paymentCategory === 'disputed' && <AlertTriangle className="w-2.5 h-2.5 shrink-0" />}
+                                <span>{paymentCategoryLabel}</span>
+                              </button>
                             </div>
                           );
                         })()}
@@ -1018,9 +1140,9 @@ export const ParcelInventory: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => setPaymentSettlementShipment(s)}
-                                  className="px-2.5 py-1 rounded-lg text-[9.5px] font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1 mx-auto cursor-pointer transition-colors"
+                                  className="px-2.5 py-1 rounded-lg text-[9.5px] font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-800 flex items-center gap-1 mx-auto cursor-pointer transition-colors"
                                 >
-                                  <Lock className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                  <Lock className="w-2.5 h-2.5 text-blue-600 shrink-0" />
                                   <span>View Payment Report</span>
                                 </button>
                               ) : (
@@ -1544,12 +1666,12 @@ export const ParcelInventory: React.FC = () => {
               return (
                 <div className={`p-4 rounded-2xl border-2 space-y-3 ${
                   settlement?.locked
-                    ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/80'
+                    ? 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/80'
                     : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800'
                 }`}>
                   <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200/80 dark:border-slate-800">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className={`w-5 h-5 ${settlement?.locked ? 'text-emerald-600' : 'text-amber-600'}`} />
+                      <ShieldCheck className={`w-5 h-5 ${settlement?.locked ? 'text-blue-600' : 'text-amber-600'}`} />
                       <div>
                         <h4 className="font-black text-sm text-slate-900 dark:text-white">
                           {settlement?.locked
@@ -1573,7 +1695,7 @@ export const ParcelInventory: React.FC = () => {
                       }}
                       className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer shadow-xs transition-all ${
                         settlement?.locked
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
                           : 'bg-amber-500 hover:bg-amber-600 text-white'
                       }`}
                     >
@@ -1602,7 +1724,7 @@ export const ParcelInventory: React.FC = () => {
                         <span className="text-[10px] text-slate-400 font-semibold block">Price Adjustment</span>
                         <span className={`font-mono font-black ${
                           settlement.adjustmentType === 'extra'
-                            ? 'text-emerald-600'
+                            ? 'text-indigo-600'
                             : settlement.adjustmentType === 'less'
                             ? 'text-amber-600'
                             : 'text-slate-600 dark:text-slate-300'
@@ -1616,7 +1738,7 @@ export const ParcelInventory: React.FC = () => {
                       </div>
                       <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                         <span className="text-[10px] text-slate-400 font-semibold block">Actual Collected</span>
-                        <span className="font-mono font-black text-emerald-600">
+                        <span className="font-mono font-black text-blue-600">
                           {settlement.actualCollectedAmount.toLocaleString()} AFN
                         </span>
                       </div>
@@ -1651,35 +1773,26 @@ export const ParcelInventory: React.FC = () => {
               <div className="p-4 rounded-2xl border-2 space-y-3 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 animate-in fade-in duration-300">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-emerald-500" />
+                    <DollarSign className="w-5 h-5 text-cyan-600" />
                     <h4 className="font-black text-sm text-slate-900 dark:text-white">
                       {language === 'fa' ? 'تسویه مالی و تحویل وجه به مشتری' : 'Seller Cash Payout & Handover'}
                     </h4>
                   </div>
                   
-                  {detailsModalShipment.sellerPayoutStatus === 'confirmed_by_customer' ? (
-                    <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200 text-[10px] font-black uppercase">
-                      {language === 'fa' ? 'تسویه نهایی و تأیید شده' : 'Cleared & Confirmed'}
-                    </span>
-                  ) : detailsModalShipment.sellerPayoutStatus === 'disbursed_by_branch' ? (
-                    <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200 text-[10px] font-bold animate-pulse">
-                      {language === 'fa' ? 'تحویل شد (در انتظار تأیید مشتری)' : 'Paid (Awaiting Customer Confirmation)'}
-                    </span>
-                  ) : detailsModalShipment.sellerPayoutStatus === 'disputed' ? (
-                    <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200 text-[10px] font-black uppercase flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                      <span>{language === 'fa' ? 'اعتراض عدم دریافت!' : 'Disputed / Unpaid!'}</span>
-                    </span>
-                  ) : !(detailsModalShipment.paymentSettlement?.locked || detailsModalShipment.financials?.paymentSettlement?.locked) ? (
-                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 text-[10px] font-bold flex items-center gap-1">
-                      <Lock className="w-3 h-3" />
-                      <span>Awaiting Destination Payment Lock</span>
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 text-[10px] font-bold">
-                      {language === 'fa' ? 'آماده پرداخت نقد' : 'Reconciled & Ready for Cash Out'}
-                    </span>
-                  )}
+                  {(() => {
+                    const category = getParcelPaymentCategory(detailsModalShipment);
+                    return (
+                      <span className={`px-2.5 py-1 rounded-lg border text-[10px] font-black inline-flex items-center gap-1.5 ${PAYMENT_CATEGORY_STYLES[category]}`}>
+                        {(category === 'not_due' || category === 'awaiting_lock') && <Clock className="w-3 h-3" />}
+                        {category === 'branch_locked' && <Lock className="w-3 h-3" />}
+                        {category === 'remittance_sent' && <Send className="w-3 h-3" />}
+                        {category === 'hq_received' && <Inbox className="w-3 h-3" />}
+                        {category === 'sender_paid' && <CheckCircle2 className="w-3 h-3" />}
+                        {category === 'disputed' && <AlertTriangle className="w-3 h-3" />}
+                        <span>{getPaymentCategoryLabel(category, detailsModalShipment)}</span>
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Reconciliation Gate if Destination Branch has not locked payment settlement yet */}
