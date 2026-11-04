@@ -24,6 +24,7 @@ import confetti from 'canvas-confetti';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../context/I18nContext';
 import { CustomerPreBookingInput, ParcelCategory } from '../types';
+import { calculateCustomerFinancialSummary } from '../utils/customerFinancialSummary';
 import { BranchSearchSelect } from './BranchSearchSelect';
 
 export const CustomerPortal: React.FC = () => {
@@ -174,12 +175,52 @@ export const CustomerPortal: React.FC = () => {
     { value: 'fragile', label: 'Fragile & Glass Items' }
   ];
 
-  // Financial overview metrics
-  const totalMoneySpent = customerShipments.reduce((sum, s) => sum + (s.financials?.totalAmount || 0), 0);
-  const totalParcelsCount = customerShipments.length;
-  const totalParcelsValue = customerShipments.reduce((sum, s) => sum + (s.financials?.productPrice || 0), 0);
-  const deliveredCount = customerShipments.filter(s => s.status === 'delivered').length;
-  const activeCount = customerShipments.filter(s => s.status !== 'delivered' && s.status !== 'cancelled').length;
+  const financialSummary = React.useMemo(
+    () => calculateCustomerFinancialSummary(customerShipments),
+    [customerShipments]
+  );
+
+  const financialLabels = language === 'fa'
+    ? {
+        title: 'خلاصه مالی و بسته‌ها',
+        subtitle: 'ارزش بسته‌ها، پرداخت‌های تأییدشده و باقی‌مانده حساب شما',
+        totalValue: 'ارزش مجموعی بسته‌ها',
+        netPayable: 'مبلغ خالص قابل پرداخت',
+        received: 'دریافت‌شده از ارمغان',
+        receivedHint: 'پرداخت‌های تأییدشده توسط شما',
+        remaining: 'باقی‌مانده نزد ارمغان',
+        remainingFormula: 'خالص قابل پرداخت منهای مبلغ دریافت‌شده',
+        parcels: 'تعداد مجموعی بسته‌ها',
+        delivered: 'تحویل‌شده',
+        active: 'در جریان'
+      }
+    : language === 'ps'
+    ? {
+        title: 'مالي او بارونو لنډیز',
+        subtitle: 'د بارونو ارزښت، تایید شوې تادیې او ستاسو پاتې حساب',
+        totalValue: 'د بارونو ټول ارزښت',
+        netPayable: 'خالص د تادیې وړ مبلغ',
+        received: 'له ارمغان څخه ترلاسه شوي',
+        receivedHint: 'ستاسو لخوا تایید شوې تادیې',
+        remaining: 'له ارمغان سره پاتې',
+        remainingFormula: 'خالص د تادیې وړ مبلغ منفي ترلاسه شوې پیسې',
+        parcels: 'د بارونو ټول شمېر',
+        delivered: 'سپارل شوي',
+        active: 'روان'
+      }
+    : {
+        title: 'Financial & Parcel Summary',
+        subtitle: 'Parcel value, confirmed payouts, and your remaining balance',
+        totalValue: 'Total Parcel Value',
+        netPayable: 'Net payable to you',
+        received: 'Received from Armaghan',
+        receivedHint: 'Payouts confirmed by you',
+        remaining: 'Remaining with Armaghan',
+        remainingFormula: 'Net payable minus amount received',
+        parcels: 'Total Parcels',
+        delivered: 'Delivered',
+        active: 'Active'
+      };
 
   return (
     <div className="space-y-6 pb-12 font-sans" id="customer-portal-main">
@@ -347,10 +388,10 @@ export const CustomerPortal: React.FC = () => {
             </div>
             <div>
               <span className="font-black text-xs uppercase tracking-wider text-amber-300 block">
-                {t('customer_stats_table_title') || 'All Orders & Financial Matrix'}
+                {financialLabels.title}
               </span>
               <span className="text-[10px] text-slate-300 block -mt-0.5">
-                {language === 'fa' ? 'خلاصه وضعیت مالی و تعداد بسته‌های شما' : 'Summary of all orders, freight expenditure & cargo value'}
+                {financialLabels.subtitle}
               </span>
             </div>
           </div>
@@ -375,57 +416,83 @@ export const CustomerPortal: React.FC = () => {
           </div>
         </div>
 
-        {/* 3 Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x sm:rtl:divide-x-reverse divide-slate-200 dark:divide-slate-800">
-          {/* 1. Total Freight Spent */}
-          <div className="p-4 sm:p-5 bg-emerald-50/50 dark:bg-emerald-950/20">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20 shrink-0">
-                <DollarSign className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-[11px] font-bold text-emerald-900 dark:text-emerald-300 uppercase">
-                  {t('customer_stats_total_spent')}
-                </div>
-                <div className="text-xl sm:text-2xl font-black text-emerald-950 dark:text-emerald-200 font-mono tracking-tight mt-0.5">
-                  {totalMoneySpent.toLocaleString()} <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">AFN</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Total Parcels Count */}
-          <div className="p-4 sm:p-5 bg-indigo-50/50 dark:bg-indigo-950/20">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20 shrink-0">
-                <Boxes className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-[11px] font-bold text-indigo-900 dark:text-indigo-300 uppercase">
-                  {t('customer_stats_total_parcels')}
-                </div>
-                <div className="text-xl sm:text-2xl font-black text-indigo-950 dark:text-indigo-200 font-mono tracking-tight mt-0.5">
-                  {totalParcelsCount} <span className="text-xs font-bold text-indigo-700 dark:text-indigo-400">{t('pcs_unit') || 'Parcels'}</span>
-                </div>
-                <div className="text-[10px] text-indigo-800 dark:text-indigo-400 font-medium mt-0.5">
-                  {deliveredCount} {language === 'fa' ? 'تحویل' : 'Delivered'} • {activeCount} {language === 'fa' ? 'در جریان' : 'Active'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. Total Declared / COD Value */}
+        {/* Customer balance metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x sm:rtl:divide-x-reverse divide-slate-200 dark:divide-slate-800">
+          {/* 1. Gross parcel value */}
           <div className="p-4 sm:p-5 bg-amber-50/50 dark:bg-amber-950/20">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-amber-500 text-white shadow-md shadow-amber-500/20 shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-[11px] font-bold text-amber-900 dark:text-amber-300 uppercase">
-                  {t('customer_stats_total_product_val') || 'Total Declared Value'}
+                  {financialLabels.totalValue}
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-amber-950 dark:text-amber-200 font-mono tracking-tight mt-0.5">
-                  {totalParcelsValue.toLocaleString()} <span className="text-xs font-bold text-amber-700 dark:text-amber-400">AFN</span>
+                  {financialSummary.totalParcelValueAfn.toLocaleString()} <span className="text-xs font-bold text-amber-700 dark:text-amber-400">AFN</span>
+                </div>
+                <div className="text-[10px] text-amber-800 dark:text-amber-400 font-medium mt-0.5">
+                  {financialLabels.netPayable}: {financialSummary.totalPayableAfn.toLocaleString()} AFN
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Confirmed payouts received by customer */}
+          <div className="p-4 sm:p-5 bg-emerald-50/50 dark:bg-emerald-950/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shadow-md shadow-emerald-600/20 shrink-0">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold text-emerald-900 dark:text-emerald-300 uppercase">
+                  {financialLabels.received}
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-emerald-950 dark:text-emerald-200 font-mono tracking-tight mt-0.5">
+                  {financialSummary.totalReceivedAfn.toLocaleString()} <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">AFN</span>
+                </div>
+                <div className="text-[10px] text-emerald-800 dark:text-emerald-400 font-medium mt-0.5">
+                  {financialLabels.receivedHint}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Remaining balance held by Armaghan */}
+          <div className="p-4 sm:p-5 bg-red-50/60 dark:bg-red-950/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-red-600 text-white shadow-md shadow-red-600/20 shrink-0">
+                <DollarSign className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold text-red-900 dark:text-red-300 uppercase">
+                  {financialLabels.remaining}
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-red-950 dark:text-red-200 font-mono tracking-tight mt-0.5">
+                  {financialSummary.remainingWithArmaghanAfn.toLocaleString()} <span className="text-xs font-bold text-red-700 dark:text-red-400">AFN</span>
+                </div>
+                <div className="text-[10px] text-red-800 dark:text-red-400 font-medium mt-0.5">
+                  {financialLabels.remainingFormula}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Total parcels */}
+          <div className="p-4 sm:p-5 bg-indigo-50/50 dark:bg-indigo-950/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20 shrink-0">
+                <Boxes className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold text-indigo-900 dark:text-indigo-300 uppercase">
+                  {financialLabels.parcels}
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-indigo-950 dark:text-indigo-200 font-mono tracking-tight mt-0.5">
+                  {financialSummary.totalParcelsCount.toLocaleString()}
+                </div>
+                <div className="text-[10px] text-indigo-800 dark:text-indigo-400 font-medium mt-0.5">
+                  {financialSummary.deliveredCount} {financialLabels.delivered} • {financialSummary.activeCount} {financialLabels.active}
                 </div>
               </div>
             </div>
