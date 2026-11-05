@@ -301,7 +301,7 @@ export type SellerPayoutStatus =
   | 'pending_delivery' 
   | 'ready_for_payout' 
   | 'disbursed_by_branch' 
-  | 'confirmed_by_customer' 
+  | 'confirmed_by_customer' // Legacy records only; new payouts settle automatically when recorded by the branch.
   | 'disputed';
 
 export interface Shipment {

@@ -163,16 +163,7 @@ export const ParcelInventory: React.FC = () => {
         disputed: 'Payment Disputed'
       };
 
-  const getPaymentCategoryLabel = (category: ParcelPaymentCategory, shipment?: Shipment) => {
-    if (category === 'sender_paid' && shipment?.sellerPayoutStatus === 'confirmed_by_customer') {
-      return language === 'fa'
-        ? 'پرداخت فروشنده تأیید شد'
-        : language === 'ps'
-        ? 'د لېږونکي تادیه تایید شوه'
-        : 'Sender Paid & Confirmed';
-    }
-    return paymentCategoryLabels[category];
-  };
+  const getPaymentCategoryLabel = (category: ParcelPaymentCategory) => paymentCategoryLabels[category];
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('date');
@@ -1055,7 +1046,7 @@ export const ParcelInventory: React.FC = () => {
                           const settlement = s.paymentSettlement || s.financials?.paymentSettlement;
                           const origPrice = s.financials?.originalProductPrice ?? settlement?.originalProductPrice ?? s.financials?.totalAmount ?? 0;
                           const paymentCategory = getParcelPaymentCategory(s);
-                          const paymentCategoryLabel = getPaymentCategoryLabel(paymentCategory, s);
+                          const paymentCategoryLabel = getPaymentCategoryLabel(paymentCategory);
 
                           return (
                             <div className="flex flex-col items-center gap-1">
@@ -1789,7 +1780,7 @@ export const ParcelInventory: React.FC = () => {
                         {category === 'hq_received' && <Inbox className="w-3 h-3" />}
                         {category === 'sender_paid' && <CheckCircle2 className="w-3 h-3" />}
                         {category === 'disputed' && <AlertTriangle className="w-3 h-3" />}
-                        <span>{getPaymentCategoryLabel(category, detailsModalShipment)}</span>
+                        <span>{getPaymentCategoryLabel(category)}</span>
                       </span>
                     );
                   })()}
@@ -1839,7 +1830,7 @@ export const ParcelInventory: React.FC = () => {
                 ) : (
                   /* Form to record payout */
                   <div className="space-y-4">
-                    {/* Live Financial Breakdown during cash-out confirmation */}
+                    {/* Live financial breakdown while recording the sender payout */}
                     <div className="p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/10 border border-emerald-200 dark:border-emerald-900/60 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-500 font-semibold">{language === 'fa' ? 'اطلاعات اولیه بارنامه:' : 'Waybill Reference:'}</span>

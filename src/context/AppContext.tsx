@@ -137,7 +137,6 @@ interface AppContextType {
   }) => boolean;
   settleInterBranchRemittance: (shipmentId: string, note?: string) => boolean;
   disburseSellerPayout: (shipmentId: string, method: 'cash' | 'hawala' | 'bank_transfer', voucherRef?: string, notes?: string, customPayout?: number, customCommission?: number, customDiscount?: number) => boolean;
-  confirmSellerPayoutReceived: (shipmentId: string) => boolean;
   disputeSellerPayout: (shipmentId: string, reason: string) => boolean;
   adminEditShipment: (shipmentId: string, input: AdminEditShipmentInput) => Promise<boolean>;
   deleteShipment: (shipmentId: string) => Promise<boolean>;
@@ -2659,6 +2658,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ? target.financials.sellerPayout 
           : Math.max(0, (target.financials?.productPrice || 0) - finalCommission - (target.financials?.serviceFee || 150) + finalDiscount));
 
+    const payoutBranch = branches.find(branch => branch.id === (currentUser.branchId || target.originBranchId));
+    const payoutHistoryItem = {
+      id: `st_payout_${Date.now()}`,
+      status: target.status,
+      location: payoutBranch?.name || 'Origin Branch / Head Office',
+      branchName: payoutBranch?.name || 'Origin Branch / Head Office',
+      timestamp: now,
+      note: `Sender payout completed automatically: ${payoutAmount.toLocaleString()} AFN via ${method.replace(/_/g, ' ')} (Voucher #${finalVoucher}). Customer financial account updated; no customer confirmation required.`,
+      updatedBy: currentUser.name
+    };
+
     const updatedShipment: Shipment = {
       ...target,
       sellerPayoutStatus: 'disbursed_by_branch',
@@ -2669,6 +2679,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sellerPayoutDisbursedByUserName: currentUser.name,
       sellerPayoutNotes: notes?.trim() || '',
       destBranchCommission: finalCommission,
+      statusHistory: [...(target.statusHistory || []), payoutHistoryItem],
       financials: {
         ...target.financials,
         sellerPayout: payoutAmount,
@@ -2695,43 +2706,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sellerPayoutDisbursedByUserName: currentUser.name,
         sellerPayoutNotes: notes?.trim() || '',
         destBranchCommission: finalCommission,
-        sellerPayout: payoutAmount,
-        discountAmount: finalDiscount
+        financials: updatedShipment.financials,
+        statusHistory: updatedShipment.statusHistory
       })
     }).catch(err => console.error('Error recording payout in backend:', err));
 
-    showToast(`✓ Cash Payout of ${payoutAmount.toLocaleString()} AFN recorded (Voucher #${finalVoucher}). Awaiting customer receipt confirmation.`);
-    return true;
-  };
-
-  // Customer confirms physical receipt of cash / hawala
-  const confirmSellerPayoutReceived = (shipmentId: string): boolean => {
-    const target = shipments.find(s => s.id === shipmentId || s.cnNumber === shipmentId);
-    if (!target) return false;
-
-    const now = new Date().toISOString();
-    const updatedShipment: Shipment = {
-      ...target,
-      sellerPayoutStatus: 'confirmed_by_customer',
-      sellerPayoutConfirmedAt: now
-    };
-
-    setShipments(prev => {
-      const updated = prev.map(s => (s.id === target.id || s.cnNumber === target.cnNumber) ? updatedShipment : s);
-      return updated;
-    });
-
-
-    fetch(`/api/shipments/${target.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sellerPayoutStatus: 'confirmed_by_customer',
-        sellerPayoutConfirmedAt: now
-      })
-    }).catch(err => console.error('Error confirming payout in backend:', err));
-
-    showToast(t('payout_confirmed_by_customer_msg') || '✓ Thank you! You have confirmed receipt of your product sale money. Account is fully cleared.');
+    showToast(`✓ Sender payout of ${payoutAmount.toLocaleString()} AFN recorded (Voucher #${finalVoucher}). The customer account was updated automatically.`);
     return true;
   };
 
@@ -3760,7 +3740,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteShipment,
         settleInterBranchRemittance,
         disburseSellerPayout,
-        confirmSellerPayoutReceived,
         disputeSellerPayout,
         submitParcelForCollection,
         updateShipmentStatus,

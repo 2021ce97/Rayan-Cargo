@@ -47,6 +47,18 @@ export const getCustomerPayoutStatus = (shipment: Shipment): SellerPayoutStatus 
   return shipment.status === 'delivered' ? 'ready_for_payout' : 'pending_delivery';
 };
 
+export const isCustomerPayoutPaid = (shipment: Shipment): boolean => {
+  const payoutStatus = getCustomerPayoutStatus(shipment);
+  if (payoutStatus === 'disputed') return false;
+
+  return (
+    payoutStatus === 'disbursed_by_branch' ||
+    payoutStatus === 'confirmed_by_customer' ||
+    Boolean(shipment.sellerPayoutDisbursedAt) ||
+    Boolean(shipment.sellerPayoutConfirmedAt)
+  );
+};
+
 export const calculateCustomerFinancialSummary = (
   shipments: Shipment[]
 ): CustomerFinancialSummary => {
@@ -63,19 +75,9 @@ export const calculateCustomerFinancialSummary = (
   );
 
   // Count a payout as paid as soon as Armaghan records the cash/hawala/bank
-  // disbursement. Customer confirmation is a later verification step, not a
-  // requirement for the dashboard's "paid by Armaghan" total.
+  // disbursement. Legacy customer-confirmed records remain supported.
   const totalReceivedAfn = financialShipments.reduce((sum, shipment) => {
-    const payoutStatus = getCustomerPayoutStatus(shipment);
-    const isDisputed = payoutStatus === 'disputed';
-    const isRecordedPaid = !isDisputed && (
-      payoutStatus === 'disbursed_by_branch' ||
-      payoutStatus === 'confirmed_by_customer' ||
-      Boolean(shipment.sellerPayoutDisbursedAt) ||
-      Boolean(shipment.sellerPayoutConfirmedAt)
-    );
-
-    return isRecordedPaid ? sum + getCustomerNetPayout(shipment) : sum;
+    return isCustomerPayoutPaid(shipment) ? sum + getCustomerNetPayout(shipment) : sum;
   }, 0);
 
   return {

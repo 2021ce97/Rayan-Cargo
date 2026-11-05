@@ -11,37 +11,32 @@ import {
   ShieldCheck, 
   Scale, 
   Sparkles, 
-  Layers, 
-  Filter, 
   AlertTriangle,
-  Send,
-  HelpCircle,
-  Eye,
-  Check,
   X,
-  CreditCard,
   Building2,
-  PhoneCall,
   CheckCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Shipment, SellerPayoutStatus } from '../types';
+import { Shipment } from '../types';
 import { getExactShipmentCn, normalizeShipmentCn, useRemoteShipmentSearch } from '../hooks/useRemoteShipmentSearch';
+import {
+  getCustomerNetPayout,
+  getCustomerPayoutStatus,
+  isCustomerPayoutPaid
+} from '../utils/customerFinancialSummary';
 
 export const CustomerFinances: React.FC = () => {
   const { 
     t, 
-    currentUser, 
     branches, 
     customerShipments, 
     setActiveView, 
     trackByCnNumber,
-    confirmSellerPayoutReceived,
     disputeSellerPayout,
     language 
   } = useApp();
 
-  const [activeFilter, setActiveFilter] = useState<'all' | 'ready' | 'disbursed' | 'confirmed' | 'in_transit' | 'disputed'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'ready' | 'paid' | 'in_transit' | 'disputed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const { exactCn, isSearchingRemote, remoteSearchError } = useRemoteShipmentSearch(searchTerm, customerShipments);
   
@@ -60,25 +55,6 @@ export const CustomerFinances: React.FC = () => {
     return b.name;
   };
 
-  // Helper to get net seller payout for a parcel
-  const getNetSellerPayout = (s: Shipment): number => {
-    if (typeof s.financials?.sellerPayout === 'number' && s.financials.sellerPayout > 0) {
-      return s.financials.sellerPayout;
-    }
-    const productPrice = s.financials?.productPrice || s.packageInfo?.declaredValueAfn || 0;
-    const destComm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 70);
-    const serviceFee = s.financials?.serviceFee || s.transportationFee || 150;
-    const discount = s.financials?.discountAmount || 0;
-    return Math.max(0, productPrice - destComm - serviceFee + discount);
-  };
-
-  // Resolve payout status for a parcel
-  const getPayoutStatus = (s: Shipment): SellerPayoutStatus => {
-    if (s.sellerPayoutStatus) return s.sellerPayoutStatus;
-    if (s.status === 'delivered') return 'ready_for_payout';
-    return 'pending_delivery';
-  };
-
   // High-Level Financial Metrics
   const financialStats = useMemo(() => {
     let totalSoldProductAfn = 0;
@@ -93,6 +69,7 @@ export const CustomerFinances: React.FC = () => {
 
     let totalNetEligibleAfn = 0;
     let totalPaidToCustomerAfn = 0;
+    let paidParcelsCount = 0;
     let totalPendingCollectionAfn = 0;
     let pendingParcelsCount = 0;
 
@@ -101,23 +78,22 @@ export const CustomerFinances: React.FC = () => {
       const destComm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 70);
       const serviceFee = s.financials?.serviceFee || s.transportationFee || 150;
       const discount = s.financials?.discountAmount || 0;
-      const netPayout = getNetSellerPayout(s);
+      const netPayout = getCustomerNetPayout(s);
 
       totalDestCommissionAfn += destComm;
       totalServiceFeesAfn += serviceFee;
       totalDiscountsAfn += discount;
-
-      const pStatus = getPayoutStatus(s);
 
       if (s.status === 'delivered') {
         totalSoldProductAfn += pPrice;
         totalDeliveredCount += 1;
         totalNetEligibleAfn += netPayout;
 
-        if (pStatus === 'confirmed_by_customer') {
+        if (isCustomerPayoutPaid(s)) {
           totalPaidToCustomerAfn += netPayout;
+          paidParcelsCount += 1;
         } else {
-          // If disbursed_by_branch, ready_for_payout, or disputed, count as pending collection
+          // Ready or disputed payouts remain outstanding until a branch records payment.
           totalPendingCollectionAfn += netPayout;
           pendingParcelsCount += 1;
         }
@@ -138,6 +114,7 @@ export const CustomerFinances: React.FC = () => {
       totalDiscountsAfn,
       totalNetEligibleAfn,
       totalPaidToCustomerAfn,
+      paidParcelsCount,
       totalPendingCollectionAfn,
       pendingParcelsCount,
       totalRemainingUncollectedAfn: totalPendingCollectionAfn + inTransitExpectedAfn
@@ -152,12 +129,12 @@ export const CustomerFinances: React.FC = () => {
         return normalizeShipmentCn(s.cnNumber) === normalizeShipmentCn(exactSearchCn);
       }
 
-      const pStatus = getPayoutStatus(s);
+      const pStatus = getCustomerPayoutStatus(s);
+      const payoutIsPaid = isCustomerPayoutPaid(s);
 
-      if (activeFilter === 'ready' && pStatus !== 'ready_for_payout') return false;
-      if (activeFilter === 'disbursed' && pStatus !== 'disbursed_by_branch') return false;
-      if (activeFilter === 'confirmed' && pStatus !== 'confirmed_by_customer') return false;
-      if (activeFilter === 'in_transit' && pStatus !== 'pending_delivery') return false;
+      if (activeFilter === 'ready' && (pStatus !== 'ready_for_payout' || payoutIsPaid)) return false;
+      if (activeFilter === 'paid' && !payoutIsPaid) return false;
+      if (activeFilter === 'in_transit' && (pStatus !== 'pending_delivery' || payoutIsPaid)) return false;
       if (activeFilter === 'disputed' && pStatus !== 'disputed') return false;
 
       if (searchTerm.trim()) {
@@ -261,7 +238,7 @@ export const CustomerFinances: React.FC = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs hover:border-blue-400 dark:hover:border-blue-600 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-500 mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-              {language === 'fa' ? 'پول دریافت شده از شعبه' : language === 'ps' ? 'له څانګې اخیستل شوې پیسې' : 'Cash Received in Hand'}
+              {language === 'fa' ? 'پرداخت شده توسط ارمغان' : language === 'ps' ? 'د ارمغان لخوا تادیه شوي' : 'Paid by Armaghan'}
             </span>
             <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <Wallet className="w-4 h-4" />
@@ -273,7 +250,7 @@ export const CustomerFinances: React.FC = () => {
             </div>
             <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1 font-semibold">
               <CheckCheck className="w-3 h-3 text-blue-500" />
-              <span>{language === 'fa' ? 'تسویه و تحویل نقد شده' : 'Cleared & disbursed'}</span>
+              <span>{financialStats.paidParcelsCount} {language === 'fa' ? 'بسته به‌صورت خودکار تصفیه شد' : language === 'ps' ? 'بارونه په اوتومات ډول تصفیه شول' : 'parcels settled automatically'}</span>
             </div>
           </div>
         </div>
@@ -361,7 +338,7 @@ export const CustomerFinances: React.FC = () => {
 
       </div>
 
-      {/* Fraud-Proof Explanatory Notice */}
+      {/* Automatic payout-accounting notice */}
       <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
@@ -370,13 +347,17 @@ export const CustomerFinances: React.FC = () => {
           <div>
             <div className="font-black text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
               {language === 'fa' 
-                ? 'سیستم شفافیت مالی و تضمین پرداخت نقد' 
-                : 'Financial Transparency & Cash Handover Guarantee'}
+                ? 'ثبت خودکار پرداخت در حساب مشتری'
+                : language === 'ps'
+                ? 'د پېرودونکي په حساب کې د تادیې اوتومات ثبت'
+                : 'Automatic Customer Payout Accounting'}
             </div>
             <div className="text-slate-600 dark:text-slate-300 mt-0.5 leading-relaxed">
               {language === 'fa' 
-                ? 'هر زمان شعبه پول را به شما تحویل داد، دکمه «تأیید دریافت وجه» را فشار دهید. اگر شعبه وضعیت را پرداخت شده ثبت نمود اما پولی به شما نداده است، فوراً دکمه «گزارش مغایرت» را بزنید تا مدیریت مرکز رسیدگی کند.'
-                : 'When the branch hands you the cash, click "Confirm Received". If a branch marked your parcel as paid without handing over the cash, use "Report Not Received" to trigger immediate audit.'}
+                ? 'به محض ثبت پرداخت توسط شعبه، مبلغ به‌صورت خودکار در حساب شما پرداخت‌شده محاسبه می‌شود و نیازی به تأیید جداگانه نیست. اگر پرداخت ثبت شده ولی پول را دریافت نکرده‌اید، گزینه «دریافت نکرده‌ام» را برای بررسی مدیریت انتخاب کنید.'
+                : language === 'ps'
+                ? 'کله چې څانګه تادیه ثبت کړي، پیسې په اوتومات ډول ستاسو په حساب کې تادیه شوې حسابېږي او جلا تایید ته اړتیا نشته. که تادیه ثبت شوې وي خو پیسې مو نه وي ترلاسه کړې، د څېړنې لپاره «نه دي ترلاسه شوي» وټاکئ.'
+                : 'As soon as a branch records the sender payout, the customer account is updated automatically. No separate confirmation is required. If payment was recorded but not received, use “Not Received” for management review.'}
             </div>
           </div>
         </div>
@@ -415,27 +396,16 @@ export const CustomerFinances: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveFilter('disbursed')}
+              onClick={() => setActiveFilter('paid')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeFilter === 'disbursed'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400 hover:bg-blue-100'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>{language === 'fa' ? 'پرداخت شده توسط شعبه (در انتظار تأیید شما)' : 'Disbursed by Branch'}</span>
-            </button>
-
-            <button
-              onClick={() => setActiveFilter('confirmed')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeFilter === 'confirmed'
-                  ? 'bg-teal-600 text-white'
-                  : 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 hover:bg-teal-100'
+                activeFilter === 'paid'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100'
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>{language === 'fa' ? 'تأیید نهایی شده' : 'Confirmed Received'}</span>
+              <span>{language === 'fa' ? 'پرداخت شده توسط ارمغان' : language === 'ps' ? 'د ارمغان لخوا تادیه شوي' : 'Paid by Armaghan'}</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">{financialStats.paidParcelsCount}</span>
             </button>
 
             <button
@@ -494,13 +464,14 @@ export const CustomerFinances: React.FC = () => {
                   <th className="py-3.5 px-4 text-end">{language === 'fa' ? 'کرایه انتقال' : language === 'ps' ? 'د لېږد کرایه' : 'Freight Fee'}</th>
                   <th className="py-3.5 px-4 text-end font-black text-slate-900 dark:text-white">{language === 'fa' ? 'خالص قابل پرداخت' : language === 'ps' ? 'خالصې تادیه کېدونکې پیسې' : 'Net Payout'}</th>
                   <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'وضعیت تصفیه مالی' : language === 'ps' ? 'د مالي تصفیې حالت' : 'Clearance Status'}</th>
-                  <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'عملیات و تأیید' : language === 'ps' ? 'کړنې او تایید' : 'Action & Confirmation'}</th>
+                  <th className="py-3.5 px-4 text-center">{language === 'fa' ? 'عملیات حساب' : language === 'ps' ? 'د حساب کړنې' : 'Account Action'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredShipments.map((s, idx) => {
-                  const pStatus = getPayoutStatus(s);
-                  const netPayout = getNetSellerPayout(s);
+                  const pStatus = getCustomerPayoutStatus(s);
+                  const payoutIsPaid = isCustomerPayoutPaid(s);
+                  const netPayout = getCustomerNetPayout(s);
                   const pPrice = s.financials?.productPrice || s.packageInfo?.declaredValueAfn || 0;
                   const destComm = s.destBranchCommission !== undefined ? s.destBranchCommission : (s.financials?.destBranchCommission || 70);
                   const serviceFee = s.financials?.serviceFee || s.transportationFee || 150;
@@ -571,33 +542,21 @@ export const CustomerFinances: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-center">
-                        {pStatus === 'confirmed_by_customer' && (
+                        {payoutIsPaid && (
                           <div className="inline-flex flex-col items-center">
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-100 text-teal-900 dark:bg-teal-950 dark:text-teal-200 border border-teal-300 dark:border-teal-800 flex items-center gap-1">
-                              <CheckCheck className="w-3.5 h-3.5 text-teal-600" />
-                              <span>{language === 'fa' ? 'تسویه کامل شد' : language === 'ps' ? 'تصفیه بشپړه شوه' : 'Fully Cleared'}</span>
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-400 dark:border-emerald-700 flex items-center gap-1">
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>{language === 'fa' ? 'پرداخت شد؛ حساب تصفیه است' : language === 'ps' ? 'تادیه وشوه؛ حساب تصفیه دی' : 'Paid — Account Settled'}</span>
                             </span>
-                            {s.sellerPayoutConfirmedAt && (
+                            {(s.sellerPayoutDisbursedAt || s.sellerPayoutConfirmedAt) && (
                               <span className="text-[9px] text-slate-400 mt-0.5 font-mono">
-                                {new Date(s.sellerPayoutConfirmedAt).toLocaleDateString()}
+                                {new Date(s.sellerPayoutDisbursedAt || s.sellerPayoutConfirmedAt || '').toLocaleDateString()}
                               </span>
                             )}
                           </div>
                         )}
 
-                        {pStatus === 'disbursed_by_branch' && (
-                          <div className="inline-flex flex-col items-center">
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-300 dark:border-blue-800 flex items-center gap-1">
-                              <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                              <span>{language === 'fa' ? 'شعبه پرداخت کرد' : language === 'ps' ? 'څانګې تادیه کړه' : 'Disbursed by Branch'}</span>
-                            </span>
-                            <span className="text-[9px] text-blue-600 font-semibold mt-0.5">
-                              {language === 'fa' ? 'لطفاً تأیید نمایید' : language === 'ps' ? 'مهرباني وکړئ تایید کړئ' : 'Please confirm'}
-                            </span>
-                          </div>
-                        )}
-
-                        {pStatus === 'ready_for_payout' && (
+                        {!payoutIsPaid && pStatus === 'ready_for_payout' && (
                           <div className="inline-flex flex-col items-center">
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5 text-emerald-600" />
@@ -609,7 +568,7 @@ export const CustomerFinances: React.FC = () => {
                           </div>
                         )}
 
-                        {pStatus === 'pending_delivery' && (
+                        {!payoutIsPaid && pStatus === 'pending_delivery' && (
                           <div className="inline-flex flex-col items-center">
                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5 text-amber-600" />
@@ -631,19 +590,14 @@ export const CustomerFinances: React.FC = () => {
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           
-                          {/* If branch has disbursed, allow customer to confirm cash received */}
-                          {pStatus === 'disbursed_by_branch' && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => confirmSellerPayoutReceived(s.id)}
-                                className="px-3 py-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs flex items-center gap-1 transition-all cursor-pointer"
-                                title={language === 'fa' ? 'تأیید دریافت فیزیکی پول از شعبه' : language === 'ps' ? 'له څانګې د نغدو پیسو اخیستل تاییدول' : 'Confirm Cash Handed Over'}
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                                <span>{language === 'fa' ? 'تأیید دریافت وجه' : language === 'ps' ? 'د پیسو اخیستل تاییدول' : 'Confirm Received'}</span>
-                              </button>
-
+                          {/* A branch-recorded payout updates the account automatically. */}
+                          {payoutIsPaid && (
+                            <div className="flex flex-col items-center gap-1.5">
+                              <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>{language === 'fa' ? 'حساب خودکار تصفیه شد' : language === 'ps' ? 'حساب په اوتومات ډول تصفیه شو' : 'Account settled automatically'}</span>
+                              </span>
+                              {pStatus === 'disbursed_by_branch' && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -656,11 +610,12 @@ export const CustomerFinances: React.FC = () => {
                                 <AlertCircle className="w-3.5 h-3.5" />
                                 <span>{language === 'fa' ? 'نگرفته‌ام' : language === 'ps' ? 'نه دي ترلاسه شوي' : 'Not Received'}</span>
                               </button>
-                            </>
+                              )}
+                            </div>
                           )}
 
                           {/* If ready at branch, guide customer to visit branch */}
-                          {pStatus === 'ready_for_payout' && (
+                          {!payoutIsPaid && pStatus === 'ready_for_payout' && (
                             <div className="text-[11px] text-slate-500 font-medium">
                               <span>{language === 'fa' ? 'مراجعه به نمایندگی ' : language === 'ps' ? 'څانګې ته ورتلل: ' : 'Visit branch: '}</span>
                               <strong className="text-slate-800 dark:text-slate-200">{getBranchName(s.originBranchId)}</strong>
@@ -668,7 +623,7 @@ export const CustomerFinances: React.FC = () => {
                           )}
 
                           {/* If in transit, give quick tracking */}
-                          {pStatus === 'pending_delivery' && (
+                          {!payoutIsPaid && pStatus === 'pending_delivery' && (
                             <button
                               type="button"
                               onClick={() => {
@@ -680,14 +635,6 @@ export const CustomerFinances: React.FC = () => {
                               <Search className="w-3 h-3" />
                               <span>{language === 'fa' ? 'پیگیری' : language === 'ps' ? 'پلټنه' : 'Track'}</span>
                             </button>
-                          )}
-
-                          {/* If already confirmed */}
-                          {pStatus === 'confirmed_by_customer' && (
-                            <span className="text-[11px] text-teal-600 dark:text-teal-400 font-bold flex items-center gap-1">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>{language === 'fa' ? 'حساب تصفیه شد' : language === 'ps' ? 'حساب تصفیه شو' : 'Account Settled'}</span>
-                            </span>
                           )}
 
                           {/* If in dispute */}
