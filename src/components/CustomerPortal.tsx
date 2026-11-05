@@ -183,11 +183,11 @@ export const CustomerPortal: React.FC = () => {
   const financialLabels = language === 'fa'
     ? {
         title: 'خلاصه مالی و بسته‌ها',
-        subtitle: 'ارزش بسته‌ها، پرداخت‌های تأییدشده و باقی‌مانده حساب شما',
+        subtitle: 'ارزش بسته‌ها، پرداخت‌های ثبت‌شده و باقی‌مانده حساب شما',
         totalValue: 'ارزش مجموعی بسته‌ها',
         netPayable: 'مبلغ خالص قابل پرداخت',
         received: 'دریافت‌شده از ارمغان',
-        receivedHint: 'پرداخت‌های تأییدشده توسط شما',
+        receivedHint: 'پرداخت‌های ثبت‌شده توسط ارمغان',
         remaining: 'باقی‌مانده نزد ارمغان',
         remainingFormula: 'خالص قابل پرداخت منهای مبلغ دریافت‌شده',
         parcels: 'تعداد مجموعی بسته‌ها',
@@ -197,11 +197,11 @@ export const CustomerPortal: React.FC = () => {
     : language === 'ps'
     ? {
         title: 'مالي او بارونو لنډیز',
-        subtitle: 'د بارونو ارزښت، تایید شوې تادیې او ستاسو پاتې حساب',
+        subtitle: 'د بارونو ارزښت، ثبت شوې تادیې او ستاسو پاتې حساب',
         totalValue: 'د بارونو ټول ارزښت',
         netPayable: 'خالص د تادیې وړ مبلغ',
         received: 'له ارمغان څخه ترلاسه شوي',
-        receivedHint: 'ستاسو لخوا تایید شوې تادیې',
+        receivedHint: 'د ارمغان لخوا ثبت شوې تادیې',
         remaining: 'له ارمغان سره پاتې',
         remainingFormula: 'خالص د تادیې وړ مبلغ منفي ترلاسه شوې پیسې',
         parcels: 'د بارونو ټول شمېر',
@@ -210,11 +210,11 @@ export const CustomerPortal: React.FC = () => {
       }
     : {
         title: 'Financial & Parcel Summary',
-        subtitle: 'Parcel value, confirmed payouts, and your remaining balance',
+        subtitle: 'Parcel value, recorded payouts, and your remaining balance',
         totalValue: 'Total Parcel Value',
         netPayable: 'Net payable to you',
         received: 'Received from Armaghan',
-        receivedHint: 'Payouts confirmed by you',
+        receivedHint: 'Payouts recorded by Armaghan',
         remaining: 'Remaining with Armaghan',
         remainingFormula: 'Net payable minus amount received',
         parcels: 'Total Parcels',

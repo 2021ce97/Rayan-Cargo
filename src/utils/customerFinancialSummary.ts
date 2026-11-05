@@ -62,14 +62,20 @@ export const calculateCustomerFinancialSummary = (
     0
   );
 
-  // Customer confirmation is the authoritative proof that cash/hawala was received.
-  // A branch-only disbursement remains outstanding until the customer confirms it.
+  // Count a payout as paid as soon as Armaghan records the cash/hawala/bank
+  // disbursement. Customer confirmation is a later verification step, not a
+  // requirement for the dashboard's "paid by Armaghan" total.
   const totalReceivedAfn = financialShipments.reduce((sum, shipment) => {
-    const isConfirmed =
-      getCustomerPayoutStatus(shipment) === 'confirmed_by_customer' ||
-      Boolean(shipment.sellerPayoutConfirmedAt);
+    const payoutStatus = getCustomerPayoutStatus(shipment);
+    const isDisputed = payoutStatus === 'disputed';
+    const isRecordedPaid = !isDisputed && (
+      payoutStatus === 'disbursed_by_branch' ||
+      payoutStatus === 'confirmed_by_customer' ||
+      Boolean(shipment.sellerPayoutDisbursedAt) ||
+      Boolean(shipment.sellerPayoutConfirmedAt)
+    );
 
-    return isConfirmed ? sum + getCustomerNetPayout(shipment) : sum;
+    return isRecordedPaid ? sum + getCustomerNetPayout(shipment) : sum;
   }, 0);
 
   return {
